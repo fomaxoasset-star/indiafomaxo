@@ -1,0 +1,3 @@
+api/data/*
+!api/data/.htaccess
+api/private-config.php
