@@ -1,0 +1,152 @@
+<?php
+declare(strict_types=1);
+/* FOMAXO India — shared checkout helpers, used by api/razorpay.php (online payment) and api/cod.php (cash on delivery).
+   Prices are read from window.STORE in index.html on every order, so the website stays the one place to change
+   a price. The browser only sends product ids, sizes and quantities; the total is always worked out here.
+   Private files (keys, orders) live in ../fomaxo-private next to public_html, so deploys never touch them. */
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
+
+date_default_timezone_set('Asia/Kolkata');
+
+$PRIV = getenv('FOMAXO_PRIVATE') ?: dirname(__DIR__, 2) . '/fomaxo-private';
+if (!is_dir($PRIV) && !@mkdir($PRIV, 0750, true)) $PRIV = __DIR__ . '/data';   // fallback: api/data is closed to the web by its .htaccess
+
+const FOMAXO_STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh',
+  'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
+  'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+  'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana',
+  'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
+
+function out($data, int $code = 200): void { http_response_code($code); echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); exit; }
+function fail(string $msg, int $code = 400): void { out(['error' => $msg], $code); }
+function input(): array { static $in; if ($in === null) $in = json_decode((string)file_get_contents('php://input'), true) ?: []; return $in; }
+function rupees(int $paise): string { $r = $paise / 100; return '₹' . ($paise % 100 ? number_format($r, 2) : number_format($r)); }
+
+/* Private settings: ../fomaxo-private/razorpay-config.php (or the razorpay_* keys in ../fomaxo-private/config.php). */
+function fomaxo_config(): array {
+  global $PRIV; static $cfg;
+  if ($cfg !== null) return $cfg;
+  $cfg = [];
+  foreach (["$PRIV/config.php", "$PRIV/razorpay-config.php"] as $f) if (is_file($f)) { $c = require $f; if (is_array($c)) $cfg = $c + $cfg; }
+  return $cfg;
+}
+
+/* ---- the price list, read from window.STORE in index.html ---- */
+function fomaxo_catalog(): array {
+  static $cat; if ($cat !== null) return $cat;
+  $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
+  $a = strpos($html, 'window.STORE = {'); $b = $a === false ? false : strpos($html, '</script>', $a);
+  if ($a === false || $b === false) return $cat = ['products' => [], 'cod' => null, 'email' => ''];
+  $src = substr($html, $a, $b - $a);
+  $cat = ['products' => [], 'cod' => null, 'email' => ''];
+
+  $sections = [];
+  if (($p = strpos($src, "\n  products: [")) !== false) $sections[] = substr($src, $p, (strpos($src, "\n  featured:", $p) ?: strlen($src)) - $p);
+  if (($p = strpos($src, "\n  personalCare:")) !== false) $sections[] = substr($src, $p);
+  foreach ($sections as $sec) {
+    preg_match_all('/\{\s*id:\s*"([a-z0-9-]+)"/', $sec, $m, PREG_OFFSET_CAPTURE);
+    foreach ($m[1] as $i => [$id, $at]) {
+      $end = $m[0][$i + 1][1] ?? strlen($sec);
+      $o = substr($sec, $at, $end - $at);
+      $get = fn($k) => preg_match('/\b' . $k . ':\s*"([^"]*)"/', $o, $x) ? $x[1] : '';
+      $prices = [];
+      if (preg_match('/\bprices:\s*\{([^}]*)\}/', $o, $x)) {
+        preg_match_all('/"?([\w]+)"?\s*:\s*([\d.]+)/', $x[1], $pp, PREG_SET_ORDER);
+        foreach ($pp as [, $k, $v]) $prices[$k] = (float)$v;
+      } elseif (preg_match('/\bprice:\s*([\d.]+)/', $o, $x)) {
+        $prices['one'] = (float)$x[1];
+      }
+      if (!$prices) continue;
+      $kind = $get('kind') ?: (preg_match('/\btype:\s*"/', $o) ? 'care' : '');
+      $cat['products'][$id] = ['name' => $get('name') . ($kind === 'care' ? ' ' . explode(' — ', $get('type'))[0] : ''),
+        'kind' => $kind, 'vol' => $get('vol'), 'prices' => $prices, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o)];
+    }
+  }
+  if (preg_match('/\bcod:\s*\{([^}]*)\}/', $src, $x)) {
+    $min = preg_match('/\bmin:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
+    $fee = preg_match('/\bfee:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
+    $cat['cod'] = ['min' => (int)round($min * 100), 'fee' => (int)round($fee * 100)];
+  }
+  if (preg_match('/\bcheckout:\s*\{[^}]*?\bemail:\s*"([^"]+)"/s', $src, $x)) $cat['email'] = $x[1];
+  return $cat;
+}
+
+/* Prices the bag on the server. Returns ['error'=>…] or the priced order (amounts in paise). */
+function fomaxo_price_order(array $in): array {
+  $CAT = fomaxo_catalog()['products'];
+  if (!$CAT) return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.'];
+  $lines = is_array($in['lines'] ?? null) ? $in['lines'] : [];
+  if (!$lines || count($lines) > 30) return ['error' => 'Your bag is empty.'];
+  $items = []; $total = 0;
+  foreach ($lines as $l) {
+    $id = is_string($l['id'] ?? null) ? $l['id'] : '';
+    $opt = (string)($l['opt'] ?? '');
+    $qty = (int)($l['qty'] ?? 0);
+    $p = $CAT[$id] ?? null;
+    if (!$p || !isset($p['prices'][$opt]) || $p['soldOut'] || $qty < 1 || $qty > 99)
+      return ['error' => 'An item in your bag is no longer available. Please refresh and try again.'];
+    $size = $p['kind'] === 'set' ? "Set of $opt" : ($p['kind'] === 'care' ? $p['vol'] : ($p['kind'] === 'car' ? 'Car perfume' : "{$opt}ml"));
+    $desc = '';
+    if ($p['kind'] === 'set') {
+      $picks = array_values(array_filter((array)($l['picks'] ?? []), fn($x) => is_string($x) && isset($CAT[$x]) && $CAT[$x]['kind'] === ''));
+      if (count($picks) !== (int)$opt) return ['error' => "Please choose $opt fragrances for your set."];
+      $desc = 'Fragrances: ' . implode(', ', array_map(fn($x) => $CAT[$x]['name'], $picks));
+    }
+    $unit = (int)round($p['prices'][$opt] * 100);
+    $total += $unit * $qty;
+    $items[] = ['id' => $id, 'name' => 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : ''), 'desc' => $desc, 'unit' => $unit, 'qty' => $qty];
+  }
+  if ($total < 100) return ['error' => 'This order cannot be paid online. Please order on WhatsApp.'];
+  $rows = array_map(fn($it) => "• {$it['qty']} x {$it['name']}" . ($it['desc'] ? " ({$it['desc']})" : '') . ' — ' . rupees($it['unit'] * $it['qty']), $items);
+  return ['items' => $items, 'rows' => $rows, 'subtotal' => $total];
+}
+
+/* Delivery details from the checkout page. Returns ['error'=>…] or clean details. */
+function fomaxo_customer(array $in): array {
+  $c = is_array($in['customer'] ?? null) ? $in['customer'] : [];
+  $t = fn($k, $max) => trim(mb_substr(preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', is_string($c[$k] ?? null) ? $c[$k] : '') ?? '', 0, $max));
+  $o = ['name' => $t('name', 80), 'phone' => $t('phone', 20), 'email' => $t('email', 120), 'house' => $t('house', 80), 'street' => $t('street', 120),
+        'landmark' => $t('landmark', 80), 'city' => $t('city', 60), 'state' => $t('state', 60), 'pin' => $t('pin', 10), 'note' => $t('note', 300)];
+  if (mb_strlen($o['name']) < 2) return ['error' => 'Please enter your full name.'];
+  $d = preg_replace('/\D/', '', $o['phone']);
+  if (strlen($d) === 12 && str_starts_with($d, '91')) $d = substr($d, 2);
+  if (strlen($d) === 11 && $d[0] === '0') $d = substr($d, 1);
+  if (!preg_match('/^[6-9]\d{9}$/', $d)) return ['error' => 'Please enter a valid 10-digit Indian mobile number.'];
+  $o['phone'] = '+91 ' . substr($d, 0, 5) . ' ' . substr($d, 5);
+  if (!filter_var($o['email'], FILTER_VALIDATE_EMAIL)) return ['error' => 'Please enter a valid email address.'];
+  if ($o['house'] === '' || mb_strlen($o['street']) < 2 || mb_strlen($o['city']) < 2) return ['error' => 'Please enter your full delivery address.'];
+  if (!in_array($o['state'], FOMAXO_STATES, true)) return ['error' => 'Please choose your state.'];
+  if (!preg_match('/^[1-9]\d{5}$/', $o['pin'])) return ['error' => 'Please enter a valid 6-digit PIN code.'];
+  $o['address'] = implode(', ', array_filter([$o['house'], $o['street'], $o['landmark'] !== '' ? 'Near ' . $o['landmark'] : '', $o['city'], $o['state'] . ' ' . $o['pin']]));
+  return $o;
+}
+
+function fomaxo_order_no(): string { return 'FMX-IN-' . date('ymd') . '-' . strtoupper(bin2hex(random_bytes(2))); }
+function fomaxo_orders_dir(): string { global $PRIV; $d = "$PRIV/orders"; if (!is_dir($d)) @mkdir($d, 0700, true); return $d; }
+function fomaxo_save_order(string $key, array $rec): void { file_put_contents(fomaxo_orders_dir() . '/' . preg_replace('/[^A-Za-z0-9_\-]/', '', $key) . '.json', json_encode($rec, JSON_UNESCAPED_UNICODE), LOCK_EX); }
+function fomaxo_load_order(string $key): ?array { $f = fomaxo_orders_dir() . '/' . preg_replace('/[^A-Za-z0-9_\-]/', '', $key) . '.json'; return is_file($f) ? json_decode((string)file_get_contents($f), true) : null; }
+
+/* A private copy of every order, as a spreadsheet: ../fomaxo-private/orders/orders.csv */
+function fomaxo_log_order(array $row): void {
+  $f = @fopen(fomaxo_orders_dir() . '/orders.csv', 'a'); if (!$f) return;
+  $row = array_map(fn($v) => preg_match('/^[=+\-@]/', (string)$v) && !preg_match('/^\+?[\d\s()\-]+$/', (string)$v) ? "'" . $v : $v, $row);   // stop spreadsheet formulas
+  @fputcsv($f, $row); fclose($f);
+}
+
+/* Emails the store and the customer about a confirmed order (paid online, or cash on delivery). */
+function fomaxo_send_emails(array $rec, string $how): void {
+  $store = fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com';
+  $c = $rec['cust']; $total = rupees((int)$rec['total']);
+  $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
+  $from = "FOMAXO <orders@$host>";
+  $subj = fn($s) => '=?UTF-8?B?' . base64_encode($s) . '?=';
+  $lines = implode("\n", $rec['rows']) . (!empty($rec['codFee']) ? "\n• Cash on delivery fee — " . rupees((int)$rec['codFee']) : '');
+  $body = "NEW ORDER {$rec['no']} — $how\n" . date('d M Y, H:i') . " (IST)\n" . (!empty($rec['payment']) ? "Razorpay payment: {$rec['payment']}\n" : '') . "\n$lines\n\n"
+        . ($how === 'Cash on delivery' ? "TO COLLECT ON DELIVERY: $total" : "TOTAL PAID: $total") . "\nDelivery: Free\n\n"
+        . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\nAddress: {$c['address']}\n" . ($c['note'] ? "Note: {$c['note']}\n" : '');
+  @mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\nReply-To: {$c['email']}\r\nContent-Type: text/plain; charset=UTF-8");
+  $cb = "Thank you for your order, {$c['name']}.\n\nOrder number: {$rec['no']}\n\n$lines\n\n"
+      . ($how === 'Cash on delivery' ? "Total to pay on delivery: $total" : "Total paid: $total") . "\nDelivery: Free, to {$c['address']}\n\n"
+      . "We will WhatsApp you on {$c['phone']} about your delivery.\n\nFOMAXO\nhttps://$host";
+  @mail($c['email'], $subj("Your FOMAXO order {$rec['no']}"), $cb, "From: $from\r\nReply-To: $store\r\nContent-Type: text/plain; charset=UTF-8");
+}

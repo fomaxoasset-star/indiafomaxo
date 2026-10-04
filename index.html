@@ -1711,6 +1711,91 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
   .gf-steps{grid-template-columns:1fr}
   .gf-hero .ctas .btn,.gf-enq .ctas .btn{width:100%}
 }
+
+/* ================= CHECKOUT ================= */
+.co{padding:clamp(34px,4.5vw,64px) 0 clamp(70px,8vw,120px);position:relative}
+.co-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,440px);grid-template-areas:"title ." "form sum";column-gap:clamp(36px,5vw,84px);align-items:start;max-width:1440px}
+.co-title{grid-area:title;font-family:var(--serif);font-weight:400;font-size:clamp(40px,5vw,72px);letter-spacing:.06em;margin-bottom:clamp(24px,3vw,40px)}
+.co-form{grid-area:form;gap:18px;grid-template-columns:minmax(0,1fr)}
+.co-btn span{white-space:normal;text-align:center;line-height:1.4}
+.co-sum{grid-area:sum;position:sticky;top:120px;border:1px solid var(--line-2);background:var(--panel);padding:clamp(22px,2.4vw,32px)}
+.co-step{display:flex;align-items:center;gap:18px;padding-bottom:18px;margin-bottom:6px;border-bottom:1px solid var(--line-2)}
+.co-step:not(:first-child){margin-top:36px}
+.co-step span{flex:none;display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--gold);border-radius:50%;font-family:var(--serif);font-size:18px;color:var(--gold)}
+.co-step h2,.co-sum h2{font-family:var(--serif);font-weight:400;letter-spacing:.08em;font-size:clamp(26px,2.4vw,36px)}
+.co-form label{color:var(--ivory);opacity:.92;font-size:11px}
+.co-form label small{letter-spacing:.02em;text-transform:none;font-size:12px;color:var(--muted)}
+.co-form input,.co-form select,.co-form textarea{background:var(--panel);width:100%;min-width:0}
+.co-form select{appearance:none;-webkit-appearance:none;padding-right:40px;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.co-form textarea{min-height:96px}
+.co-form .row3{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.8fr);gap:14px}
+.co-form label.bad input,.co-form label.bad select,.co-form label.bad .co-tel{border-color:#d0493e}
+.co-fe{font-style:normal;font-size:13px;letter-spacing:0;text-transform:none;color:#d0493e}
+html[data-mode="light"] .co-fe{color:#a8322a}
+.co-tel{display:flex;align-items:stretch;border:1px solid var(--line-2);background:var(--panel);transition:border-color .3s}
+.co-tel:focus-within{border-color:var(--gold-hi)}
+.co-tel em{display:flex;align-items:center;padding:0 0 0 16px;font-style:normal;font-size:15px;letter-spacing:0;color:var(--muted)}
+.co-form .co-tel input{border:0;padding-left:10px}
+.co-fine{font-size:13.5px;line-height:1.7;color:var(--muted)}
+.co-pay{display:grid;gap:12px;margin-top:6px}
+.co-opt{position:relative;display:flex!important;grid-template-columns:none;flex-direction:row!important;align-items:center;gap:18px!important;padding:20px 22px;border:1px solid var(--line-2);background:var(--panel);cursor:pointer;letter-spacing:0!important;text-transform:none!important;font-size:15px!important;transition:border-color .3s,box-shadow .3s}
+.co-opt.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.co-opt input{flex:none;appearance:none;-webkit-appearance:none;width:20px!important;height:20px;padding:0!important;border:1px solid var(--line-2)!important;border-radius:50%;background:transparent!important;margin:0}
+.co-opt input:checked{border-color:var(--gold)!important;background:radial-gradient(circle,var(--gold) 0 45%,transparent 50%)!important}
+.co-opt input:focus-visible{outline:1px solid var(--gold-hi);outline-offset:3px}
+.co-ot{flex:1;display:grid;gap:3px}
+.co-ot b{font-weight:400;font-size:17px;color:var(--ivory)}
+.co-ot small{font-size:13.5px;color:var(--muted)}
+.co-ot .co-more{color:var(--gold);margin-top:4px}
+.co-opt>svg{flex:none;width:26px;height:26px;color:var(--gold)}
+.co-opt.off{cursor:not-allowed}
+.co-opt.off b{color:var(--muted)}
+.co-err{border:1px solid rgba(208,73,62,.5);background:rgba(208,73,62,.08);color:#d0493e;padding:12px 16px;font-size:14px}
+html[data-mode="light"] .co-err{color:#a8322a}
+.co-btn{min-height:64px;margin-top:8px;font-size:13px;letter-spacing:.24em}
+.co-btn .lk{width:16px;height:16px}
+.btn .lk{width:15px;height:15px;flex:none}
+.co-trust{list-style:none;display:grid;gap:12px;margin-top:10px;padding-top:22px;border-top:1px solid var(--line);font-size:15px;color:var(--ivory)}
+.co-trust li{display:flex;align-items:center;gap:14px}
+.co-trust svg{flex:none;width:21px;height:21px;color:var(--muted)}
+.co-trust a{border-bottom:1px solid var(--line-2);margin-left:.3em}
+.co-trust a:hover{color:var(--gold-hi)}
+.co-sum-head h2{font-size:clamp(24px,2vw,30px)}
+.co-sum-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:18px}
+.co-edit{white-space:nowrap;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--champagne);border-bottom:1px solid var(--line-2);padding-bottom:4px}
+.co-edit:hover{color:var(--gold-hi)}
+.co-items{border-bottom:1px solid var(--line)}
+.co-item{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 0}
+.co-item+.co-item{border-top:1px solid var(--line)}
+.co-img{position:relative}
+.co-img img{width:70px;height:70px;object-fit:cover;border:1px solid var(--line)}
+.co-img i{position:absolute;top:-9px;left:-9px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--gold-lo);color:#fff;font-style:normal;font-size:11.5px;display:grid;place-items:center}
+.co-it{display:grid;gap:4px}
+.co-it b{font-family:var(--brand-font);font-weight:400;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--ivory)}
+.co-it small{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.co-ip{text-align:right;display:grid;gap:2px;font-family:var(--serif);white-space:nowrap}
+.co-ip s{color:#e04a3f;font-size:13px}
+.co-ip span{font-size:21px;color:var(--gold-hi)}
+.co-rows{display:grid;gap:12px;padding:20px 0;border-bottom:1px solid var(--line)}
+.co-rows div{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;color:var(--muted)}
+.co-rows b{font-family:var(--serif);font-weight:400;font-size:20px;color:var(--gold-hi)}
+.co-rows b.co-free{font-family:var(--sans);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold)}
+.co-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:22px}
+.co-total span{font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:var(--ivory)}
+.co-total b{font-family:var(--serif);font-weight:400;font-size:clamp(32px,3vw,42px);color:var(--gold-hi)}
+.co-save{margin-top:10px;text-align:right;font-size:13px;color:var(--gold)}
+@media(max-width:980px){
+  .co-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "sum" "form"}
+  .co-sum{position:static;margin-bottom:36px}
+}
+@media(max-width:620px){
+  .co-form .row2,.co-form .row3{grid-template-columns:minmax(0,1fr)}
+  .co-form .row3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .co-form .row3 label:nth-child(2){grid-column:1/-1;grid-row:1}
+  .co-opt{padding:16px}
+  .co-btn{font-size:12px;letter-spacing:.16em;padding:0 18px}
+  .co-trust{font-size:14px}
+}
 </style>
 <script>document.body.classList.add("home")</script>
 
@@ -1816,7 +1901,8 @@ window.STORE = {
     whatsapp: "917349105165",          // +91 73491 05165
     email: "fomaxoasset@gmail.com",
     checkoutUrl: "",
-    stripe: "checkout.php"            // card payments via Stripe (file on Hostinger). Set to "" to turn off.
+    razorpay: "api/razorpay.php",     // online payment (UPI, cards, netbanking, wallets) on the checkout page. Keys go in fomaxo-private/razorpay-config.php on Hostinger. Set to "" to turn off.
+    cod: { min: 1000, fee: 50 }       // cash on delivery for orders of ₹1,000 and above, with a ₹50 fee. Write cod: null to turn it off.
   },
   accountUrl: "https://fomaxo.com/",
 
@@ -2073,7 +2159,6 @@ const HOME_ALL = (f='all') => {
   while (groups.some(g => g.length)) groups.forEach(g => g.length && out.push(g.shift()));
   return out;
 };
-const offStripe = p => p && (p.kind === 'care' || p.kind === 'car');  // ordered via WhatsApp
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const imgFor = (p, s) => (p.sizeImages && p.sizeImages[s]) || (s == 10 && p.miniImage ? p.miniImage : p.images[0]);
 const altFor = (p, s) => s == 10 && p.miniImage ? ((p.miniImages && p.miniImages[1]) || null) : p.images[1];
@@ -2107,6 +2192,7 @@ const ICON = {
   travel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="9" y="3" width="6" height="18" rx="1"/><path d="M9 7h6"/></svg>'
 };
 
+const LOCK_SVG = '<svg class="lk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="1"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>';
 /* ============================ CART ============================ */
 let cart = [];
 try { cart = JSON.parse(localStorage.getItem('fomaxo_cart') || '[]').filter(l => P[l.id] && !isOut(P[l.id]) && P[l.id].sizes.map(String).includes(String(l.opt))); } catch(e) { cart = []; }
@@ -2134,19 +2220,13 @@ function checkout(lines){
   if (c.mode === 'email' || !c.whatsapp) { location.href = `mailto:${c.email}?subject=${encodeURIComponent('FOMAXO order')}&body=${encodeURIComponent(text)}`; return; }
   const a = document.createElement('a'); a.href = `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(text)}`; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
 }
-async function payByCard(lines, btn){
+function buyNow(lines){
   if (!lines.length) return;
   if (lines.some(l => isOut(P[l.id]))) { toast('This product is currently out of stock'); return; }
-  const ep = S.checkout.stripe; if (!ep || lines.some(l => offStripe(P[l.id]))) return checkout(lines);
-  const old = btn ? btn.innerHTML : ''; if (btn){ btn.disabled = true; btn.textContent = 'Opening secure payment…'; }
-  try {
-    const r = await fetch(ep, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({lines: lines.map(l => ({id:l.id, opt:l.opt, qty:l.qty, picks:l.picks}))})});
-    const d = await r.json().catch(() => ({}));
-    if (r.ok && d.url){ location.href = d.url; return; }
-    toast(d.error || 'Card payment is unavailable right now. Please order via WhatsApp.');
-  } catch(e){ toast('Card payment is unavailable right now. Please order via WhatsApp.'); }
-  if (btn){ btn.disabled = false; btn.innerHTML = old; }
+  try { sessionStorage.setItem('fomaxo_buy', JSON.stringify(lines)); } catch(e) {}
+  goCheckout('#/checkout?buy=1');
 }
+function goCheckout(h){ closePanels(); if (location.hash === h) route(); else location.hash = h; }
 function renderCart(){
   const n = cart.reduce((a, l) => a + l.qty, 0);
   const cc = $('#cartCount'); cc.textContent = n; cc.classList.toggle('on', n > 0);
@@ -2163,10 +2243,10 @@ function renderCart(){
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('');
   const t = subtotal(cart);
   foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div><div class="sub-row"><span>Subtotal</span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
-    ${S.checkout.stripe && !cart.some(l => offStripe(P[l.id])) ? `<button class="btn block" id="payCard">${ICON.lock || ''}Pay securely by card</button><p class="pay-note">Visa · Mastercard · Apple Pay · Google Pay — secured by Stripe</p><button class="btn line block" id="doCheckout">Order via WhatsApp</button>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
+    ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p><button class="btn line block" id="doCheckout">Order via WhatsApp</button>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
     <a class="btn line block" href="#/fragrances" data-close>Continue shopping</a>`;
   $('#doCheckout').onclick = () => checkout(cart);
-  const pc = $('#payCard'); if (pc) pc.onclick = () => payByCard(cart, pc);
+  const gc = $('#goCheckout'); if (gc) gc.onclick = () => goCheckout('#/checkout');
 }
 $('#cartBody').addEventListener('click', e => {
   const q = e.target.closest('[data-q]'), rm = e.target.closest('[data-rm]');
@@ -2225,7 +2305,7 @@ app.addEventListener('click', e => {
   const sel = isNaN(+c.dataset.sel) ? c.dataset.sel : +c.dataset.sel;
   if (p.kind === 'set' && e.target.closest('[data-add],[data-buy]')) { location.hash = `#/product/${p.id}?size=${sel}`; return; }
   if (e.target.closest('[data-add]')) addToCart(p.id, sel);
-  const bb = e.target.closest('[data-buy]'); if (bb) payByCard([{id:p.id, opt:sel, qty:1}], bb);
+  const bb = e.target.closest('[data-buy]'); if (bb) buyNow([{id:p.id, opt:sel, qty:1}], bb);
 });
 const secHead = (eyebrow, title, extra='', center) => `<div class="sec-head${center?' c':''}"><div class="t rv-up"><span class="eyebrow">${eyebrow}</span><h2>${title}</h2>${extra}</div></div>`;
 const pageHead = (crumb, title, lead='') => `<div class="phead"><div class="wrap"><div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${crumb}</div><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
@@ -2474,7 +2554,7 @@ function bindProduct(p){
   updPicks();
   if (isOut(p)) { $('#mbuy').innerHTML = ''; return; }
   $('#addBtn').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); };
-  $('#buyBtn').onclick = () => { if (ready()) payByCard([isSet ? {id:p.id, opt:size, qty:getQ(), picks:[...picks]} : {id:p.id, opt:size, qty:getQ()}], $('#buyBtn')); };
+  $('#buyBtn').onclick = () => { if (ready()) buyNow([isSet ? {id:p.id, opt:size, qty:getQ(), picks:[...picks]} : {id:p.id, opt:size, qty:getQ()}], $('#buyBtn')); };
   const mb = $('#mbuy');
   function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) || 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : '<button class="btn sm" id="mbAdd">Add to bag</button>'}`; if (isOut(p)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; }
   renderMbuy();
@@ -3013,6 +3093,173 @@ function bindOwner(){
   if (key) open();
 }
 
+/* ============================ CHECKOUT ============================
+   #/checkout pays for the bag; #/checkout?buy=1 pays for a "Buy now" item (kept in sessionStorage, the bag is untouched).
+   Online payment opens Razorpay Checkout (UPI, cards, netbanking, wallets); api/razorpay.php prices the order on the
+   server and verifies the payment. Cash on delivery goes to api/cod.php. */
+const IN_STATES = ['Andaman and Nicobar Islands','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chandigarh','Chhattisgarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu and Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Lakshadweep','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'];
+const CO_ICON = {
+  card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="1.5"/><path d="M2.5 9.5h19M6 15h4"/></svg>',
+  cash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="1"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg>',
+  wa: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35M12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.89 9.88m8.41-18.29A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.16-3.48-8.41"/></svg>'
+};
+const CO_KEY = 'fomaxo_details';
+const coBuy = q => q.get('buy') === '1';
+function coLines(q){
+  if (!coBuy(q)) return cart;
+  try { return JSON.parse(sessionStorage.getItem('fomaxo_buy') || '[]').filter(l => P[l.id] && !isOut(P[l.id]) && P[l.id].sizes.map(String).includes(String(l.opt))); } catch(e) { return []; }
+}
+function coSaved(){ try { return JSON.parse(localStorage.getItem(CO_KEY) || '{}') || {}; } catch(e) { return {}; } }
+const coCod = () => S.checkout.cod && typeof S.checkout.cod === 'object' ? S.checkout.cod : null;
+const inr = v => money(v, '₹');
+
+function checkoutPage(q){
+  document.title = 'Checkout — FOMAXO';
+  const lines = coLines(q), t = subtotal(lines);
+  if (!lines.length) return pageHead('Checkout', 'Your bag is <em class="metal">empty</em>', 'Add a fragrance or a personal care favourite, then come back here to check out.') + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Shop fragrances</a><a class="btn line" href="#/personal-care">Personal care</a></div></section>`;
+  if (t === null || cartCur(lines) !== '₹' || !(S.checkout.razorpay || coCod())) return pageHead('Checkout', 'Order on <em class="metal">WhatsApp</em>', 'An item in your bag is priced on request, so we will confirm your order with you on WhatsApp.') + `<section class="sec" style="padding-top:40px"><div class="wrap"><button class="btn" id="coWa">Order via WhatsApp</button></div></section>`;
+  const d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codOk = cod && t >= cod.min;
+  const was = lines.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
+  const phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
+  return `<section class="co"><div class="wrap co-grid">
+  <h1 class="co-title">Checkout</h1>
+  <aside class="co-sum" aria-label="Order summary">
+    <div class="co-sum-head"><h2>Order summary</h2>${coBuy(q) ? `<a class="co-edit" href="#/product/${lines[0].id}">Edit</a>` : `<button type="button" class="co-edit" id="coEdit">Edit bag</button>`}</div>
+    <div class="co-items">${lines.map(l => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return `<div class="co-item">
+      <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
+      <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
+      <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
+    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${cod ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
+    <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
+    ${was > t ? `<p class="co-save">You save ${inr(was - t)} on this order</p>` : ''}
+  </aside>
+  <form class="form co-form" id="coForm" novalidate>
+    <div class="co-step"><span>1</span><h2>Delivery details</h2></div>
+    <label>Full name<input name="name" value="${v('name')}" autocomplete="name" required maxlength="80"></label>
+    <div class="row2">
+      <label>Mobile<span class="co-tel"><em>+91</em><input name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="98765 43210" value="${phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : ''}" required maxlength="12"></span></label>
+      <label>Email<input name="email" type="email" value="${v('email')}" autocomplete="email" required maxlength="120"></label>
+    </div>
+    <label>Flat / house no, building<input name="house" value="${v('house')}" autocomplete="address-line1" required maxlength="80"></label>
+    <div class="row2">
+      <label>Street, area, locality<input name="street" value="${v('street')}" autocomplete="address-line2" required maxlength="120"></label>
+      <label><span>Landmark <small>(optional)</small></span><input name="landmark" value="${v('landmark')}" maxlength="80"></label>
+    </div>
+    <div class="row3">
+      <label>City<input name="city" value="${v('city')}" autocomplete="address-level2" required maxlength="60"></label>
+      <label>State<select name="state" autocomplete="address-level1" required><option value="">Choose state</option>${IN_STATES.map(x => `<option${x === d.state ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label>PIN code<input name="pin" inputmode="numeric" autocomplete="postal-code" value="${v('pin')}" required maxlength="6" placeholder="560001"></label>
+    </div>
+    <label><span>Note <small>(optional)</small></span><textarea name="note" maxlength="300" placeholder="Delivery time or gift message"></textarea></label>
+    <p class="co-fine">We remember these details on this device for your next order. We will WhatsApp you about your delivery and, after it arrives, ask for a quick review.</p>
+
+    <div class="co-step"><span>2</span><h2>Payment</h2></div>
+    <div class="co-pay" role="radiogroup" aria-label="Payment method">
+      ${S.checkout.razorpay ? `<label class="co-opt"><input type="radio" name="pay" value="online" checked><span class="co-ot"><b>UPI / Card / Netbanking / Wallets</b><small>Pay securely now with Razorpay</small></span>${CO_ICON.card}</label>` : ''}
+      ${cod ? `<label class="co-opt${codOk ? '' : ' off'}"><input type="radio" name="pay" value="cod"${codOk ? (S.checkout.razorpay ? '' : ' checked') : ' disabled'}><span class="co-ot"><b>Cash on delivery</b><small>For orders of ${inr(cod.min)} and above${cod.fee ? ` · ${inr(cod.fee)} fee` : ''}</small>${codOk ? '' : `<small class="co-more">Add ${inr(cod.min - t)} more to activate COD</small>`}</span>${CO_ICON.cash}</label>` : ''}
+    </div>
+    <p class="co-err" id="coErr" role="alert" hidden></p>
+    <button class="btn block co-btn" id="coPay" type="submit">${LOCK_SVG}<span id="coPayTxt">Pay ${inr(t)} securely</span></button>
+    <ul class="co-trust">
+      <li>${ICON.truck}Free delivery anywhere in India</li>
+      <li>${LOCK_SVG}Secure payments by Razorpay</li>
+      <li>${CO_ICON.wa}Questions? WhatsApp us on <a href="https://wa.me/${S.checkout.whatsapp}" target="_blank" rel="noopener">${esc((S.contact.phones[0] || {}).number || '+' + S.checkout.whatsapp)}</a></li>
+    </ul>
+  </form>
+</div></section>`;
+}
+
+let rzpLoad;
+const loadRazorpay = () => window.Razorpay ? Promise.resolve() : (rzpLoad = rzpLoad || new Promise((ok, no) => {
+  const sc = document.createElement('script'); sc.src = 'https://checkout.razorpay.com/v1/checkout.js'; sc.async = true;
+  sc.onload = ok; sc.onerror = () => { rzpLoad = null; sc.remove(); no(new Error('load')); }; document.head.appendChild(sc);
+}));
+
+function bindCheckout(q){
+  const wa = $('#coWa'); if (wa) wa.onclick = () => checkout(coLines(q));
+  const f = $('#coForm'); if (!f) return;
+  const lines = coLines(q), t = subtotal(lines), cod = coCod(), E = f.elements, btn = $('#coPay'), err = $('#coErr');
+  const ed = $('#coEdit'); if (ed) ed.onclick = () => { renderCart(); openPanel($('#cart')); };
+  if (S.checkout.razorpay) loadRazorpay().catch(() => {});
+  const method = () => (f.querySelector('input[name=pay]:checked') || {}).value;
+  const total = () => t + (method() === 'cod' && cod ? cod.fee : 0);
+  const upd = () => {
+    const isCod = method() === 'cod', fr = $('#coFeeRow');
+    if (fr) fr.hidden = !isCod;
+    $('#coTotal').textContent = inr(total());
+    $('#coPayTxt').textContent = isCod ? `Place order · ${inr(total())} on delivery` : `Pay ${inr(total())} securely`;
+    $$('.co-opt', f).forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
+  };
+  $$('input[name=pay]', f).forEach(r => r.onchange = upd); upd();
+  /* tidy typing: mobile as "98765 43210", PIN digits only */
+  E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
+  E.pin.oninput = () => { E.pin.value = E.pin.value.replace(/\D/g, '').slice(0, 6); };
+  f.addEventListener('input', e => { const lb = e.target.closest('label'); if (lb) { lb.classList.remove('bad'); const fe = lb.querySelector('.co-fe'); if (fe) fe.remove(); } });
+
+  const showErr = (msg, el) => {
+    if (!el) { err.textContent = msg; err.hidden = false; err.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
+    const lb = el.closest('label'); lb.classList.add('bad'); (lb.querySelector('.co-fe') || lb.appendChild(Object.assign(document.createElement('em'), {className: 'co-fe'}))).textContent = msg;
+    el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'});
+  };
+  const val = k => E[k].value.replace(/\s+/g, ' ').trim();
+  function details(){
+    const c = {name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin'), note: val('note')};
+    if (c.name.length < 2) return showErr('Please enter your full name.', E.name);
+    if (!/^[6-9]\d{9}$/.test(c.phone)) return showErr('Please enter a valid 10-digit mobile number.', E.phone);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return showErr('Please enter a valid email address.', E.email);
+    if (!c.house) return showErr('Please enter your flat or house number and building.', E.house);
+    if (c.street.length < 2) return showErr('Please enter your street, area or locality.', E.street);
+    if (c.city.length < 2) return showErr('Please enter your city.', E.city);
+    if (!c.state) return showErr('Please choose your state.', E.state);
+    if (!/^[1-9]\d{5}$/.test(c.pin)) return showErr('Please enter a valid 6-digit PIN code.', E.pin);
+    if (!method()) return showErr('Please choose how you would like to pay.');
+    try { const {note, ...keep} = c; localStorage.setItem(CO_KEY, JSON.stringify(keep)); } catch(e) {}
+    return c;
+  }
+  const busy = (on, label) => { btn.disabled = on; if (on) $('#coPayTxt').textContent = label; else upd(); };
+  const done = (no, pay) => {
+    if (coBuy(q)) { try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {} } else { cart = []; save(); }
+    location.hash = `#/thank-you?order=${encodeURIComponent(no)}&pay=${pay}`;
+  };
+  const post = async (url, body) => { const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.'); return d; };
+  const payload = c => ({lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks})), customer: c});
+
+  f.onsubmit = async e => {
+    e.preventDefault(); err.hidden = true;
+    const c = details(); if (!c) return;
+    if (method() === 'cod') {
+      busy(true, 'Placing your order…');
+      try { const d = await post('api/cod.php', payload(c)); done(d.order, 'cod'); } catch(x) { busy(false); showErr(x.message); }
+      return;
+    }
+    busy(true, 'Opening secure payment…');
+    try {
+      const [o] = await Promise.all([post(S.checkout.razorpay, {action: 'create', ...payload(c)}), loadRazorpay().catch(() => { throw new Error('Secure payment could not load. Please check your connection and try again.'); })]);
+      const rzp = new window.Razorpay({
+        key: o.key, order_id: o.order_id, amount: o.amount, currency: o.currency,
+        name: 'FOMAXO', description: `Order ${o.no}`, prefill: o.prefill, notes: {order: o.no},
+        theme: {color: '#a8792f'},
+        handler: async r => {
+          busy(true, 'Confirming your payment…');
+          try { const d = await post(S.checkout.razorpay, {action: 'verify', ...r}); done(d.order, 'online'); }
+          catch(x) { busy(false); showErr(x.message); }
+        },
+        modal: {ondismiss: () => busy(false)}
+      });
+      rzp.on('payment.failed', r => showErr((r.error && r.error.description ? r.error.description + '. ' : '') + 'No money was taken. Please try again or choose another way to pay.'));
+      rzp.open();
+    } catch(x) { busy(false); showErr(x.message); }
+  };
+}
+
+function thankYou(q){
+  const no = q.get('order'), cod = q.get('pay') === 'cod';
+  const lead = !no ? 'Your payment was successful. A receipt is on its way to your email, and we will contact you shortly to arrange delivery.'
+    : cod ? `Your order <b class="gold">${esc(no)}</b> is placed. Please keep the amount ready for cash on delivery. A confirmation is on its way to your email, and we will WhatsApp you to arrange delivery.`
+    : `Your payment was successful and your order number is <b class="gold">${esc(no)}</b>. A confirmation is on its way to your email, and we will WhatsApp you to arrange delivery.`;
+  return pageHead('Order confirmed', 'Thank <em class="metal">you</em>', lead) + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Continue shopping</a><a class="btn line" href="#/contact">Contact us</a></div></section>`;
+}
+
 /* ============================ ROUTER ============================ */
 let heroTimer, homeGridTimer;
 function route(){
@@ -3034,7 +3281,8 @@ function route(){
     case 'partnership': html = partnership(); after = bindPartner; break;
     case 'review': html = reviewOrderPage(); after = () => bindReviewOrder(q.get('t') || ''); break;
     case 'owner': html = ownerPage(); after = bindOwner; break;
-    case 'thank-you': cart = []; save(); html = pageHead('Order confirmed', 'Thank <em class="metal">you</em>', 'Your payment was successful. A receipt is on its way to your email, and we will contact you shortly to arrange delivery.') + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Continue shopping</a><a class="btn line" href="#/contact">Contact us</a></div></section>`; break;
+    case 'checkout': html = checkoutPage(q); after = () => bindCheckout(q); break;
+    case 'thank-you': html = thankYou(q); break;
     default: html = notFound();
   }
   if (html === '') return;
