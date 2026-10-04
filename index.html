@@ -2527,9 +2527,9 @@ function product(id, q){
           <p class="small" id="pickHint" style="margin-top:12px">Select ${size} fragrances to continue.</p></div>` : ''}
         <div class="qtyrow${isOut(p) ? ' oos-row' : ''}">
           <div class="qty"><button id="qm" aria-label="Decrease quantity">−</button><input id="qty" value="1" inputmode="numeric" aria-label="Quantity"><button id="qp" aria-label="Increase quantity">+</button></div>
-          ${isOut(p) ? OUT_BTN('btn') : '<button class="btn tc" id="addBtn">Add To Cart</button>'}
+          ${isOut(p) ? OUT_BTN('btn') : '<button class="btn line tc" id="addBtn">Add To Cart</button>'}
         </div>
-        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn line block tc" id="buyBtn">Buy Now</button>'}
+        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block tc" id="buyBtn">Buy Now</button>'}
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
           <details open><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
@@ -2610,7 +2610,7 @@ function tierRow(t, i){
       <h2 class="tier-name">${esc(t.name)}</h2>
       <p class="lead">${esc(t.text)}</p>
       <div class="tier-list">${list}</div>
-      <div class="ctas"><a class="btn sm" href="#/collections/tier-${t.id}">Shop ${esc(t.name)}</a>${ps.length === 1 ? (isOut(ps[0]) ? OUT_BTN('btn line sm') : `<button class="btn line sm tc" data-quickadd="${ps[0].id}">Add To Cart</button><button class="btn line sm tc" data-quickbuy="${ps[0].id}">Buy Now</button>`) : ''}</div>
+      <div class="ctas"><a class="btn sm" href="#/collections/tier-${t.id}">Shop ${esc(t.name)}</a>${ps.length === 1 ? (isOut(ps[0]) ? OUT_BTN('btn line sm') : `<button class="btn line sm tc" data-quickadd="${ps[0].id}">Add To Cart</button><button class="btn sm tc" data-quickbuy="${ps[0].id}">Buy Now</button>`) : ''}</div>
     </div></div>`;
 }
 function tierPage(id){
