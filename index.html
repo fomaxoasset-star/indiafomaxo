@@ -1339,6 +1339,19 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .hc-slide.ban .hc-bg{filter:blur(30px) brightness(.55) saturate(1.1)}
   .hero-cine.is-banner .hc-copy{opacity:1;visibility:visible;pointer-events:auto}
 }
+/* hero made only of banners: each banner fills a full-width 2:1 slide edge to edge, with the slide picker below it */
+.hero-cine.bn{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:auto;min-height:0;max-height:none;padding-top:80px}
+.hero-cine.bn .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:2/1;max-height:calc(100svh - 120px);min-height:0;flex:none}
+.hero-cine.bn .hc-slides::after{display:none}
+.hero-cine.bn .hc-slide .hc-bg{filter:none;transform:none!important}
+.hero-cine.bn .hc-slide .hc-ban,.hero-cine.bn .hc-veil,.hero-cine.bn .hc-frame{display:none}
+.hero-cine.bn .hc-bar{position:relative;left:auto;right:auto;bottom:auto;margin:0;padding:22px clamp(16px,3vw,44px) 26px}
+.hero-cine.bn .hc-copy{display:none}
+@media(max-width:760px){
+  .hero-cine.bn .hc-slides{max-height:none}
+  .hero-cine.bn .hc-bar{padding:16px var(--pad) 8px}
+  .hero-cine.bn .hc-copy{display:flex;opacity:1;visibility:visible}
+}
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .pc-buy .pc-add{margin-top:0}
@@ -2000,7 +2013,7 @@ const HERO_SLIDES = [
   /* lo: smaller product photo — shown sharp in a frame over a soft blurred backdrop on wide screens
      banner: a full designed banner — shown whole, over a blurred copy of itself, without the hero text on top */
   {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', banner:true},
-  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 50%', banner:true},
+  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 22%', banner:true},
   {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', banner:true},
   {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', banner:true},
   {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', banner:true},
@@ -2009,7 +2022,7 @@ const HERO_SLIDES = [
 function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
   return `
-  <section class="hero-cine${slides[0].banner ? ' is-banner' : ''}" id="heroCine">
+  <section class="hero-cine${slides[0].banner ? ' is-banner' : ''}${slides.every(s => s.banner) ? ' bn' : ''}" id="heroCine">
     <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}</figure>`).join('')}</div>
     <div class="hc-veil" aria-hidden="true"></div>
     <div class="hc-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
