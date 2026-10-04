@@ -1305,6 +1305,10 @@ html[data-mode="light"] ::-webkit-scrollbar-thumb:hover{background:#000}
 html[data-mode="light"] .cur-dot{background:#000}
 html[data-mode="light"] .cur-ring{border-color:#000}
 html[data-mode="light"] .cur-link .cur-ring{border-color:#000;background:rgba(0,0,0,.08)}
+/* light mode: over dark sections (hero, banners, footer) the cursor turns gold so it stays visible */
+html[data-mode="light"].cur-dark .cur-dot{background:#f0d3a0}
+html[data-mode="light"].cur-dark .cur-ring{border-color:#d7aa69}
+html[data-mode="light"].cur-dark .cur-link .cur-ring{border-color:#f0d3a0;background:rgba(215,170,105,.12)}
 /* cards in a row stretch to equal height so their buttons line up */
 .grid:not(.four)>.card{height:auto;align-self:stretch}
 /* home: shop the collection */
@@ -2986,6 +2990,43 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
   const root = document.documentElement, dot = document.createElement('div'), ring = document.createElement('div');
   dot.className = 'cur-dot'; ring.className = 'cur-ring'; document.body.append(dot, ring); root.classList.add('cur-ready');
   let x = innerWidth / 2, y = innerHeight / 2, rx = x, ry = y;
+  // is the pointer over something dark? light text, or the photo / colour actually under it, flips the light-mode cursor to gold
+  const lum = c => { const m = c.match(/[\d.]+/g); return m ? (.2126 * m[0] + .7152 * m[1] + .0722 * m[2]) / 255 : 1; };
+  const shots = new Map(), cv = document.createElement('canvas'); cv.width = cv.height = 24;
+  const cx = cv.getContext('2d', {willReadFrequently: true});
+  const shot = src => { // 24x24 luminance map of an image, built once per source
+    if (shots.has(src)) return shots.get(src);
+    shots.set(src, null);
+    const im = new Image(); im.decoding = 'async';
+    im.onload = () => { try { cx.clearRect(0, 0, 24, 24); cx.drawImage(im, 0, 0, 24, 24); const d = cx.getImageData(0, 0, 24, 24).data, L = new Float32Array(576);
+      for (let i = 0; i < 576; i++) L[i] = d[i*4+3] < 128 ? -1 : (.2126 * d[i*4] + .7152 * d[i*4+1] + .0722 * d[i*4+2]) / 255;
+      shots.set(src, {L, w: im.naturalWidth, h: im.naturalHeight}); moved = true; } catch(e) {} };
+    im.src = src; return null;
+  };
+  const pixel = (src, el, fit, px, py) => { // luminance of the image pixel under the pointer (cover / contain aware), or -1
+    const s = shot(src); if (!s) return -1;
+    const r = el.getBoundingClientRect(), k = (fit === 'contain' ? Math.min : Math.max)(r.width / s.w, r.height / s.h);
+    const u = (px - r.left - (r.width - s.w * k) / 2) / (s.w * k), v = (py - r.top - (r.height - s.h * k) / 2) / (s.h * k);
+    if (u < 0 || v < 0 || u >= 1 || v >= 1) return -1;
+    return s.L[(v * 24 | 0) * 24 + (u * 24 | 0)];
+  };
+  const onDark = (px, py) => {
+    const stack = document.elementsFromPoint(px, py);
+    if (stack[0] && lum(getComputedStyle(stack[0]).color) > .6) return true; // light text means the section is designed dark (hero, nav, banners)
+    for (const el of stack){
+      const cs = getComputedStyle(el); let l = -1;
+      if (+cs.opacity < .5) continue; // faded backdrop photos don't decide it
+      if (el.tagName === 'IMG' && el.currentSrc) l = pixel(el.currentSrc, el, cs.objectFit, px, py);
+      else if (el.tagName === 'VIDEO' || el.tagName === 'CANVAS') return lum(cs.color) > .6;
+      else { const u = cs.backgroundImage.match(/url\(["']?([^"')]+)/); if (u) l = pixel(u[1], el, cs.backgroundSize === 'contain' ? 'contain' : 'cover', px, py);
+        else if (cs.backgroundImage !== 'none') return lum(cs.color) > .6; }
+      if (l >= 0) return l < .42;
+      const a = cs.backgroundColor.match(/[\d.]+/g);
+      if (a && (a[3] === undefined || +a[3] > .6)) return lum(cs.backgroundColor) < .42;
+    }
+    return false;
+  };
+  let tone = 0, moved = true;
   const VIEW = [['.card .media','View'],['.stage','Zoom'],['.exp a','Discover'],['.coll a','Explore'],['.gallery-g figure','View'],['.arch','Shop'],['.ed-media','View']];
   addEventListener('pointermove', e => {
     x = e.clientX; y = e.clientY; root.classList.add('cur-on');
@@ -2994,13 +3035,16 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
     const v = VIEW.find(([s]) => t.closest(s) && !t.closest('button,.quick,.tag'));
     root.classList.toggle('cur-view', !!v); ring.textContent = v ? v[1] : '';
     root.classList.toggle('cur-link', !v && !!t.closest('a,button,summary,label,select,[role="switch"],.chip,.pick'));
+    moved = true;
   }, {passive: true});
   addEventListener('pointerdown', () => root.classList.add('cur-down'));
   addEventListener('pointerup', () => root.classList.remove('cur-down'));
   document.addEventListener('pointerleave', () => root.classList.remove('cur-on'));
   addEventListener('blur', () => root.classList.remove('cur-on'));
   addEventListener('hashchange', () => root.classList.remove('cur-view', 'cur-link'));
-  (function loop(){ rx += (x - rx) * .18; ry += (y - ry) * .18;
+  addEventListener('scroll', () => moved = true, {passive: true});
+  (function loop(now){ rx += (x - rx) * .18; ry += (y - ry) * .18;
+    if (root.dataset.mode === 'light' && (moved ? now - tone > 90 : now - tone > 600)){ tone = now; moved = false; root.classList.toggle('cur-dark', onDark(x, y)); }
     dot.style.transform = `translate3d(${x}px,${y}px,0)`; ring.style.transform = `translate3d(${rx}px,${ry}px,0)`;
     requestAnimationFrame(loop); })();
 })();
