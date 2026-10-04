@@ -1370,6 +1370,7 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .pcard:hover .pc-img{box-shadow:0 0 0 1px var(--line-2),0 30px 60px -30px rgba(215,170,105,.35)}
 .pc-badge{position:absolute;top:0;left:0;z-index:2;background:#0b0a08;color:#f6efe2;font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:13px 18px 12px;border-bottom-right-radius:12px;box-shadow:0 0 0 1px rgba(215,170,105,.25)}
 .pc-info{display:flex;flex-direction:column;align-items:center;gap:10px}
+.pc-tagline{font-size:13.5px;line-height:1.5;color:var(--muted);max-width:32ch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .pcard h3{font-size:inherit;letter-spacing:0;text-transform:none;line-height:1}
 .pcard h3 a{display:flex;flex-direction:column;gap:7px;align-items:center}
 .pc-name{font-family:var(--brand-font);font-weight:400;text-transform:uppercase;letter-spacing:.1em;font-size:clamp(17px,1.35vw,21px);line-height:1.2;color:var(--gold-hi);transition:color .3s}
@@ -1407,6 +1408,7 @@ html[data-mode="light"] .pc-img{box-shadow:0 0 0 1px var(--line),0 30px 60px -35
   .pc-name{font-size:14px;letter-spacing:.06em}
   .pc-type{font-size:14px}
   .pc-stars{font-size:15px;letter-spacing:.06em}.pc-stars small{font-size:13.5px}
+  .pc-tagline{font-size:12.5px;-webkit-line-clamp:4}
   .pc-price .price,.pc-price .price:has(.was){font-size:18px;gap:6px}
   .pc-add{min-height:44px;font-size:13.5px}
 }
@@ -1619,7 +1621,7 @@ window.STORE = {
     },
     {
       id: "oldmoney", name: "Old Money", rating: 0, reviews: 0, family: "Eau de Parfum · Unisex", tag: "Prestige", tier: "prestige",
-      short: "An elegant unisex fragrance for those who value tradition and refinement.",
+      short: "Quiet luxury in a bottle — an elegant unisex scent for those who value tradition and refinement.",
       description: [
         "FOMAXO Old Money is an elegant unisex fragrance designed for those who value tradition and refinement.",
         "This exquisite scent begins with vibrant notes of lemon, bergamot and iris, transitioning into a harmonious middle of star anise, olive blossom and guaiac wood. It settles into a deep, luxurious base of ambergris, tonka bean and sandalwood, leaving a lasting aura of subtle grandeur.",
@@ -1644,7 +1646,7 @@ window.STORE = {
     },
     {
       id: "dollar", name: "Dollar", family: "Eau de Parfum", tag: "Signature", tier: "signature",
-      short: "The ultimate fragrance for the winter season — fresh and confident all day long.",
+      short: "Fresh, zesty and confident — made to last through long, warm Indian days.",
       description: [
         "Introducing Dollar by FOMAXO — the ultimate fragrance for the winter season.",
         "Experience the invigorating blend of lemon, mint, black currant, pink pepper, apple, cedar, ginger, sandalwood and patchouli. With our innovative Smart Scent Technology, Dollar lasts longer than any other perfume in the market. Stay fresh and confident all day long."
@@ -2354,6 +2356,7 @@ function pcCard(p, i=0, o={}){
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
       <div class="pc-price">${isSet ? fromHTML(p) : priceHTML(p, size)}</div>
       ${starsHTML(p)}
+      ${p.short ? `<p class="pc-tagline">${esc(p.short)}</p>` : ''}
     </div>
     <div class="pc-buy">${sizes}${btn}</div>
   </article>`;
