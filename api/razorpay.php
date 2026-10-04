@@ -20,7 +20,7 @@ $API = rtrim(is_string($cfg['razorpay_api'] ?? null) && $cfg['razorpay_api'] !==
 $TEST = str_starts_with($KEY_ID, 'rzp_test_');
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['status'])) {
-  out(['keys' => $KEY_ID && $SECRET ? 'found' : 'NOT FOUND — add razorpay-config.php in the fomaxo-private folder next to public_html',
+  out(['keys' => $KEY_ID && $SECRET ? 'found' : 'NOT FOUND — add razorpay-config.php in public_html/api/data (or in fomaxo-private next to public_html)',
        'mode' => !$KEY_ID ? '-' : ($TEST ? 'test (no real money)' : 'live'),
        'webhook' => ($cfg['razorpay_webhook_secret'] ?? '') !== '' ? 'secret set' : 'not set (optional)',
        'products' => count(fomaxo_catalog()['products'])]);
