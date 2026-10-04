@@ -1509,7 +1509,7 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
         <form class="notify" id="footNotify" style="margin-top:26px"><input type="email" required placeholder="Your email for launches &amp; previews" aria-label="Email"><button class="btn sm" type="submit">Join</button></form>
       </div>
       <div><h5>Shop</h5><div id="footShop"></div></div>
-      <div><h5>Discover</h5><a href="#/collections/fragrance">Fragrance Collection</a><a href="#/collections/mini">Mini Collection</a><a href="#/collections/name">Personalized Gifting</a><a href="#/collections/gifting">Bespoke Gifting</a><a href="#/collections/elite">Elite Membership</a></div>
+      <div><h5>Discover</h5><a href="#/collections/fragrance">Fragrance Collection</a><a href="#/collections/mini">Mini Collection</a><a href="#/collections/personal-care">Personal Care Collection</a><a href="#/collections/name">Personalized Gifting</a><a href="#/collections/gifting">Bespoke Gifting</a></div>
       <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
     </div>
     <div class="fbase"><span>© 2026 FOMAXO™. All rights reserved.</span><span>Inspire greatness</span></div>
@@ -2061,7 +2061,7 @@ function home(){
       <a href="#/product/discovery"><img src="${IMG('discovery-1')}" alt="" loading="lazy"><div class="in"><span class="eyebrow">01</span><h3>Discovery Sets</h3><p>“Experience the FOMAXO collection at home.”</p><span class="go">Shop the set →</span></div></a>
       <a href="#/collections/name"><img src="${IMG('gift-name-birthday')}" alt="" loading="lazy"><div class="in"><span class="eyebrow">02</span><h3>Personalized Gifting</h3><p>“Your gift. Your scent. Your legacy.”</p><span class="go">Discover →</span></div></a>
       <a href="#/collections/gifting"><img src="${IMG('gift-set-3')}" alt="" loading="lazy"><div class="in"><span class="eyebrow">03</span><h3>Bespoke Gifting</h3><p>“A fragrance of memories.”</p><span class="go">Discover →</span></div></a>
-      <a href="#/collections/elite"><img src="${IMG('elite-card')}" alt="" loading="lazy"><div class="in"><span class="eyebrow">04</span><h3>Elite Membership</h3><p>“For those chosen to experience beyond luxury.”</p><span class="go">Discover →</span></div></a>
+      <a href="#/collections/personal-care"><img src="${IMG('personal-care')}" alt="" loading="lazy"><div class="in"><span class="eyebrow">04</span><h3>Personal Care Collection</h3><p>“Elevating everyday rituals.”</p><span class="go">Discover →</span></div></a>
     </div>
   </div></section>
 
@@ -2274,17 +2274,19 @@ function collections(sub){
     `<section style="padding:60px 0 120px"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">10ml · pocket-sized</span><h2>${m.headline}</h2></div></div><div class="grid four">${m.products.map((id,i)=>card(P[id],{d:'d'+(i%4), size:10})).join('')}</div></div></section>` + finalCTA(); }
   if (sub === 'gifting') return gifting();
   if (sub === 'name') return nameCollection();
-  if (sub === 'elite') return elite();
+  if (sub === 'personal-care') return pageHead('<a href="#/collections">Collections</a> / Personal Care', `Personal Care <em class="metal">Collection</em>`, 'Luxury rituals for hair, body, face and lips — guided by the same principles as every FOMAXO perfume: simplicity, quality and recognisability.') +
+    `<section style="padding:60px 0 120px"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">Hair · body · face · lips</span><h2>Elevating everyday rituals</h2></div></div><div class="pc-grid">${PC.map((p,i)=>pcCard(p,i)).join('')}</div></div></section>` + finalCTA();
+  if (sub === 'elite'){ location.replace('#/collections'); return ''; }
   if (sub === 'discovery'){ location.hash = '#/product/discovery'; return ''; }
   const tiles = [
     ['fragrance','Fragrance Collection','Elite, Signature and Prestige — plus FOMAXO car fragrance.','king-1'],
     ['mini','Mini Collection','Luxury redefined in 10ml. Elegance no longer confined to the dressing table.','oldmoney-10-1'],
+    ['personal-care','Personal Care Collection','Shower gels, shampoos, face washes and lip care, crafted with the same care as every FOMAXO creation.','personal-care'],
     ['discovery','Discovery Sets','2ml vials to experience the FOMAXO collection at home before choosing your full-size bottle.','discovery-1'],
     ['gifting','Bespoke Gifting','Luxury gifting for weddings, gatherings and corporate functions.','gift-set-3'],
-    ['name','Exclusive Personalized Gifting','Your gift. Your scent. Your legacy. The highest form of personalisation: a perfume gifted after the client themselves.','gift-name-birthday'],
-    ['elite','FOMAXO Elite','No application, no fee. Your yearly FOMAXO spending unlocks Black, Gold, Elite and Imperial benefits.','elite-card']
+    ['name','Exclusive Personalized Gifting','Your gift. Your scent. Your legacy. The highest form of personalisation: a perfume gifted after the client themselves.','gift-name-birthday']
   ];
-  return pageHead('Collections', 'The <em class="metal">Collections</em>', 'From signature Eau de Parfum to bespoke gifting and private membership — explore the world of FOMAXO.') +
+  return pageHead('Collections', 'The <em class="metal">Collections</em>', 'From signature Eau de Parfum to personal care and bespoke gifting — explore the world of FOMAXO.') +
     `<section style="padding:60px 0 120px"><div class="wrap"><div class="coll">${tiles.map(t => `<a class="rv-up" href="#/collections/${t[0]}"><img src="${IMG(t[3])}" alt="" loading="lazy"><div class="in"><span class="eyebrow">Collection</span><h3>${t[1]}</h3><p>${t[2]}</p><span class="link" style="align-self:flex-start">Explore →</span></div></a>`).join('')}</div></div></section>` + finalCTA();
 }
 
@@ -2342,94 +2344,6 @@ function nameCollection(){
       <div class="img rv-up d1"><img src="${IMG('gift-name-wishes')}" alt="FOMAXO Best Wishes gift box with Royal Candy, Old Money and personal care" loading="lazy"></div>
     </div>
   </div></section>` + finalCTA();
-}
-function elite(){
-  const tiers = [
-    {name:'Black', spend:105000, sub:'Entry into the FOMAXO world. Minimal, sleek and mysterious.',
-     perks:['10% member discount on products','Access to members-only newsletter','Invitation to private fragrance previews']},
-    {name:'Gold', spend:195000, sub:'Wealth, prestige and elevated taste.',
-     perks:['25% member discount','Early access to limited editions','Private “Scent Initiation Kit”','Invitation to exclusive launch events']},
-    {name:'Elite', spend:395000, sub:'Power, status and insider access.',
-     perks:['40% member discount','Personalised fragrance engraving','Invitations to private soirées & premium events','Priority access to limited drops']},
-    {name:'Imperial', spend:785000, sub:'Ultimate luxury. Reserved for FOMAXO’s highest-spending members.',
-     perks:['All Elite benefits','Personal fragrance concierge','Access to secret collections & private events','Opportunity to create your own signature perfume']}
-  ];
-  const aed = n => '₹' + n.toLocaleString('en-IN');
-  return `
-  <section class="el-hero">
-    <img class="el-bg" data-parallax="0.1" src="${IMG('elite-lounge')}" alt="" loading="eager">
-    <div class="wrap el-in">
-      <div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; <a href="#/collections">Collections</a> &nbsp;/&nbsp; Elite</div>
-      ${emblem('el-em rv-up')}
-      <span class="eyebrow rv-up">Elite membership</span>
-      <h1 class="rv-up d1">FOMAXO <em class="metal">Elite</em></h1>
-      <p class="el-quote rv-up d2">“For those chosen to experience beyond luxury.”</p>
-      <div class="ctas rv-up d3" style="justify-content:center"><a class="btn" href="#/fragrances">Shop FOMAXO</a><a class="btn line" href="#elite-how" data-scroll="elite-how">How it works</a></div>
-    </div>
-  </section>
-
-  <section class="manifesto"><div class="wrap">
-    <p class="rv-up"><span>No application.</span><span>No invitation.</span><span>No membership fee.</span><span class="m">Simply shop FOMAXO.</span></p>
-  </div></section>
-
-  <section class="sec" id="elite-tiers"><div class="wrap">
-    ${secHead('Membership levels','Four levels of <em class="metal">access</em>','<p class="lead">Your total FOMAXO spending per year determines your membership level.</p>')}
-    <div class="etiers">${tiers.map((t,i) => `<article class="etier t-${t.name.toLowerCase()} rv-up d${i}">
-      <header><span class="eyebrow">Level ${['I','II','III','IV'][i]}</span><h3>${t.name}</h3><p class="esub">${t.sub}</p></header>
-      <div class="eprice"><span>Spend per year</span><b>${aed(t.spend)}+ <small>/ year</small></b></div>
-      <ul>${t.perks.map(p=>`<li>${p}</li>`).join('')}</ul>
-    </article>`).join('')}</div>
-  </div></section>
-
-  <section class="sec" style="padding-top:0" id="elite-how"><div class="wrap">
-    <div class="how rv-up">
-      <div class="how-copy">
-        <span class="eyebrow">How FOMAXO Elite works</span>
-        <h2>The more you experience FOMAXO, <em class="metal">the higher you rise.</em></h2>
-        <p class="lead">No application. No invitation. No membership fee. Simply shop FOMAXO — your total FOMAXO spending per year determines your membership level.</p>
-      </div>
-      <ol class="ladder">${tiers.map(t => `<li><span class="lv">${aed(t.spend)}${t.name==='Imperial'?'+':''} <small>/ year</small></span><span class="ar">→</span><b>${t.name}</b></li>`).join('')}</ol>
-      <div class="calc">
-        <label for="el-spend">Your FOMAXO spending this year</label>
-        <div class="calc-zone" id="el-zone">
-          <div class="calc-row"><span>₹</span><output id="el-val" for="el-spend">1,30,000</output></div>
-          <div class="track"><i id="el-fill"></i>${tiers.map(t=>`<em data-v="${t.spend}" style="left:${elPct(t.spend)}%" title="${t.name}"></em>`).join('')}<input id="el-spend" type="range" min="0" max="1000" step="1" value="${elPct(130000)*10}" aria-label="Your FOMAXO spending this year, in rupees"></div>
-          <div class="track-lab">${tiers.map(t=>`<span data-v="${t.spend}" style="left:${elPct(t.spend)}%">${t.name}</span>`).join('')}</div>
-          <p class="calc-hint">Drag the slider to change the amount</p>
-        </div>
-        <p class="calc-out" id="el-out"></p>
-      </div>
-    </div>
-  </div></section>
-
-  <section class="final"><div class="wrap">${emblem('fin-em rv-up')}<span class="eyebrow rv-up">FOMAXO Elite</span>
-    <h2 class="rv-up d1">The higher <em class="metal">you rise</em></h2>
-    <p class="lead rv-up d2" style="text-align:center">Every FOMAXO purchase brings you closer to your next level.</p>
-    <div class="ctas rv-up d3" style="justify-content:center"><a class="btn" href="#/fragrances">Shop FOMAXO</a></div></div></section>`;
-}
-/* spending slider scale: levels spaced evenly along the track */
-const EL_K = [[0,0],[105000,22],[195000,44],[395000,70],[785000,100]], EL_MAX = 785000;
-function elPct(v){ v = Math.max(0, Math.min(EL_MAX, v)); for (let i = 1; i < EL_K.length; i++){ const [a,pa] = EL_K[i-1], [b,pb] = EL_K[i]; if (v <= b) return +(pa + (v - a) / (b - a) * (pb - pa)).toFixed(3); } return 100; }
-function elVal(p){ p = Math.max(0, Math.min(100, p)); for (let i = 1; i < EL_K.length; i++){ const [a,pa] = EL_K[i-1], [b,pb] = EL_K[i]; if (p <= pb) return Math.round((a + (p - pa) / (pb - pa) * (b - a)) / 5000) * 5000; } return EL_MAX; }
-function bindElite(){
-  $$('[data-scroll]').forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById(a.dataset.scroll); el && el.scrollIntoView({behavior:'smooth'}); });
-  const L = [['Black',105000],['Gold',195000],['Elite',395000],['Imperial',785000]];
-  const inp = $('#el-spend'), out = $('#el-out'), fill = $('#el-fill'), val = $('#el-val'), zone = $('#el-zone');
-  let v = 130000;
-  const upd = () => {
-    const max = EL_MAX;
-    let cur = null, next = L[0];
-    for (let i = 0; i < L.length; i++){ if (v >= L[i][1]) { cur = L[i]; next = L[i+1] || null; } }
-    fill.style.width = elPct(v) + '%';
-    val.textContent = v.toLocaleString('en-IN') + (v >= max ? '+' : '');
-    $$('.track em, .track-lab span', zone).forEach(m => m.classList.toggle('on', v >= +m.dataset.v));
-    inp.setAttribute('aria-valuetext', `₹${v.toLocaleString('en-IN')}${cur ? ', ' + cur[0] + ' level' : ''}`);
-    out.innerHTML = cur
-      ? `Your level: <b class="gold">${cur[0]}</b>${next ? ` · ₹${(next[1]-v).toLocaleString('en-IN')} more this year to reach ${next[0]}` : ' · the highest level'}`
-      : `₹${(next[1]-v).toLocaleString('en-IN')} more this year to reach <b class="gold">Black</b>`;
-  };
-  inp.addEventListener('input', () => { v = elVal(+inp.value / 10); upd(); });
-  upd();
 }
 function pcBadges(p, size){
   const pct = pctOff(p, size), isNew = /new/i.test(p.badge || p.tag || '');
@@ -2534,7 +2448,7 @@ function about(){
 }
 const SOC_ICON = {"whatsapp": "<g transform=\"translate(5.6 5.6) scale(.535)\"><path d=\"M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35M12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.89 9.88m8.41-18.29A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.16-3.48-8.41\"/></g>", "instagram": "<rect x=\"6.3\" y=\"6.3\" width=\"11.4\" height=\"11.4\" rx=\"3.3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><circle cx=\"12\" cy=\"12\" r=\"2.75\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><circle cx=\"15.3\" cy=\"8.7\" r=\".85\"/>", "tiktok": "<g transform=\"translate(6.2 6) scale(.5)\"><path d=\"M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z\"/></g>", "youtube": "<rect x=\"5\" y=\"7.4\" width=\"14\" height=\"9.2\" rx=\"2.7\"/><path class=\"cut\" d=\"M10.6 9.9v4.2l3.7-2.1z\"/>", "facebook": "<path d=\"M13.3 19v-6.1h2.05l.31-2.4H13.3V9c0-.69.19-1.16 1.18-1.16h1.26V5.7c-.22-.03-.97-.1-1.84-.1-1.82 0-3.07 1.11-3.07 3.15v1.75H8.77v2.4h2.06V19z\"/>", "linkedin": "<rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"2.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><rect x=\"8.5\" y=\"10.7\" width=\"1.65\" height=\"4.9\"/><circle cx=\"9.32\" cy=\"8.95\" r=\".98\"/><path d=\"M11.65 10.7h1.58v.68c.3-.48.86-.82 1.66-.82 1.27 0 1.86.8 1.86 2.17v2.87h-1.65v-2.55c0-.67-.24-1.07-.79-1.07-.58 0-.93.4-.93 1.07v2.55h-1.73z\"/>", "x": "<path d=\"M6.4 6h3.3l2.75 3.85L15.8 6h1.65l-4.2 4.85L17.7 18h-3.3l-2.95-4.1L7.9 18H6.25l4.45-5.1zm2.3 1.15 6.25 9.7h.95L9.65 7.15z\"/>", "snapchat": "<path d=\"M12 5.6c2.25 0 3.85 1.65 3.85 3.95v1.3l1.15-.38c.42-.13.72.32.5.62-.3.4-1.05.6-1.55.8.4 1.3 1.55 2.35 2.75 2.65-.1.5-.98.8-1.88.9l-.28.92c-.6-.1-1.38-.2-1.98.12-.7.38-1.36 1.07-2.56 1.07s-1.86-.69-2.56-1.07c-.6-.32-1.38-.22-1.98-.12l-.28-.92c-.9-.1-1.78-.4-1.88-.9 1.2-.3 2.35-1.35 2.75-2.65-.5-.2-1.25-.4-1.55-.8-.22-.3.08-.75.5-.62l1.15.38v-1.3C8.15 7.25 9.75 5.6 12 5.6z\"/>", "pinterest": "<path d=\"M12.35 5.4c-3.65 0-5.5 2.6-5.5 4.78 0 1.32.5 2.49 1.57 2.93.18.07.33 0 .38-.19l.15-.6c.05-.19.03-.25-.11-.42-.31-.37-.51-.84-.51-1.52 0-1.95 1.46-3.7 3.8-3.7 2.07 0 3.21 1.27 3.21 2.96 0 2.22-.98 4.1-2.45 4.1-.81 0-1.41-.67-1.22-1.49.23-.98.68-2.03.68-2.73 0-.63-.34-1.16-1.04-1.16-.83 0-1.49.86-1.49 2 0 .73.25 1.22.25 1.22l-1 4.24c-.3 1.26-.05 2.8-.02 2.95.01.09.13.11.18.04.08-.1 1.06-1.31 1.39-2.52l.54-2.1c.27.52 1.05.97 1.89.97 2.48 0 4.17-2.27 4.17-5.3 0-2.3-1.94-4.44-4.88-4.44z\"/>"};
 function contact(q){
-  const topics = {general:'General enquiry', order:'Order enquiry', gifting:'Bespoke Gifting', name:'Personalized Gifting', elite:'Elite Membership', partnership:'Franchise', care:'Personal Care'};
+  const topics = {general:'General enquiry', order:'Order enquiry', gifting:'Bespoke Gifting', name:'Personalized Gifting', partnership:'Franchise', care:'Personal Care'};
   const t = q.get('topic') || 'general', C = S.contact;
   const faq = [
     ['What is the FOMAXO franchise?','FOMAXO is a Dubai-born brand offering premium fragrances and personal care with strong brand identity and repeat customer demand. The franchise model is designed for scalable growth across malls, kiosks, high streets and distribution formats.'],
@@ -2543,7 +2457,7 @@ function contact(q){
     ['What is the term of the agreement?','The standard franchise agreement typically ranges from 1 to 10 years, depending on the country agreement and scale of development, with renewal options.'],
     ['What is my next step?','Submit your expression of interest with details about your country, city, investment capacity and development vision. The FOMAXO team will provide a tailored franchise plan.']
   ];
-  return pageHead('Contact', 'Contact <em class="metal">FOMAXO</em>', '<span class="one-line">For orders, bespoke gifting, membership or partnership enquiries — we would be delighted to hear from you.</span>') + `
+  return pageHead('Contact', 'Contact <em class="metal">FOMAXO</em>', '<span class="one-line">For orders, bespoke gifting or partnership enquiries — we would be delighted to hear from you.</span>') + `
   <section class="sec"><div class="wrap"><div class="split" style="align-items:start">
     <div class="contact-list rv-up">
       <a href="mailto:${C.email}"><small>Email</small><b>${C.email}</b></a>
@@ -2781,7 +2695,7 @@ function route(){
     case undefined: html = home(); after = bindHome; break;
     case 'fragrances': html = fragrances(q); break;
     case 'product': html = product(seg[1], q); after = () => P[seg[1]] && bindProduct(P[seg[1]]); break;
-    case 'collections': html = collections(seg[1]); if (seg[1] === 'elite') after = bindElite; if (seg[1] === 'fragrance') after = bindFragColl; break;
+    case 'collections': html = collections(seg[1]); if (seg[1] === 'fragrance') after = bindFragColl; break;
     case 'personal-care': html = personalCare(q); break;
     case 'about': html = about(); break;
     case 'contact': html = contact(q); after = bindContact; break;
