@@ -138,7 +138,7 @@ function fomaxo_log_order(array $row): void {
   @fputcsv($f, $row); fclose($f);
 }
 
-/* Verified Purchaser: a private review link for the products in a paid order. It goes into the same
+/* Verified Purchaser: a private review link for the products in an order (paid online, or cash on delivery). It goes into the same
    reviews.sqlite that api/reviews.php reads, so reviews written from #/review?t=… carry the badge (once per product).
    Returns the token, or '' if the products aren't known or the reviews store can't be opened. */
 function fomaxo_review_token(array $rec): string {

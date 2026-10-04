@@ -3269,7 +3269,7 @@ function bindCheckout(q){
     const c = details(); if (!c) return;
     if (method() === 'cod') {
       busy(true, 'Placing your order…');
-      try { const d = await post('api/cod.php', payload(c)); done(d.order, 'cod'); } catch(x) { busy(false); showErr(x.message); }
+      try { const d = await post('api/cod.php', payload(c)); done(d.order, 'cod', d.review); } catch(x) { busy(false); showErr(x.message); }
       return;
     }
     busy(true, 'Opening secure payment…');
