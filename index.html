@@ -1518,6 +1518,19 @@ html[data-mode="light"] .pc-img{box-shadow:0 0 0 1px var(--line),0 30px 60px -35
 @media(max-width:600px){.pc-shop .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:calc(var(--pad)*-1);padding-right:var(--pad)}.pc-shop .filters::-webkit-scrollbar{display:none}.pc-shop .filters .chip{flex:none}}
 @media(max-width:340px){.pc-grid,.grid.four.pc-grid{grid-template-columns:minmax(0,1fr)}}
 
+/* Add To Cart + Buy Now: title case labels, side by side */
+.btn.tc{text-transform:none;letter-spacing:.05em;font-size:13px}
+.btn.sm.tc{font-size:12.5px}
+.pc-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pc-btns .pc-add{padding:0 8px;white-space:nowrap}
+.pc-add.pc-line,.pc-add.pc-line:hover{background:transparent;color:var(--gold-hi);box-shadow:inset 0 0 0 1px var(--gold)}
+html[data-mode="light"] .pc-add.pc-line:not(.done){color:#000;box-shadow:inset 0 0 0 1px #000}
+.hc-buy{gap:12px}
+.ed-copy .ctas,.gf-body .ctas{flex-wrap:wrap}
+.mbuy .btn.sm{padding:0 14px}
+@media(max-width:1300px){.pc-btns{grid-template-columns:1fr}}
+@media(max-width:1100px){.pc-btns{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.pc-btns{grid-template-columns:1fr;gap:8px}.mbuy{gap:8px}.mbuy .btn.sm{padding:0 12px;font-size:12px}}
 html[data-mode="light"] .pc-add.oos:not(.done),html[data-mode="light"] .pc-add.oos:hover,html[data-mode="light"] .btn.oos{background:transparent;color:#000;box-shadow:inset 0 0 0 1px #000}
 
 /* ================= NUMBERS: clean lining figures ================= */
@@ -2309,7 +2322,7 @@ function card(p, opts={}){
     <div class="row1"><h3><a href="#/product/${p.id}">${esc(p.name)}</a></h3><span data-price>${priceHTML(p, size)}</span></div>
     <p class="desc">${esc(p.short)}</p>
     ${chips}
-    <div class="acts${isOut(p) ? ' one' : ''}">${isOut(p) ? OUT_BTN('btn line sm') : '<button class="btn line sm" data-add>Add to bag</button><button class="btn sm" data-buy>Buy now</button>'}</div>
+    <div class="acts${isOut(p) ? ' one' : ''}">${isOut(p) ? OUT_BTN('btn line sm') : '<button class="btn line sm tc" data-add>Add To Cart</button><button class="btn sm tc" data-buy>Buy Now</button>'}</div>
   </article>`;
 }
 app.addEventListener('click', e => {
@@ -2359,7 +2372,7 @@ function home(){
     <div class="hc-bar">
       <div class="hc-nav" id="hcNav">${slides.map((s,i) => `<button class="${i?'':'on'}" data-i="${i}" aria-label="Show ${esc(s.p.name)}"><span class="n">0${i+1}</span><span class="t">${esc(s.p.title || s.p.name)}</span><i></i></button>`).join('')}</div>
       <a class="hc-now" id="hcNow" href="#/product/${slides[0].id}"><small>Now showing</small><b id="hcName">${esc(slides[0].p.name)}</b><span>Discover →</span></a>
-      <div class="hc-buy" id="hcBuy"><div class="hc-p" id="hcPrice">${fromHTML(slides[0].p)}</div><button class="btn sm${isOut(slides[0].p) ? ' oos' : ''}" id="hcAdd" type="button"${isOut(slides[0].p) ? ' disabled' : ''}>${isOut(slides[0].p) ? 'Out of stock' : 'Add to bag'}</button></div>
+      <div class="hc-buy" id="hcBuy"><div class="hc-p" id="hcPrice">${fromHTML(slides[0].p)}</div><button class="btn line sm tc${isOut(slides[0].p) ? ' oos' : ''}" id="hcAdd" type="button"${isOut(slides[0].p) ? ' disabled' : ''}>${isOut(slides[0].p) ? 'Out of stock' : 'Add To Cart'}</button><button class="btn sm tc" id="hcBuyNow" type="button"${isOut(slides[0].p) ? ' hidden' : ''}>Buy Now</button></div>
     </div>
   </section>
 
@@ -2391,7 +2404,7 @@ function home(){
         ${p.notes ? pyramid(p.notes) : p.kind === 'car' ? '<div class="pyramid"><div>Lasts<span>4–6 weeks</span></div><div>Diffusion<span>Superior</span></div><div>Made with<span>90% renewable</span></div></div>'
           : `<div class="pyramid one"><div>${p.reviews ? 'Loved by customers' : 'Ritual'}<span>${p.reviews ? `<b class="ed-stars">${'★'.repeat(Math.round(p.rating))}</b> ${p.rating.toFixed(1)} · ${p.reviews} review${p.reviews > 1 ? 's' : ''}` : esc(p.type)}</span></div></div>`}
         <div class="row1" style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">${p.sizes.length > 1 ? fromHTML(p) : priceHTML(p, p.sizes[0])}
-          <div class="ctas"><a class="btn line sm" href="#/product/${p.id}">Discover</a>${isOut(p) ? OUT_BTN() : `<button class="btn sm" data-quickadd="${p.id}">Add to bag</button>`}</div></div>
+          <div class="ctas"><a class="btn line sm" href="#/product/${p.id}">Discover</a>${isOut(p) ? OUT_BTN() : `<button class="btn line sm tc" data-quickadd="${p.id}">Add To Cart</button><button class="btn sm tc" data-quickbuy="${p.id}">Buy Now</button>`}</div></div>
       </div></div>`).join('')}
   </div></section>
 
@@ -2509,9 +2522,9 @@ function product(id, q){
           <p class="small" id="pickHint" style="margin-top:12px">Select ${size} fragrances to continue.</p></div>` : ''}
         <div class="qtyrow${isOut(p) ? ' oos-row' : ''}">
           <div class="qty"><button id="qm" aria-label="Decrease quantity">−</button><input id="qty" value="1" inputmode="numeric" aria-label="Quantity"><button id="qp" aria-label="Increase quantity">+</button></div>
-          ${isOut(p) ? OUT_BTN('btn') : '<button class="btn" id="addBtn">Add to bag</button>'}
+          ${isOut(p) ? OUT_BTN('btn') : '<button class="btn tc" id="addBtn">Add To Cart</button>'}
         </div>
-        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn line block" id="buyBtn">Buy now</button>'}
+        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn line block tc" id="buyBtn">Buy Now</button>'}
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
           <details open><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
@@ -2573,7 +2586,7 @@ function bindProduct(p){
   $('#addBtn').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); };
   $('#buyBtn').onclick = () => { if (ready()) buyNow([isSet ? {id:p.id, opt:size, qty:getQ(), picks:[...picks]} : {id:p.id, opt:size, qty:getQ()}], $('#buyBtn')); };
   const mb = $('#mbuy');
-  function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) || 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : '<button class="btn sm" id="mbAdd">Add to bag</button>'}`; if (isOut(p)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; }
+  function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) || 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : '<button class="btn line sm tc" id="mbAdd">Add To Cart</button><button class="btn sm tc" id="mbBuy">Buy Now</button>'}`; if (isOut(p)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; $('#mbBuy').onclick = () => $('#buyBtn').click(); }
   renderMbuy();
   const addBtn = $('#addBtn');
   mobileBarCheck = () => { const r = addBtn.getBoundingClientRect(); mb.classList.toggle('show', r.bottom < 0 && $('#reviews').getBoundingClientRect().top > innerHeight*.6); };
@@ -2592,7 +2605,7 @@ function tierRow(t, i){
       <h2 class="tier-name">${esc(t.name)}</h2>
       <p class="lead">${esc(t.text)}</p>
       <div class="tier-list">${list}</div>
-      <div class="ctas"><a class="btn sm" href="#/collections/tier-${t.id}">Shop ${esc(t.name)}</a>${ps.length === 1 ? (isOut(ps[0]) ? OUT_BTN('btn line sm') : `<button class="btn line sm" data-quickadd="${ps[0].id}">Add to bag</button>`) : ''}</div>
+      <div class="ctas"><a class="btn sm" href="#/collections/tier-${t.id}">Shop ${esc(t.name)}</a>${ps.length === 1 ? (isOut(ps[0]) ? OUT_BTN('btn line sm') : `<button class="btn line sm tc" data-quickadd="${ps[0].id}">Add To Cart</button><button class="btn line sm tc" data-quickbuy="${ps[0].id}">Buy Now</button>`) : ''}</div>
     </div></div>`;
 }
 function tierPage(id){
@@ -2685,7 +2698,7 @@ function giftPage(){
       <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
         <ul>${g.items.map(([id, s]) => `<li><span>${esc(P[id].name)}${P[id].kind ? '' : ` · ${s}ml`}</span><span>${money(P[id].prices[s], cur)}</span></li>`).join('')}</ul>
         <div class="gf-total"><small>Gift set</small><span class="price">${was > total ? `<s>${money(was, cur)}</s>` : ''}${money(total, cur)}</span></div>
-        <div class="ctas"><button class="btn sm" type="button" data-gset="${g.id}">Add to bag</button><a class="btn line sm" href="${waLink(`Hello FOMAXO, I would like to order the "${g.name}" gift set with personalisation. Name / message to engrave: `)}" target="_blank" rel="noopener">Personalise</a></div>
+        <div class="ctas"><button class="btn line sm tc" type="button" data-gset="${g.id}">Add To Cart</button><button class="btn sm tc" type="button" data-gbuy="${g.id}">Buy Now</button><a class="btn line sm" href="${waLink(`Hello FOMAXO, I would like to order the "${g.name}" gift set with personalisation. Name / message to engrave: `)}" target="_blank" rel="noopener">Personalise</a></div>
       </div></article>`;
   };
   const occ = [
@@ -2761,6 +2774,7 @@ function giftPage(){
 function bindGift(){
   $$('[data-gset]').forEach(b => b.onclick = () => { const g = giftSets().find(x => x.id === b.dataset.gset); if (!g) return;
     g.items.forEach(([id, s]) => addToCart(id, s, 1, true)); toast(`${g.name} added to your bag`); });
+  $$('[data-gbuy]').forEach(b => b.onclick = () => { const g = giftSets().find(x => x.id === b.dataset.gbuy); if (g) buyNow(g.items.map(([id, s]) => ({id, opt:s, qty:1}))); });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
 }
 function pcBadges(p, size){
@@ -2776,8 +2790,8 @@ function pcCard(p, i=0, o={}){
   const href = `#/product/${p.id}${o.size ? '?size=' + o.size : ''}`;
   const sizes = multi ? `<div class="pc-sizes" role="group" aria-label="Size">${[...p.sizes].sort((a, b) => b - a).map(s => `<button type="button" class="pc-size${s === size ? ' on' : ''}" data-psize="${s}" aria-pressed="${s === size}">${esc(optLabel(p, s))}</button>`).join('')}</div>` : '';
   const btn = isOut(p) ? '<button class="pc-add oos" type="button" disabled>Out of stock</button>'
-    : isSet ? `<a class="pc-add" href="${href}">Build your set</a>`
-    : `<button class="pc-add" type="button" data-pcadd="${p.id}" data-opt="${size}">Add to cart</button>`;
+    : isSet ? `<div class="pc-btns"><a class="pc-add pc-line" href="${href}">Add To Cart</a><a class="pc-add" href="${href}">Buy Now</a></div>`
+    : `<div class="pc-btns"><button class="pc-add pc-line" type="button" data-pcadd="${p.id}" data-opt="${size}">Add To Cart</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}">Buy Now</button></div>`;
   return `<article class="pcard${o.noRv ? '' : ' rv-up d' + (i % 4)}" data-pc="${p.id}">
     <a class="pc-img" href="${href}" aria-label="${esc(p.name)}">
       <span class="pc-badges">${pcBadges(p, isSet ? p.sizes[0] : size)}</span>
@@ -2799,7 +2813,7 @@ app.addEventListener('click', e => {
   $('.pc-price', c).innerHTML = priceHTML(p, s);
   $('.pc-badges', c).innerHTML = pcBadges(p, s);
   const im = $('.pc-img img', c), src = IMG(imgFor(p, s)); if (im.getAttribute('src') !== src) im.src = src;
-  const add = $('[data-pcadd]', c); if (add) add.dataset.opt = s;
+  $$('[data-pcadd],[data-pcbuy]', c).forEach(x => x.dataset.opt = s);
 });
 function personalCare(q){
   const cats = (S.personalCare && S.personalCare.categories) || [['all','All']];
@@ -2821,7 +2835,11 @@ function personalCare(q){
 app.addEventListener('click', e => {
   const b = e.target.closest('[data-pcadd]'); if (!b) return;
   const id = b.dataset.pcadd, o = b.dataset.opt; addToCart(id, isNaN(+o) ? o : +o);
-  b.classList.add('done'); b.textContent = 'Added ✓'; setTimeout(() => { b.classList.remove('done'); b.textContent = 'Add to cart'; }, 1600);
+  b.classList.add('done'); b.textContent = 'Added ✓'; setTimeout(() => { b.classList.remove('done'); b.textContent = 'Add To Cart'; }, 1600);
+});
+app.addEventListener('click', e => {
+  const b = e.target.closest('[data-pcbuy]'); if (!b) return;
+  const o = b.dataset.opt; buyNow([{id:b.dataset.pcbuy, opt:isNaN(+o) ? o : +o, qty:1}]);
 });
 function about(){
   return pageHead('About FOMAXO', 'About <em class="metal">FOMAXO</em>', 'For Outstanding Minds, Acquiring Xtraordinary Opulence.') + `
@@ -3342,7 +3360,7 @@ function bindHome(){
   const figs = $$('#heroCine .hc-slide'), btns = $$('#hcNav button'); let i = 0;
   const show = n => { const old = i; i = n; figs.forEach((f,k) => { f.classList.remove('prev'); f.classList.toggle('on', k === i); }); if (old !== i) { figs[old].classList.add('prev'); figs[i].classList.add('moved'); const hc = $('#heroCine'); hc.classList.remove('hc-swap'); void hc.offsetWidth; hc.classList.add('hc-swap'); } btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
     void btns[i].offsetWidth; btns[i].classList.add('run');
-    const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add to bag'; };
+    const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add To Cart'; $('#hcBuyNow').hidden = o; };
   /* shop the collection: 8 boxes, paging through every product */
   let hf = 'all', hp = 0;
   const grid = $('#homeGrid'), per = 8;
@@ -3358,6 +3376,7 @@ function bindHome(){
   $$('#hgPager [data-hp]').forEach(b => b.onclick = () => { hp += +b.dataset.hp; draw(true); auto(); });
   draw(false); auto();
   $('#hcAdd').onclick = () => { const p = P[HERO_SLIDES[i].id]; addToCart(p.id, defaultSize(p)); };
+  $('#hcBuyNow').onclick = () => { const p = P[HERO_SLIDES[i].id]; buyNow([{id:p.id, opt:defaultSize(p), qty:1}]); };
   const start = () => { clearInterval(heroTimer); heroTimer = setInterval(() => show((i+1) % figs.length), 6500); };
   btns.forEach(b => b.onclick = () => { show(+b.dataset.i); start(); });
   show(0); start();
@@ -3371,6 +3390,7 @@ function bindHomeOld(){
   heroTimer = setInterval(() => show((i+1) % imgs.length), 5500);
   $$('[data-quickadd]').forEach(b => b.onclick = () => { const p = P[b.dataset.quickadd]; addToCart(p.id, defaultSize(p)); });
 }
+app.addEventListener('click', e => { const b = e.target.closest('[data-quickbuy]'); if (!b) return; const p = P[b.dataset.quickbuy]; if (!p) return; if (p.kind === 'set') { location.hash = '#/product/' + p.id; return; } buyNow([{id:p.id, opt:defaultSize(p), qty:1}]); });
 function bindFragColl(){
   $$('[data-quickadd]').forEach(b => b.onclick = () => { const p = P[b.dataset.quickadd]; addToCart(p.id, defaultSize(p)); });
   $$('[data-jump]').forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById(a.dataset.jump); el && el.scrollIntoView({behavior:'smooth', block:'start'}); });
