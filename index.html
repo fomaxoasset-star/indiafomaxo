@@ -990,6 +990,8 @@ h3{font-size:clamp(19px,1.5vw,23px);letter-spacing:.08em;line-height:1.25}
 /* FOMAXO brand face: identity moments only */
 .bw,.acro span,.acro div span,.tier-name,.etier h3,.el-hero h1,.final h2,
 .hero h1 .metal,.hero-cine h1 .metal{font-family:var(--brand-font);font-weight:400;text-transform:uppercase}
+.hero-cine h1 .hc-t1{display:block;font-family:var(--hfont);font-style:normal;font-weight:500;text-transform:uppercase;letter-spacing:.08em;font-size:.82em;line-height:1.1;color:#f8f1e4;margin-bottom:.12em}
+.hero-cine h1 .hc-t2{display:block;font-family:var(--brand-font);font-weight:400;text-transform:uppercase;letter-spacing:.06em;font-size:1.18em;line-height:1.04;margin:0}
 .final h2{letter-spacing:.08em;font-size:clamp(30px,4.6vw,70px)}
 .final h2 em{font-family:var(--brand-font);font-weight:400}
 .el-hero h1 em{font-family:var(--hfont);font-weight:500;letter-spacing:.08em}
@@ -1352,6 +1354,25 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine.bn .hc-slide .hc-bg{object-position:var(--mpos,50% 50%)!important}
   .hero-cine.bn .hc-bar{padding:16px var(--pad) 8px}
   .hero-cine.bn .hc-copy{display:flex;opacity:1;visibility:visible}
+  .hero-cine .hc-slide .hc-bg[style*="--mpos"]{object-position:var(--mpos)!important}
+}
+/* hero over bright product banners: a deeper veil so the heading stays readable */
+@media(min-width:761px){.hero-cine .hc-veil{background:radial-gradient(ellipse 58% 55% at 50% 50%,rgba(5,5,5,.78),rgba(5,5,5,.5) 70%,rgba(5,5,5,.3)),linear-gradient(180deg,rgba(5,5,5,.8) 0%,rgba(5,5,5,.2) 22%,rgba(5,5,5,.2) 55%,rgba(5,5,5,.92) 100%)}}
+/* phones: words on the image — heading, intro and buttons overlaid on the lower part of the photo, picker below */
+@media(max-width:760px){
+  .hero-cine{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto}
+  .hero-cine .hc-slides,.hero-cine .hc-veil,.hero-cine .hc-copy{grid-row:1;grid-column:1}
+  .hero-cine .hc-bar{grid-row:2;grid-column:1;margin-top:0;padding-top:14px}
+  .hero-cine .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:4/5;align-self:start;min-height:0}
+  .hero-cine .hc-slides::after{display:none}
+  .hero-cine .hc-veil{display:block;position:relative;inset:auto;z-index:1;background:linear-gradient(180deg,rgba(5,5,5,.55) 0%,rgba(5,5,5,0) 14%,rgba(5,5,5,0) 40%,rgba(5,5,5,.7) 58%,#050505 76%)}
+  .hero-cine .hc-copy{position:relative;z-index:3;min-height:calc(125vw + 150px);justify-content:flex-end;padding:96px 20px 22px;gap:10px;margin:0}
+  .hero-cine .hc-copy .hc-em{display:none}
+  .hero-cine .hc-kick{font-size:8px;letter-spacing:.26em}
+  .hero-cine h1{font-size:clamp(30px,9.4vw,42px)}
+  .hero-cine .hc-lead{font-size:14px;line-height:1.45;max-width:330px}
+  .hero-cine .ctas{gap:10px;margin-top:4px}
+  .hero-cine .btn{min-height:48px}
 }
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
@@ -2013,13 +2034,13 @@ const pyramid = n => n.key ? `<div class="pyramid one"><div>Key notes<span>${esc
 const HERO_SLIDES = [
   /* lo: smaller product photo — shown sharp in a frame over a soft blurred backdrop on wide screens
      banner: a full designed banner — shown whole, over a blurred copy of itself, without the hero text on top
-     mpos: crop focus on phones (the product), where banners fill a taller 4:5 slide */
-  {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', mpos:'85% 50%', banner:true},
-  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 22%', mpos:'89% 50%', banner:true},
-  {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', mpos:'23% 50%', banner:true},
-  {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', mpos:'76% 50%', banner:true},
-  {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', mpos:'50% 50%', banner:true},
-  {id:'gold', img:'gold-model', pos:'50% 50%', mpos:'62% 50%', banner:true}
+     mpos: crop focus on phones (the product) */
+  {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', mpos:'85% 50%'},
+  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 22%', mpos:'89% 50%'},
+  {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', mpos:'23% 50%'},
+  {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', mpos:'76% 50%'},
+  {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', mpos:'50% 50%'},
+  {id:'gold', img:'gold-model', pos:'50% 50%', mpos:'62% 50%'}
 ];
 function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
@@ -2031,7 +2052,7 @@ function home(){
     <div class="hc-copy">
       ${emblem('hc-em rv-up')}
       <span class="eyebrow hc-kick rv-up"><i aria-hidden="true"></i>Luxury personal care <em aria-hidden="true">◆</em> Founded in Dubai<i aria-hidden="true"></i></span>
-      <h1 class="rv-up d1"><span class="metal">The house of</span><span class="l2">Luxury Care</span></h1>
+      <h1 class="rv-up d1"><span class="hc-t1">The house of</span><span class="hc-t2 metal">Luxury Care</span></h1>
       <p class="hc-lead rv-up d2">Fragrance, hair, body, face and lip care — every FOMAXO creation is an extension of personal presence, refined and made to last.</p>
       <div class="ctas rv-up d3"><a class="btn two" href="#/fragrances"><span>Shop the collection</span><span class="sub">from ${money(Math.min(...HOME_ALL().filter(p => p.kind !== 'set').flatMap(p => Object.values(p.prices)).filter(hasPrice)))}</span></a><a class="btn line two" href="#/collections/mini"><span>Mini Collection</span><span class="sub">Luxury in 10ml</span></a></div>
     </div>
