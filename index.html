@@ -1389,6 +1389,23 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
 @keyframes hcin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:760px){.hero-cine .hc-slide .hc-bg{width:100%}}
 @media(prefers-reduced-motion:reduce){.hero-cine .hc-slide.on,.hero-cine .hc-slide.on .hc-bg{transition:none}.hero-cine .hc-slide .hc-bg{transform:none!important;width:100%}.hero-cine .hc-slide.on::after{display:none}.hc-swap #hcName,.hc-swap #hcPrice{animation:none}}
+/* desktop: the whole banner shown uncropped on the right, heading and buttons on the left over a soft blurred copy of it */
+.hc-slide .hc-full{display:none}
+@media(min-width:761px){
+  .hero-cine .hc-slide .hc-bg{filter:blur(28px) brightness(.45) saturate(1.15)}
+  .hero-cine .hc-slide .hc-full{display:block;position:absolute;z-index:1;top:clamp(118px,14vh,140px);right:clamp(24px,3.4vw,64px);width:60%;height:calc(100% - clamp(118px,14vh,140px) - clamp(200px,23vh,225px));object-fit:contain;object-position:right center;transform:none!important;filter:drop-shadow(0 40px 70px rgba(0,0,0,.7))}
+  .hero-cine .hc-veil{background:linear-gradient(90deg,rgba(5,5,5,.88) 0%,rgba(5,5,5,.55) 30%,rgba(5,5,5,0) 45%),linear-gradient(180deg,rgba(5,5,5,.6) 0%,rgba(5,5,5,0) 18%,rgba(5,5,5,0) 78%,rgba(5,5,5,.85) 100%)}
+  .hero-cine .hc-frame{display:none}
+  .hero-cine{justify-content:flex-start}
+  .hero-cine .hc-copy{width:min(31%,480px);max-width:none;margin:0 0 0 clamp(24px,4vw,72px);padding:110px 0 190px;text-align:left;align-items:flex-start;gap:18px}
+  .hero-cine .hc-em{width:44px;height:44px}
+  .hero-cine .hc-kick{font-size:9px;letter-spacing:.32em}
+  .hero-cine .hc-kick i:first-child{display:none}
+  .hero-cine h1{font-size:clamp(26px,2.9vw,54px);letter-spacing:.06em}
+  .hero-cine .hc-lead{font-size:clamp(14px,1.1vw,18px);max-width:100%}
+  .hero-cine .ctas{grid-template-columns:minmax(0,1fr);justify-content:stretch;width:100%;max-width:340px;gap:12px}
+  .hero-cine .btn{min-height:52px}
+}
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .pc-buy .pc-add{margin-top:0}
@@ -2061,7 +2078,7 @@ function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
   return `
   <section class="hero-cine${slides[0].banner ? ' is-banner' : ''}${slides.every(s => s.banner) ? ' bn' : ''}" id="heroCine">
-    <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}</figure>`).join('')}</div>
+    <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}<img class="hc-full" src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}>${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}</figure>`).join('')}</div>
     <div class="hc-veil" aria-hidden="true"></div>
     <div class="hc-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="hc-copy">
