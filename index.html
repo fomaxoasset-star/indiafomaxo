@@ -990,6 +990,8 @@ h3{font-size:clamp(19px,1.5vw,23px);letter-spacing:.08em;line-height:1.25}
 /* FOMAXO brand face: identity moments only */
 .bw,.acro span,.acro div span,.tier-name,.etier h3,.el-hero h1,.final h2,
 .hero h1 .metal,.hero-cine h1 .metal{font-family:var(--brand-font);font-weight:400;text-transform:uppercase}
+.hero-cine h1 .hc-t1{display:block;font-family:var(--hfont);font-style:normal;font-weight:500;text-transform:uppercase;letter-spacing:.08em;font-size:.82em;line-height:1.1;color:#f8f1e4;margin-bottom:.12em}
+.hero-cine h1 .hc-t2{display:block;font-family:var(--brand-font);font-weight:400;text-transform:uppercase;letter-spacing:.06em;font-size:1.18em;line-height:1.04;margin:0}
 .final h2{letter-spacing:.08em;font-size:clamp(30px,4.6vw,70px)}
 .final h2 em{font-family:var(--brand-font);font-weight:400}
 .el-hero h1 em{font-family:var(--hfont);font-weight:500;letter-spacing:.08em}
@@ -2034,7 +2036,7 @@ function home(){
     <div class="hc-copy">
       ${emblem('hc-em rv-up')}
       <span class="eyebrow hc-kick rv-up"><i aria-hidden="true"></i>Luxury personal care <em aria-hidden="true">◆</em> Founded in Dubai<i aria-hidden="true"></i></span>
-      <h1 class="rv-up d1"><span class="metal">The house of</span><span class="l2">Luxury Care</span></h1>
+      <h1 class="rv-up d1"><span class="hc-t1">The house of</span><span class="hc-t2 metal">Luxury Care</span></h1>
       <p class="hc-lead rv-up d2">Fragrance, hair, body, face and lip care — every FOMAXO creation is an extension of personal presence, refined and made to last.</p>
       <div class="ctas rv-up d3"><a class="btn two" href="#/fragrances"><span>Shop the collection</span><span class="sub">from ${money(Math.min(...HOME_ALL().filter(p => p.kind !== 'set').flatMap(p => Object.values(p.prices)).filter(hasPrice)))}</span></a><a class="btn line two" href="#/collections/mini"><span>Mini Collection</span><span class="sub">Luxury in 10ml</span></a></div>
     </div>
