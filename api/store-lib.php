@@ -22,12 +22,16 @@ function fail(string $msg, int $code = 400): void { out(['error' => $msg], $code
 function input(): array { static $in; if ($in === null) $in = json_decode((string)file_get_contents('php://input'), true) ?: []; return $in; }
 function rupees(int $paise): string { $r = $paise / 100; return '₹' . ($paise % 100 ? number_format($r, 2) : number_format($r)); }
 
-/* Private settings: ../fomaxo-private/razorpay-config.php (or the razorpay_* keys in ../fomaxo-private/config.php). */
+/* Private settings: ../fomaxo-private/razorpay-config.php (or the razorpay_* keys in ../fomaxo-private/config.php).
+   Easier option: create razorpay-config.php in public_html/api/data/ with Hostinger File Manager. That folder is closed
+   to the web, and the file is moved into ../fomaxo-private on first use (read where it is if it can't be moved). */
 function fomaxo_config(): array {
   global $PRIV; static $cfg;
   if ($cfg !== null) return $cfg;
+  $drop = __DIR__ . '/data/razorpay-config.php';
+  if (is_file($drop) && realpath($PRIV) !== realpath(__DIR__ . '/data') && @rename($drop, "$PRIV/razorpay-config.php")) @chmod("$PRIV/razorpay-config.php", 0600);
   $cfg = [];
-  foreach (["$PRIV/config.php", "$PRIV/razorpay-config.php"] as $f) if (is_file($f)) { $c = require $f; if (is_array($c)) $cfg = $c + $cfg; }
+  foreach (["$PRIV/config.php", $drop, "$PRIV/razorpay-config.php"] as $f) if (is_file($f)) { $c = require $f; if (is_array($c)) $cfg = $c + $cfg; }
   return $cfg;
 }
 
