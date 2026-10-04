@@ -1374,6 +1374,62 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .ctas{gap:10px;margin-top:4px}
   .hero-cine .btn{min-height:48px}
 }
+/* phones: the product sits clear in the centre of a square photo; the words follow below it on dark */
+@media(max-width:760px){
+  .hero-cine{grid-template-rows:auto auto auto;padding-top:80px}
+  .hero-cine .hc-slides,.hero-cine .hc-veil{grid-row:1}
+  .hero-cine .hc-slides{aspect-ratio:1/1}
+  .hero-cine .hc-veil{background:linear-gradient(180deg,rgba(5,5,5,.35) 0%,rgba(5,5,5,0) 12%,rgba(5,5,5,0) 84%,#050505 100%)}
+  .hero-cine .hc-copy{grid-row:2;min-height:0;justify-content:flex-start;padding:10px 20px 18px}
+  .hero-cine .hc-bar{grid-row:3}
+}
+
+/* hero slides: a slow curtain reveal with a gentle sideways drift, no zoom */
+.hero-cine .hc-slide{opacity:1;visibility:hidden;z-index:0;clip-path:inset(0 0 0 100%);transition:none}
+.hero-cine .hc-slide.prev{visibility:visible;z-index:1;clip-path:inset(0)}
+.hero-cine .hc-slide.on{visibility:visible;z-index:2;clip-path:inset(0);transition:clip-path 1.7s cubic-bezier(.77,0,.18,1)}
+.hero-cine .hc-slide .hc-bg{width:106%;max-width:none;transform:translateX(0);transition:none}
+.hero-cine .hc-slide.on .hc-bg{transform:translateX(-5.6%);transition:transform 9s cubic-bezier(.25,.1,.25,1)}
+.hero-cine .hc-slide.prev .hc-bg{transform:translateX(-5.6%)}
+.hero-cine .hc-slide.on::after{content:"";position:absolute;top:0;bottom:0;left:0;width:2px;z-index:3;background:linear-gradient(180deg,transparent,#f0d3a0 30%,#d7aa69 70%,transparent);box-shadow:0 0 24px 4px rgba(215,170,105,.45);animation:hcedge 1.7s cubic-bezier(.77,0,.18,1) both}
+@keyframes hcedge{0%{transform:translateX(100vw);opacity:1}88%{opacity:1}100%{transform:translateX(0);opacity:0}}
+.hero-cine .hc-slides>.hc-slide:first-child.on:not(.moved)::after{display:none}
+.hc-swap #hcName,.hc-swap #hcPrice{animation:hcin .9s cubic-bezier(.2,.7,.2,1) both}
+.hc-swap #hcPrice{animation-delay:.12s}
+@keyframes hcin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:760px){.hero-cine .hc-slide .hc-bg{width:100%}}
+@media(prefers-reduced-motion:reduce){.hero-cine .hc-slide.on,.hero-cine .hc-slide.on .hc-bg{transition:none}.hero-cine .hc-slide .hc-bg{transform:none!important;width:100%}.hero-cine .hc-slide.on::after{display:none}.hc-swap #hcName,.hc-swap #hcPrice{animation:none}}
+/* desktop: each banner fills the full width at its own wide shape (2:1), with the fomaxo.com-style words,
+   picker and price laid over it on a dark fade */
+@media(min-width:761px){
+  .hero-cine{display:grid;grid-template-columns:minmax(0,1fr);height:auto;min-height:0;max-height:none;padding-top:80px;align-items:stretch;justify-items:stretch}
+  .hero-cine>.hc-slides,.hero-cine>.hc-veil,.hero-cine>.hc-frame,.hero-cine>.hc-copy,.hero-cine>.hc-bar{grid-row:1;grid-column:1}
+  .hero-cine .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:2/1;min-height:0}
+  .hero-cine .hc-slide .hc-bg,.hero-cine .hc-slide.on .hc-bg,.hero-cine .hc-slide.prev .hc-bg{width:100%;transform:none;filter:none}
+  .hero-cine .hc-veil{position:relative;inset:auto;z-index:1;background:
+    radial-gradient(ellipse 50% 58% at 50% 46%,rgba(5,5,5,.9),rgba(5,5,5,.72) 55%,rgba(5,5,5,.42) 100%),
+    linear-gradient(180deg,rgba(5,5,5,.35) 0%,rgba(5,5,5,0) 28%,rgba(5,5,5,0) 58%,rgba(5,5,5,.95) 100%)}
+  .hero-cine .hc-frame{position:relative;inset:auto;margin:clamp(14px,1.8vw,28px) clamp(16px,2.4vw,40px);z-index:2}
+  .hero-cine .hc-copy{position:relative;z-index:3;align-self:center;justify-self:center;margin:0 auto;padding:0 var(--pad) clamp(110px,10vw,150px);gap:clamp(8px,1.1vw,18px);max-width:1000px}
+  .hero-cine .hc-now b{font-size:clamp(15px,1.25vw,20px);letter-spacing:.1em;max-width:360px;margin-left:auto;line-height:1.25}
+  .hero-cine .hc-em{width:clamp(36px,3.4vw,54px);height:clamp(36px,3.4vw,54px)}
+  .hero-cine .hc-kick{font-size:clamp(8px,.72vw,10.5px)}
+  .hero-cine h1{font-size:clamp(28px,3.9vw,70px)}
+  .hero-cine .hc-lead{font-size:clamp(14px,1.2vw,20px);max-width:600px}
+  .hero-cine .ctas{grid-template-columns:repeat(2,clamp(250px,22vw,320px));gap:14px;margin-top:4px}
+  .hero-cine .btn{min-height:clamp(46px,3.6vw,56px)}
+  .hero-cine .hc-bar{position:relative;left:auto;right:auto;bottom:auto;z-index:3;align-self:end;margin:0 clamp(16px,2.4vw,40px) clamp(14px,1.8vw,28px);padding:clamp(26px,2.6vw,40px) 28px clamp(14px,1.6vw,24px);background:linear-gradient(180deg,rgba(5,5,5,0),rgba(5,5,5,.78) 42%,rgba(5,5,5,.86))}
+}
+@media(min-width:761px) and (max-width:1240px){
+  .hero-cine .hc-lead{display:none}
+  .hero-cine .hc-copy{padding-bottom:clamp(120px,14vw,170px)}
+  .hero-cine .hc-nav button .t{display:none}
+  .hero-cine .hc-nav{display:flex;justify-content:flex-start;gap:clamp(18px,2.4vw,30px)}
+  .hero-cine .hc-nav button{min-width:34px;flex:0 0 auto}
+  .hero-cine .hc-buy{white-space:nowrap}
+  .hero-cine .hc-now{display:none}
+  .hero-cine .hc-bar{grid-template-columns:1fr auto;align-items:center;gap:20px}
+}
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .pc-buy .pc-add{margin-top:0}
@@ -2095,7 +2151,7 @@ const HERO_SLIDES = [
      banner: a full designed banner — shown whole, over a blurred copy of itself, without the hero text on top
      mpos: crop focus on phones (the product) */
   {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', mpos:'85% 50%'},
-  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 22%', mpos:'89% 50%'},
+  {id:'pc-avokiss', img:'banner-avokiss-2', pos:'50% 45%', mpos:'76% 50%'},
   {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', mpos:'23% 50%'},
   {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', mpos:'76% 50%'},
   {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', mpos:'50% 50%'},
@@ -2814,7 +2870,7 @@ function route(){
 }
 function bindHome(){
   const figs = $$('#heroCine .hc-slide'), btns = $$('#hcNav button'); let i = 0;
-  const show = n => { i = n; figs.forEach((f,k) => f.classList.toggle('on', k === i)); btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
+  const show = n => { const old = i; i = n; figs.forEach((f,k) => { f.classList.remove('prev'); f.classList.toggle('on', k === i); }); if (old !== i) { figs[old].classList.add('prev'); figs[i].classList.add('moved'); const hc = $('#heroCine'); hc.classList.remove('hc-swap'); void hc.offsetWidth; hc.classList.add('hc-swap'); } btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
     void btns[i].offsetWidth; btns[i].classList.add('run');
     const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add to bag'; };
   /* shop the collection: 8 boxes, paging through every product */
