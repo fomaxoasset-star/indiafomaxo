@@ -1389,22 +1389,28 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
 @keyframes hcin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:760px){.hero-cine .hc-slide .hc-bg{width:100%}}
 @media(prefers-reduced-motion:reduce){.hero-cine .hc-slide.on,.hero-cine .hc-slide.on .hc-bg{transition:none}.hero-cine .hc-slide .hc-bg{transform:none!important;width:100%}.hero-cine .hc-slide.on::after{display:none}.hc-swap #hcName,.hc-swap #hcPrice{animation:none}}
-/* desktop: the whole banner shown uncropped on the right, heading and buttons on the left over a soft blurred copy of it */
+/* desktop: each banner fills the full width at its own wide shape (about 2:1), so nothing important is cut;
+   heading and buttons sit in a band right under it, then the product picker */
 .hc-slide .hc-full{display:none}
 @media(min-width:761px){
-  .hero-cine .hc-slide .hc-bg{filter:blur(28px) brightness(.45) saturate(1.15)}
-  .hero-cine .hc-slide .hc-full{display:block;position:absolute;z-index:1;top:clamp(118px,14vh,140px);right:clamp(24px,3.4vw,64px);width:60%;height:calc(100% - clamp(118px,14vh,140px) - clamp(200px,23vh,225px));object-fit:contain;object-position:right center;transform:none!important;filter:drop-shadow(0 40px 70px rgba(0,0,0,.7))}
-  .hero-cine .hc-veil{background:linear-gradient(90deg,rgba(5,5,5,.88) 0%,rgba(5,5,5,.55) 30%,rgba(5,5,5,0) 45%),linear-gradient(180deg,rgba(5,5,5,.6) 0%,rgba(5,5,5,0) 18%,rgba(5,5,5,0) 78%,rgba(5,5,5,.85) 100%)}
-  .hero-cine .hc-frame{display:none}
-  .hero-cine{justify-content:flex-start}
-  .hero-cine .hc-copy{width:min(31%,480px);max-width:none;margin:0 0 0 clamp(24px,4vw,72px);padding:110px 0 190px;text-align:left;align-items:flex-start;gap:18px}
-  .hero-cine .hc-em{width:44px;height:44px}
-  .hero-cine .hc-kick{font-size:9px;letter-spacing:.32em}
-  .hero-cine .hc-kick i:first-child{display:none}
-  .hero-cine h1{font-size:clamp(26px,2.9vw,54px);letter-spacing:.06em}
-  .hero-cine .hc-lead{font-size:clamp(14px,1.1vw,18px);max-width:100%}
-  .hero-cine .ctas{grid-template-columns:minmax(0,1fr);justify-content:stretch;width:100%;max-width:340px;gap:12px}
-  .hero-cine .btn{min-height:52px}
+  .hero-cine{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:auto;min-height:0;max-height:none;padding-top:80px}
+  .hero-cine .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:2/1;flex:none}
+  .hero-cine .hc-slide .hc-bg,.hero-cine .hc-slide.on .hc-bg,.hero-cine .hc-slide.prev .hc-bg{width:100%;transform:none;filter:none}
+  .hero-cine .hc-veil,.hero-cine .hc-frame{display:none}
+  .hero-cine .hc-copy{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"em h1 ctas" "em lead ctas";align-items:center;column-gap:clamp(20px,3vw,48px);row-gap:6px;width:100%;max-width:none;margin:0;padding:clamp(26px,3vw,40px) clamp(24px,4vw,72px) 0;text-align:left;border-bottom:1px solid rgba(215,170,105,.18);padding-bottom:clamp(22px,2.6vw,34px)}
+  .hero-cine .hc-copy .hc-em{grid-area:em;width:58px;height:58px}
+  .hero-cine .hc-kick{display:none}
+  .hero-cine h1{grid-area:h1;font-size:clamp(24px,2.5vw,44px);letter-spacing:.06em;text-shadow:none}
+  .hero-cine h1 .hc-t1,.hero-cine h1 .hc-t2{display:inline;margin:0}
+  .hero-cine h1 .hc-t1{margin-right:.4em}
+  .hero-cine .hc-lead{grid-area:lead;font-size:clamp(14px,1.05vw,17px);max-width:640px;text-shadow:none}
+  .hero-cine .ctas{grid-area:ctas;display:grid;grid-template-columns:repeat(2,minmax(0,260px));gap:12px;margin:0;width:auto}
+  .hero-cine .btn{min-height:54px}
+  .hero-cine .hc-bar{position:relative;left:auto;right:auto;bottom:auto;margin:0;padding:22px clamp(24px,4vw,72px) 28px}
+}
+@media(min-width:761px) and (max-width:1180px){
+  .hero-cine .hc-copy{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"em h1" "em lead" "ctas ctas"}
+  .hero-cine .ctas{margin-top:14px}
 }
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
