@@ -44,6 +44,7 @@ function mark_paid(string $orderId, string $paymentId, string $via): ?array {
   if (!$rec) return null;
   if (empty($rec['paid'])) {
     $rec['paid'] = date('Y-m-d H:i'); $rec['payment'] = $paymentId;
+    if (empty($rec['review'])) $rec['review'] = fomaxo_review_token($rec);   // Verified Purchaser review link, emailed below
     fomaxo_save_order($orderId, $rec);
     $c = $rec['cust'];
     fomaxo_log_order([date('Y-m-d H:i'), $rec['no'], 'Razorpay — PAID' . ($rec['test'] ? ' (TEST)' : '') . " via $via", rupees((int)$rec['total']),
@@ -77,7 +78,7 @@ if ($action === 'create') {
   [$code, $ro, $raw] = rzp('POST', '/orders', ['amount' => $order['subtotal'], 'currency' => 'INR', 'receipt' => $no,
     'notes' => ['order' => $no, 'customer' => $cust['name'], 'mobile' => $cust['phone']]]);
   if ($code !== 200 || empty($ro['id'])) { error_log('FOMAXO Razorpay create error: ' . $raw); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 502); }
-  fomaxo_save_order($ro['id'], ['no' => $no, 'created' => date('Y-m-d H:i'), 'total' => $order['subtotal'], 'rows' => $order['rows'],
+  fomaxo_save_order($ro['id'], ['no' => $no, 'created' => date('Y-m-d H:i'), 'total' => $order['subtotal'], 'rows' => $order['rows'], 'ids' => array_column($order['items'], 'id'),
     'cust' => $cust, 'test' => $TEST, 'paid' => null]);
   fomaxo_log_order([date('Y-m-d H:i'), $no, 'Razorpay — awaiting payment' . ($TEST ? ' (TEST)' : ''), rupees($order['subtotal']),
     $cust['name'], $cust['phone'], $cust['email'], $cust['address'], $cust['note'], implode(' | ', $order['rows']), $ro['id']]);
@@ -92,7 +93,7 @@ if ($action === 'verify') {
   if (!hash_equals(hash_hmac('sha256', "$oid|$pid", $SECRET), $sig)) { error_log("FOMAXO Razorpay: bad signature for $oid"); fail('We could not confirm your payment. If money was taken, please WhatsApp us.', 400); }
   $rec = mark_paid($oid, $pid, 'checkout');
   if (!$rec) fail('We could not find this order. If money was taken, please WhatsApp us.', 404);
-  out(['status' => 'paid', 'order' => $rec['no'], 'total' => $rec['total'] / 100]);
+  out(['status' => 'paid', 'order' => $rec['no'], 'total' => $rec['total'] / 100, 'review' => $rec['review'] ?? '']);
 }
 
 fail('Unknown action.');

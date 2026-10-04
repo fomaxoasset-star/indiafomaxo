@@ -138,6 +138,30 @@ function fomaxo_log_order(array $row): void {
   @fputcsv($f, $row); fclose($f);
 }
 
+/* Verified Purchaser: a private review link for the products in a paid order. It goes into the same
+   reviews.sqlite that api/reviews.php reads, so reviews written from #/review?t=… carry the badge (once per product).
+   Returns the token, or '' if the products aren't known or the reviews store can't be opened. */
+function fomaxo_review_token(array $rec): string {
+  global $PRIV;
+  $ids = array_values(array_unique(array_filter((array)($rec['ids'] ?? []), fn($x) => is_string($x) && preg_match('/^[a-z0-9-]{1,48}$/', $x))));
+  if (!$ids) return '';
+  try {
+    $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $db->exec('PRAGMA busy_timeout=4000;');
+    $db->exec("CREATE TABLE IF NOT EXISTS orders(id INTEGER PRIMARY KEY, token TEXT NOT NULL UNIQUE, customer TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '',
+      products TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL)");
+    $token = bin2hex(random_bytes(16));
+    $db->prepare('INSERT INTO orders(token, customer, phone, products, note, created) VALUES(?,?,?,?,?,?)')
+      ->execute([$token, mb_substr((string)$rec['cust']['name'], 0, 60), preg_replace('/[^0-9+]/', '', (string)$rec['cust']['phone']),
+        json_encode($ids), mb_substr($rec['no'] . (!empty($rec['payment']) ? ' · ' . $rec['payment'] : '') . (!empty($rec['test']) ? ' · TEST' : ''), 0, 120), time()]);
+    return $token;
+  } catch (Throwable $e) { error_log('FOMAXO review link: ' . $e->getMessage()); return ''; }
+}
+function fomaxo_review_url(string $token): string {
+  $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
+  return "https://$host/#/review?t=$token";
+}
+
 /* Emails the store and the customer about a confirmed order (paid online, or cash on delivery). */
 function fomaxo_send_emails(array $rec, string $how): void {
   $store = fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com';
@@ -152,6 +176,8 @@ function fomaxo_send_emails(array $rec, string $how): void {
   @mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\nReply-To: {$c['email']}\r\nContent-Type: text/plain; charset=UTF-8");
   $cb = "Thank you for your order, {$c['name']}.\n\nOrder number: {$rec['no']}\n\n$lines\n\n"
       . ($how === 'Cash on delivery' ? "Total to pay on delivery: $total" : "Total paid: $total") . "\nDelivery: Free, to {$c['address']}\n\n"
-      . "We will WhatsApp you on {$c['phone']} about your delivery.\n\nFOMAXO\nhttps://$host";
+      . "We will WhatsApp you on {$c['phone']} about your delivery.\n\n"
+      . (!empty($rec['review']) ? "Once your order arrives, tell us what you think. Reviews written from this link show the ✓ VERIFIED PURCHASER badge:\n" . fomaxo_review_url($rec['review']) . "\n\n" : '')
+      . "FOMAXO\nhttps://$host";
   @mail($c['email'], $subj("Your FOMAXO order {$rec['no']}"), $cb, "From: $from\r\nReply-To: $store\r\nContent-Type: text/plain; charset=UTF-8");
 }
