@@ -1352,6 +1352,7 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine.bn .hc-slide .hc-bg{object-position:var(--mpos,50% 50%)!important}
   .hero-cine.bn .hc-bar{padding:16px var(--pad) 8px}
   .hero-cine.bn .hc-copy{display:flex;opacity:1;visibility:visible}
+  .hero-cine .hc-slide .hc-bg[style*="--mpos"]{object-position:var(--mpos)!important}
 }
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
@@ -2013,13 +2014,13 @@ const pyramid = n => n.key ? `<div class="pyramid one"><div>Key notes<span>${esc
 const HERO_SLIDES = [
   /* lo: smaller product photo — shown sharp in a frame over a soft blurred backdrop on wide screens
      banner: a full designed banner — shown whole, over a blurred copy of itself, without the hero text on top
-     mpos: crop focus on phones (the product), where banners fill a taller 4:5 slide */
-  {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', mpos:'85% 50%', banner:true},
-  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 22%', mpos:'89% 50%', banner:true},
-  {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', mpos:'23% 50%', banner:true},
-  {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', mpos:'76% 50%', banner:true},
-  {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', mpos:'50% 50%', banner:true},
-  {id:'gold', img:'gold-model', pos:'50% 50%', mpos:'62% 50%', banner:true}
+     mpos: crop focus on phones (the product) */
+  {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', mpos:'85% 50%'},
+  {id:'pc-avokiss', img:'banner-avokiss', pos:'50% 22%', mpos:'89% 50%'},
+  {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', mpos:'23% 50%'},
+  {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', mpos:'76% 50%'},
+  {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', mpos:'50% 50%'},
+  {id:'gold', img:'gold-model', pos:'50% 50%', mpos:'62% 50%'}
 ];
 function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
