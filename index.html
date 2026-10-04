@@ -1389,28 +1389,36 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
 @keyframes hcin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:760px){.hero-cine .hc-slide .hc-bg{width:100%}}
 @media(prefers-reduced-motion:reduce){.hero-cine .hc-slide.on,.hero-cine .hc-slide.on .hc-bg{transition:none}.hero-cine .hc-slide .hc-bg{transform:none!important;width:100%}.hero-cine .hc-slide.on::after{display:none}.hc-swap #hcName,.hc-swap #hcPrice{animation:none}}
-/* desktop: each banner fills the full width at its own wide shape (about 2:1), so nothing important is cut;
-   heading and buttons sit in a band right under it, then the product picker */
-.hc-slide .hc-full{display:none}
+/* desktop: each banner fills the full width at its own wide shape (2:1), with the fomaxo.com-style words,
+   picker and price laid over it on a dark fade */
 @media(min-width:761px){
-  .hero-cine{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:auto;min-height:0;max-height:none;padding-top:80px}
-  .hero-cine .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:2/1;flex:none}
+  .hero-cine{display:grid;grid-template-columns:minmax(0,1fr);height:auto;min-height:0;max-height:none;padding-top:80px;align-items:stretch;justify-items:stretch}
+  .hero-cine>.hc-slides,.hero-cine>.hc-veil,.hero-cine>.hc-frame,.hero-cine>.hc-copy,.hero-cine>.hc-bar{grid-row:1;grid-column:1}
+  .hero-cine .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:2/1;min-height:0}
   .hero-cine .hc-slide .hc-bg,.hero-cine .hc-slide.on .hc-bg,.hero-cine .hc-slide.prev .hc-bg{width:100%;transform:none;filter:none}
-  .hero-cine .hc-veil,.hero-cine .hc-frame{display:none}
-  .hero-cine .hc-copy{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"em h1 ctas" "em lead ctas";align-items:center;column-gap:clamp(20px,3vw,48px);row-gap:6px;width:100%;max-width:none;margin:0;padding:clamp(26px,3vw,40px) clamp(24px,4vw,72px) 0;text-align:left;border-bottom:1px solid rgba(215,170,105,.18);padding-bottom:clamp(22px,2.6vw,34px)}
-  .hero-cine .hc-copy .hc-em{grid-area:em;width:58px;height:58px}
-  .hero-cine .hc-kick{display:none}
-  .hero-cine h1{grid-area:h1;font-size:clamp(24px,2.5vw,44px);letter-spacing:.06em;text-shadow:none}
-  .hero-cine h1 .hc-t1,.hero-cine h1 .hc-t2{display:inline;margin:0}
-  .hero-cine h1 .hc-t1{margin-right:.4em}
-  .hero-cine .hc-lead{grid-area:lead;font-size:clamp(14px,1.05vw,17px);max-width:640px;text-shadow:none}
-  .hero-cine .ctas{grid-area:ctas;display:grid;grid-template-columns:repeat(2,minmax(0,260px));gap:12px;margin:0;width:auto}
-  .hero-cine .btn{min-height:54px}
-  .hero-cine .hc-bar{position:relative;left:auto;right:auto;bottom:auto;margin:0;padding:22px clamp(24px,4vw,72px) 28px}
+  .hero-cine .hc-veil{position:relative;inset:auto;z-index:1;background:
+    radial-gradient(ellipse 50% 58% at 50% 46%,rgba(5,5,5,.9),rgba(5,5,5,.72) 55%,rgba(5,5,5,.42) 100%),
+    linear-gradient(180deg,rgba(5,5,5,.35) 0%,rgba(5,5,5,0) 28%,rgba(5,5,5,0) 58%,rgba(5,5,5,.95) 100%)}
+  .hero-cine .hc-frame{position:relative;inset:auto;margin:clamp(14px,1.8vw,28px) clamp(16px,2.4vw,40px);z-index:2}
+  .hero-cine .hc-copy{position:relative;z-index:3;align-self:center;justify-self:center;margin:0 auto;padding:0 var(--pad) clamp(110px,10vw,150px);gap:clamp(8px,1.1vw,18px);max-width:1000px}
+  .hero-cine .hc-now b{font-size:clamp(15px,1.25vw,20px);letter-spacing:.1em;max-width:360px;margin-left:auto;line-height:1.25}
+  .hero-cine .hc-em{width:clamp(36px,3.4vw,54px);height:clamp(36px,3.4vw,54px)}
+  .hero-cine .hc-kick{font-size:clamp(8px,.72vw,10.5px)}
+  .hero-cine h1{font-size:clamp(28px,3.9vw,70px)}
+  .hero-cine .hc-lead{font-size:clamp(14px,1.2vw,20px);max-width:600px}
+  .hero-cine .ctas{grid-template-columns:repeat(2,clamp(250px,22vw,320px));gap:14px;margin-top:4px}
+  .hero-cine .btn{min-height:clamp(46px,3.6vw,56px)}
+  .hero-cine .hc-bar{position:relative;left:auto;right:auto;bottom:auto;z-index:3;align-self:end;margin:0 clamp(16px,2.4vw,40px) clamp(14px,1.8vw,28px);padding:clamp(26px,2.6vw,40px) 28px clamp(14px,1.6vw,24px);background:linear-gradient(180deg,rgba(5,5,5,0),rgba(5,5,5,.78) 42%,rgba(5,5,5,.86))}
 }
-@media(min-width:761px) and (max-width:1180px){
-  .hero-cine .hc-copy{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"em h1" "em lead" "ctas ctas"}
-  .hero-cine .ctas{margin-top:14px}
+@media(min-width:761px) and (max-width:1240px){
+  .hero-cine .hc-lead{display:none}
+  .hero-cine .hc-copy{padding-bottom:clamp(120px,14vw,170px)}
+  .hero-cine .hc-nav button .t{display:none}
+  .hero-cine .hc-nav{display:flex;justify-content:flex-start;gap:clamp(18px,2.4vw,30px)}
+  .hero-cine .hc-nav button{min-width:34px;flex:0 0 auto}
+  .hero-cine .hc-buy{white-space:nowrap}
+  .hero-cine .hc-now{display:none}
+  .hero-cine .hc-bar{grid-template-columns:1fr auto;align-items:center;gap:20px}
 }
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
@@ -2084,7 +2092,7 @@ function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
   return `
   <section class="hero-cine${slides[0].banner ? ' is-banner' : ''}${slides.every(s => s.banner) ? ' bn' : ''}" id="heroCine">
-    <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}<img class="hc-full" src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}>${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}</figure>`).join('')}</div>
+    <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}</figure>`).join('')}</div>
     <div class="hc-veil" aria-hidden="true"></div>
     <div class="hc-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="hc-copy">
