@@ -29,8 +29,9 @@ $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
 $no = fomaxo_order_no();
 $total = $order['subtotal'] + $cod['fee'];
-$rec = ['no' => $no, 'created' => date('Y-m-d H:i'), 'total' => $total, 'codFee' => $cod['fee'], 'rows' => $order['rows'], 'cust' => $cust, 'cod' => true];
+$rec = ['no' => $no, 'created' => date('Y-m-d H:i'), 'total' => $total, 'codFee' => $cod['fee'], 'rows' => $order['rows'], 'ids' => array_column($order['items'], 'id'), 'cust' => $cust, 'cod' => true];
+$rec['review'] = fomaxo_review_token($rec);   // Verified Purchaser review link, sent in the confirmation email
 fomaxo_save_order($no, $rec);
 fomaxo_log_order([date('Y-m-d H:i'), $no, 'Cash on delivery', rupees($total), $cust['name'], $cust['phone'], $cust['email'], $cust['address'], $cust['note'], implode(' | ', $order['rows']), '']);
 fomaxo_send_emails($rec, 'Cash on delivery');
-out(['status' => 'placed', 'order' => $no, 'total' => $total / 100]);
+out(['status' => 'placed', 'order' => $no, 'total' => $total / 100, 'review' => $rec['review']]);
