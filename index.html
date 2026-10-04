@@ -1374,6 +1374,21 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .ctas{gap:10px;margin-top:4px}
   .hero-cine .btn{min-height:48px}
 }
+/* hero slides: a slow curtain reveal with a gentle sideways drift, no zoom */
+.hero-cine .hc-slide{opacity:1;visibility:hidden;z-index:0;clip-path:inset(0 0 0 100%);transition:none}
+.hero-cine .hc-slide.prev{visibility:visible;z-index:1;clip-path:inset(0)}
+.hero-cine .hc-slide.on{visibility:visible;z-index:2;clip-path:inset(0);transition:clip-path 1.7s cubic-bezier(.77,0,.18,1)}
+.hero-cine .hc-slide .hc-bg{width:106%;max-width:none;transform:translateX(0);transition:none}
+.hero-cine .hc-slide.on .hc-bg{transform:translateX(-5.6%);transition:transform 9s cubic-bezier(.25,.1,.25,1)}
+.hero-cine .hc-slide.prev .hc-bg{transform:translateX(-5.6%)}
+.hero-cine .hc-slide.on::after{content:"";position:absolute;top:0;bottom:0;left:0;width:2px;z-index:3;background:linear-gradient(180deg,transparent,#f0d3a0 30%,#d7aa69 70%,transparent);box-shadow:0 0 24px 4px rgba(215,170,105,.45);animation:hcedge 1.7s cubic-bezier(.77,0,.18,1) both}
+@keyframes hcedge{0%{transform:translateX(100vw);opacity:1}88%{opacity:1}100%{transform:translateX(0);opacity:0}}
+.hero-cine .hc-slides>.hc-slide:first-child.on:not(.moved)::after{display:none}
+.hc-swap #hcName,.hc-swap #hcPrice{animation:hcin .9s cubic-bezier(.2,.7,.2,1) both}
+.hc-swap #hcPrice{animation-delay:.12s}
+@keyframes hcin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:760px){.hero-cine .hc-slide .hc-bg{width:100%}}
+@media(prefers-reduced-motion:reduce){.hero-cine .hc-slide.on,.hero-cine .hc-slide.on .hc-bg{transition:none}.hero-cine .hc-slide .hc-bg{transform:none!important;width:100%}.hero-cine .hc-slide.on::after{display:none}.hc-swap #hcName,.hc-swap #hcPrice{animation:none}}
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .pc-buy .pc-add{margin-top:0}
@@ -2755,7 +2770,7 @@ function route(){
 }
 function bindHome(){
   const figs = $$('#heroCine .hc-slide'), btns = $$('#hcNav button'); let i = 0;
-  const show = n => { i = n; figs.forEach((f,k) => f.classList.toggle('on', k === i)); btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
+  const show = n => { const old = i; i = n; figs.forEach((f,k) => { f.classList.remove('prev'); f.classList.toggle('on', k === i); }); if (old !== i) { figs[old].classList.add('prev'); figs[i].classList.add('moved'); const hc = $('#heroCine'); hc.classList.remove('hc-swap'); void hc.offsetWidth; hc.classList.add('hc-swap'); } btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
     void btns[i].offsetWidth; btns[i].classList.add('run');
     const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add to bag'; };
   /* shop the collection: 8 boxes, paging through every product */
