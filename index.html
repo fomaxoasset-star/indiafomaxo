@@ -1374,6 +1374,16 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .ctas{gap:10px;margin-top:4px}
   .hero-cine .btn{min-height:48px}
 }
+/* phones: the product sits clear in the centre of a square photo; the words follow below it on dark */
+@media(max-width:760px){
+  .hero-cine{grid-template-rows:auto auto auto;padding-top:80px}
+  .hero-cine .hc-slides,.hero-cine .hc-veil{grid-row:1}
+  .hero-cine .hc-slides{aspect-ratio:1/1}
+  .hero-cine .hc-veil{background:linear-gradient(180deg,rgba(5,5,5,.35) 0%,rgba(5,5,5,0) 12%,rgba(5,5,5,0) 84%,#050505 100%)}
+  .hero-cine .hc-copy{grid-row:2;min-height:0;justify-content:flex-start;padding:10px 20px 18px}
+  .hero-cine .hc-bar{grid-row:3}
+}
+
 /* hero slides: a slow curtain reveal with a gentle sideways drift, no zoom */
 .hero-cine .hc-slide{opacity:1;visibility:hidden;z-index:0;clip-path:inset(0 0 0 100%);transition:none}
 .hero-cine .hc-slide.prev{visibility:visible;z-index:1;clip-path:inset(0)}
@@ -2082,7 +2092,7 @@ const HERO_SLIDES = [
      banner: a full designed banner — shown whole, over a blurred copy of itself, without the hero text on top
      mpos: crop focus on phones (the product) */
   {id:'pc-aloevita-wash', img:'banner-aloevita', pos:'50% 50%', mpos:'85% 50%'},
-  {id:'pc-avokiss', img:'banner-avokiss-2', pos:'50% 45%', mpos:'70% 50%'},
+  {id:'pc-avokiss', img:'banner-avokiss-2', pos:'50% 45%', mpos:'76% 50%'},
   {id:'pc-kissberry', img:'banner-kissberry-2', pos:'50% 50%', mpos:'23% 50%'},
   {id:'pc-passionsin-gel', img:'banner-passionsin-gel', pos:'50% 50%', mpos:'76% 50%'},
   {id:'pc-melondrip', img:'banner-melondrip', pos:'50% 50%', mpos:'50% 50%'},
