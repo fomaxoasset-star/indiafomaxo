@@ -1375,15 +1375,18 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .pc-name{font-family:var(--brand-font);font-weight:400;text-transform:uppercase;letter-spacing:.1em;font-size:clamp(17px,1.35vw,21px);line-height:1.2;color:var(--gold-hi);transition:color .3s}
 .pc-type{font-family:var(--hfont);font-weight:500;font-size:clamp(16px,1.2vw,19px);line-height:1.3;letter-spacing:.02em;color:var(--gold);text-wrap:balance}
 .pcard h3 a:hover .pc-name{color:var(--ivory)}
-.price-rate{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 20px;flex-wrap:wrap}
-.p-rate{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+.price-rate{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.p-rate{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
 .p-rate-stars{color:var(--gold);font-size:22px;letter-spacing:.1em;line-height:1}
 .p-rate-stars i{font-style:normal;opacity:.3}
 .p-rate-num{font-size:15px;color:var(--ivory);letter-spacing:.02em}
 .p-rate-num b{font-size:19px;font-weight:500;color:var(--gold-hi)}
 .p-rate:hover .p-rate-num{color:var(--gold-hi)}
 .pc-stars{display:inline-flex;align-items:center;gap:6px;color:var(--gold);font-size:16px;letter-spacing:.12em;line-height:1}
-.pc-stars small{font-size:14px;letter-spacing:.02em;color:var(--muted)}
+.pc-stars small{font-size:15px;letter-spacing:.02em;color:var(--ivory)}
+.pc-stars small b{font-weight:500;color:var(--gold-hi)}
+.pc-stars i{font-style:normal;opacity:.3}
+.pc-stars{font-size:18px}
 .buy .pc-stars{align-self:flex-start}
 .pc-price .price{font-size:22px}
 .pc-price .price:has(.was){flex-direction:row;align-items:baseline;justify-content:center;gap:10px;font-size:22px}
@@ -1403,7 +1406,7 @@ html[data-mode="light"] .pc-img{box-shadow:0 0 0 1px var(--line),0 30px 60px -35
   .pc-badge{font-size:10.5px;padding:8px 10px 7px;border-bottom-right-radius:9px}
   .pc-name{font-size:14px;letter-spacing:.06em}
   .pc-type{font-size:14px}
-  .pc-stars{font-size:13px;letter-spacing:.06em}.pc-stars small{font-size:12px}
+  .pc-stars{font-size:15px;letter-spacing:.06em}.pc-stars small{font-size:13.5px}
   .pc-price .price,.pc-price .price:has(.was){font-size:18px;gap:6px}
   .pc-add{min-height:44px;font-size:13.5px}
 }
@@ -1836,7 +1839,8 @@ const fromHTML = p => { const v = p.sizes.map(s => p.prices[s]).filter(hasPrice)
 const pRateHTML = (r, n) => n
   ? `<span class="p-rate-stars" aria-hidden="true">${'★'.repeat(Math.round(r))}<i>${'★'.repeat(5 - Math.round(r))}</i></span><span class="p-rate-num"><b>${(+r).toFixed(1)}</b> · ${n} review${n > 1 ? 's' : ''}</span>`
   : `<span class="p-rate-stars" aria-hidden="true"><i>★★★★★</i></span><span class="p-rate-num">No reviews yet</span>`;
-const starsHTML = p => p.rating ? `<span class="pc-stars" aria-label="Rated ${p.rating} out of 5${p.reviews ? ', ' + p.reviews + ' reviews' : ''}"><span aria-hidden="true">${'★'.repeat(Math.round(p.rating))}${'☆'.repeat(5 - Math.round(p.rating))}</span>${p.reviews ? ` <small>(${p.reviews})</small>` : ''}</span>` : '';
+const starsHTML = p => { const r = Math.round(p.rating || 0), n = p.reviews || 0;
+  return `<span class="pc-stars${n ? '' : ' none'}" aria-label="${n ? `Rated ${p.rating} out of 5, ${n} review${n > 1 ? 's' : ''}` : 'No reviews yet'}"><span aria-hidden="true">${'★'.repeat(n ? r : 0)}<i>${'★'.repeat(n ? 5 - r : 5)}</i></span> <small>${n ? `<b>${(+p.rating).toFixed(1)}</b> (${n})` : '(0)'}</small></span>`; };
 const emblem = (cls='em') => `<svg class="${cls}" aria-hidden="true"><use href="#emblem"/></svg>`;
 const wordmark = (cls='') => `<svg class="${cls}" viewBox="0 0 3196 481" role="img" aria-label="FOMAXO"><use href="#wordmark"/></svg>`;
 const defaultSize = p => p.kind === 'set' ? p.sizes[0] : p.sizes.includes(50) ? 50 : p.sizes[p.sizes.length-1];
@@ -2142,8 +2146,8 @@ function product(id, q){
         <div style="display:flex;flex-direction:column;gap:14px">
           <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a> · ` : ''}${esc(p.family)}</span>
           <h1>${esc(p.name)}</h1>
-          <p class="lead" style="max-width:none">${esc(p.short)}</p>
           <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a></div>
+          <p class="lead" style="max-width:none">${esc(p.short)}</p>
         </div>
         ${p.sizes.length > 1 ? `<div><div class="opt-label"><span>${isSet ? 'Choose your set' : 'Size'}</span><span id="sizeName">${optLabel(p, size)}</span></div>
           <div class="sizes" id="sizes">${p.sizes.map(s => `<button data-s="${s}" class="${s===size?'on':''}"><b>${isSet ? s + ' vials' : sizeLabel(s)}</b><small>${isSet ? (money(p.prices[s]) || '2ml each') : s===10?'Mini · travel':s===50?'Everyday':'Signature'}</small></button>`).join('')}</div></div>`
@@ -2348,8 +2352,8 @@ function pcCard(p, i=0, o={}){
     </a>
     <div class="pc-info">
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
-      ${starsHTML(p)}
       <div class="pc-price">${isSet ? fromHTML(p) : priceHTML(p, size)}</div>
+      ${starsHTML(p)}
     </div>
     <div class="pc-buy">${sizes}${btn}</div>
   </article>`;
