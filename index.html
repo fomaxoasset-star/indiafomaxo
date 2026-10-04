@@ -1732,19 +1732,6 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .co-form label.bad input,.co-form label.bad select,.co-form label.bad .co-tel{border-color:#d0493e}
 .co-fe{font-style:normal;font-size:13px;letter-spacing:0;text-transform:none;color:#d0493e}
 html[data-mode="light"] .co-fe{color:#a8322a}
-.co-req{margin:-4px 0 4px}
-.co-need{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1px dashed var(--line-2);background:var(--panel);margin-top:6px}
-.co-need>svg{flex:none;width:20px;height:20px;color:var(--gold);margin-top:2px}
-.co-need>div{display:grid;gap:6px}
-.co-need b{font-weight:400;font-size:15px;color:var(--ivory)}
-.co-need span{font-size:13px;color:var(--muted)}
-.co-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
-.co-chips button{font-size:12.5px;padding:5px 12px;border:1px solid var(--gold);color:var(--gold-hi);border-radius:20px;transition:background .2s}
-.co-chips button:hover{background:rgba(215,170,105,.12)}
-.co-locked .co-opt{opacity:.45;cursor:not-allowed}
-.co-locked .co-btn{opacity:.5}
-.co-pay.co-open .co-opt{animation:coOpen .5s var(--ease)}
-@keyframes coOpen{from{transform:translateY(6px);opacity:.4}to{transform:none;opacity:1}}
 .co-tel{display:flex;align-items:stretch;border:1px solid var(--line-2);background:var(--panel);transition:border-color .3s}
 .co-tel:focus-within{border-color:var(--gold-hi)}
 .co-tel em{display:flex;align-items:center;padding:0 0 0 16px;font-style:normal;font-size:15px;letter-spacing:0;color:var(--muted)}
@@ -3148,7 +3135,6 @@ function checkoutPage(q){
   </aside>
   <form class="form co-form" id="coForm" novalidate>
     <div class="co-step"><span>1</span><h2>Delivery details</h2></div>
-    <p class="co-fine co-req">Every field is needed unless it says optional. Payment opens once they are all filled in.</p>
     <label>Full name<input name="name" value="${v('name')}" autocomplete="name" required maxlength="80"></label>
     <div class="row2">
       <label>Mobile<span class="co-tel"><em>+91</em><input name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="98765 43210" value="${phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : ''}" required maxlength="12"></span></label>
@@ -3168,7 +3154,6 @@ function checkoutPage(q){
     <p class="co-fine">We remember these details on this device for your next order. We will WhatsApp you about your delivery and, after it arrives, ask for a quick review.</p>
 
     <div class="co-step"><span>2</span><h2>Payment</h2></div>
-    <div class="co-need" id="coNeed" role="status" aria-live="polite" hidden>${LOCK_SVG}<div><b>Fill in your delivery details to unlock payment</b><span>Still needed:</span><span class="co-chips" id="coChips"></span></div></div>
     <div class="co-pay" role="radiogroup" aria-label="Payment method">
       ${S.checkout.razorpay ? `<label class="co-opt"><input type="radio" name="pay" value="online" checked><span class="co-ot"><b>UPI / Card / Netbanking / Wallets</b><small>Pay securely now with Razorpay</small></span>${CO_ICON.card}</label>` : ''}
       ${cod ? `<label class="co-opt${codOk ? '' : ' off'}"><input type="radio" name="pay" value="cod"${codOk ? (S.checkout.razorpay ? '' : ' checked') : ' disabled'}><span class="co-ot"><b>Cash on delivery</b><small>For orders of ${inr(cod.min)} and above${cod.fee ? ` · ${inr(cod.fee)} fee` : ''}</small>${codOk ? '' : `<small class="co-more">Add ${inr(cod.min - t)} more to activate COD</small>`}</span>${CO_ICON.cash}</label>` : ''}
@@ -3198,35 +3183,18 @@ function bindCheckout(q){
   if (S.checkout.razorpay) loadRazorpay().catch(() => {});
   const method = () => (f.querySelector('input[name=pay]:checked') || {}).value;
   const total = () => t + (method() === 'cod' && cod ? cod.fee : 0);
-  /* payment stays locked until every required delivery field is filled in correctly */
-  const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', v => /^[6-9]\d{9}$/.test(v.replace(/\D/g, ''))],
-    ['email', 'Email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)], ['house', 'Flat / house no, building', v => v.length > 0],
-    ['street', 'Street, area, locality', v => v.length >= 2], ['city', 'City', v => v.length >= 2], ['state', 'State', v => v !== ''],
-    ['pin', 'PIN code', v => /^[1-9]\d{5}$/.test(v)]];
-  const missing = () => NEED.filter(([k, , ok]) => !ok(E[k].value.replace(/\s+/g, ' ').trim()));
-  let wasLocked = null;
   const upd = () => {
-    const miss = missing(), locked = miss.length > 0, isCod = method() === 'cod', fr = $('#coFeeRow');
-    f.classList.toggle('co-locked', locked);
-    $$('input[name=pay]', f).forEach(r => { r.disabled = locked || (r.value === 'cod' && !(cod && t >= cod.min)); });
-    const need = $('#coNeed'); need.hidden = !locked;
-    if (locked) $('#coChips').innerHTML = miss.map(([k, l]) => `<button type="button" data-need="${k}">${l}</button>`).join('');
+    const isCod = method() === 'cod', fr = $('#coFeeRow');
     if (fr) fr.hidden = !isCod;
     $('#coTotal').textContent = inr(total());
-    btn.disabled = locked;
-    $('#coPayTxt').textContent = locked ? 'Complete delivery details to pay' : isCod ? `Place order · ${inr(total())} on delivery` : `Pay ${inr(total())} securely`;
+    $('#coPayTxt').textContent = isCod ? `Place order · ${inr(total())} on delivery` : `Pay ${inr(total())} securely`;
     $$('.co-opt', f).forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
-    if (wasLocked === true && !locked) need.closest('form').querySelector('.co-pay').classList.add('co-open');
-    wasLocked = locked;
   };
-  $$('input[name=pay]', f).forEach(r => r.onchange = upd);
-  f.addEventListener('input', upd); f.addEventListener('change', upd);
-  $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
+  $$('input[name=pay]', f).forEach(r => r.onchange = upd); upd();
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
   E.pin.oninput = () => { E.pin.value = E.pin.value.replace(/\D/g, '').slice(0, 6); };
   f.addEventListener('input', e => { const lb = e.target.closest('label'); if (lb) { lb.classList.remove('bad'); const fe = lb.querySelector('.co-fe'); if (fe) fe.remove(); } });
-  upd();
 
   const showErr = (msg, el) => {
     if (!el) { err.textContent = msg; err.hidden = false; err.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
