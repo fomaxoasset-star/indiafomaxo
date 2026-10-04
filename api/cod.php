@@ -15,9 +15,11 @@ if (!$cod) fail('Cash on delivery is not available. Please pay online.');
 $in = input();
 $order = fomaxo_price_order($in);
 if (isset($order['error'])) fail($order['error']);
-if ($order['subtotal'] < $cod['min']) fail('Cash on delivery is for orders of ' . rupees($cod['min']) . ' and above. Please pay online.');
 $cust = fomaxo_customer($in);
 if (isset($cust['error'])) fail($cust['error']);
+/* while onlyName is set, COD is unactivated for everyone except that exact full name (testing) */
+if ($cod['onlyName'] !== '') { if (strtolower($cust['name']) !== strtolower(trim(preg_replace('/\s+/', ' ', $cod['onlyName'])))) fail('Cash on delivery is not available right now. Please pay online.'); }
+elseif ($order['subtotal'] < $cod['min']) fail('Cash on delivery is for orders of ' . rupees($cod['min']) . ' and above. Please pay online.');
 
 /* simple guard against repeated fake COD orders: at most 5 an hour from one connection */
 $rl = fomaxo_orders_dir() . '/cod-' . substr(hash('sha256', $_SERVER['REMOTE_ADDR'] ?? ''), 0, 16) . '.txt';
