@@ -1509,6 +1509,65 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .mnav nav a.dubai{justify-content:center;margin-top:22px;border:1px solid var(--gold);color:var(--gold-hi);padding:14px 0}
 .mnav nav a.dubai::after{display:none}
 .mnav nav a.dubai:active{background:var(--gold);color:#0a0805}
+
+/* ================= PREMIUM PRODUCT PAGES =================
+   Elegant serif (Cormorant Garamond) for product names and story copy,
+   light Jost for prices and details, quieter sale marks, more air. */
+.buy{gap:30px}
+.buy>div:first-child{gap:16px!important;padding-bottom:30px;border-bottom:1px solid var(--line)}
+.buy .sub{font-size:11.5px;font-weight:500;letter-spacing:.34em}
+.buy h1{font-family:var(--hfont);font-weight:500;text-transform:uppercase;letter-spacing:.05em;line-height:1.02;font-size:clamp(42px,4.4vw,68px);margin-top:2px}
+.buy .price-rate{gap:14px;margin-top:4px}
+.buy .pprice,.buy .pprice:has(.was){font-weight:300;font-size:32px;letter-spacing:.02em;color:var(--gold-hi)}
+.buy .pprice:has(.was){flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:4px 14px}
+.buy .pprice .was{order:2;font-size:.56em;margin:0;color:var(--muted);text-decoration-color:currentColor;text-decoration-thickness:1px}
+.buy .save{order:3;align-self:center;margin:0;font-size:10.5px;letter-spacing:.24em;padding:6px 10px;background:transparent;color:var(--gold);box-shadow:inset 0 0 0 1px var(--line-2)}
+.buy .p-rate-stars{font-size:15px;letter-spacing:.22em}
+.buy .p-rate-num{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.buy .p-rate-num b{font-size:13px;font-weight:500;letter-spacing:.06em}
+.buy .lead{font-family:var(--hfont);font-style:italic;font-weight:500;font-size:clamp(21px,1.6vw,24px);line-height:1.45;color:var(--champagne);margin-top:4px}
+.buy .opt-label{font-size:11.5px;letter-spacing:.28em;margin-bottom:14px}
+.buy .opt-label span:last-child{color:var(--gold)}
+.sizes{gap:12px}
+.sizes button{padding:20px 10px 18px;gap:8px}
+.sizes button b{font-weight:300;font-size:22px;letter-spacing:.04em}
+.sizes button small{font-size:10.5px;letter-spacing:.2em}
+.qty{height:56px}
+.buy .btn{min-height:56px}
+.perks div{padding:18px;font-size:13.5px;letter-spacing:.01em;line-height:1.5}
+.acc summary{padding:22px 0;font-size:12px;letter-spacing:.3em}
+.acc .body{font-size:16px;line-height:1.9}
+.acc .body p:first-child{font-family:var(--hfont);font-weight:500;font-size:21px;line-height:1.5;color:var(--ivory)}
+.notes-list span{font-size:22px}
+.reviews .rv-sum h2{font-family:var(--hfont);font-weight:500;letter-spacing:.05em}
+.crumbs{letter-spacing:.32em}
+.stage{box-shadow:0 40px 80px -50px rgba(0,0,0,.55)}
+
+/* product names on cards: the same serif, so lists feel like a boutique */
+.card h3,.pc-name,.mbuy .n b,.tier-item b,.sres b,.upsell b,.line-item h4,.hc-now b{font-family:var(--hfont);font-weight:600;text-transform:uppercase}
+.pc-name{font-size:clamp(20px,1.55vw,24px);letter-spacing:.07em;line-height:1.15}
+.pc-type{font-family:var(--sans);font-weight:400;font-size:11.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+.pc-tagline{font-family:var(--hfont);font-style:italic;font-weight:500;font-size:17px;line-height:1.4}
+.pc-price .price,.pc-price .price:has(.was){font-weight:300;font-size:21px}
+.price .was{color:var(--muted);text-decoration-color:currentColor;text-decoration-thickness:1px}
+.pc-badge{font-size:11px;letter-spacing:.22em;padding:11px 16px 10px}
+.mbuy .n b{font-size:18px;letter-spacing:.06em}
+
+@media(max-width:960px){.buy>div:first-child{padding-bottom:24px}}
+@media(max-width:600px){
+  .buy{gap:24px}
+  .buy h1{font-size:clamp(36px,10.5vw,46px);letter-spacing:.04em}
+  .buy .pprice,.buy .pprice:has(.was){font-size:28px}
+  .buy .lead{font-size:20px}
+  .sizes button{padding:16px 8px 14px}
+  .acc .body{font-size:15.5px}
+  .acc .body p:first-child{font-size:19px}
+  .pc-name{font-size:17px;letter-spacing:.05em}
+  .pc-type{font-size:10px;letter-spacing:.16em}
+  .pc-tagline{font-size:15px}
+  .pc-price .price,.pc-price .price:has(.was){font-size:17px}
+  .pc-badge{font-size:9.5px;letter-spacing:.16em;padding:8px 10px 7px}
+}
 </style>
 <script>document.body.classList.add("home")</script>
 
@@ -1879,7 +1938,7 @@ const optLabel = (p, s) => p && p.kind === 'set' ? `Set of ${s}` : p && p.kind =
 const pickable = p => FRAG.filter(f => !(p.exclude || []).includes(f.id));
 const hasPrice = v => v !== null && v !== undefined && v !== '';
 const money = (v, cur) => { if (!hasPrice(v)) return null; cur = cur || S.currency;
-  return cur === '₹' ? '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : `${cur} ${Number(v).toLocaleString('en-US')}`; };
+  return cur === '₹' ? '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits: Number.isInteger(+v) ? 0 : 2, maximumFractionDigits: 2}) : `${cur} ${Number(v).toLocaleString('en-US')}`; };
 const curOf = p => (p && p.currency) || S.currency;
 const wasHTML = (p, size) => { const c = p.compareAt && p.compareAt[size]; return hasPrice(c) && c > p.prices[size] ? `<s class="was">${money(c, curOf(p))}</s> ` : ''; };
 const pctOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
