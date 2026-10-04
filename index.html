@@ -363,6 +363,10 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .rv-none{padding:30px 0;color:var(--muted)}
 .rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px}
 .rv-pick{display:flex;gap:4px}
+.rv-emoji{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
+.rv-emoji button{font-size:20px;line-height:1;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;transition:border-color .2s,transform .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.rv-emoji button:hover{border-color:var(--line-2);transform:scale(1.1)}
+.rv-text,.rv-head b{font-variant-emoji:emoji}
 .rv-pick button{font-size:30px;line-height:1;color:var(--line-2);padding:2px;transition:color .2s}
 .rv-pick button.on{color:var(--gold)}
 .rv-form .rv-check{display:flex;align-items:center;gap:10px;letter-spacing:.12em}
@@ -2873,10 +2877,12 @@ async function refreshRvSummary(){
   } catch(e) {}
 }
 
+const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
     <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
     <label>Your review<textarea name="text" maxlength="2000" placeholder="What did you like or dislike? How long did it last?"></textarea></label>
+    <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
     <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Ahmed Saleem — shown as Ahmed S."></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
     <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label>
@@ -2892,6 +2898,12 @@ function bindRvForm(form, p, token, done){
   stars.forEach(b => { b.onclick = () => { rating = +b.dataset.star; paint(rating); }; b.onmouseenter = () => paint(+b.dataset.star); b.onmouseleave = () => paint(rating); });
   const anon = form.elements.anonymous, name = form.elements.name;
   anon.onchange = () => { name.disabled = anon.checked; };
+  const ta = form.elements.text;
+  $$('[data-emoji]', form).forEach(b => b.onclick = () => {
+    const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
+    if (ta.value.length + e.length > 2000) return;
+    ta.value = ta.value.slice(0, a) + e + ta.value.slice(z); ta.focus(); ta.setSelectionRange(a + e.length, a + e.length);
+  });
   form.onsubmit = async e => {
     e.preventDefault(); err.textContent = '';
     const files = [...form.elements.photos.files];
