@@ -1797,6 +1797,9 @@ html[data-mode="light"] .co-err{color:#a8322a}
 .co-items{border-bottom:1px solid var(--line)}
 .co-item{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 0}
 .co-item+.co-item{border-top:1px solid var(--line)}
+.co-item[role=button]{cursor:pointer;transition:opacity .3s}
+.co-item[role=button]:hover .co-it b,.co-item[role=button]:focus-visible .co-it b{color:var(--gold-hi)}
+.co-item[role=button]:focus-visible{outline:1px solid var(--gold-hi);outline-offset:4px}
 .co-img{position:relative}
 .co-img img{width:70px;height:70px;object-fit:cover;border:1px solid var(--line)}
 .co-img i{position:absolute;top:-9px;left:-9px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--gold-lo);color:#fff;font-style:normal;font-size:11.5px;display:grid;place-items:center}
@@ -2226,7 +2229,9 @@ const LOCK_SVG = '<svg class="lk" viewBox="0 0 24 24" fill="none" stroke="curren
 /* ============================ CART ============================ */
 let cart = [];
 try { cart = JSON.parse(localStorage.getItem('fomaxo_cart') || '[]').filter(l => P[l.id] && !isOut(P[l.id]) && P[l.id].sizes.map(String).includes(String(l.opt))); } catch(e) { cart = []; }
-const save = () => { try { localStorage.setItem('fomaxo_cart', JSON.stringify(cart)); } catch(e) {} renderCart(); };
+const onBagCheckout = () => /^#\/checkout(\?|$)/.test(location.hash) && !/[?&]buy=1/.test(location.hash);
+let coDirty = false;
+const save = () => { try { localStorage.setItem('fomaxo_cart', JSON.stringify(cart)); } catch(e) {} renderCart(); if (onBagCheckout()) coDirty = true; };
 function addToCart(id, opt, qty=1, silent, picks){
   if (isOut(P[id])) { toast(`${P[id].name} is currently out of stock`); return; }
   const key = (picks || []).join('|');
@@ -2292,7 +2297,17 @@ $('#cartBody').addEventListener('click', e => {
 /* ============================ OVERLAYS ============================ */
 const scrim = $('#scrim');
 function openPanel(el){ closePanels(); el.classList.add('open'); el.setAttribute('aria-hidden','false'); if (el.id === 'cart') scrim.classList.add('open'); document.body.classList.add('lock'); }
-function closePanels(){ $$('.drawer.open,.search.open,.mnav.open').forEach(x => { x.classList.remove('open'); x.setAttribute('aria-hidden','true'); }); scrim.classList.remove('open'); document.body.classList.remove('lock'); }
+function closePanels(){ $$('.drawer.open,.search.open,.mnav.open').forEach(x => { x.classList.remove('open'); x.setAttribute('aria-hidden','true'); }); scrim.classList.remove('open'); document.body.classList.remove('lock'); if (coDirty) { coDirty = false; coRefresh(); } }
+/* the bag changed while on checkout: redraw the page with the new order summary, keeping what the customer typed */
+function coRefresh(){
+  if (!onBagCheckout()) return;
+  const f = $('#coForm'), y = scrollY;
+  const vals = f ? [...f.elements].filter(e => e.name && (e.type !== 'radio' || e.checked)).map(e => [e.name, e.value, e.type === 'radio']) : [];
+  route();
+  const g = $('#coForm'); if (!g) return;
+  vals.forEach(([n, v, radio]) => { if (radio) { const r = g.querySelector(`input[name="${n}"][value="${v}"]`); if (r) r.checked = true; } else if (g.elements[n]) g.elements[n].value = v; });
+  g.dispatchEvent(new Event('input')); scrollTo(0, y);
+}
 $('#openCart').onclick = () => { $('#toast').classList.remove('show'); renderCart(); openPanel($('#cart')); };
 $('#openMenu').onclick = () => openPanel($('#mnav'));
 $('#openSearch').onclick = () => { openPanel($('#search')); runSearch(''); setTimeout(() => $('#q').focus(), 80); };
@@ -3167,7 +3182,7 @@ function checkoutPage(q){
   <h1 class="co-title">Checkout</h1>
   <aside class="co-sum" aria-label="Order summary">
     <div class="co-sum-head"><h2>Order summary</h2>${coBuy(q) ? `<a class="co-edit" href="#/product/${lines[0].id}">Edit</a>` : `<button type="button" class="co-edit" id="coEdit">Edit bag</button>`}</div>
-    <div class="co-items">${lines.map(l => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return `<div class="co-item">
+    <div class="co-items">${lines.map(l => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
@@ -3223,7 +3238,9 @@ function bindCheckout(q){
   const wa = $('#coWa'); if (wa) wa.onclick = () => checkout(coLines(q));
   const f = $('#coForm'); if (!f) return;
   const lines = coLines(q), t = subtotal(lines), cod = coCod(), E = f.elements, btn = $('#coPay'), err = $('#coErr');
-  const ed = $('#coEdit'); if (ed) ed.onclick = () => { renderCart(); openPanel($('#cart')); };
+  const ed = $('#coEdit'), openBag = () => { renderCart(); openPanel($('#cart')); }; if (ed) ed.onclick = openBag;
+  /* clicking any item in the order summary opens Your Bag, same as Edit bag */
+  $$('.co-item[role=button]').forEach(it => { it.onclick = openBag; it.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBag(); } }; });
   if (S.checkout.razorpay) loadRazorpay().catch(() => {});
   const method = () => (f.querySelector('input[name=pay]:checked') || {}).value;
   const total = () => t + (method() === 'cod' && cod ? cod.fee : 0);
