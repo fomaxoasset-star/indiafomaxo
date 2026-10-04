@@ -69,7 +69,8 @@ function fomaxo_catalog(): array {
   if (preg_match('/\bcod:\s*\{([^}]*)\}/', $src, $x)) {
     $min = preg_match('/\bmin:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
     $fee = preg_match('/\bfee:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
-    $cat['cod'] = ['min' => (int)round($min * 100), 'fee' => (int)round($fee * 100)];
+    $cat['cod'] = ['min' => (int)round($min * 100), 'fee' => (int)round($fee * 100),
+      'onlyName' => preg_match('/\bonlyName:\s*"([^"]*)"/', $x[1], $y) ? $y[1] : ''];
   }
   if (preg_match('/\bcheckout:\s*\{[^}]*?\bemail:\s*"([^"]+)"/s', $src, $x)) $cat['email'] = $x[1];
   return $cat;
