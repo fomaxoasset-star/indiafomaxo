@@ -1626,12 +1626,12 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:min(86svh,820px);border-bottom:1px solid var(--line);overflow:hidden}
 .gf-hero .gf-copy{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:clamp(60px,8vw,120px) clamp(30px,5vw,80px) clamp(60px,8vw,120px) var(--pad)}
 .gf-hero .gf-copy::before{content:"";position:absolute;left:-20%;top:-30%;width:80%;aspect-ratio:1;background:radial-gradient(circle,rgba(215,170,105,.13),transparent 65%);z-index:-1}
-.gf-hero h1{font-family:var(--brand-font);font-weight:400;font-size:clamp(40px,5.6vw,92px);letter-spacing:.06em;line-height:1}
+.gf-hero h1{font-family:var(--brand-font);font-weight:400;font-size:clamp(34px,4.6vw,78px);letter-spacing:.06em;line-height:1}
 .gf-hero h1 small{display:block;font-family:var(--display);font-weight:300;font-size:.34em;letter-spacing:.38em;color:var(--champagne);margin-bottom:.7em}
 .gf-hero .lead{max-width:520px}
 .gf-hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
 .gf-hero .gf-media{position:relative;min-height:420px}
-.gf-hero .gf-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 30%}
+.gf-hero .gf-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 45%}
 .gf-hero .gf-media::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--black),transparent 34%),linear-gradient(0deg,rgba(0,0,0,.5),transparent 40%)}
 .gf-hero .gf-tag{position:absolute;right:clamp(18px,3vw,40px);bottom:clamp(18px,3vw,40px);z-index:2;display:flex;flex-direction:column;gap:4px;padding:16px 22px;border:1px solid var(--line-2);background:rgba(5,5,5,.6);backdrop-filter:blur(8px);color:#f2ebdd}
 .gf-hero .gf-tag b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:22px;color:#f0d3a0}
@@ -1652,6 +1652,7 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-set.hl{border-color:var(--gold)}
 .gf-set .gf-pics{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;aspect-ratio:16/10;background:var(--line);overflow:hidden}
 .gf-set .gf-pics img{width:100%;height:100%;object-fit:cover;background:#0b0a08}
+.gf-set .gf-pics.photo img{object-position:center 55%}
 .gf-set .gf-badge{position:absolute;left:14px;top:14px;z-index:2;padding:6px 12px;background:var(--gold);color:#0a0805;font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase}
 .gf-set .gf-body{display:flex;flex-direction:column;gap:14px;padding:26px 26px 28px;flex:1}
 .gf-set h3{font-size:22px;letter-spacing:.12em}
@@ -1693,7 +1694,7 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
   .gf-hero{grid-template-columns:1fr;min-height:0}
   .gf-hero .gf-media{order:-1;min-height:0;aspect-ratio:4/3.4}
   .gf-hero .gf-media::after{background:linear-gradient(0deg,var(--black),transparent 45%)}
-  .gf-hero .gf-copy{padding:8px var(--pad) 50px;margin-top:-40px;text-align:center;align-items:center}
+  .gf-hero .gf-copy{padding:22px var(--pad) 50px;text-align:center;align-items:center}
   .gf-hero .ctas{justify-content:center}
   .gf-hero .gf-tag{display:none}
 }
@@ -2509,7 +2510,7 @@ function collections(sub){
   if (sub === 'mini'){ const m = S.mini; return pageHead('<a href="#/collections">Collections</a> / Mini', `Mini <em class="metal">Collection</em>`, m.text) +
     `<section style="padding:60px 0 120px"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">10ml · pocket-sized</span><h2>${m.headline}</h2></div></div><div class="grid four">${m.products.map((id,i)=>card(P[id],{d:'d'+(i%4), size:10})).join('')}</div></div></section>` + finalCTA(); }
   if (sub === 'gifting') return gifting();
-  if (sub === 'name') return nameCollection();
+  if (sub === 'name') return giftPage();
   if (sub === 'personal-care') return pageHead('<a href="#/collections">Collections</a> / Personal Care', `Personal Care <em class="metal">Collection</em>`, 'Luxury rituals for hair, body, face and lips — guided by the same principles as every FOMAXO perfume: simplicity, quality and recognisability.') +
     `<section style="padding:60px 0 120px"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">Hair · body · face · lips</span><h2>Elevating everyday rituals</h2></div></div><div class="pc-grid">${PC.map((p,i)=>pcCard(p,i)).join('')}</div></div></section>` + finalCTA();
   if (sub === 'elite'){ location.replace('#/collections'); return ''; }
@@ -2558,36 +2559,14 @@ function gifting(){
     <div class="gallery-g">${['gift-set-1','gift-set-3','gift-set-4','gift-set-5','gift-set-2','gift-set-6','gift-set-7'].map((k,i) => `<figure class="rv-up d${i%3}"><img src="${IMG(k)}" alt="FOMAXO bespoke gifting setup" loading="lazy"></figure>`).join('')}</div>
   </div></section>` + finalCTA();
 }
-function nameCollection(){
-  return pageHead('<a href="#/collections">Collections</a> / Personalized Gifting', 'Exclusive <em class="metal">Personalized Gifting</em>', '“Your Gift. Your Scent. Your Legacy.” The highest form of personalisation: a perfume gifted after the client themselves.') + `
-  <section class="sec"><div class="wrap"><div class="split">
-    <div class="img rv-up"><img src="${IMG('gift-name-birthday')}" alt="FOMAXO personalised Happy Birthday gift box with Old Money" loading="lazy"></div>
-    <div class="prose rv-up d1"><span class="eyebrow">The collection</span><h2>A signature as unique <em class="metal">as you</em></h2>
-      <p><b class="gold">Personalised naming.</b> Each bottle carries the recipient’s name on a custom-designed label, with an optional engraved bottle for a truly timeless keepsake.</p>
-      <p><b class="gold">Tailored packaging.</b> Premium finishing, signature engraving, bespoke finishing, embossed with the name or initials, and a personalised card.</p>
-      <p><b class="gold">Fragrance curation.</b> Choose a signature scent from the FOMAXO portfolio — or, at Elite level, a bespoke blend inspired by personality, lifestyle or event theme.</p>
-      <p><b class="gold">Each delivery includes</b> a full-size perfume (50ml or 100ml), a 10ml travel-size perfume, an elegant fragrance card with notes and story, and a personalised note from you to your special ones.</p>
-      <p class="small">Available for weddings, private clients and corporate elites. Limited slots each year.</p>
-      <div><a class="btn" href="#/contact?topic=name">Enquire now</a></div></div>
-  </div></div></section>
-  <section class="sec" style="padding-top:0"><div class="wrap">
-    <div class="split">
-      <div class="prose rv-up"><span class="eyebrow">Gift boxes</span><h2>Made for <em class="metal">every moment</em></h2>
-        <p>Clear keepsake boxes finished with a satin ribbon, fresh-look flowers and your own message on the glass — “Happy Birthday”, “Best Wishes” or any words you choose.</p>
-        <p>From a single 50ml perfume to a full set with fragrance and FOMAXO personal care, every box is made to be remembered.</p>
-        <div><a class="btn line" href="#/contact?topic=name">Design your gift box</a></div></div>
-      <div class="img rv-up d1"><img src="${IMG('gift-name-wishes')}" alt="FOMAXO Best Wishes gift box with Royal Candy, Old Money and personal care" loading="lazy"></div>
-    </div>
-  </div></section>` + finalCTA();
-}
 /* GIFT page — gift sets are built from shop products; [product id, size]. Prices come from the product list, so they stay in sync. */
 const GIFT_SETS = [
-  {id: 'signature-duo', name: 'The Signature Duo', badge: 'Most gifted', v: 'Two icons of the house, side by side.', items: [['gold', 100], ['dollar', 100]]},
+  {id: 'birthday-box', name: 'Happy Birthday Box', badge: 'Keepsake', img: 'gift-name-birthday', v: 'Old Money in a clear keepsake box with a rose, fresh-look flowers and “Happy Birthday” on the glass.', items: [['oldmoney', 50]]},
+  {id: 'wishes-box', name: 'Best Wishes Box', badge: 'Most gifted', img: 'gift-name-wishes', v: 'Two parfums and a Passion Sin care duo, finished with flowers and your words on the glass.', items: [['royalcandy', 50], ['oldmoney', 50], ['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one']]},
+  {id: 'signature-duo', name: 'The Signature Duo', v: 'Two icons of the house, side by side.', items: [['gold', 100], ['dollar', 100]]},
   {id: 'mini-quartet', name: 'Prestige Mini Quartet', v: 'Four pocket parfums to discover and share.', items: [['royalcandy', 10], ['oldmoney', 10], ['matchacoco', 10], ['passionsin', 10]]},
-  {id: 'his-hers', name: 'His & Hers', v: 'A pairing made for couples and newlyweds.', items: [['oldmoney', 50], ['royalcandy', 50]]},
   {id: 'ritual-box', name: 'The Ritual Box', v: 'Everyday luxury for hair, body and face.', items: [['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one'], ['pc-radiant-wash', 'one'], ['pc-kissberry', 'one']]},
-  {id: 'lip-love', name: 'Lip Love', v: 'Two balms, beautifully boxed. A sweet little thank-you.', items: [['pc-kissberry', 'one'], ['pc-avokiss', 'one']]},
-  {id: 'drive-style', name: 'Drive in Style', v: 'For the one who lives behind the wheel.', items: [['passiondrive', 'one'], ['passionsin', 10]]}
+  {id: 'lip-love', name: 'Lip Love', v: 'Two balms, beautifully boxed. A sweet little thank-you.', items: [['pc-kissberry', 'one'], ['pc-avokiss', 'one']]}
 ];
 const giftSets = () => GIFT_SETS.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !isOut(P[id]) && hasPrice(P[id].prices[s]))}))
   .filter(g => g.items.length === GIFT_SETS.find(x => x.id === g.id).items.length);
@@ -2601,7 +2580,7 @@ function giftPage(){
     const was = g.items.reduce((t, [id, s]) => t + +((P[id].compareAt && P[id].compareAt[s]) || P[id].prices[s]), 0);
     const cur = curOf(P[g.items[0][0]]);
     return `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-      <div class="gf-pics">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.items.slice(0, 4).map(([id, s]) => `<img src="${IMG(imgFor(P[id], s))}" alt="" loading="lazy">`).join('')}</div>
+      <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s]) => `<img src="${IMG(imgFor(P[id], s))}" alt="" loading="lazy">`).join('')}</div>
       <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
         <ul>${g.items.map(([id, s]) => `<li><span>${esc(P[id].name)}${P[id].kind ? '' : ` · ${s}ml`}</span><span>${money(P[id].prices[s], cur)}</span></li>`).join('')}</ul>
         <div class="gf-total"><small>Gift set</small><span class="price">${was > total ? `<s>${money(was, cur)}</s>` : ''}${money(total, cur)}</span></div>
@@ -2611,37 +2590,47 @@ function giftPage(){
   const occ = [
     ['Festive', 'Diwali', 'Hampers that glow brighter than the diyas. Bulk orders for family and clients.', 'gift-set-3'],
     ['Shaadi', 'Weddings', 'Favours, trousseau and couple gifts with names and the date on every box.', 'gift-set-7'],
-    ['Celebrate', 'Birthdays', 'A keepsake box with their name and your words on the glass.', 'gift-name-birthday'],
+    ['Celebrate', 'Birthdays', 'A gift box with their name and your words inside the lid.', 'gift-2'],
     ['Business', 'Corporate gifting', 'Your logo on the packaging and a scent your clients will remember.', 'elite-card']
   ];
   return `
   <section class="gf-hero">
     <div class="gf-copy">
-      <span class="eyebrow rv-up">Engraved · Wrapped · Remembered</span>
-      <h1 class="rv-up d1"><small>Personalized</small><span class="metal">Gifting</span></h1>
-      <p class="lead rv-up d1">A FOMAXO gift carries their name. Choose a fragrance or ritual set, add an engraving or a personal message, and we deliver it in our signature black and gold gift box, anywhere in India.</p>
+      <div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; <a href="#/collections">Collections</a> &nbsp;/&nbsp; Personalized Gifting</div>
+      <span class="eyebrow rv-up">Your gift · Your scent · Your legacy</span>
+      <h1 class="rv-up d1"><small>Exclusive</small><span class="metal">Personalized</span><br><span class="metal">Gifting</span></h1>
+      <p class="lead rv-up d1">The highest form of personalisation: a FOMAXO perfume gifted in their name. Choose a fragrance or gift set, add an engraving or your own message on the glass, and we deliver it in our signature gift box, anywhere in India.</p>
       <div class="ctas rv-up d2"><a class="btn" href="#gf-sets" data-gjump="gf-sets">Shop gift sets</a><a class="btn line" href="${waLink('Hello FOMAXO, I would like to create a personalised gift.')}" target="_blank" rel="noopener">Create a custom gift</a></div>
     </div>
-    <div class="gf-media"><img src="${IMG('couple')}" alt="A couple exchanging a FOMAXO gift box" fetchpriority="high"><div class="gf-tag"><b>“Your gift. Your scent.”</b><span>Made for the ones you love</span></div></div>
+    <div class="gf-media"><img src="${IMG('gift-name-birthday')}" alt="FOMAXO Happy Birthday keepsake box with Old Money, a rose and a personal card" fetchpriority="high"></div>
   </section>
   <div class="gf-promise">
     <div>${ICON.pen}<p><b>Custom engraving</b><span>Names, initials or a date on the bottle.</span></p></div>
-    <div>${ICON.gift}<p><b>Luxury packaging</b><span>Our black and gold gift box, ready to give.</span></p></div>
+    <div>${ICON.gift}<p><b>Luxury packaging</b><span>Black and gold gift box or clear keepsake box.</span></p></div>
     <div>${ICON.drop}<p><b>A personal note</b><span>Your message, hand-finished on a FOMAXO card.</span></p></div>
     <div>${ICON.truck}<p><b>Free delivery</b><span>Across India, on every order.</span></p></div>
   </div>
   <section class="sec"><div class="wrap"><div class="split">
-    <div class="img rv-up"><img src="${IMG('gift-1')}" alt="FOMAXO luxury gift box with an engraved message inside the lid" loading="lazy"></div>
-    <div class="prose rv-up d1"><span class="eyebrow">The art of the gift</span><h2>Engraving &amp; <em class="metal">packaging</em></h2>
-      <p>Every FOMAXO gift is finished by hand. Tell us who it is for and what you want to say, and we will make it theirs alone.</p>
+    <div class="img rv-up"><img src="${IMG('couple')}" alt="A couple exchanging a FOMAXO gift box" loading="lazy"></div>
+    <div class="prose rv-up d1"><span class="eyebrow">The collection</span><h2>A signature as unique <em class="metal">as you</em></h2>
+      <p><b class="gold">Personalised naming.</b> Each bottle carries the recipient’s name on a custom-designed label, with an optional engraved bottle for a truly timeless keepsake.</p>
+      <p><b class="gold">Fragrance curation.</b> Choose a signature scent from the FOMAXO portfolio, or at Elite level a bespoke blend inspired by personality, lifestyle or event theme.</p>
+      <p><b class="gold">Each delivery includes</b> a full-size perfume (50ml or 100ml), a 10ml travel-size perfume, an elegant fragrance card with notes and story, and a personalised note from you to your special ones.</p>
+      <p class="small">Available for weddings, private clients and corporate elites. Limited slots each year.</p>
+      <div><a class="btn" href="#/contact?topic=name">Enquire now</a></div></div>
+  </div></div></section>
+  <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
+    <div class="prose rv-up"><span class="eyebrow">The art of the gift</span><h2>Engraving &amp; <em class="metal">gift boxes</em></h2>
+      <p>Clear keepsake boxes finished with a satin ribbon, fresh-look flowers and your own message on the glass: “Happy Birthday”, “Best Wishes” or any words you choose. From a single 50ml perfume to a full set with fragrance and FOMAXO personal care, every box is made to be remembered.</p>
       <div class="gf-opts">
-        <div><b>Engraving</b><span>A name, initials or a date on the bottle or box.</span></div>
-        <div><b>Message card</b><span>Your words inside the lid, printed in gold.</span></div>
-        <div><b>Gift box</b><span>Magnetic black box with a satin ribbon.</span></div>
-        <div><b>Keepsake box</b><span>Clear box with flowers and your message on the glass.</span></div>
+        <div><b>Engraving</b><span>A name, initials or a date on the bottle.</span></div>
+        <div><b>Words on the glass</b><span>Your message in gold on the keepsake box.</span></div>
+        <div><b>Gift box</b><span>Magnetic black box with a message inside the lid.</span></div>
+        <div><b>Message card</b><span>A personal note, hand-finished on a FOMAXO card.</span></div>
       </div>
       <p class="small">Engraving and custom boxes are made to order. Send us your details on WhatsApp and we confirm the design before we make it.</p>
-    </div>
+      <div><a class="btn line" href="${waLink('Hello FOMAXO, I would like to design a personalised gift box.')}" target="_blank" rel="noopener">Design your gift box</a></div></div>
+    <div class="img rv-up d1"><img src="${IMG('gift-name-wishes')}" alt="FOMAXO Best Wishes gift box with Royal Candy, Old Money and personal care" loading="lazy"></div>
   </div></div></section>
   <section class="sec" id="gf-sets" style="padding-top:0"><div class="wrap">
     ${secHead('Gift sets', 'Curated <em class="metal">to give</em>', '<p class="lead">Ready-made sets from the FOMAXO house, gift-wrapped as standard. Add to bag as they are, or personalise any set on WhatsApp.</p>')}
@@ -3025,7 +3014,7 @@ function route(){
     case undefined: html = home(); after = bindHome; break;
     case 'fragrances': html = fragrances(q); break;
     case 'product': if (seg[1] === 'discovery') { location.replace('#/fragrances'); return; } html = product(seg[1], q); after = () => P[seg[1]] && bindProduct(P[seg[1]]); break;
-    case 'collections': html = collections(seg[1]); if (seg[1] === 'fragrance') after = bindFragColl; break;
+    case 'collections': html = collections(seg[1]); if (seg[1] === 'fragrance') after = bindFragColl; if (seg[1] === 'name') after = bindGift; break;
     case 'personal-care': html = personalCare(q); break;
     case 'gift': html = giftPage(); after = bindGift; break;
     case 'about': html = about(); break;
@@ -3039,7 +3028,8 @@ function route(){
   if (html === '') return;
   document.body.classList.toggle('home', !seg[0]);
   app.innerHTML = `<div class="page-fade">${html}</div>`;
-  $$('#menu a').forEach(a => a.classList.toggle('on', a.dataset.r === seg[0] || (seg[0] === 'product' && a.dataset.r === (P[seg[1]] && P[seg[1]].kind === 'care' ? 'personal-care' : 'fragrances'))));
+  const navKey = seg[0] === 'collections' && seg[1] === 'name' ? 'gift' : seg[0];
+  $$('#menu a').forEach(a => a.classList.toggle('on', a.dataset.r === navKey || (seg[0] === 'product' && a.dataset.r === (P[seg[1]] && P[seg[1]].kind === 'care' ? 'personal-care' : 'fragrances'))));
   closePanels();
   window.scrollTo({top: 0, left: 0, behavior: 'instant'});
   after && after();
