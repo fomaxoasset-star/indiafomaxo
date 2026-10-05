@@ -273,6 +273,9 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .final .wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:30px}
 .final h2{font-size:clamp(32px,5vw,80px);letter-spacing:.14em;line-height:1.1}
 .final .fin-em{width:92px;height:92px;color:var(--brand)}
+.final .ctas{display:grid;grid-template-columns:repeat(2,300px);gap:14px;justify-content:center;width:100%}
+.final .ctas .btn{width:100%;padding-left:16px;padding-right:16px;min-height:56px}
+@media(max-width:760px){.final .ctas{grid-template-columns:minmax(0,1fr);max-width:380px;gap:12px}}
 
 /* ---------- page header (inner pages) ---------- */
 .phead{padding:clamp(60px,8vw,110px) 0 clamp(40px,5vw,60px);border-bottom:1px solid var(--line);position:relative;overflow:hidden}
@@ -2463,7 +2466,7 @@ app.addEventListener('click', e => {
 });
 const secHead = (eyebrow, title, extra='', center) => `<div class="sec-head${center?' c':''}"><div class="t rv-up"><span class="eyebrow">${eyebrow}</span><h2>${title}</h2>${extra}</div></div>`;
 const pageHead = (crumb, title, lead='') => `<div class="phead"><div class="wrap"><div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${crumb}</div><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
-const finalCTA = () => `<section class="final"><div class="wrap">${emblem('fin-em rv-up')}<span class="eyebrow rv-up">Inspire greatness</span><h2 class="rv-up d1">Define your<br><span class="metal">signature luxury</span></h2><div class="ctas rv-up d2" style="justify-content:center"><a class="btn" href="#/fragrances">Shop FOMAXO</a><a class="btn line" href="#/collections">Explore the collections</a></div></div></section>`;
+const finalCTA = () => `<section class="final"><div class="wrap">${emblem('fin-em rv-up')}<span class="eyebrow rv-up">Inspire greatness</span><h2 class="rv-up d1">Define your<br><span class="metal">signature luxury</span></h2><div class="ctas rv-up d2"><a class="btn" href="#/fragrances">Shop FOMAXO</a><a class="btn line" href="#/collections">Explore the collections</a></div></div></section>`;
 const pyramid = n => n.key ? `<div class="pyramid one"><div>Key notes<span>${esc(n.key)}</span></div></div>` : `<div class="pyramid"><div>Top<span>${esc(n.top)}</span></div><div>Heart<span>${esc(n.heart)}</span></div><div>Base<span>${esc(n.base)}</span></div></div>`;
 
 /* ============================ PAGES ============================ */
