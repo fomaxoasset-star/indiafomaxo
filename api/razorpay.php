@@ -38,14 +38,24 @@ function rzp(string $method, string $path, ?array $body = null): array {
   return [$code, is_string($res) ? json_decode($res, true) : null, $err ?: (string)$res];
 }
 
-/* First time an order is seen as paid: mark it, log it, email the store and the customer. */
+/* First time an order is seen as paid: give it the next order number, take its items off the stock, log it,
+   email the store and the customer. One transaction, so the checkout page and the webhook can't both do it. */
 function mark_paid(string $orderId, string $paymentId, string $via): ?array {
-  $rec = fomaxo_load_order($orderId);
-  if (!$rec) return null;
-  if (empty($rec['paid'])) {
-    $rec['paid'] = date('Y-m-d H:i'); $rec['payment'] = $paymentId;
-    if (empty($rec['review'])) $rec['review'] = fomaxo_review_token($rec);   // Verified Purchaser review link, emailed below
-    fomaxo_save_order($orderId, $rec);
+  try {
+    [$rec, $first] = shop_tx(function (PDO $db) use ($orderId, $paymentId) {
+      $rec = shop_find_order($orderId, true, $db);
+      if (!$rec || !empty($rec['paid'])) return [$rec, false];
+      $rec['no'] = $rec['no'] ?: shop_next_no($db);
+      $rec['paid'] = $rec['paid_at'] = shop_now(); $rec['payment'] = $paymentId;
+      shop_take_stock($db, $rec['items'], false);   // the money is taken, so stock goes down even if it was short
+      $db->prepare("UPDATE orders SET no = ?, paid_at = ?, payment_id = ?, status = 'paid', stock_taken = 1, updated = ? WHERE ref = ?")
+        ->execute([$rec['no'], $rec['paid'], $paymentId, shop_now(), $orderId]);
+      return [$rec, true];
+    });
+  } catch (Throwable $e) { error_log('FOMAXO Razorpay mark paid: ' . $e->getMessage()); return null; }
+  if ($first) {
+    $rec['review'] = fomaxo_review_token($rec);   // Verified Purchaser review link, emailed below
+    if ($rec['review'] !== '') shop_db()->prepare('UPDATE orders SET review = ? WHERE ref = ?')->execute([$rec['review'], $orderId]);
     $c = $rec['cust'];
     fomaxo_log_order([date('Y-m-d H:i'), $rec['no'], 'Razorpay — PAID' . ($rec['test'] ? ' (TEST)' : '') . " via $via", rupees((int)$rec['total']),
       $c['name'], $c['phone'], $c['email'], $c['address'], $c['note'], implode(' | ', $rec['rows']), $paymentId]);
@@ -74,15 +84,16 @@ if ($action === 'create') {
   if (isset($order['error'])) fail($order['error']);
   $cust = fomaxo_customer($in);
   if (isset($cust['error'])) fail($cust['error']);
-  $no = fomaxo_order_no();
-  [$code, $ro, $raw] = rzp('POST', '/orders', ['amount' => $order['subtotal'], 'currency' => 'INR', 'receipt' => $no,
-    'notes' => ['order' => $no, 'customer' => $cust['name'], 'mobile' => $cust['phone']]]);
+  /* the order number (FMX-…) is given once the payment is confirmed, so unfinished payments leave no gaps */
+  $ref = 'web-' . date('ymd') . '-' . bin2hex(random_bytes(4));
+  [$code, $ro, $raw] = rzp('POST', '/orders', ['amount' => $order['subtotal'], 'currency' => 'INR', 'receipt' => $ref,
+    'notes' => ['customer' => $cust['name'], 'mobile' => $cust['phone']]]);
   if ($code !== 200 || empty($ro['id'])) { error_log('FOMAXO Razorpay create error: ' . $raw); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 502); }
-  fomaxo_save_order($ro['id'], ['no' => $no, 'created' => date('Y-m-d H:i'), 'total' => $order['subtotal'], 'rows' => $order['rows'], 'ids' => array_column($order['items'], 'id'),
-    'cust' => $cust, 'test' => $TEST, 'paid' => null]);
-  fomaxo_log_order([date('Y-m-d H:i'), $no, 'Razorpay — awaiting payment' . ($TEST ? ' (TEST)' : ''), rupees($order['subtotal']),
-    $cust['name'], $cust['phone'], $cust['email'], $cust['address'], $cust['note'], implode(' | ', $order['rows']), $ro['id']]);
-  out(['key' => $KEY_ID, 'order_id' => $ro['id'], 'amount' => $order['subtotal'], 'currency' => 'INR', 'no' => $no,
+  try {
+    shop_insert_order(shop_db(), ['ref' => $ro['id'], 'no' => null, 'created' => shop_now(), 'method' => 'online', 'status' => 'awaiting', 'total' => $order['subtotal'],
+      'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'test' => $TEST]);
+  } catch (Throwable $e) { error_log('FOMAXO Razorpay save order: ' . $e->getMessage()); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 500); }
+  out(['key' => $KEY_ID, 'order_id' => $ro['id'], 'amount' => $order['subtotal'], 'currency' => 'INR',
        'prefill' => ['name' => $cust['name'], 'email' => $cust['email'], 'contact' => preg_replace('/\s+/', '', $cust['phone'])]]);
 }
 

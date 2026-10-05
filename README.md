@@ -14,4 +14,14 @@ Reviews are stored by `api/reviews.php` (PHP + SQLite) in a `fomaxo-private` fol
 - **Online payment (UPI, cards, netbanking, wallets)** runs through Razorpay. `api/razorpay.php` prices the order on the server from `index.html`, creates the Razorpay order and checks Razorpay's signature before an order counts as paid.
 - **Razorpay keys**: copy `api/razorpay-config.example.php` to `fomaxo-private/razorpay-config.php` (next to `public_html`) and paste the Key ID and Key Secret from the Razorpay Dashboard. Test keys (`rzp_test_…`) take no real money. Open `fomaxo.in/api/razorpay.php?status` to check the set-up.
 - **Cash on delivery**: `STORE.checkout.cod` in `index.html` sets the minimum order and fee (`cod: null` turns it off). Orders go through `api/cod.php`.
-- Every order is emailed to the store and the customer and saved in `fomaxo-private/orders/orders.csv`.
+- Every order is emailed to the store and the customer, saved in the shop database, and also copied to `fomaxo-private/orders/orders.csv`.
+
+## Orders, stock and products: fomaxo.in/admin
+
+`api/shop-db.php` keeps one database for orders, stock, products added on the admin page and admin settings.
+
+- **Database**: a Hostinger MySQL database, when `fomaxo-private/db-config.php` returns `['db_name' => …, 'db_user' => …, 'db_pass' => …]` (a `db-config.php` placed in `public_html/api/data/` is moved there on first use). Without it the same tables live in `fomaxo-private/shop.sqlite`.
+- **Order numbers**: cash on delivery and online orders share one sequence, FMX-1001, FMX-1002 … An online order gets its number when Razorpay confirms the payment, so unfinished payments leave no gaps.
+- **Admin page**: `fomaxo.in/admin` lists every order with details, payment type and status (New, Paid, Delivered, Cancelled), and downloads them as an Excel file. To set or reset the password, create `public_html/api/data/admin-password.txt` in Hostinger File Manager with the password as its only line, then open the page; it saves a hash and deletes the file.
+- **Stock**: set per product and size on the admin page. Each order takes its items off, a cancelled order puts them back, and the site shows "Only N left" (5 or fewer by default) and "Sold out". A size with no number is not counted. A stock number wins over `soldOut: true` in `index.html`.
+- **Products**: the admin page can hide or show any product, change prices, and add new fragrances, car perfumes and personal care products with photos (kept in `fomaxo-private/product-images`). The site loads these changes from `api/live.php`, and checkout prices are still worked out on the server.
