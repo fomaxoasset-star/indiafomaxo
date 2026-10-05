@@ -98,13 +98,15 @@ if ($tab === 'orders') {
 
 /* ============ Members ============ */
 if ($tab === 'members') {
-  $min = member_min(); $mq = trim((string)($_GET['q'] ?? '')); $list = members($min, $mq);
+  $min = member_min(); $spend = member_spend(); $mq = trim((string)($_GET['q'] ?? '')); $list = members($min, $spend, $mq);
+  $rule = $min . ' or more orders' . ($spend ? ' or ₹' . number_format($spend) . ' or more spent' : '');
   $body .= '<div class="row mtool"><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_min">'
-    . '<label class="chk" style="font-size:14px">Members have <input type="number" name="member_min" min="1" max="999" value="' . $min . '" style="width:70px"> or more orders</label><button class="btn line sm">Save</button></form>'
+    . '<label class="mrule">Orders at least<input type="number" name="member_min" min="1" max="999" value="' . $min . '"></label>'
+    . '<label class="mrule">or spent at least ₹<input type="number" name="member_spend" min="0" max="10000000" value="' . $spend . '"></label><button class="btn line sm">Save</button></form>'
     . '<form method="get" class="msearch"><input type="hidden" name="tab" value="members"><input type="search" name="q" value="' . h($mq) . '" placeholder="Name, mobile or email"><button class="btn line sm">Search</button></form>'
     . '<a class="btn sm" href="' . h(self_url(array_filter(['do' => 'members_excel', 'q' => $mq]))) . '">Excel</a></div>';
-  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . count($list) . ' member' . (count($list) === 1 ? '' : 's') . ' with ' . $min . ' or more orders, grouped by mobile (or email), most spent first. Cancelled and test orders are left out. Tap a member to see their orders.</span></div><div class="bb np">';
-  if (!$list) $body .= '<p class="empty">' . ($mq !== '' ? 'No member matches “' . h($mq) . '”.' : 'No customer has ' . $min . ' or more orders yet. Lower the number above to see more.') . '</p>';
+  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . count($list) . ' member' . (count($list) === 1 ? '' : 's') . ' with ' . $rule . ', grouped by mobile (or email), most spent first. Cancelled and test orders are left out. ₹0 turns the amount off. Tap a member to see their orders.</span></div><div class="bb np">';
+  if (!$list) $body .= '<p class="empty">' . ($mq !== '' ? 'No member matches “' . h($mq) . '”.' : 'No customer has ' . $rule . ' yet. Lower the numbers above to see more.') . '</p>';
   foreach ($list as $m) {
     $msg = 'Hi ' . $m['name'] . ', thank you for being a FOMAXO regular!';
     $body .= '<details class="order mem"><summary><span class="no">' . h($m['name']) . '</span>'

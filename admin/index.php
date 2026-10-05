@@ -17,7 +17,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '7';
+const ASSET_V = '8';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -159,7 +159,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['low_stock'])) shop_set('low_stock', (string)max(0, min(99, (int)$_POST['low_stock'])));
     go(['tab' => 'stock'], 'Stock saved.');
   }
-  if ($a === 'member_min') { shop_set('member_min', (string)max(1, min(999, (int)($_POST['member_min'] ?? 5)))); go(['tab' => 'members'], 'Members now need ' . member_min() . ' or more orders.'); }
+  if ($a === 'member_min') {
+    shop_set('member_min', (string)max(1, min(999, (int)($_POST['member_min'] ?? 5))));
+    shop_set('member_spend', (string)max(0, min(10000000, (int)($_POST['member_spend'] ?? 0))));
+    go(['tab' => 'members'], 'Members now need ' . member_min() . ' or more orders' . (member_spend() ? ', or ₹' . number_format(member_spend()) . ' or more spent.' : '.'));
+  }
   if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5)))); go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'show') {
     $id = (string)($_POST['id'] ?? ''); $d = $LIVE[$id] ?? null;
@@ -247,7 +251,7 @@ if ($do === 'report_excel') {
 }
 if ($do === 'members_excel') {
   $rows = array_map(fn($m) => [$m['name'], phone_fmt($m['phone']), $m['email'], $m['address'], $m['state'], $m['count'], round($m['spent'] / 100, 2), round($m['avg'] / 100, 2),
-    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), (string)($_GET['q'] ?? '')));
+    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), member_spend(), (string)($_GET['q'] ?? '')));
   send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
 }
 if ($do === 'expenses_excel') {

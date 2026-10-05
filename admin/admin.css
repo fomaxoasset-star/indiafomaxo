@@ -71,7 +71,7 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .order summary{display:grid;grid-template-columns:34px 110px 120px 1fr 90px 150px 96px;gap:10px;align-items:center;padding:8px 10px;cursor:pointer;list-style:none}.order summary::-webkit-details-marker{display:none}
 .order .no{color:var(--gold2);font-weight:600}.order .dt,.order .pm{color:var(--muted);font-size:12px}.order .cu b,.order .cu small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.order .cu small{color:var(--muted);font-size:12px}.order .tt{font-weight:600;text-align:right}
 .mem summary{grid-template-columns:minmax(0,1.2fr) minmax(0,1.3fr) 70px 100px 110px 190px}.mem .mn b{font-size:15px}.mem .mn small{color:var(--muted);font-size:11px;margin-left:4px}.mem .od{grid-template-columns:1fr 1fr 1.4fr;padding-left:14px}
-.mtool{flex:none}.msearch{display:flex;gap:8px;flex:1;min-width:240px;align-items:center}.msearch input{flex:1;min-width:0}.mem .li .badge{min-width:86px;text-align:center}
+.mtool{flex:none}.mrule{flex-direction:row!important;align-items:center;gap:8px!important;font-size:14px;white-space:nowrap}.mrule input{width:70px}.mrule input[name=member_spend]{width:100px}.msearch{display:flex;gap:8px;flex:1;min-width:240px;align-items:center}.msearch input{flex:1;min-width:0}.mem .li .badge{min-width:86px;text-align:center}
 .chips{display:flex;gap:6px;overflow-x:auto;flex:none;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid var(--line);border-radius:99px;padding:4px 11px;font-size:12px;color:var(--muted);text-decoration:none;white-space:nowrap}.chip b{color:var(--text);font-weight:500;margin-left:3px}.chip:hover,.chip.on{border-color:var(--gold);color:var(--gold2)}
 .order.os-new{border-left-color:var(--amber)}.order.os-paid{border-left-color:var(--green)}.order.os-delivered{border-left-color:var(--blue)}.order.os-cancelled{border-left-color:var(--red)}.order.os-cancelled summary{opacity:.6}
@@ -131,6 +131,7 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
   .set{grid-template-columns:1fr}.set>.box{grid-row:1;grid-column:1}
   .ctot{font-size:11px}.ctot b{font-size:14px}[data-chart] .seg button{padding:4px 7px;font-size:11px}
   .p-left th:first-child,.p-left td:first-child,.p-left .pc .th,.p-left .bh .small{display:none}.p-left .pc small{max-width:100px!important}.p-left td,.p-left th{padding-left:5px;padding-right:5px}.p-left .btn{padding:5px 8px;font-size:11px}
+  .mtool>form:first-child{gap:8px;flex-wrap:wrap}.mrule{font-size:13px}.mrule input{width:56px}.mrule input[name=member_spend]{width:86px}
   .hide-m{display:none}.show-m{display:block}
 }
 .show-m{display:none}

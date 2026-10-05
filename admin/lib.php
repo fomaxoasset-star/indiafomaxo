@@ -190,8 +190,10 @@ function order_summary(array $F): array {
 
 /* ---------------- members (repeat customers) ---------------- */
 function member_min(): int { return max(1, min(999, (int)(shop_setting('member_min') ?? '5'))); }
-/* customers grouped by mobile (last 10 digits), or email when there is no mobile; cancelled, unfinished and test orders left out; most spent first */
-function members(int $min, string $q = ''): array {
+/* rupees; a customer who spent this much is a member too, whatever their order count (0 turns it off) */
+function member_spend(): int { return max(0, min(10000000, (int)(shop_setting('member_spend') ?? '10000'))); }
+/* customers with $min or more orders, or who spent ₹$spend or more, grouped by mobile (last 10 digits), or email when there is no mobile; cancelled, unfinished and test orders left out; most spent first */
+function members(int $min, int $spend, string $q = ''): array {
   $M = [];
   foreach (shop_db()->query("SELECT id, no, created, status, method, total, name, phone, email, address, state FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 ORDER BY created, id") as $o) {
     $digits = substr(preg_replace('/\D/', '', (string)$o['phone']), -10);
@@ -205,9 +207,10 @@ function members(int $min, string $q = ''): array {
   $q = strtolower(trim($q)); $qd = preg_replace('/\D/', '', $q);
   $out = [];
   foreach ($M as $m) {
-    if (count($m['orders']) < $min) continue;
+    $spent = array_sum(array_map(fn($o) => (int)$o['total'], $m['orders']));
+    if (count($m['orders']) < $min && !($spend > 0 && $spent >= $spend * 100)) continue;
     if ($q !== '' && !str_contains(strtolower($m['name'] . ' ' . $m['email']), $q) && !(strlen($qd) >= 4 && str_contains($m['phone'], $qd))) continue;
-    $m['count'] = count($m['orders']); $m['spent'] = array_sum(array_map(fn($o) => (int)$o['total'], $m['orders']));
+    $m['count'] = count($m['orders']); $m['spent'] = $spent;
     $m['avg'] = intdiv($m['spent'], $m['count']); $m['first'] = $m['orders'][0]['created']; $m['last'] = end($m['orders'])['created'];
     $out[] = $m;
   }
