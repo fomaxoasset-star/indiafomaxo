@@ -50,6 +50,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}in
 .pnl tr.future td{color:var(--muted);opacity:.6}.neg{color:var(--red)}.warn{color:var(--amber)}.stat.profit b{color:var(--green)}.stat.loss b{color:var(--red)}
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}.dash .card{margin:0}.dash .row-head h2{margin:0}.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.stats + h2{margin-top:6px}
 @media(max-width:820px){.dash{grid-template-columns:1fr}}
+.chk input{width:auto;margin:0}.ph .chk{font-size:13px}
+.photos{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 14px}.ph{width:150px;display:flex;flex-direction:column;gap:4px}.ph img{width:150px;height:150px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:#fff}.edit h3{font-size:15px;margin:6px 0}.edit h2 small{font-size:13px;margin-left:8px}
 .linkbtn{background:none;border:0;color:var(--red);cursor:pointer;font:inherit;font-size:13px;padding:0}
 @media(max-width:820px){.stats.two{grid-template-columns:1fr}.pnl{display:block;overflow-x:auto;white-space:nowrap}.card-t{display:block;overflow-x:auto}}
 .pager{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}.pager a{padding:6px 11px;border:1px solid var(--line);border-radius:6px;text-decoration:none}.pager a.on{border-color:var(--gold)}
@@ -194,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     go(['tab' => 'products']);
   }
+  if ($a === 'edit') { $id = (string)($_POST['id'] ?? ''); $msg = edit_product($id, $CAT, $LIVE); go(['tab' => 'products'] + ($msg === '' ? [] : ['edit' => $id]), $msg === '' ? trim((string)($_POST['name'] ?? 'The product')) . ' is updated on the website.' : $msg); }
   if ($a === 'add') { $msg = add_product($CAT); go(['tab' => 'products'] + ($msg === '' ? [] : ['add' => 1]), $msg === '' ? 'Product added. It is on the website now.' : $msg); }
   if ($a === 'expense') {
     $day = (string)($_POST['day'] ?? ''); $amt = (string)($_POST['amount'] ?? ''); $cat = (string)($_POST['category'] ?? '');
@@ -267,6 +270,78 @@ function add_product(array $CAT): string {
   }
   shop_save_product($id, true, false, ['kind' => $kind, 'name' => $name, 'type' => $type, 'vol' => $vol, 'prices' => $prices, 'compareAt' => $was, 'site' => $site], (int)time());
   foreach ($stock as $opt => $q) shop_set_stock($id, (string)$opt, $q);
+  return '';
+}
+/* A product as the website shows it now: index.html with any edits made here, or the product added here. */
+function product_now(string $id, array $LIVE): ?array {
+  $d = $LIVE[$id] ?? null;
+  if (!empty($d['added'])) return ($d['site'] ?? null) ? $d['site'] + ['kind' => $d['kind'] ?? ''] : null;
+  $p = fomaxo_store_product($id); if (!$p) return null;
+  if ($d && isset($d['edit'])) $p = array_merge($p, $d['edit']);
+  if ($d) {   // prices as saved on the Products list
+    foreach ((array)($d['prices'] ?? []) as $k => $v) { if (($p['kind'] ?? '') === 'care') $p['price'] = $v; else $p['prices'][$k] = $v; }
+    foreach ((array)($d['compareAt'] ?? []) as $k => $v) { if (($p['kind'] ?? '') === 'care') $p['was'] = $v ?: null; elseif ($v > 0) $p['compareAt'][$k] = $v; else unset($p['compareAt'][$k]); }
+  }
+  return $p;
+}
+function img_url(string $k): string { return str_starts_with($k, 'up/') ? '/api/live.php?img=' . rawurlencode(substr($k, 3)) : '/assets/img/' . rawurlencode($k) . '.webp'; }
+
+/* Saves the edit form for any product (from index.html or added here). Returns '' or what is wrong. */
+function edit_product(string $id, array $CAT, array $LIVE): string {
+  $now = product_now($id, $LIVE); if (!$now || !isset($CAT[$id])) return 'That product was not found.';
+  $kind = (string)($now['kind'] ?? ''); $added = !empty($LIVE[$id]['added']);
+  $t = fn($k, $max) => trim(mb_substr(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? '')) ?? '', 0, $max));
+  $name = $t('name', 60); $type = $t('type', 80); $short = $t('short', 200); $label = $t('label', 24);
+  $desc = array_values(array_filter(array_map(fn($x) => trim(mb_substr($x, 0, 1200)), preg_split('/\n\s*\n/', str_replace("\r", '', (string)($_POST['description'] ?? '')))), 'strlen'));
+  if (mb_strlen($name) < 2) return 'Please give the product a name.';
+  if ($type === '') return 'Please write the product type.';
+  $sizes = []; $prices = []; $was = [];
+  foreach ([0, 1, 2, 3] as $i) {
+    $price = trim((string)($_POST['price'][$i] ?? '')); if ($price === '') continue;
+    if (!is_numeric($price) || $price < 1) return 'Please write each price as a number of rupees.';
+    $opt = $kind === '' ? (string)(int)($_POST['size'][$i] ?? 0) : 'one';
+    if ($kind === '' && (int)$opt < 1) return 'Please write the size in ml for each price.';
+    if (isset($prices[$opt])) return $kind === '' ? 'Each size can only be listed once.' : 'This product has one price. Please fill in only the first row.';
+    $sizes[] = $kind === '' ? (int)$opt : 'one'; $prices[$opt] = round((float)$price, 2);
+    $w = trim((string)($_POST['was'][$i] ?? '')); $was[$opt] = is_numeric($w) && $w > $price ? round((float)$w, 2) : 0;
+  }
+  if (!$prices) return 'Please add a price.';
+  /* photos: the ones ticked to keep, in their order, then new uploads; the one picked as main goes first */
+  $old = $kind === 'care' ? array_values(array_filter([$now['image'] ?? '', ...($now['extraImages'] ?? [])])) : array_values($now['images'] ?? []);
+  $keep = array_values(array_filter($old, fn($k) => in_array($k, (array)($_POST['keep'] ?? []), true)));
+  $new = save_images($id); if (is_string($new)) return $new;
+  $new = array_map(fn($f) => "up/$f", $new);
+  $main = (string)($_POST['main'] ?? '');
+  $images = $main === 'new' && $new ? array_merge($new, $keep) : array_merge($keep, $new);
+  if (in_array($main, $keep, true)) $images = array_values(array_unique([$main, ...$images]));
+  $images = array_slice($images, 0, 8);
+  if (!$images) return 'Please keep or add at least one photo.';
+  $orig = fomaxo_store_product($id); $orig = $orig ? ($kind === 'care' ? array_values(array_filter([$orig['image'] ?? '', ...($orig['extraImages'] ?? [])])) : array_values($orig['images'] ?? [])) : null;
+  $photosChanged = $added || $images !== $orig;   // photos the same as in index.html are left out, so its other pictures (10ml, editorial) stay
+  if ($kind === 'care') {
+    $f = ['name' => $name, 'type' => $type, 'cat' => in_array($_POST['cat'] ?? '', ['hair', 'body', 'face', 'lips'], true) ? $_POST['cat'] : ($now['cat'] ?? 'body'),
+      'vol' => $t('vol', 20), 'price' => $prices['one'], 'was' => $was['one'] ?: null, 'short' => $short ?: $type, 'description' => $desc ?: [$short ?: $type], 'badge' => $label];
+    if ($photosChanged) $f += ['image' => $images[0], 'extraImages' => array_slice($images, 1)];
+  } else {
+    $f = ['name' => $name, 'family' => $type, 'tag' => $label, 'short' => $short ?: $type, 'description' => $desc ?: [$short ?: $type],
+      'sizes' => $sizes, 'prices' => $prices, 'compareAt' => array_filter($was)];
+    if ($kind === 'car') $f['vol'] = $t('vol', 30);
+    if ($kind === '') {
+      $f['tier'] = in_array($_POST['tier'] ?? '', ['elite', 'signature', 'prestige'], true) ? $_POST['tier'] : '';
+      $notes = array_filter(['top' => $t('top', 120), 'heart' => $t('heart', 120), 'base' => $t('base', 120)]);
+      $f['notes'] = count($notes) === 3 ? $notes : ($t('key', 160) !== '' ? ['key' => $t('key', 160)] : null);
+    }
+    if ($photosChanged) $f['images'] = $images;
+  }
+  $d = $LIVE[$id] ?? ['added' => false, 'hidden' => false, 'sort' => 0];
+  $data = array_diff_key($d, array_flip(['added', 'hidden', 'sort']));
+  $data['prices'] = $prices; $data['compareAt'] = $was;
+  if ($added) {
+    $site = array_merge($data['site'], $f); if (isset($f['notes']) && $f['notes'] === null) unset($site['notes']);
+    if (($site['tier'] ?? null) === '') unset($site['tier']);
+    $data = array_merge($data, ['name' => $name, 'type' => $type, 'vol' => $f['vol'] ?? '', 'site' => $site]);
+  } else $data['edit'] = $f;
+  shop_save_product($id, $added, $d['hidden'], $data, $d['sort']);
   return '';
 }
 /* Saves up to 4 uploaded photos for a new product, re-encoded (WebP when the server can, else JPEG), at most 1600px. */
@@ -525,16 +600,46 @@ if ($tab === 'stock') {
   $body .= '</tbody></table><div class="sticky"><button class="btn">Save stock and costs</button></div></form>';
 }
 
-if ($tab === 'products') {
+$editId = (string)($_GET['edit'] ?? '');
+if ($tab === 'products' && $editId !== '' && isset($CAT[$editId]) && ($ep = product_now($editId, $LIVE))) {
+  $kind = (string)($ep['kind'] ?? ''); $care = $kind === 'care';
+  $imgs = $care ? array_values(array_filter([$ep['image'] ?? '', ...($ep['extraImages'] ?? [])])) : array_values($ep['images'] ?? []);
+  $n = $ep['notes'] ?? []; $v = fn($k) => h((string)($ep[$k] ?? ''));
+  $body .= '<p><a href="' . h(self_url(['tab' => 'products'])) . '">‹ All products</a></p>'
+    . '<form method="post" enctype="multipart/form-data" class="card addf edit">' . $csrfField . '<input type="hidden" name="action" value="edit"><input type="hidden" name="id" value="' . h($editId) . '">'
+    . '<h2 class="wide">Edit ' . h($CAT[$editId]['name']) . ' <small class="muted">' . h(kind_label($kind)) . '</small></h2>'
+    . '<label>Name<input name="name" required maxlength="60" value="' . $v('name') . '"></label>'
+    . '<label>Type<input name="type" required maxlength="80" value="' . h((string)($care ? ($ep['type'] ?? '') : ($ep['family'] ?? ''))) . '" placeholder="' . ($care ? 'e.g. Moisturizing Shampoo' : 'e.g. Eau de Parfum') . '"></label>'
+    . ($kind === '' ? '<label>Fragrance tier<select name="tier">' . implode('', array_map(fn($k, $l) => '<option value="' . $k . '"' . (($ep['tier'] ?? '') === $k ? ' selected' : '') . ">$l</option>", ['', 'elite', 'signature', 'prestige'], ['None', 'Elite', 'Signature', 'Prestige'])) . '</select></label>' : '')
+    . ($care ? '<label>Personal care section<select name="cat">' . implode('', array_map(fn($k) => '<option value="' . $k . '"' . (($ep['cat'] ?? '') === $k ? ' selected' : '') . '>' . ucfirst($k) . '</option>', ['hair', 'body', 'face', 'lips'])) . '</select></label>' : '')
+    . ($kind !== '' ? '<label>Size shown <small>(optional)</small><input name="vol" maxlength="30" value="' . $v('vol') . '" placeholder="' . ($care ? 'e.g. 250ml' : 'Hanging diffuser') . '"></label>' : '')
+    . '<label>Label on the photo <small>(optional)</small><input name="label" maxlength="24" value="' . h((string)($care ? ($ep['badge'] ?? '') : ($ep['tag'] ?? ''))) . '" placeholder="e.g. New, Bestseller"></label>'
+    . '<label class="wide">Short line<input name="short" maxlength="200" value="' . $v('short') . '"></label>'
+    . '<label class="wide">Description<textarea name="description" rows="6" maxlength="3000" placeholder="Leave an empty line between paragraphs">' . h(implode("\n\n", (array)($ep['description'] ?? []))) . '</textarea></label>';
+  if ($kind === '') $body .= '<div class="wide notes"><label>Top notes<input name="top" maxlength="120" value="' . h((string)($n['top'] ?? '')) . '"></label><label>Heart notes<input name="heart" maxlength="120" value="' . h((string)($n['heart'] ?? '')) . '"></label><label>Base notes<input name="base" maxlength="120" value="' . h((string)($n['base'] ?? '')) . '"></label></div>'
+    . '<label class="wide">Key notes <small>(used when top, heart and base are not all filled in)</small><input name="key" maxlength="160" value="' . h((string)($n['key'] ?? '')) . '"></label>';
+  $rows = $care ? [['one', $ep['price'] ?? '', $ep['was'] ?? '']] : array_map(fn($sz) => [$sz, $ep['prices'][$sz] ?? '', $ep['compareAt'][$sz] ?? ''], (array)($ep['sizes'] ?? []));
+  $body .= '<div class="wide sizes"><h3>' . ($kind === '' ? 'Sizes and prices' : 'Price') . '</h3>' . ($kind === '' ? '<p class="muted small">One row per size. Empty a row to stop selling that size.</p>' : '');
+  foreach (range(0, $kind === '' ? 3 : 0) as $i) {
+    [$sz, $pr, $wa] = $rows[$i] ?? ['', '', ''];
+    $body .= '<div class="srow">' . ($kind === '' ? '<label>Size (ml)<input type="number" name="size[]" min="1" max="1000" value="' . h((string)$sz) . '"></label>' : '')
+      . '<label>Price ₹<input type="number" step="0.01" min="1" name="price[]" value="' . h((string)$pr) . '"' . ($i ? '' : ' required') . '></label><label>Was ₹ <small>(optional, shown crossed out)</small><input type="number" step="0.01" min="0" name="was[]" value="' . h((string)($wa ?: '')) . '"></label></div>';
+  }
+  $body .= '</div><div class="wide"><h3>Photos</h3><p class="muted small">Untick a photo to remove it. Pick the main photo, which shows first in the shop.</p><div class="photos">';
+  foreach ($imgs as $k) $body .= '<div class="ph"><img src="' . h(img_url($k)) . '" alt="" loading="lazy"><label class="chk"><input type="checkbox" name="keep[]" value="' . h($k) . '" checked> Keep</label><label class="chk"><input type="radio" name="main" value="' . h($k) . '"' . ($k === $imgs[0] ? ' checked' : '') . '> Main photo</label></div>';
+  $body .= '</div><label>Add photos <small>(up to 4, JPG, PNG or WebP)</small><input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple></label>'
+    . '<label class="chk"><input type="radio" name="main" value="new"> Make the first new photo the main photo</label></div>'
+    . '<div class="wide sticky"><button class="btn">Save changes</button> <a class="btn line" href="' . h(self_url(['tab' => 'products'])) . '">Cancel</a></div></form>';
+} elseif ($tab === 'products') {
   $body .= '<div class="row-head"><h2>Products</h2><a class="btn" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '#add">Add a product</a></div>'
-    . '<p class="muted">Untick <b>On website</b> to remove a product from the shop (you can bring it back any time). Products you added here can also be deleted. Prices are in rupees; the crossed-out price is optional.</p>';
+    . '<p class="muted">Use <b>Edit details &amp; photos</b> to change a product’s name, description, notes, sizes or photos. Untick <b>On website</b> to remove a product from the shop (you can bring it back any time). Products you added here can also be deleted. Prices are in rupees; the crossed-out price is optional.</p>';
   foreach ($CAT as $id => $p) {
     $form = '<form method="post" class="prod' . (!empty($p['hidden']) ? ' off' : '') . '">' . $csrfField . '<input type="hidden" name="action" value="product"><input type="hidden" name="id" value="' . h($id) . '">'
       . '<div class="pimg">' . ($p['img'] ? '<img src="/' . h($p['img']) . '" alt="" loading="lazy">' : '') . '</div>'
       . '<div class="pinfo"><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . (!empty($p['added']) ? ' · added here' : '') . '</small>'
       . '<label class="chk"><input type="checkbox" name="show" value="1"' . (empty($p['hidden']) ? ' checked' : '') . '> On website</label></div><div class="pprices">';
     foreach ($p['prices'] as $opt => $v) $form .= '<div><span>' . h(opt_label($p, (string)$opt)) . '</span><label>Price ₹<input type="number" step="0.01" min="1" name="price[' . h((string)$opt) . ']" value="' . h((string)$v) . '" required></label><label>Was ₹<input type="number" step="0.01" min="0" name="was[' . h((string)$opt) . ']" value="' . h(!empty($p['was'][$opt]) ? (string)$p['was'][$opt] : '') . '"></label></div>';
-    $form .= '</div><div class="pact"><button class="btn sm">Save</button></form>';
+    $form .= '</div><div class="pact"><button class="btn sm">Save</button></form><a class="btn sm line" href="' . h(self_url(['tab' => 'products', 'edit' => $id])) . '">Edit details &amp; photos</a>';
     if (!empty($p['added'])) $form .= '<form method="post" onsubmit="return confirm(\'Delete ' . h(addslashes($p['name'])) . ' for good?\')">' . $csrfField . '<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="' . h($id) . '"><button class="btn sm danger">Delete</button></form>';
     $body .= $form . '</div>';
   }
