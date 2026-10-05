@@ -386,6 +386,8 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 @media(max-width:620px){.rv-loc{grid-template-columns:minmax(0,1fr)}}
 .rv-loc label i{font-style:normal;text-transform:none;letter-spacing:.04em;color:var(--muted)}
 .rv-city{position:relative}
+.rv-form input[name=name],.rv-form input[name=city],.rv-form input[name=country]{text-transform:capitalize}
+.rv-form input[name=name]::placeholder,.rv-form input[name=city]::placeholder,.rv-form input[name=country]::placeholder{text-transform:none}
 .rv-sug{position:absolute;left:0;right:0;top:100%;z-index:5;margin:4px 0 0;padding:4px 0;list-style:none;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 14px 30px rgba(0,0,0,.35);text-transform:none;letter-spacing:.02em}
 .rv-sug li{padding:10px 14px;font-size:14px;color:var(--ivory);cursor:pointer}
 .rv-sug li:hover,.rv-sug li.on{background:rgba(201,162,92,.14);color:var(--gold-hi)}
@@ -3294,8 +3296,8 @@ function bindRvForm(form, p, token, done){
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';
     const fd = new FormData(); fd.append('product', p.id); fd.append('rating', rating); fd.append('text', form.elements.text.value);
-    fd.append('name', anon.checked ? '' : name.value); fd.append('anonymous', anon.checked ? '1' : ''); fd.append('website', form.elements.website.value);
-    if (!anon.checked) { fd.append('city', city.value.trim()); fd.append('country', (rvNation(nation.value) || [nation.value.trim()])[0]); }
+    fd.append('name', anon.checked ? '' : rvCap(name.value)); fd.append('anonymous', anon.checked ? '1' : ''); fd.append('website', form.elements.website.value);
+    if (!anon.checked) { fd.append('city', rvCap(city.value)); fd.append('country', (rvNation(nation.value) || [rvCap(nation.value)])[0]); }
     if (token) fd.append('token', token); files.forEach(f => fd.append('photos[]', f));
     const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
     try { const d = await rvPost('submit', fd); done(d); }
@@ -3306,15 +3308,17 @@ function bindRvForm(form, p, token, done){
 
 let rvVoted = []; try { rvVoted = JSON.parse(localStorage.getItem('fomaxo_rv_voted') || '[]'); } catch(e) {}
 /* "— Kerala, 🇮🇳": the city as typed, the nation as its flag (its name when the flag is unknown) */
+/* "arjun menon" → "Arjun Menon": first letter of every word in a name or place, the rest left as typed */
+const rvCap = v => String(v || '').trim().replace(/(^|[\s\-'(.,])(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase());
 function rvPlace(r){
   if (r.name === 'Anonymous') return '';
-  const n = rvNation(r.country), parts = [r.city, n ? `<span class="rv-flag" title="${esc(n[0])}" role="img" aria-label="${esc(n[0])}">${rvFlag(n[1])}</span>` : r.country].filter(Boolean);
+  const n = rvNation(r.country), parts = [rvCap(r.city), n ? `<span class="rv-flag" title="${esc(n[0])}" role="img" aria-label="${esc(n[0])}">${rvFlag(n[1])}</span>` : rvCap(r.country)].filter(Boolean);
   return parts.length ? `<span class="rv-from"> — ${parts.map((x, i) => i === 0 && r.city ? esc(x) : (n ? x : esc(x))).join(', ')}</span>` : '';
 }
 function rvItem(r){
   const voted = rvVoted.includes(r.id);
   return `<article class="rv">
-    <div class="rv-head"><b>${esc(r.name)}${rvPlace(r)}</b>${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}<time>${rvDate(r.date)}</time></div>
+    <div class="rv-head"><b>${esc(rvCap(r.name))}${rvPlace(r)}</b>${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}<time>${rvDate(r.date)}</time></div>
     ${rvStars(r.rating)}
     <p class="rv-text">“${esc(r.text)}”</p>
     ${r.photos.length ? `<div class="rv-photos">${r.photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}
