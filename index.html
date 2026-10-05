@@ -1691,7 +1691,13 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-set .gf-total small{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
 .gf-set .gf-total .price{font-size:30px}
 .gf-set .gf-total s{font-size:.6em;color:var(--muted);margin-right:8px}
-.gf-set .ctas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gf-set .ctas{display:grid;grid-template-columns:1fr;gap:10px;margin-top:auto}
+.gf-set .ctas .btn svg{width:18px;height:18px}
+.gf-pick{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:16px;padding-bottom:6px}
+.gf-pick small{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.gf-pick select{width:100%;appearance:none;-webkit-appearance:none;background-color:transparent;border:1px solid var(--line-2);border-radius:0;padding:12px 40px 12px 14px;font:inherit;font-size:14px;color:var(--ivory);cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.gf-pick select:focus{outline:none;border-color:var(--gold)}
+.gf-pick option{background:var(--black);color:var(--ivory)}
 .gf-set .ctas .btn{padding:0 12px}
 .gf-occ{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;background:var(--line)}
 .gf-occ a{position:relative;min-height:440px;overflow:hidden;background:#000;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:clamp(22px,2.4vw,36px);color:#f2ebdd}
@@ -2808,23 +2814,22 @@ const GIFT_SETS = [
 ];
 const giftSets = () => GIFT_SETS.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
   .filter(g => g.items.length === GIFT_SETS.find(x => x.id === g.id).items.length);
+/* every product that can be chosen in a gift set dropdown, one option per size */
+const giftOptions = (selId, selSize) => [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.filter(sz => !sizeOut(p, sz)).map(sz => {
+  const v = `${p.id}|${sz}`, label = p.kind ? p.name : `${p.name} · ${sz}ml`;
+  return `<option value="${v}"${p.id === selId && String(sz) === String(selSize) ? ' selected' : ''}>${esc(label)}</option>`;
+})).join('');
 const waLink = text => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(text)}`;
 const WA_SVG = () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${SOC_ICON.whatsapp.replace(/^<g transform="[^"]*">/, '<g>')}</svg>`;
 function giftPage(){
   document.title = 'Personalized Gifting — FOMAXO';
   const sets = giftSets();
-  const setCard = (g, i) => {
-    const total = g.items.reduce((t, [id, s]) => t + +P[id].prices[s], 0);
-    const was = g.items.reduce((t, [id, s]) => t + +((P[id].compareAt && P[id].compareAt[s]) || P[id].prices[s]), 0);
-    const cur = curOf(P[g.items[0][0]]);
-    return `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
+  const setCard = (g, i) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
       <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s]) => `<img src="${IMG(imgFor(P[id], s))}" alt="" loading="lazy">`).join('')}</div>
       <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-        <ul>${g.items.map(([id, s]) => `<li><span>${esc(P[id].name)}${P[id].kind ? '' : ` · ${s}ml`}</span><span>${money(P[id].prices[s], cur)}</span></li>`).join('')}</ul>
-        <div class="gf-total"><small>Gift set</small><span class="price">${was > total ? `<s>${money(was, cur)}</s>` : ''}${money(total, cur)}</span></div>
-        <div class="ctas"><button class="btn line sm tc" type="button" data-gset="${g.id}">Add To Cart</button><button class="btn sm tc" type="button" data-gbuy="${g.id}">Buy Now</button><a class="btn line sm" href="${waLink(`Hello FOMAXO, I would like to order the "${g.name}" gift set in a custom box. My needs: `)}" target="_blank" rel="noopener">Customise</a></div>
+        <div class="gf-pick"><small>Choose your products</small>${g.items.map(([id, s], k) => `<select data-gpick="${g.id}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s)}</select>`).join('')}</div>
+        <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}Personalise</button></div>
       </div></article>`;
-  };
   const occ = [
     ['Festive', 'Diwali', 'Hampers that glow brighter than the diyas. Bulk orders for family and clients.', 'gift-set-3'],
     ['Shaadi', 'Weddings', 'Favours, trousseau and couple gifts in custom boxes made for your wedding theme.', 'gift-set-7'],
@@ -2871,7 +2876,7 @@ function giftPage(){
     <div class="img rv-up d1"><img src="${IMG('gift-box-wishes')}" alt="FOMAXO custom gift box with Royal Candy, Old Money, pink flowers and Best Wishes in gold" loading="lazy"></div>
   </div></div></section>
   <section class="sec" id="gf-sets" style="padding-top:0"><div class="wrap">
-    ${secHead('Gift sets', 'Curated <em class="metal">to give</em>', '<p class="lead">Ready-made sets from the FOMAXO house, gift-wrapped as standard. Add to bag as they are, or customise any set on WhatsApp.</p>')}
+    ${secHead('Gift sets', 'Curated <em class="metal">to give</em>', '<p class="lead">Gift sets from the FOMAXO house, made up in a custom box. Choose the products for any set, tap Personalise and send it to us on WhatsApp.</p>')}
     <div class="gf-sets">${sets.map(setCard).join('')}</div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap">
@@ -2896,9 +2901,9 @@ function giftPage(){
   </div></div></section>` + finalCTA();
 }
 function bindGift(){
-  $$('[data-gset]').forEach(b => b.onclick = () => { const g = giftSets().find(x => x.id === b.dataset.gset); if (!g) return;
-    g.items.forEach(([id, s]) => addToCart(id, s, 1, true)); toast(`${g.name} added to your bag`); });
-  $$('[data-gbuy]').forEach(b => b.onclick = () => { const g = giftSets().find(x => x.id === b.dataset.gbuy); if (g) buyNow(g.items.map(([id, s]) => ({id, opt:s, qty:1}))); });
+  $$('[data-gpers]').forEach(b => b.onclick = () => { const g = GIFT_SETS.find(x => x.id === b.dataset.gpers); if (!g) return;
+    const picks = $$(`[data-gpick="${g.id}"]`).map(sel => { const [id, sz] = sel.value.split('|'); const p = P[id]; return p ? `- ${p.kind ? p.name : `${p.name} ${sz}ml`}` : ''; }).filter(Boolean);
+    const a = document.createElement('a'); a.href = waLink(`Hello FOMAXO, I am interested in the "${g.name}" gift set with these products:\n${picks.join('\n')}\n\nPlease help me personalise it.`); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
 }
 function pcBadges(p, size){
