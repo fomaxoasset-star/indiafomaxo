@@ -603,6 +603,11 @@ footer{border-top:1px solid var(--line);background:var(--deep);padding:80px 0 34
 
 .pc-photo img{opacity:1;object-position:center 40%}
 .pc-photo::after{background:linear-gradient(90deg,transparent 70%,var(--black))}
+/* full portrait poster: shown whole, never cropped */
+.pc-poster{background:#0b0906}
+.pc-poster img{position:static;display:block;width:100%;height:auto;opacity:1}
+.pc-poster::after,html[data-mode="light"] .pc-poster::after{display:none}
+@media(min-width:861px){.pc:has(.pc-poster){grid-template-columns:minmax(0,.8fr) minmax(0,1fr)}}
 @media(max-width:860px){.pc-photo{min-height:360px}.pc-photo::after{background:linear-gradient(180deg,transparent 75%,var(--black))}}
 
 /* discovery set picker */
@@ -2971,7 +2976,7 @@ function personalCare(q){
     ${list.length ? `<div class="pc-grid">${list.map((p, i) => pcCard(p, i)).join('')}</div>` : `<p class="small" style="padding:40px 0">No products in this category yet.</p>`}
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="pc rv-up">
-    <div class="pc-media pc-photo"><img src="${IMG('personal-care')}" alt="The FOMAXO personal care collection" loading="lazy"></div>
+    <div class="pc-media pc-poster"><img src="${IMG('personal-care-poster')}" alt="FOMAXO Personal Care: car perfume, Radiant Bloom face wash, Passion Sin shower gel, Royal Candy, Matcha Coco, Old Money and pomegranate lip balm" width="1024" height="1536" loading="lazy"></div>
     <div class="pc-copy"><span class="eyebrow">Personal Care Collection</span><h2>Elevating <em class="metal">everyday rituals</em></h2>
       <p class="lead">Our ambition extends beyond fragrance: a growing range of high-end personal care, designed to elevate everyday rituals and inspire aspirational minds.</p>
       <p class="lead">Every product is guided by the same principles as our perfumes: simplicity, quality and recognisability.</p>
