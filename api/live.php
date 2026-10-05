@@ -28,6 +28,8 @@ try {
     if (!empty($d['prices'])) $live['prices'][$id] = $d['prices'];
     if (!empty($d['compareAt'])) $live['compareAt'][$id] = $d['compareAt'];
   }
+  if (($loc = shop_store_location()) !== null)
+    $live['stores'] = $loc['show'] ? array_map(fn($st) => $st + ['mapQuery' => shop_map_query_from_link((string)($st['link'] ?? ''))], $loc['stores']) : false;
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {
   error_log('FOMAXO live: ' . $e->getMessage());

@@ -424,6 +424,28 @@ if ($tab === 'reviews') {
   $body .= '</div></div></div>';
 }
 
+/* ============ Stores (shown on the Contact page with a Google Map each) ============ */
+if ($tab === 'stores') {
+  $loc = stores_all();
+  $fields = fn(array $st) => '<label>Store name<input name="name" maxlength="80" value="' . h((string)($st['name'] ?? '')) . '" placeholder="FOMAXO Store" required></label>'
+    . '<label>Google Maps link<input type="url" name="link" maxlength="600" value="' . h((string)($st['link'] ?? '')) . '" placeholder="https://maps.app.goo.gl/…"></label>'
+    . '<label>Address <small>(optional if there is a link)</small><textarea name="address" rows="2" maxlength="300" placeholder="Shop no, building, street, area, city, PIN">' . h((string)($st['address'] ?? '')) . '</textarea></label>'
+    . '<label>Opening hours <small>(optional)</small><input name="hours" maxlength="120" value="' . h((string)($st['hours'] ?? '')) . '" placeholder="Open daily · 10 am – 10 pm"></label>';
+  $body .= $sw('#stPanes', ['list' => 'Your stores', 'add' => 'Add a store']) . '<div class="exp panes" id="stPanes">'
+    . '<form method="post" class="box" data-pane="add">' . $csrfField . '<input type="hidden" name="action" value="store_add"><div class="bh"><h3>Add a store</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
+    . $fields([]) . '<p class="muted small" style="margin:0">In Google Maps, open your store, press <b>Share</b> and <b>Copy link</b>, then paste it here.</p><button class="btn" style="width:100%">Add store</button></div></form>'
+    . '<div class="box on" data-pane="list"><div class="bh"><h3>Your stores · ' . count($loc['stores']) . '</h3>'
+    . '<form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="stores_show"><input type="hidden" name="show" value="' . ($loc['show'] ? '0' : '1') . '"><span class="muted small">' . ($loc['show'] ? 'Shown on the Contact page' : 'Hidden on the Contact page') . '</span><button class="btn line sm">' . ($loc['show'] ? 'Hide' : 'Show') . '</button></form></div><div class="bb stores-l">';
+  if (!$loc['stores']) $body .= '<p class="empty">No stores yet. Add one and it shows on the Contact page with a Google Map.</p>';
+  foreach ($loc['stores'] as $i => $st) {
+    $mapQ = shop_map_query_from_link((string)($st['link'] ?? '')) ?: trim(($st['name'] ?? '') . ', ' . ($st['address'] ?? ''), ', ');
+    $body .= '<div class="store-c"><form method="post" class="store-f">' . $csrfField . '<input type="hidden" name="action" value="store_save"><input type="hidden" name="i" value="' . $i . '"><b class="gold">Store ' . ($i + 1) . '</b>' . $fields($st)
+      . '<div class="row"><button class="btn">Save</button><button class="btn line danger" formnovalidate name="action" value="store_remove" data-confirm="Remove ' . h((string)($st['name'] ?: 'this store')) . ' from the Contact page?">Remove</button></div></form>'
+      . '<div class="map-prev"><iframe src="https://maps.google.com/maps?q=' . h(rawurlencode($mapQ)) . '&amp;z=16&amp;output=embed" title="Map preview, store ' . ($i + 1) . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div></div>';
+  }
+  $body .= '</div></div></div>';
+}
+
 /* ============ Settings ============ */
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');

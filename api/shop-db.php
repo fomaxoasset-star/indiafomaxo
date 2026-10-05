@@ -132,6 +132,25 @@ function shop_upsert(string $table, array $keys, array $row): void {
 
 function shop_setting(string $k): ?string { $s = shop_db()->prepare('SELECT v FROM settings WHERE k = ?'); $s->execute([$k]); $v = $s->fetchColumn(); return $v === false ? null : (string)$v; }
 function shop_set(string $k, string $v): void { shop_upsert('settings', ['k'], ['k' => $k, 'v' => $v]); }
+/* The stores set on the admin page (Settings → Stores), shown on the Contact page with a Google Map each.
+   null = never saved, so the site uses STORE.contact.stores in index.html. */
+function shop_store_location(): ?array {
+  $v = shop_setting('store_loc'); if ($v === null) return null;
+  $d = json_decode($v, true); return is_array($d) && isset($d['stores']) ? $d : null;
+}
+/* The stores as the admin page edits them: the saved list, or the ones in index.html until the first save. */
+function stores_all(): array {
+  return shop_store_location() ?? ['show' => true, 'stores' => array_values(array_map(fn($st) => array_intersect_key((array)$st, array_flip(['name', 'address', 'hours', 'link'])), fomaxo_store_data()['contact']['stores'] ?? []))];
+}
+/* A place for the map from a pasted Google Maps link: the pin's lat,lng, the place name or the search words.
+   Short share links (maps.app.goo.gl) carry none of these, so the address is used for the map then. */
+function shop_map_query_from_link(string $url): string {
+  if (preg_match('~[?&](?:q|query|destination)=([^&#]+)~', $url, $m)) return trim(urldecode(str_replace('+', ' ', $m[1])));
+  if (preg_match('~!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)~', $url, $m)) return "$m[1],$m[2]";
+  if (preg_match('~/place/([^/@?#]+)~', $url, $m)) return trim(urldecode(str_replace('+', ' ', $m[1])));
+  if (preg_match('~@(-?\d+\.\d+),(-?\d+\.\d+)~', $url, $m)) return "$m[1],$m[2]";
+  return '';
+}
 function shop_low_stock(): int { return max(0, (int)(shop_setting('low_stock') ?? 5)); }
 
 /* ---------------- order numbers ---------------- */
