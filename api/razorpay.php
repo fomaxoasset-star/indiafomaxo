@@ -84,7 +84,7 @@ if ($action === 'create') {
   if (isset($order['error'])) fail($order['error']);
   $cust = fomaxo_customer($in);
   if (isset($cust['error'])) fail($cust['error']);
-  /* the order number (FMX-…) is given once the payment is confirmed, so unfinished payments leave no gaps */
+  /* the order number (FMX-IN-…) is given once the payment is confirmed, so unfinished payments leave no gaps */
   $ref = 'web-' . date('ymd') . '-' . bin2hex(random_bytes(4));
   [$code, $ro, $raw] = rzp('POST', '/orders', ['amount' => $order['subtotal'], 'currency' => 'INR', 'receipt' => $ref,
     'notes' => ['customer' => $cust['name'], 'mobile' => $cust['phone']]]);

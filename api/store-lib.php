@@ -106,7 +106,7 @@ function fomaxo_price_order(array $in): array {
   $lines = is_array($in['lines'] ?? null) ? $in['lines'] : [];
   if (!$lines || count($lines) > 30) return ['error' => 'Your bag is empty.'];
   $items = []; $total = 0;
-  try { $STOCK = shop_stock(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.']; }
+  try { $STOCK = shop_stock(); $COST = shop_costs(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.']; }
   $want = [];
   foreach ($lines as $l) {
     $id = is_string($l['id'] ?? null) ? $l['id'] : '';
@@ -126,7 +126,7 @@ function fomaxo_price_order(array $in): array {
     $unit = (int)round($p['prices'][$opt] * 100);
     $total += $unit * $qty;
     $name = 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : '');
-    $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty];
+    $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty] + (isset($COST[$id][$opt]) ? ['cost' => $COST[$id][$opt]] : []);   // cost at the time of the order, for profit & loss
     $want["$id|$opt"] = ($want["$id|$opt"] ?? 0) + $qty;
     $have = $STOCK[$id][$opt] ?? null;
     if ($have !== null && $have < $want["$id|$opt"])
@@ -158,7 +158,7 @@ function fomaxo_customer(array $in): array {
 }
 
 function fomaxo_orders_dir(): string { global $PRIV; $d = "$PRIV/orders"; if (!is_dir($d)) @mkdir($d, 0700, true); return $d; }
-/* Orders themselves are saved in the shop database (api/shop-db.php), numbered FMX-1001, FMX-1002 … */
+/* Orders themselves are saved in the shop database (api/shop-db.php), numbered FMX-IN-1001, FMX-IN-1002 … */
 
 /* A private copy of every order, as a spreadsheet: ../fomaxo-private/orders/orders.csv */
 function fomaxo_log_order(array $row): void {
