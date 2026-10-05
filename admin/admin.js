@@ -66,6 +66,17 @@
     setTimeout(function () { b.disabled = true; b.dataset.label = b.textContent; b.textContent = 'Saving…'; }, 0);
   });
 
+  /* Order page: the Status list saves as soon as a status is picked (cancelling or refunding asks first) */
+  document.querySelectorAll('select[data-autosave]').forEach(function (sel) {
+    var was = sel.value;
+    sel.addEventListener('change', function () {
+      var no = sel.dataset.no || 'this order';
+      var ask = { cancelled: 'Cancel order ' + no + '? Its items go back into stock.', refunded: 'Mark ' + no + ' as refunded? Its items go back into stock. The money itself is refunded in your Razorpay dashboard.' }[sel.value];
+      if (ask && !confirm(ask)) { sel.value = was; return; }
+      sel.form.requestSubmit ? sel.form.requestSubmit() : sel.form.submit();
+    });
+  });
+
   /* Orders: a one-tap button on an order's row submits it without opening or closing the order */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('summary button[form]');

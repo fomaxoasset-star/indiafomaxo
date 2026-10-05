@@ -92,7 +92,7 @@ if ($tab === 'orders') {
       . ($o['note'] ? '<p class="muted">Customer note: ' . h($o['note']) . '</p>' : '') . '</div>'
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
       . '<form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="status"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . '<label>Status' . $sel('status', array_diff_key(FOMAXO_STATUSES, $o['status'] === 'awaiting' ? [] : ['awaiting' => 1]), $o['status']) . '</label>'
+      . '<label>Status <small class="muted">(saves when you pick)</small>' . str_replace('<select name="status">', '<select name="status" data-autosave data-no="' . h($o['no']) . '">', $sel('status', order_status_options($o), $o['status'])) . '</label>'
       . '<label>Your note<input name="admin_note" value="' . h($o['admin_note']) . '" maxlength="500" placeholder="Courier, tracking number…"></label>'
       . '<div class="qbtns"><button class="btn line">Save</button></div></form>'
       . '<p class="muted small">Cancelling or refunding puts the items back in stock.</p></div></div></details>';
