@@ -44,6 +44,9 @@ function db(): PDO {
       products TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS votes(review_id INTEGER NOT NULL, ip TEXT NOT NULL, PRIMARY KEY(review_id, ip));
     SQL);
+  $cols = array_column($db->query('PRAGMA table_info(reviews)')->fetchAll(), 'name');
+  if (!in_array('city', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN city TEXT NOT NULL DEFAULT ''");
+  if (!in_array('country', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN country TEXT NOT NULL DEFAULT ''");
   return $db;
 }
 
@@ -71,6 +74,7 @@ function displayName(string $n): string {
 function publicReview(array $r): array {
   return ['id' => (int)$r['id'], 'product' => $r['product'], 'rating' => (int)$r['rating'], 'text' => $r['body'],
     'name' => $r['anonymous'] ? 'Anonymous' : $r['name'], 'verified' => (bool)$r['verified'],
+    'city' => $r['city'] ?? '', 'country' => $r['country'] ?? '',
     'photos' => array_map(fn($p) => 'api/reviews.php?action=photo&f=' . rawurlencode($p), json_decode($r['photos'], true) ?: []),
     'helpful' => (int)$r['helpful'], 'date' => gmdate('Y-m-d', (int)$r['created'])];
 }
@@ -165,6 +169,9 @@ try {
       $anon = !empty($in['anonymous']) && $in['anonymous'] !== 'false';
       $rawName = str($in['name'] ?? '', 60);
       if (!$anon && $rawName === '') fail('Please enter your name, or choose to post anonymously.');
+      $city = str($in['city'] ?? '', 60);                                       // optional, e.g. "Pune, Maharashtra"
+      $country = str($in['country'] ?? '', 40);                                 // optional, picked from the form's list
+      if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
 
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
@@ -179,8 +186,8 @@ try {
 
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
-      db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-        ->execute([$product, $rating, $text, displayName($rawName), $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time()]);
+      db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        ->execute([$product, $rating, $text, displayName($rawName), $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country]);
       out(['ok' => true, 'pending' => $status === 'pending']);
     }
 
