@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '15';
+const ASSET_V = '16';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -140,13 +140,15 @@ $LIVE = shop_products();
 
 /* ---------------- actions ---------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], 'Your session expired. Please try again.');
+  if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], '!Your session expired. Please try again.');
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
   $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'page']));
 
   if ($a === 'status') {
-    shop_set_status((int)($_POST['id'] ?? 0), (string)($_POST['status'] ?? ''), mb_substr(trim((string)($_POST['admin_note'] ?? '')), 0, 500));
-    go($back, 'Order updated.');
+    $oid = (int)($_POST['id'] ?? 0); $ns = (string)($_POST['status'] ?? '');
+    shop_set_status($oid, $ns, mb_substr(trim((string)($_POST['admin_note'] ?? '')), 0, 500));
+    $s = shop_db()->prepare('SELECT no, status FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
+    go($back, $o ? ($o['no'] ?: 'The order') . ' is ' . (FOMAXO_STATUSES[$o['status']] ?? $o['status']) . ($o['status'] === 'cancelled' ? '. Its items are back in stock.' : '. Saved.') : 'Order updated.');
   }
   if ($a === 'stock') {
     foreach ((array)($_POST['stock'] ?? []) as $id => $opts) {
