@@ -66,6 +66,15 @@
     setTimeout(function () { b.disabled = true; b.dataset.label = b.textContent; b.textContent = 'Saving…'; }, 0);
   });
 
+  /* Orders: a one-tap button on an order's row submits it without opening or closing the order */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('summary button[form]');
+    if (!b) return;
+    e.preventDefault();
+    var f = document.getElementById(b.getAttribute('form'));
+    if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
+  });
+
   /* Stock and product forms: changed boxes light up, and leaving with unsaved changes asks first */
   var dirty = false;
   document.querySelectorAll('form[data-watch]').forEach(function (f) {

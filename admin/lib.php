@@ -156,7 +156,8 @@ function save_images(string $id) {
 function order_where(array $F): array {
   $w = []; $a = [];
   if ($F['status'] === 'awaiting') $w[] = "status = 'awaiting'";
-  elseif ($F['status'] === 'todo') $w[] = "status IN ('new', 'paid')";
+  elseif (in_array($F['status'], ['pending', 'todo'], true)) $w[] = "status IN ('new', 'paid')";
+  elseif ($F['status'] === 'unpaid') $w[] = "status = 'new' AND method = 'cod' AND paid_at IS NULL";
   elseif (isset(FOMAXO_STATUSES[$F['status']])) { $w[] = 'status = ?'; $a[] = $F['status']; }
   else $w[] = "status <> 'awaiting'";
   if (in_array($F['method'], ['cod', 'online'], true)) { $w[] = 'method = ?'; $a[] = $F['method']; }
@@ -186,6 +187,58 @@ function order_summary(array $F): array {
   $s = shop_db()->prepare("SELECT state, COUNT(*) n FROM orders$where$x AND state <> '' GROUP BY state ORDER BY n DESC, state"); $s->execute($args);
   foreach ($s as $r) $out['states'][$r['state']] = (int)$r['n'];
   return $out;
+}
+
+/* the tracking chips: how many orders are pending, unpaid cash, delivered, cancelled and refunded, with every other filter applied */
+function order_track_counts(array $F): array {
+  [$where, $args] = order_where(['status' => ''] + $F);
+  $s = shop_db()->prepare("SELECT SUM(CASE WHEN status IN ('new', 'paid') THEN 1 ELSE 0 END) pending, SUM(CASE WHEN status = 'new' AND method = 'cod' AND paid_at IS NULL THEN 1 ELSE 0 END) unpaid,
+    SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) delivered, SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) cancelled, SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) refunded FROM orders$where");
+  $s->execute($args); return array_map('intval', $s->fetch() ?: []);
+}
+const TRACK_CHIPS = ['pending' => 'Pending', 'unpaid' => 'Unpaid cash', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'refunded' => 'Refunded'];
+const ORDER_ACTS = ['paid' => 'Paid', 'deliver' => '✓ Mark delivered', 'cancel' => 'Cancel order', 'refund' => 'Refund'];
+/* an order's two tags: where it is (Pending, Delivered, Cancelled, Refunded) and whether it is paid */
+function order_tags(array $o): string {
+  if ($o['status'] === 'awaiting') return '<span class="badge st-awaiting">Not paid</span>';
+  $st = in_array($o['status'], ['new', 'paid'], true) ? ['pending', 'Pending'] : [$o['status'], FOMAXO_STATUSES[$o['status']] ?? $o['status']];
+  $paid = shop_is_paid($o);
+  return '<span class="badge st-' . $st[0] . '">' . h($st[1]) . '</span><span class="badge ' . ($paid ? 'pd-yes">Paid' : 'pd-no">Unpaid') . '</span>';
+}
+/* the three one-tap buttons of an active order (Paid or Refund · Mark delivered · Cancel order); they submit the page's #qa form.
+   A button that does not apply is greyed out; Paid and Delivered stay lit once done. Cancelled and refunded orders have none. */
+function order_buttons(array $o): string {
+  if (!in_array($o['status'], ['new', 'paid', 'delivered'], true)) return '';
+  $no = h($o['no'] ?: 'this order'); $ok = shop_order_actions($o); $cod = $o['method'] === 'cod'; $out = '';
+  foreach ([$cod ? 'paid' : 'refund', 'deliver', 'cancel'] as $a) {
+    $lit = $a === 'paid' && shop_is_paid($o) ? ['lit-gold', '✓ Paid'] : ($a === 'deliver' && $o['status'] === 'delivered' ? ['lit-green', '✓ Delivered'] : null);
+    $cls = 'btn sm b-' . $a . ' ' . ['paid' => 'line', 'deliver' => '', 'cancel' => 'line danger', 'refund' => 'line danger'][$a];
+    if ($lit) { $out .= '<button type="button" class="btn sm b-' . $a . ' ' . $lit[0] . '" disabled>' . $lit[1] . '</button>'; continue; }
+    if (!in_array($a, $ok, true)) { $out .= '<button type="button" class="' . $cls . ' off" disabled>' . ORDER_ACTS[$a] . '</button>'; continue; }
+    $ask = ['cancel' => "Cancel order $no? Its items go back into stock.",
+      'refund' => "Mark $no as refunded? Its items go back into stock. This only records the refund: the money itself is refunded in your Razorpay dashboard."][$a] ?? '';
+    $out .= '<button class="' . $cls . '" form="qa" name="q" value="' . $a . ':' . (int)$o['id'] . '"' . ($ask ? ' data-confirm="' . $ask . '"' : '') . '>' . ORDER_ACTS[$a] . '</button>';
+  }
+  return $out;
+}
+/* "Waiting N days" under a pending order older than a day; red from 3 days */
+function order_waiting(array $o): string {
+  if (!in_array($o['status'], ['new', 'paid'], true)) return '';
+  $d = intdiv(time() - (int)strtotime($o['created']), 86400);
+  return $d < 1 ? '' : '<small class="wait' . ($d >= 3 ? ' late' : '') . '">Waiting ' . $d . ' day' . ($d === 1 ? '' : 's') . '</small>';
+}
+/* the order tracker: Ordered → Paid → Delivered, with the date and time of each step; cancelled and refunded orders end in a red step */
+function order_tracker(array $o): string {
+  $t = fn($s) => $s ? h(date('d M Y, H:i', strtotime($s))) : 'Not yet';
+  $paidAt = $o['paid_at'] ?: ($o['status'] === 'delivered' || shop_is_paid($o) ? ($o['delivered_at'] ?: $o['updated']) : null);
+  $steps = [['Ordered', $o['created'], true], ['Paid', $paidAt, shop_is_paid($o)], ['Delivered', $o['delivered_at'], (bool)$o['delivered_at']]];
+  if (in_array($o['status'], ['cancelled', 'refunded'], true)) {
+    $steps = array_values(array_filter($steps, fn($x) => $x[2]));   // only the steps that happened, then the red one
+    $steps[] = [FOMAXO_STATUSES[$o['status']], $o['closed_at'] ?: $o['updated'], true, 'end'];
+  }
+  $out = '<ol class="track">';
+  foreach ($steps as $x) $out .= '<li class="' . (($x[3] ?? '') === 'end' ? 'end' : ($x[2] ? 'done' : 'todo')) . '"><i>' . (($x[3] ?? '') === 'end' ? '✕' : ($x[2] ? '✓' : '')) . '</i><b>' . h($x[0]) . '</b><small>' . ($x[2] ? $t($x[1]) : 'Not yet') . '</small></li>';
+  return $out . '</ol>';
 }
 
 /* ---------------- members (repeat customers) ---------------- */

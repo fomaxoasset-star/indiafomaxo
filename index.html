@@ -382,6 +382,17 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-pick button.on{color:var(--gold)}
 .rv-form .rv-check{display:flex;align-items:center;gap:10px;letter-spacing:.12em}
 .rv-form .rv-check input{width:18px;height:18px;padding:0;accent-color:var(--gold)}
+.rv-loc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:620px){.rv-loc{grid-template-columns:minmax(0,1fr)}}
+.rv-loc label i{font-style:normal;text-transform:none;letter-spacing:.04em;color:var(--muted)}
+.rv-city{position:relative}
+.rv-sug{position:absolute;left:0;right:0;top:100%;z-index:5;margin:4px 0 0;padding:4px 0;list-style:none;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 14px 30px rgba(0,0,0,.35);text-transform:none;letter-spacing:.02em}
+.rv-sug li{padding:10px 14px;font-size:14px;color:var(--ivory);cursor:pointer}
+.rv-sug li:hover,.rv-sug li.on{background:rgba(201,162,92,.14);color:var(--gold-hi)}
+.rv-from{font-weight:400;font-size:13px;letter-spacing:.02em;color:var(--muted)}
+@font-face{font-family:"Twemoji Country Flags";unicode-range:U+1F1E6-1F1FF,U+1F3F4,U+E0062-E007F;src:url(https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1/dist/TwemojiCountryFlags.woff2) format("woff2");font-display:swap}
+.rv-flag{font-family:"Twemoji Country Flags","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:1.15em;line-height:1;vertical-align:-1px}
+.rv-sug .rv-flag{margin-right:10px}
 .rv-form input[type=file]{padding:12px;font-size:13px}
 .rv-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .rv-err{color:#e08a7a;min-height:1em}
@@ -3197,14 +3208,24 @@ async function refreshRvSummary(){
   } catch(e) {}
 }
 
+/* review location: City/State suggests as you type (India first), Nation lists India, then where Indians abroad live most, then everyone */
+const RV_CITIES = 'Mumbai, Maharashtra|Pune, Maharashtra|Nagpur, Maharashtra|Nashik, Maharashtra|Thane, Maharashtra|Navi Mumbai, Maharashtra|Aurangabad, Maharashtra|Kolhapur, Maharashtra|Delhi|New Delhi, Delhi|Gurugram, Haryana|Faridabad, Haryana|Panipat, Haryana|Ambala, Haryana|Noida, Uttar Pradesh|Ghaziabad, Uttar Pradesh|Lucknow, Uttar Pradesh|Kanpur, Uttar Pradesh|Agra, Uttar Pradesh|Varanasi, Uttar Pradesh|Prayagraj, Uttar Pradesh|Meerut, Uttar Pradesh|Bengaluru, Karnataka|Mysuru, Karnataka|Mangaluru, Karnataka|Hubballi, Karnataka|Belagavi, Karnataka|Chennai, Tamil Nadu|Coimbatore, Tamil Nadu|Madurai, Tamil Nadu|Tiruchirappalli, Tamil Nadu|Salem, Tamil Nadu|Hyderabad, Telangana|Warangal, Telangana|Secunderabad, Telangana|Visakhapatnam, Andhra Pradesh|Vijayawada, Andhra Pradesh|Guntur, Andhra Pradesh|Tirupati, Andhra Pradesh|Kolkata, West Bengal|Howrah, West Bengal|Siliguri, West Bengal|Durgapur, West Bengal|Ahmedabad, Gujarat|Surat, Gujarat|Vadodara, Gujarat|Rajkot, Gujarat|Gandhinagar, Gujarat|Jaipur, Rajasthan|Jodhpur, Rajasthan|Udaipur, Rajasthan|Kota, Rajasthan|Ajmer, Rajasthan|Bhopal, Madhya Pradesh|Indore, Madhya Pradesh|Gwalior, Madhya Pradesh|Jabalpur, Madhya Pradesh|Patna, Bihar|Gaya, Bihar|Muzaffarpur, Bihar|Ranchi, Jharkhand|Jamshedpur, Jharkhand|Dhanbad, Jharkhand|Bhubaneswar, Odisha|Cuttack, Odisha|Raipur, Chhattisgarh|Bhilai, Chhattisgarh|Chandigarh|Ludhiana, Punjab|Amritsar, Punjab|Jalandhar, Punjab|Mohali, Punjab|Patiala, Punjab|Dehradun, Uttarakhand|Haridwar, Uttarakhand|Shimla, Himachal Pradesh|Srinagar, Jammu and Kashmir|Jammu, Jammu and Kashmir|Kochi, Kerala|Thiruvananthapuram, Kerala|Kozhikode, Kerala|Thrissur, Kerala|Kannur, Kerala|Malappuram, Kerala|Kollam, Kerala|Panaji, Goa|Margao, Goa|Guwahati, Assam|Shillong, Meghalaya|Imphal, Manipur|Agartala, Tripura|Aizawl, Mizoram|Kohima, Nagaland|Gangtok, Sikkim|Itanagar, Arunachal Pradesh|Puducherry|Port Blair, Andaman and Nicobar Islands|Leh, Ladakh|Daman, Dadra and Nagar Haveli and Daman and Diu|Kavaratti, Lakshadweep|Maharashtra|Uttar Pradesh|Karnataka|Tamil Nadu|Telangana|Andhra Pradesh|West Bengal|Gujarat|Rajasthan|Madhya Pradesh|Bihar|Jharkhand|Odisha|Chhattisgarh|Punjab|Haryana|Uttarakhand|Himachal Pradesh|Jammu and Kashmir|Kerala|Goa|Assam|Meghalaya|Manipur|Tripura|Mizoram|Nagaland|Sikkim|Arunachal Pradesh'.split('|');
+/* India first, then the Gulf and the places Indians abroad live most, then A to Z; code gives the flag */
+const RV_NATIONS = 'India:in|United Arab Emirates:ae|Saudi Arabia:sa|Qatar:qa|Oman:om|Kuwait:kw|Bahrain:bh|United States:us|United Kingdom:gb|Canada:ca|Australia:au|Singapore:sg|Nepal:np|Bangladesh:bd|Sri Lanka:lk|Afghanistan:af|Albania:al|Algeria:dz|Andorra:ad|Angola:ao|Argentina:ar|Armenia:am|Austria:at|Azerbaijan:az|Bahamas:bs|Barbados:bb|Belarus:by|Belgium:be|Belize:bz|Benin:bj|Bhutan:bt|Bolivia:bo|Bosnia and Herzegovina:ba|Botswana:bw|Brazil:br|Brunei:bn|Bulgaria:bg|Burkina Faso:bf|Burundi:bi|Cambodia:kh|Cameroon:cm|Chad:td|Chile:cl|China:cn|Colombia:co|Costa Rica:cr|Croatia:hr|Cuba:cu|Cyprus:cy|Czechia:cz|Denmark:dk|Djibouti:dj|Dominican Republic:do|Ecuador:ec|Egypt:eg|El Salvador:sv|Eritrea:er|Estonia:ee|Eswatini:sz|Ethiopia:et|Fiji:fj|Finland:fi|France:fr|Gabon:ga|Georgia:ge|Germany:de|Ghana:gh|Greece:gr|Guatemala:gt|Guyana:gy|Haiti:ht|Honduras:hn|Hong Kong:hk|Hungary:hu|Iceland:is|Indonesia:id|Iran:ir|Iraq:iq|Ireland:ie|Israel:il|Italy:it|Ivory Coast:ci|Jamaica:jm|Japan:jp|Jordan:jo|Kazakhstan:kz|Kenya:ke|Kyrgyzstan:kg|Laos:la|Latvia:lv|Lebanon:lb|Libya:ly|Lithuania:lt|Luxembourg:lu|Madagascar:mg|Malawi:mw|Malaysia:my|Maldives:mv|Mali:ml|Malta:mt|Mauritius:mu|Mexico:mx|Moldova:md|Monaco:mc|Mongolia:mn|Montenegro:me|Morocco:ma|Mozambique:mz|Myanmar:mm|Namibia:na|Netherlands:nl|New Zealand:nz|Nicaragua:ni|Niger:ne|Nigeria:ng|North Macedonia:mk|Norway:no|Pakistan:pk|Palestine:ps|Panama:pa|Papua New Guinea:pg|Paraguay:py|Peru:pe|Philippines:ph|Poland:pl|Portugal:pt|Romania:ro|Russia:ru|Rwanda:rw|Senegal:sn|Serbia:rs|Seychelles:sc|Sierra Leone:sl|Slovakia:sk|Slovenia:si|Somalia:so|South Africa:za|South Korea:kr|Spain:es|Sudan:sd|Suriname:sr|Sweden:se|Switzerland:ch|Syria:sy|Taiwan:tw|Tajikistan:tj|Tanzania:tz|Thailand:th|Togo:tg|Trinidad and Tobago:tt|Tunisia:tn|Turkey:tr|Turkmenistan:tm|Uganda:ug|Ukraine:ua|Uruguay:uy|Uzbekistan:uz|Venezuela:ve|Vietnam:vn|Yemen:ye|Zambia:zm|Zimbabwe:zw'.split('|').map(x => x.split(':'));
+const rvFlag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 127397 + c.charCodeAt(0))) : '';
+const rvNation = n => RV_NATIONS.find(([c]) => c.toLowerCase() === String(n || '').trim().toLowerCase());
 const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
     <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
     <label>Your review<textarea name="text" maxlength="2000" placeholder="What did you like or dislike? How long did it last?"></textarea></label>
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
-    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Ahmed Saleem — shown as Ahmed S."></label>
+    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="Shown as you type it, e.g. Arjun Menon or Arjun M."></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
+    <div class="rv-loc">
+      <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
+      <label class="rv-city"><span>Nation <i>(optional)</i></span><input name="country" maxlength="40" autocomplete="off" placeholder="Start typing, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
+    </div>
     <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label>
     <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     ${token ? '<p class="rv-ver">✓ This review will show as Verified Purchaser</p>' : ''}
@@ -3212,12 +3233,29 @@ function rvForm(p, token, customer){
     <p class="small rv-err" role="alert"></p>
   </form>`;
 }
+/* type-ahead list under an input: find(q) returns [value, html] pairs; onFocus also opens it while empty */
+function rvSuggest(input, find, onFocus){
+  const ul = input.nextElementSibling; let at = -1, items = [];
+  const show = list => { at = -1; items = list; ul.innerHTML = list.map(([v, h]) => `<li role="option">${h}</li>`).join(''); ul.hidden = !list.length; input.setAttribute('aria-expanded', !!list.length); };
+  const pick = i => { input.value = items[i][0]; show([]); };
+  input.oninput = () => show(find(input.value.trim().toLowerCase()));
+  if (onFocus) input.onfocus = input.oninput;
+  input.onkeydown = e => { const li = $$('li', ul); if (ul.hidden || !li.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : li.length - 1)) % li.length; li.forEach((l, i) => l.classList.toggle('on', i === at)); }
+    else if (e.key === 'Enter' && at >= 0) { e.preventDefault(); pick(at); }
+    else if (e.key === 'Escape') show([]); };
+  ul.onmousedown = e => { const li = e.target.closest('li'); if (li) { e.preventDefault(); pick([...ul.children].indexOf(li)); } };
+  input.onblur = () => setTimeout(() => show([]), 120);
+}
 function bindRvForm(form, p, token, done){
   let rating = 0; const stars = $$('[data-star]', form), err = $('.rv-err', form);
   const paint = n => stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); });
   stars.forEach(b => { b.onclick = () => { rating = +b.dataset.star; paint(rating); }; b.onmouseenter = () => paint(+b.dataset.star); b.onmouseleave = () => paint(rating); });
   const anon = form.elements.anonymous, name = form.elements.name;
-  anon.onchange = () => { name.disabled = anon.checked; };
+  anon.onchange = () => { name.disabled = form.elements.city.disabled = form.elements.country.disabled = anon.checked; };   // anonymous hides name, place and flag
+  const city = form.elements.city, nation = form.elements.country;
+  rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
+  rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : st).slice(0, q ? 6 : 8).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
     const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
@@ -3234,6 +3272,7 @@ function bindRvForm(form, p, token, done){
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';
     const fd = new FormData(); fd.append('product', p.id); fd.append('rating', rating); fd.append('text', form.elements.text.value);
     fd.append('name', anon.checked ? '' : name.value); fd.append('anonymous', anon.checked ? '1' : ''); fd.append('website', form.elements.website.value);
+    if (!anon.checked) { fd.append('city', city.value.trim()); fd.append('country', (rvNation(nation.value) || [nation.value.trim()])[0]); }
     if (token) fd.append('token', token); files.forEach(f => fd.append('photos[]', f));
     const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
     try { const d = await rvPost('submit', fd); done(d); }
@@ -3243,10 +3282,16 @@ function bindRvForm(form, p, token, done){
 }
 
 let rvVoted = []; try { rvVoted = JSON.parse(localStorage.getItem('fomaxo_rv_voted') || '[]'); } catch(e) {}
+/* "— Kerala, 🇮🇳": the city as typed, the nation as its flag (its name when the flag is unknown) */
+function rvPlace(r){
+  if (r.name === 'Anonymous') return '';
+  const n = rvNation(r.country), parts = [r.city, n ? `<span class="rv-flag" title="${esc(n[0])}" role="img" aria-label="${esc(n[0])}">${rvFlag(n[1])}</span>` : r.country].filter(Boolean);
+  return parts.length ? `<span class="rv-from"> — ${parts.map((x, i) => i === 0 && r.city ? esc(x) : (n ? x : esc(x))).join(', ')}</span>` : '';
+}
 function rvItem(r){
   const voted = rvVoted.includes(r.id);
   return `<article class="rv">
-    <div class="rv-head"><b>${esc(r.name)}</b>${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}<time>${rvDate(r.date)}</time></div>
+    <div class="rv-head"><b>${esc(r.name)}${rvPlace(r)}</b>${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}<time>${rvDate(r.date)}</time></div>
     ${rvStars(r.rating)}
     <p class="rv-text">“${esc(r.text)}”</p>
     ${r.photos.length ? `<div class="rv-photos">${r.photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}
