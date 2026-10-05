@@ -197,7 +197,7 @@ function order_track_counts(array $F): array {
   $s->execute($args); return array_map('intval', $s->fetch() ?: []);
 }
 const TRACK_CHIPS = ['pending' => 'Pending', 'unpaid' => 'Unpaid cash', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'refunded' => 'Refunded'];
-const ORDER_ACTS = ['paid' => 'Paid', 'deliver' => '✓ Mark delivered', 'undeliver' => '↺ Not delivered', 'cancel' => 'Cancel order', 'refund' => 'Refund'];
+const ORDER_ACTS = ['paid' => 'Paid', 'deliver' => '✓ Mark delivered', 'cancel' => 'Cancel order', 'refund' => 'Refund'];
 /* an order's two tags: where it is (Pending, Delivered, Cancelled, Refunded) and whether it is paid */
 function order_tags(array $o): string {
   if ($o['status'] === 'awaiting') return '<span class="badge st-awaiting">Not paid</span>';
@@ -205,14 +205,19 @@ function order_tags(array $o): string {
   $paid = shop_is_paid($o);
   return '<span class="badge st-' . $st[0] . '">' . h($st[1]) . '</span><span class="badge ' . ($paid ? 'pd-yes">Paid' : 'pd-no">Unpaid') . '</span>';
 }
-/* the one-tap buttons of an order; they submit the page's #qa form */
+/* the three one-tap buttons of an active order (Paid or Refund · Mark delivered · Cancel order); they submit the page's #qa form.
+   A button that does not apply is greyed out; Paid and Delivered stay lit once done. Cancelled and refunded orders have none. */
 function order_buttons(array $o): string {
-  $no = h($o['no'] ?: 'this order'); $out = '';
-  foreach (shop_order_actions($o) as $a) {
+  if (!in_array($o['status'], ['new', 'paid', 'delivered'], true)) return '';
+  $no = h($o['no'] ?: 'this order'); $ok = shop_order_actions($o); $cod = $o['method'] === 'cod'; $out = '';
+  foreach ([$cod ? 'paid' : 'refund', 'deliver', 'cancel'] as $a) {
+    $lit = $a === 'paid' && shop_is_paid($o) ? ['lit-gold', '✓ Paid'] : ($a === 'deliver' && $o['status'] === 'delivered' ? ['lit-green', '✓ Delivered'] : null);
+    $cls = 'btn sm b-' . $a . ' ' . ['paid' => 'line', 'deliver' => '', 'cancel' => 'line danger', 'refund' => 'line danger'][$a];
+    if ($lit) { $out .= '<button type="button" class="btn sm b-' . $a . ' ' . $lit[0] . '" disabled>' . $lit[1] . '</button>'; continue; }
+    if (!in_array($a, $ok, true)) { $out .= '<button type="button" class="' . $cls . ' off" disabled>' . ORDER_ACTS[$a] . '</button>'; continue; }
     $ask = ['cancel' => "Cancel order $no? Its items go back into stock.",
-      'refund' => "Mark $no as refunded? Its items go back into stock. This only records the refund: send the money back in your Razorpay dashboard" . ($o['method'] === 'cod' ? ' (or by UPI / cash for a cash order)' : '') . '.'][$a] ?? '';
-    $out .= '<button class="btn sm ' . ['paid' => 'ok', 'deliver' => '', 'undeliver' => 'line', 'cancel' => 'line danger', 'refund' => 'line danger'][$a] . '" form="qa" name="q" value="' . $a . ':' . (int)$o['id'] . '"'
-      . ($ask ? ' data-confirm="' . $ask . '"' : '') . '>' . ORDER_ACTS[$a] . '</button>';
+      'refund' => "Mark $no as refunded? Its items go back into stock. This only records the refund: the money itself is refunded in your Razorpay dashboard."][$a] ?? '';
+    $out .= '<button class="' . $cls . '" form="qa" name="q" value="' . $a . ':' . (int)$o['id'] . '"' . ($ask ? ' data-confirm="' . $ask . '"' : '') . '>' . ORDER_ACTS[$a] . '</button>';
   }
   return $out;
 }

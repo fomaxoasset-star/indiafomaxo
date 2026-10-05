@@ -270,7 +270,7 @@ function shop_set_status(int $id, string $status, ?string $note = null): void {
     if (in_array($status, $back, true) && $taken) { shop_return_stock($db, $items); $taken = 0; }
     elseif (!in_array($status, $back, true) && !$taken && $no) { shop_take_stock($db, $items, false); $taken = 1; }
     if ($status === 'delivered' && $was !== 'delivered') { $dlv = $now; $paid = $paid ?: $now; }
-    elseif ($was === 'delivered' && $status !== 'delivered' && $status !== 'refunded') {   // "Not delivered": a cash order paid only by delivering is unpaid again
+    elseif ($was === 'delivered' && $status !== 'delivered' && $status !== 'refunded') {   // moved back from Delivered in the status list: a cash order paid only by delivering is unpaid again
       if ($cod && $paid === $dlv) $paid = null;
       $dlv = null;
     }
@@ -283,13 +283,12 @@ function shop_set_status(int $id, string $status, ?string $note = null): void {
 }
 /* Is the money in? Online orders once Razorpay confirmed; cash orders once marked Paid or delivered. */
 function shop_is_paid(array $o): bool { return $o['status'] !== 'awaiting' && (!empty($o['paid_at']) || in_array($o['status'], ['paid', 'delivered'], true)); }
-/* The one-tap buttons an order has now: paid (unpaid cash orders), deliver and cancel (pending), undeliver (delivered), refund (paid or delivered). */
+/* The one-tap buttons that work on an order now: paid (unpaid cash orders), deliver and cancel (pending), refund (paid or delivered online orders). */
 function shop_order_actions(array $o): array {
   $st = $o['status']; $a = [];
   if ($st === 'new' && $o['method'] === 'cod' && !shop_is_paid($o)) $a[] = 'paid';
   if (in_array($st, ['new', 'paid'], true)) array_push($a, 'deliver', 'cancel');
-  if ($st === 'delivered') $a[] = 'undeliver';
-  if (!in_array($st, ['refunded', 'awaiting'], true) && (shop_is_paid($o) || $st === 'delivered')) $a[] = 'refund';
+  if ($o['method'] === 'online' && in_array($st, ['new', 'paid', 'delivered'], true) && shop_is_paid($o)) $a[] = 'refund';
   return $a;
 }
 /* Admin one-tap button. Checks the button is still allowed for this order. Returns the message to show. */
@@ -298,11 +297,8 @@ function shop_order_action(int $id, string $act): string {
   if (!$o) return '!That order was not found.';
   $no = $o['no'] ?: 'This order';
   if (!in_array($act, shop_order_actions($o), true)) return "!$no has changed since the page opened, so nothing was done. Please check it and try again.";
-  $to = ['paid' => 'paid', 'deliver' => 'delivered', 'cancel' => 'cancelled', 'refund' => 'refunded',
-    'undeliver' => $o['method'] === 'cod' && $o['paid_at'] === $o['delivered_at'] ? 'new' : 'paid'][$act];
-  shop_set_status($id, $to);
-  return $no . ['paid' => ' is now paid.', 'deliver' => ' is now delivered.', 'undeliver' => ' is back to pending (not delivered).',
-    'cancel' => ' is cancelled. Its items are back in stock.', 'refund' => ' is refunded. Its items are back in stock.'][$act];
+  shop_set_status($id, ['paid' => 'paid', 'deliver' => 'delivered', 'cancel' => 'cancelled', 'refund' => 'refunded'][$act]);
+  return $no . ['paid' => ' is now paid.', 'deliver' => ' is now delivered.', 'cancel' => ' is cancelled. Its items are back in stock.', 'refund' => ' is refunded. Its items are back in stock.'][$act];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
