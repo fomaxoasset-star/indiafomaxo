@@ -25,9 +25,11 @@ if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay'
 try {
   $db = shop_db(); $now = time();
   shop_upsert('online', ['vid'], ['vid' => $vid, 'last' => $now]);
+  $db->prepare('UPDATE visits SET last = ?, pages = pages + ? WHERE sid = ?')->execute([$now, $t === 'view' ? 1 : 0, $sid]);
   if (random_int(1, 200) === 1) {   // keep the tables small
     $db->prepare('DELETE FROM online WHERE last < ?')->execute([$now - 3600]);
     $db->prepare('DELETE FROM events WHERE ts < ?')->execute([date('Y-m-d H:i:s', $now - 800 * 86400)]);
+    $db->prepare('DELETE FROM visits WHERE last < ?')->execute([$now - 800 * 86400]);
   }
   if ($t === 'ping') exit;
   if ($t === 'lead') {   // name, mobile and bag typed at checkout, for "Left at checkout"
@@ -50,6 +52,8 @@ try {
   $path = mb_substr(preg_replace('/[^\w\/\-.]/', '', (string)($in['p'] ?? '/')) ?? '/', 0, 120);
   $product = preg_match('/^[a-z0-9-]{1,48}$/', (string)($in['id'] ?? '')) ? (string)$in['id'] : '';
   $device = preg_match('/Mobi|Android|iPhone|iPad/i', $ua) ? 'phone' : 'computer';
+  $s = $db->prepare('SELECT 1 FROM visits WHERE sid = ?'); $s->execute([$sid]);
+  if (!$s->fetchColumn()) try { $db->prepare('INSERT INTO visits(sid, vid, started, last, source, device, pages) VALUES(?,?,?,?,?,?,?)')->execute([$sid, $vid, $now, $now, $src, $device, $t === 'view' ? 1 : 0]); } catch (Throwable $e) { /* the same visit, sent twice at once */ }
   $db->prepare('INSERT INTO events(ts, vid, sid, type, source, path, product, qty, device) VALUES(?,?,?,?,?,?,?,?,?)')
     ->execute([shop_now(), $vid, $sid, $t, $src, $path, $product, max(0, min(99, (int)($in['q'] ?? 0))), $device]);
   if ($t === 'buy') $db->prepare('UPDATE leads SET ordered = 1 WHERE sid = ?')->execute([$sid]);

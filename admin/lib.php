@@ -190,14 +190,13 @@ function order_summary(array $F): array {
 
 /* ---------------- members (repeat customers) ---------------- */
 function member_min(): int { return max(1, min(999, (int)(shop_setting('member_min') ?? '5'))); }
-/* rupees; a customer who spent this much is a member too, whatever their order count (0 turns it off) */
-function member_spend(): int { return max(0, min(10000000, (int)(shop_setting('member_spend') ?? '10000'))); }
+/* rupees; a customer who spent this much is a member too, whatever their order count (empty or 0 turns it off) */
+function member_spend(): int { return max(0, min(10000000, (int)(shop_setting('member_spend') ?? '0'))); }
 /* customers with $min or more orders, or who spent ₹$spend or more, grouped by mobile (last 10 digits), or email when there is no mobile; cancelled, unfinished and test orders left out; most spent first */
 function members(int $min, int $spend, string $q = ''): array {
   $M = [];
   foreach (shop_db()->query("SELECT id, no, created, status, method, total, name, phone, email, address, state FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 ORDER BY created, id") as $o) {
-    $digits = substr(preg_replace('/\D/', '', (string)$o['phone']), -10);
-    $key = strlen($digits) === 10 ? "m:$digits" : (trim((string)$o['email']) !== '' ? 'e:' . strtolower(trim((string)$o['email'])) : '');
+    [$key, $digits] = customer_key($o);
     if ($key === '') continue;
     $m = &$M[$key];
     $m ??= ['key' => $key, 'phone' => strlen($digits) === 10 ? $digits : '', 'orders' => []];
@@ -217,6 +216,83 @@ function members(int $min, int $spend, string $q = ''): array {
   usort($out, fn($a, $b) => $b['spent'] <=> $a['spent'] ?: $b['count'] <=> $a['count']);
   return $out;
 }
+/* one customer = one mobile number (last 10 digits), or one email when there is no mobile */
+function customer_key(array $o): array {
+  $digits = substr(preg_replace('/\D/', '', (string)$o['phone']), -10);
+  return [strlen($digits) === 10 ? "m:$digits" : (trim((string)$o['email']) !== '' ? 'e:' . strtolower(trim((string)$o['email'])) : ''), strlen($digits) === 10 ? $digits : ''];
+}
+/* everything about one customer: every order (with cancelled and unfinished ones counted apart), their reviews and their visits to the shop */
+function customer(string $key): ?array {
+  $all = [];
+  foreach (shop_db()->query("SELECT * FROM orders WHERE test = 0 ORDER BY created, id") as $o) if (customer_key($o)[0] === $key) $all[] = $o;
+  if (!$all) return null;
+  $sales = array_values(array_filter($all, fn($o) => in_array($o['status'], ['new', 'paid', 'delivered'], true)));
+  $last = end($all); $c = ['key' => $key, 'phone' => customer_key($last)[1], 'name' => $last['name'], 'email' => '', 'address' => $last['address'], 'state' => $last['state'], 'all' => array_reverse($all)];
+  foreach ($all as $o) if ($o['email'] !== '') $c['email'] = $o['email'];
+  $c['count'] = count($sales); $c['spent'] = array_sum(array_map(fn($o) => (int)$o['total'], $sales)); $c['avg'] = $c['count'] ? intdiv($c['spent'], $c['count']) : 0;
+  $c['first'] = $sales ? $sales[0]['created'] : ''; $c['last'] = $sales ? end($sales)['created'] : '';
+  $c['cancelled'] = count(array_filter($all, fn($o) => $o['status'] === 'cancelled')); $c['unpaid'] = count(array_filter($all, fn($o) => $o['status'] === 'awaiting'));
+  $c['reviews'] = reviews_list(['tokens' => array_values(array_filter(array_column($all, 'review'))), 'phone' => $c['phone']]);
+  $c['web'] = customer_web($c['phone']);
+  return $c;
+}
+/* the shop visits of one customer: only from the browser they typed their mobile in at checkout (Left at checkout / buy) */
+function customer_web(string $phone): array {
+  $w = ['visits' => [], 'seconds' => 0, 'pages' => 0, 'products' => [], 'left' => 0, 'first' => 0, 'last' => 0, 'source' => '', 'device' => ''];
+  if ($phone === '') return $w;
+  $db = shop_db();
+  $s = $db->prepare('SELECT vid, ordered FROM leads WHERE phone = ?'); $s->execute([$phone]); $vids = [];
+  foreach ($s as $r) { $vids[$r['vid']] = 1; if (!(int)$r['ordered']) $w['left']++; }
+  if (!$vids) return $w;
+  $in = implode(',', array_fill(0, count($vids), '?')); $vids = array_keys($vids);
+  $s = $db->prepare("SELECT * FROM visits WHERE vid IN ($in) ORDER BY started DESC LIMIT 300"); $s->execute($vids); $w['visits'] = $s->fetchAll();
+  $s = $db->prepare("SELECT sid, product, COUNT(*) n FROM events WHERE vid IN ($in) AND type = 'product' AND product <> '' GROUP BY sid, product"); $s->execute($vids);
+  $bySid = [];
+  foreach ($s as $r) { $w['products'][$r['product']] = ($w['products'][$r['product']] ?? 0) + (int)$r['n']; $bySid[$r['sid']][] = $r['product']; }
+  arsort($w['products']);
+  foreach ($w['visits'] as &$v) { $v['secs'] = max(0, (int)$v['last'] - (int)$v['started']); $v['viewed'] = array_values(array_unique($bySid[$v['sid']] ?? [])); $w['seconds'] += $v['secs']; $w['pages'] += (int)$v['pages']; }
+  unset($v);
+  if ($w['visits']) { $first = end($w['visits']); $w['first'] = (int)$first['started']; $w['last'] = (int)$w['visits'][0]['last']; $w['source'] = $first['source']; $w['device'] = $w['visits'][0]['device']; }
+  return $w;
+}
+function duration(int $secs): string {
+  if ($secs < 60) return $secs . 's';
+  $m = intdiv($secs, 60); return $m < 60 ? $m . ' min' : intdiv($m, 60) . ' h ' . ($m % 60) . ' min';
+}
+
+/* ---------------- reviews (api/reviews.php keeps them in fomaxo-private/reviews.sqlite) ---------------- */
+function reviews_db(): ?PDO {
+  global $PRIV; static $db = false;
+  if ($db !== false) return $db;
+  if (!is_file("$PRIV/reviews.sqlite")) return $db = null;
+  $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+  $db->exec('PRAGMA busy_timeout=4000;');
+  return $db;
+}
+/* reviews with the mobile of the order they came from (verified purchasers). $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone */
+function reviews_list(array $f = []): array {
+  $db = reviews_db(); if (!$db) return [];
+  try {
+    $rows = $db->query("SELECT r.*, COALESCE(o.phone, '') phone, COALESCE(o.token, '') token, COALESCE(o.customer, '') customer FROM reviews r LEFT JOIN orders o ON o.id = r.order_id ORDER BY r.created DESC")->fetchAll();
+  } catch (Throwable $e) { return []; }
+  $q = mb_strtolower(trim((string)($f['q'] ?? ''))); $qd = preg_replace('/\D/', '', $q);
+  $out = [];
+  foreach ($rows as $r) {
+    $r['phone'] = substr(preg_replace('/\D/', '', (string)$r['phone']), -10);
+    if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
+    if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
+    if ($q !== '' && !str_contains(mb_strtolower($r['body'] . ' ' . $r['name'] . ' ' . $r['customer']), $q) && !(strlen($qd) >= 4 && str_contains($r['phone'], $qd))) continue;
+    $out[] = $r;
+  }
+  return $out;
+}
+function review_set(int $id, string $status): void {
+  if (!in_array($status, ['live', 'hidden'], true) || !($db = reviews_db())) return;
+  $db->prepare('UPDATE reviews SET status = ? WHERE id = ?')->execute([$status, $id]);
+}
+function top_reviewers_min(): int { return max(1, min(99, (int)(shop_setting('top_reviewers') ?? '2'))); }
+function stars(float $r): string { $f = (int)round($r); return '<span class="stars" aria-label="' . round($r, 1) . ' out of 5">' . str_repeat('★', $f) . '<i>' . str_repeat('★', 5 - $f) . '</i></span>'; }
+
 function phone_fmt(string $digits): string { return $digits === '' ? '' : '+91 ' . substr($digits, 0, 5) . ' ' . substr($digits, 5); }
 
 /* ---------------- reports (profit & loss) ---------------- */

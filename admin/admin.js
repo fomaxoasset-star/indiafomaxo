@@ -1,5 +1,8 @@
 /* FOMAXO India admin: phone switches between boxes, and the Sales / Visitors bar charts on the dashboard. */
 (function () {
+  /* phones: keep the open tab in view in the scrolling tab strip */
+  var tabOn = document.querySelector('.mtabs .on'); if (tabOn) tabOn.parentNode.scrollLeft = tabOn.offsetLeft - (tabOn.parentNode.clientWidth - tabOn.clientWidth) / 2;
+
   /* a .sw switch shows one [data-pane] of its .panes at a time (phones only; on a computer all panes show) */
   document.querySelectorAll('.sw').forEach(function (sw) {
     var panes = document.querySelector(sw.dataset.for);

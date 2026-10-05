@@ -67,8 +67,11 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS leads(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, created VARCHAR(19) NOT NULL, updated VARCHAR(19) NOT NULL,
       name VARCHAR(80) NOT NULL DEFAULT '', phone VARCHAR(16) NOT NULL DEFAULT '', step VARCHAR(10) NOT NULL DEFAULT '', bag $text NOT NULL, total INT NOT NULL DEFAULT 0,
       ordered INT NOT NULL DEFAULT 0)$tail",
+    /* one row per visit: when it started and was last seen (pages and the once-a-minute ping), for time on site */
+    "CREATE TABLE IF NOT EXISTS visits(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, started INT NOT NULL, last INT NOT NULL,
+      source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0)$tail",
   ] as $sql) $db->exec($sql);
-  foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)'] as $sql)
+  foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
 }
 
@@ -85,7 +88,7 @@ function shop_move_to_mysql(string $name, string $user, string $pass): string {
     $src = shop_db();
     if ($src->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && !(int)$dst->query('SELECT COUNT(*) FROM orders')->fetchColumn()) {
       $dst->beginTransaction();
-      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads'] as $t) {
+      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads', 'visits'] as $t) {
         $dst->exec("DELETE FROM $t");
         foreach ($src->query("SELECT * FROM $t") as $r) {
           $cols = array_keys($r);
