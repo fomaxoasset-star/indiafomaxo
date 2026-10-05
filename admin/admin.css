@@ -122,7 +122,8 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .an{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1.3fr) minmax(0,.95fr) minmax(0,.95fr);grid-template-rows:minmax(0,1.12fr) minmax(0,.88fr);gap:12px;flex:1;min-height:0}
 .an .p-left{grid-column:2/5}.an .bh h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srcs .grid th,.srcs .grid td{padding:7px 6px}.srcs .grid th{letter-spacing:.04em}.srcs .grid td:first-child,.srcs .grid th:first-child{padding-left:12px}
-.geo .bh{flex-wrap:wrap;gap:6px}.geo .rs button{padding:4px 8px;font-size:11px}
+.geo .bh{flex-wrap:wrap;gap:6px}.geo .rs button{padding:4px 8px;font-size:11px;flex:none}
+.geo .seg.rs{order:3;flex:0 1 auto;max-width:100%;overflow-x:auto;scrollbar-width:none}.geo .bh .zopen{order:2}.geo .bh::after{content:"";order:2;flex:1 0 100%;height:0}.geo .seg.rs::-webkit-scrollbar{display:none}
 .geo .li{padding:6px 0;gap:8px}.geo .li .grow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
 .geo .li span.bar,.srcs .li span.bar{flex:none;width:70px;height:6px;border-radius:3px;background:#241f16;overflow:hidden}.geo .li span.bar i{display:block;height:100%;background:var(--gold);border-radius:3px}
 .num{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}.flag{font-size:15px}.nw{white-space:nowrap}

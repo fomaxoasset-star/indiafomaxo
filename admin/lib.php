@@ -439,21 +439,33 @@ function analytics(string $from, string $to, array $CAT): array {
   $out['products'] = $pr;
   return $out;
 }
-/* top countries, and visitors by Indian state, for Today, 7 days, 30 days and the last 12 months (distinct visitors, from api/track.php's lookup) */
-function geo_stats(): array {
+/* top countries, and visitors by Indian state, for the dates picked at the top ('sel', when they are not one of the others), Today, 7 days, 30 days
+   and the last 12 months (distinct visitors, from api/track.php's lookup) */
+function geo_stats(?string $from = null, ?string $to = null): array {
+  $today = strtotime('today');
+  $R = ['today' => [$today, PHP_INT_MAX], 'd7' => [strtotime('-6 day', $today), PHP_INT_MAX], 'd30' => [strtotime('-29 day', $today), PHP_INT_MAX], 'year' => [strtotime(date('Y-m-01') . ' -11 month'), PHP_INT_MAX]];
+  if ($from !== null && $to !== null) $R = ['sel' => [strtotime($from), strtotime("$to +1 day")]] + $R;
   $out = [];
-  foreach (['today' => strtotime('today'), 'd7' => strtotime('-6 day', strtotime('today')), 'd30' => strtotime('-29 day', strtotime('today')), 'year' => strtotime(date('Y-m-01') . ' -11 month')] as $r => $from) {
-    $s = shop_db()->prepare("SELECT country, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND country <> '' GROUP BY country ORDER BY n DESC LIMIT 30"); $s->execute([$from]);
+  foreach ($R as $r => [$a, $b]) {
+    $s = shop_db()->prepare("SELECT country, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND started < ? AND country <> '' GROUP BY country ORDER BY n DESC LIMIT 30"); $s->execute([$a, $b]);
     $out['countries'][$r] = array_column($s->fetchAll(), 'n', 'country');
-    $s = shop_db()->prepare("SELECT region, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND country = 'IN' AND region <> '' GROUP BY region ORDER BY n DESC"); $s->execute([$from]);
+    $s = shop_db()->prepare("SELECT region, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND started < ? AND country = 'IN' AND region <> '' GROUP BY region ORDER BY n DESC"); $s->execute([$a, $b]);
     $out['states'][$r] = array_column($s->fetchAll(), 'n', 'region');
   }
   return $out;
 }
-/* "Left at checkout": everyone who typed their details at checkout, kept for good, newest first, with the order they placed later if any */
-function checkout_leads(): array {
+/* "21–27 Sep", "28 Sep – 4 Oct", "21 Sep" (with the year when it is not this year) */
+function date_span(string $from, string $to): string {
+  $a = strtotime($from); $b = strtotime($to); $yr = date('Y', $b) !== date('Y') ? ' ' . date('Y', $b) : '';
+  if ($from === $to) return date('j M', $a) . $yr;
+  if (date('Y-m', $a) === date('Y-m', $b)) return date('j', $a) . '–' . date('j M', $b) . $yr;
+  return date('j M', $a) . (date('Y', $a) !== date('Y', $b) ? date(' Y', $a) : '') . ' – ' . date('j M', $b) . $yr;
+}
+/* "Left at checkout": everyone who typed their details at checkout (kept for good; the page shows the dates picked), newest first, with the order they placed later if any */
+function checkout_leads(?string $from = null, ?string $to = null): array {
   $db = shop_db();
-  $leads = $db->query('SELECT * FROM leads ORDER BY updated DESC')->fetchAll();
+  if ($from !== null && $to !== null) { $s = $db->prepare('SELECT * FROM leads WHERE updated >= ? AND updated <= ? ORDER BY updated DESC'); $s->execute(["$from 00:00:00", "$to 23:59:59"]); $leads = $s->fetchAll(); }
+  else $leads = $db->query('SELECT * FROM leads ORDER BY updated DESC')->fetchAll();
   if (!$leads) return [];
   $orders = [];
   foreach ($db->query("SELECT no, phone, created FROM orders WHERE status <> 'awaiting' AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;
