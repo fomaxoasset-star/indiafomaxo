@@ -410,11 +410,11 @@ if ($tab === 'reviews') {
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
       . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
       . (($r['reply'] ?? '') !== '' ? '<div class="rvr"><b>Reply from FOMAXO</b><p>' . nl2br(h($r['reply'])) . '</p></div>' : '')
-      . '<details class="rvr-edit"><summary class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</summary>'
+      . '<div class="rvr-acts"><details class="rvr-edit"><summary class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</summary>'
       . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Thank you for your review…" required>' . h($r['reply'] ?? '') . '</textarea>'
-      . '<div class="row"><button class="btn sm">' . (($r['reply'] ?? '') === '' ? 'Post reply' : 'Save reply') . '</button>'
-      . (($r['reply'] ?? '') !== '' ? '<button class="btn line sm danger" name="delete" value="1" formnovalidate data-confirm="Remove your reply from the website?">Delete reply</button>' : '') . '</div></form></details></div>';
+      . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…" required>' . h($r['reply'] ?? '') . '</textarea>'
+      . '<div class="row"><button class="btn sm">Save reply</button></div></form></details>'
+      . (($r['reply'] ?? '') !== '' ? '<form method="post" class="rvr-del">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '"><button class="btn line sm danger" name="delete" value="1" data-confirm="Remove your reply from the website?">Delete reply</button></form>' : '') . '</div></div>';
   }
   $body .= '</div></div>';
   /* stars by product (live reviews only, as on the website) */
