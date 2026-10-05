@@ -501,6 +501,15 @@ html[data-mode="light"] .store-map .map iframe{filter:grayscale(.55) sepia(.25) 
 .sub-row .price{font-size:28px}
 .empty{padding:60px 0;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;color:var(--muted)}
 .empty svg{width:54px;height:54px;opacity:.7}
+.bag-like{margin:26px -28px 6px;padding-top:4px}
+.bag-like h5{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:500;margin:0 28px 14px}
+.bl-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 28px 14px;scroll-padding:0 28px;scrollbar-width:thin;scrollbar-color:var(--gold-lo) transparent}
+.bl-card{flex:0 0 138px;scroll-snap-align:start;display:flex;flex-direction:column;border:1px solid var(--line);background:var(--panel);padding:8px 8px 10px}
+.bl-card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--panel-2)}
+.bl-card b{display:block;margin-top:9px;font-family:var(--hfont);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;color:var(--ivory);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-style:normal}
+.bl-price{margin:6px 0 10px;flex:1}.bag-like .bl-price .price{font-size:17px}.bl-price .price small{font-size:10px}.bl-price .was{font-size:11px}
+.bl-add{display:block;text-align:center;border:1px solid var(--gold);color:var(--gold);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;padding:9px 4px;font-weight:500;transition:background .3s,color .3s}
+.bl-add:hover{background:var(--gold);color:var(--black)}
 .upsell{margin-top:20px;padding-top:20px}
 .upsell h5{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:400;margin-bottom:12px}
 .upsell a{display:grid;grid-template-columns:54px 1fr auto;gap:14px;align-items:center;padding:10px 0}
@@ -2418,20 +2427,33 @@ function buyNow(lines){
   goCheckout('#/checkout');
 }
 function goCheckout(h){ closePanels(); if (location.hash === h) route(); else location.hash = h; }
+/* "You may also like" in the bag: every product on sale that is not already in the bag, sold out ones left out.
+   Sets need fragrances picked, and priced-on-request items need a size chosen, so those open their product page */
+function bagLikeHTML(){
+  const inBag = new Set(cart.map(l => l.id));
+  const list = HOME_ALL().filter(p => !inBag.has(p.id) && !isOut(p));
+  if (!list.length) return '';
+  return `<div class="bag-like"><h5>You may also like</h5><div class="bl-row">${list.map(p => { const s = defaultSize(p), quick = p.kind !== 'set' && hasPrice(p.prices[s]);
+    return `<div class="bl-card"><a href="#/product/${p.id}" data-close><img src="${IMG(imgFor(p, s))}" alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b></a>
+      <div class="bl-price">${quick ? priceHTML(p, s) : fromHTML(p)}</div>
+      ${quick ? `<button type="button" class="bl-add" data-like="${p.id}" data-opt="${s}">Add${p.sizes.length > 1 ? ` · ${optLabel(p, s)}` : ''}</button>` : `<a class="bl-add" href="#/product/${p.id}" data-close>${p.kind === 'set' ? 'Choose' : 'View'}</a>`}</div>`; }).join('')}</div></div>`;
+}
 function renderCart(){
   const n = cart.reduce((a, l) => a + l.qty, 0);
   const cc = $('#cartCount'); cc.textContent = n; cc.classList.toggle('on', n > 0);
   const body = $('#cartBody'), foot = $('#cartFoot');
+  const row = $('.bl-row', body), rowX = row ? row.scrollLeft : 0;
   if (!cart.length){
-    body.innerHTML = `<div class="empty">${emblem()}<p class="caps" style="font-size:20px;color:var(--ivory)">Your bag is empty</p><p class="small">Not sure where to begin? Try a 10ml mini from the Mini Collection.</p></div><div class="empty-acts"><a class="btn sm block" href="#/fragrances" data-close>Shop FOMAXO</a><a class="btn line sm block" href="#/collections/mini" data-close>Mini Collection</a></div>`;
-    foot.innerHTML = ''; return;
+    body.innerHTML = `<div class="empty">${emblem()}<p class="caps" style="font-size:20px;color:var(--ivory)">Your bag is empty</p><p class="small">Not sure where to begin? Try a 10ml mini from the Mini Collection.</p></div><div class="empty-acts"><a class="btn sm block" href="#/fragrances" data-close>Shop FOMAXO</a><a class="btn line sm block" href="#/collections/mini" data-close>Mini Collection</a></div>${bagLikeHTML()}`;
+    foot.innerHTML = ''; const r = $('.bl-row', body); if (r) r.scrollLeft = rowX; return;
   }
   body.innerHTML = cart.map((l, i) => { const p = P[l.id]; return `<div class="line-item">
       <a href="#/product/${p.id}" data-close><img src="${IMG(lineImg(l))}" alt="${esc(p.name)}"></a>
       <div><h4>${esc(p.name)}</h4><div class="o">${optLabel(p, l.opt)} · ${esc(p.family.split('·')[0])}</div>${l.picks ? `<div class="o" style="text-transform:none;letter-spacing:.02em;color:var(--champagne)">${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</div>` : ''}
         <div class="q"><button data-q="${i}" data-d="-1" aria-label="${l.qty === 1 ? 'Remove' : 'Decrease'}">${l.qty === 1 ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' : '−'}</button><span>${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Increase">+</button></div>
         <div style="margin-top:10px">${priceHTML(p, l.opt)}${stockTag(p, l.opt)}</div>
-        <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('');
+        <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
+  const r = $('.bl-row', body); if (r) r.scrollLeft = rowX;
   const t = subtotal(cart);
   foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div><div class="sub-row"><span>Subtotal</span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
     ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p><button class="btn line block" id="doCheckout">Order via WhatsApp</button>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
@@ -2440,7 +2462,8 @@ function renderCart(){
   const gc = $('#goCheckout'); if (gc) gc.onclick = () => goCheckout('#/checkout');
 }
 $('#cartBody').addEventListener('click', e => {
-  const q = e.target.closest('[data-q]'), rm = e.target.closest('[data-rm]');
+  const q = e.target.closest('[data-q]'), rm = e.target.closest('[data-rm]'), lk = e.target.closest('[data-like]');
+  if (lk){ const o = lk.dataset.opt; addToCart(lk.dataset.like, P[lk.dataset.like].sizes.find(s => String(s) === o) ?? o); return; }
   if (q){ const i = +q.dataset.q, l = cart[i], left = stockLeft(P[l.id], l.opt), n = Math.min(99, left ?? 99, l.qty + +q.dataset.d); if (+q.dataset.d > 0 && n === l.qty) { toast(`Only ${left} left of ${P[l.id].name}`); return; } if (n < 1) { cart.splice(i, 1); toast(`${P[l.id].name} removed from your bag`); } else l.qty = n; save(); }
   if (rm){ cart.splice(+rm.dataset.rm, 1); save(); }
 });
