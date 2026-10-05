@@ -1675,9 +1675,12 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-set{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--black));transition:border-color .5s,transform .6s var(--ease)}
 .gf-set:hover{border-color:var(--line-2);transform:translateY(-4px)}
 .gf-set.hl{border-color:var(--gold)}
-.gf-set .gf-pics{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;aspect-ratio:16/10;background:var(--line);overflow:hidden}
+.gf-set .gf-pics{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;aspect-ratio:4/3;background:var(--line);overflow:hidden}
 .gf-set .gf-pics img{width:100%;height:100%;object-fit:cover;background:#0b0a08}
-.gf-set .gf-pics.photo img{object-position:center 62%}
+.gf-set .gf-pics.photo{display:block;background:#0b0a08}
+.gf-set .gf-pics.photo img{position:absolute;inset:0;width:100%;height:100%}
+.gf-set .gf-pics.photo img.bg{object-fit:cover;filter:blur(18px) brightness(.55);transform:scale(1.15)}
+.gf-set .gf-pics.photo img.fg{object-fit:contain;background:transparent}
 .gf-set .gf-badge{position:absolute;left:14px;top:14px;z-index:2;padding:6px 12px;background:var(--gold);color:#0a0805;font-size:10px;font-weight:500;letter-spacing:.24em;text-transform:uppercase}
 .gf-set .gf-body{display:flex;flex-direction:column;gap:14px;padding:26px 26px 28px;flex:1}
 .gf-set h3{font-size:22px;letter-spacing:.12em}
@@ -2815,7 +2818,8 @@ const GIFT_SETS = [
 const giftSets = () => GIFT_SETS.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
   .filter(g => g.items.length === GIFT_SETS.find(x => x.id === g.id).items.length);
 /* every product that can be chosen in a gift set dropdown, one option per size */
-const giftOptions = (selId, selSize) => [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.filter(sz => !sizeOut(p, sz)).map(sz => {
+const GIFT_SLOTS = Math.max(...GIFT_SETS.map(g => g.items.length));   // every set shows this many dropdowns
+const giftOptions = (selId, selSize) => `<option value=""${selId ? '' : ' selected'}>No product</option>` + [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.filter(sz => !sizeOut(p, sz)).map(sz => {
   const v = `${p.id}|${sz}`, label = p.kind ? p.name : `${p.name} · ${sz}ml`;
   return `<option value="${v}"${p.id === selId && String(sz) === String(selSize) ? ' selected' : ''}>${esc(label)}</option>`;
 })).join('');
@@ -2825,9 +2829,9 @@ function giftPage(){
   document.title = 'Personalized Gifting — FOMAXO';
   const sets = giftSets();
   const setCard = (g, i) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-      <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s]) => `<img src="${IMG(imgFor(P[id], s))}" alt="" loading="lazy">`).join('')}</div>
+      <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s]) => `<img src="${IMG(imgFor(P[id], s))}" alt="" loading="lazy">`).join('')}</div>
       <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-        <div class="gf-pick"><small>Choose your products</small>${g.items.map(([id, s], k) => `<select data-gpick="${g.id}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s)}</select>`).join('')}</div>
+        <div class="gf-pick"><small>Choose your products</small>${Array.from({length: GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s)}</select>`).join('')}</div>
         <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}Personalise</button></div>
       </div></article>`;
   const occ = [
@@ -2902,7 +2906,7 @@ function giftPage(){
 }
 function bindGift(){
   $$('[data-gpers]').forEach(b => b.onclick = () => { const g = GIFT_SETS.find(x => x.id === b.dataset.gpers); if (!g) return;
-    const picks = $$(`[data-gpick="${g.id}"]`).map(sel => { const [id, sz] = sel.value.split('|'); const p = P[id]; return p ? `- ${p.kind ? p.name : `${p.name} ${sz}ml`}` : ''; }).filter(Boolean);
+    const picks = $$(`[data-gpick="${g.id}"]`).filter(sel => sel.value).map(sel => { const [id, sz] = sel.value.split('|'); const p = P[id]; return p ? `- ${p.kind ? p.name : `${p.name} ${sz}ml`}` : ''; }).filter(Boolean);
     const a = document.createElement('a'); a.href = waLink(`Hello FOMAXO, I am interested in the "${g.name}" gift set with these products:\n${picks.join('\n')}\n\nPlease help me personalise it.`); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
 }
