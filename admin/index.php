@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '19';
+const ASSET_V = '20';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -142,13 +142,17 @@ $LIVE = shop_products();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], '!Your session expired. Please try again.');
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
-  $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'page']));
+  $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
 
   if ($a === 'status') {
     $oid = (int)($_POST['id'] ?? 0); $ns = (string)($_POST['status'] ?? '');
     shop_set_status($oid, $ns, mb_substr(trim((string)($_POST['admin_note'] ?? '')), 0, 500));
     $s = shop_db()->prepare('SELECT no, status FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
-    go($back, $o ? ($o['no'] ?: 'The order') . ' is ' . (FOMAXO_STATUSES[$o['status']] ?? $o['status']) . ($o['status'] === 'cancelled' ? '. Its items are back in stock.' : '. Saved.') : 'Order updated.');
+    go($back, $o ? ($o['no'] ?: 'The order') . ' is ' . (FOMAXO_STATUSES[$o['status']] ?? $o['status']) . (in_array($o['status'], ['cancelled', 'refunded'], true) ? '. Its items are back in stock.' : '. Saved.') : 'Order updated.');
+  }
+  if ($a === 'quick') {   // one-tap order buttons: back to the same filtered list
+    [$act, $oid] = array_pad(explode(':', (string)($_POST['q'] ?? ''), 2), 2, '0');
+    go($back, shop_order_action((int)$oid, $act));
   }
   if ($a === 'stock') {
     foreach ((array)($_POST['stock'] ?? []) as $id => $opts) {

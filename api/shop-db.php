@@ -9,7 +9,7 @@ declare(strict_types=1);
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
 
 const FOMAXO_FIRST_ORDER = 1001;
-const FOMAXO_STATUSES = ['awaiting' => 'Awaiting payment', 'new' => 'New', 'paid' => 'Paid', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled'];
+const FOMAXO_STATUSES = ['awaiting' => 'Awaiting payment', 'new' => 'New', 'paid' => 'Paid', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'refunded' => 'Refunded'];
 
 function shop_db(): PDO {
   global $PRIV, $SHOP_DB;
@@ -18,11 +18,19 @@ function shop_db(): PDO {
   if (!empty($cfg['db_name']) && !empty($cfg['db_user'])) $SHOP_DB = shop_mysql($cfg);
   else { $SHOP_DB = new PDO("sqlite:$PRIV/shop.sqlite", null, null, SHOP_PDO); $SHOP_DB->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;'); }
   shop_schema($SHOP_DB);
-  if (shop_setting('schema') !== '2') {   // columns added after the tables first went live
+  if ((int)(shop_setting('schema') ?? '0') < 2) {   // columns added after the tables first went live
     foreach (["visits ADD country VARCHAR(2) NOT NULL DEFAULT ''", "visits ADD region VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD email VARCHAR(120) NOT NULL DEFAULT ''",
       "leads ADD state VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD address VARCHAR(300) NOT NULL DEFAULT ''"] as $alter)
       try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '2');
+  }
+  if (shop_setting('schema') === '2') {   // order tracking: when it was delivered, and when it was cancelled or refunded
+    foreach (["orders ADD delivered_at VARCHAR(19) NULL", "orders ADD closed_at VARCHAR(19) NULL"] as $alter)
+      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    /* orders delivered or cancelled before this: their last change is the best date there is */
+    $SHOP_DB->exec("UPDATE orders SET delivered_at = updated WHERE status = 'delivered' AND delivered_at IS NULL AND updated <> ''");
+    $SHOP_DB->exec("UPDATE orders SET closed_at = updated WHERE status = 'cancelled' AND closed_at IS NULL AND updated <> ''");
+    shop_set('schema', '3');
   }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
@@ -57,7 +65,7 @@ function shop_schema(PDO $db): void {
       city VARCHAR(60) NOT NULL DEFAULT '', state VARCHAR(60) NOT NULL DEFAULT '', pin VARCHAR(10) NOT NULL DEFAULT '',
       note VARCHAR(300) NOT NULL DEFAULT '', payment_id VARCHAR(64) NOT NULL DEFAULT '', test INT NOT NULL DEFAULT 0,
       review VARCHAR(40) NOT NULL DEFAULT '', stock_taken INT NOT NULL DEFAULT 0, admin_note VARCHAR(500) NOT NULL DEFAULT '',
-      updated VARCHAR(19) NOT NULL DEFAULT '')$tail",
+      updated VARCHAR(19) NOT NULL DEFAULT '', delivered_at VARCHAR(19) NULL, closed_at VARCHAR(19) NULL)$tail",
     "CREATE TABLE IF NOT EXISTS stock(product VARCHAR(48) NOT NULL, opt VARCHAR(16) NOT NULL, qty INT NOT NULL, PRIMARY KEY(product, opt))$tail",
     "CREATE TABLE IF NOT EXISTS products(id VARCHAR(48) NOT NULL PRIMARY KEY, added INT NOT NULL DEFAULT 0, hidden INT NOT NULL DEFAULT 0,
       data $text NOT NULL, sort INT NOT NULL DEFAULT 0, updated VARCHAR(19) NOT NULL DEFAULT '')$tail",
@@ -247,20 +255,50 @@ function shop_find_order(string $ref, bool $lock = false, ?PDO $db = null): ?arr
   $r = $s->fetch(); return $r ? shop_rec($r) : null;
 }
 
-/* Admin: change an order's status. Cancelling puts its items back in stock; un-cancelling takes them again. */
+/* Admin: change an order's status. Cancelling or refunding puts its items back in stock; undoing that takes them again.
+   Delivered saves the delivery time; a cash order counts as paid once delivered. Cancelled and refunded save when. */
 function shop_set_status(int $id, string $status, ?string $note = null): void {
   if (!isset(FOMAXO_STATUSES[$status])) return;
   shop_tx(function (PDO $db) use ($id, $status, $note) {
     $s = $db->prepare('SELECT * FROM orders WHERE id = ?' . (shop_is_mysql() ? ' FOR UPDATE' : '')); $s->execute([$id]);
     $r = $s->fetch(); if (!$r) return;
     $items = json_decode((string)$r['items'], true) ?: []; $taken = (int)$r['stock_taken'];
-    $no = $r['no'];
+    $no = $r['no']; $was = $r['status']; $now = shop_now(); $cod = $r['method'] === 'cod';
+    $paid = $r['paid_at']; $dlv = $r['delivered_at']; $closed = $r['closed_at'];
     if (!$no && in_array($status, ['new', 'paid', 'delivered'], true)) $no = shop_next_no($db);   // an unpaid online attempt confirmed by hand
-    if (in_array($status, ['cancelled', 'awaiting'], true) && $taken) { shop_return_stock($db, $items); $taken = 0; }
-    elseif (!in_array($status, ['cancelled', 'awaiting'], true) && !$taken && $no) { shop_take_stock($db, $items, false); $taken = 1; }
-    $db->prepare('UPDATE orders SET status = ?, stock_taken = ?, no = ?, admin_note = ?, updated = ? WHERE id = ?')
-      ->execute([$status, $taken, $no, $note ?? $r['admin_note'], shop_now(), $id]);
+    $back = ['cancelled', 'awaiting', 'refunded'];
+    if (in_array($status, $back, true) && $taken) { shop_return_stock($db, $items); $taken = 0; }
+    elseif (!in_array($status, $back, true) && !$taken && $no) { shop_take_stock($db, $items, false); $taken = 1; }
+    if ($status === 'delivered' && $was !== 'delivered') { $dlv = $now; $paid = $paid ?: $now; }
+    elseif ($was === 'delivered' && $status !== 'delivered' && $status !== 'refunded') {   // moved back from Delivered in the status list: a cash order paid only by delivering is unpaid again
+      if ($cod && $paid === $dlv) $paid = null;
+      $dlv = null;
+    }
+    if ($status === 'paid') $paid = $paid ?: $now;
+    if ($status === 'new' && $cod) $paid = null;
+    if (in_array($status, ['cancelled', 'refunded'], true)) { if ($was !== $status) $closed = $now; } else $closed = null;
+    $db->prepare('UPDATE orders SET status = ?, stock_taken = ?, no = ?, admin_note = ?, paid_at = ?, delivered_at = ?, closed_at = ?, updated = ? WHERE id = ?')
+      ->execute([$status, $taken, $no, $note ?? $r['admin_note'], $paid, $dlv, $closed, $now, $id]);
   });
+}
+/* Is the money in? Online orders once Razorpay confirmed; cash orders once marked Paid or delivered. */
+function shop_is_paid(array $o): bool { return $o['status'] !== 'awaiting' && (!empty($o['paid_at']) || in_array($o['status'], ['paid', 'delivered'], true)); }
+/* The one-tap buttons that work on an order now: paid (unpaid cash orders), deliver and cancel (pending), refund (paid or delivered online orders). */
+function shop_order_actions(array $o): array {
+  $st = $o['status']; $a = [];
+  if ($st === 'new' && $o['method'] === 'cod' && !shop_is_paid($o)) $a[] = 'paid';
+  if (in_array($st, ['new', 'paid'], true)) array_push($a, 'deliver', 'cancel');
+  if ($o['method'] === 'online' && in_array($st, ['new', 'paid', 'delivered'], true) && shop_is_paid($o)) $a[] = 'refund';
+  return $a;
+}
+/* Admin one-tap button. Checks the button is still allowed for this order. Returns the message to show. */
+function shop_order_action(int $id, string $act): string {
+  $s = shop_db()->prepare('SELECT * FROM orders WHERE id = ?'); $s->execute([$id]); $o = $s->fetch();
+  if (!$o) return '!That order was not found.';
+  $no = $o['no'] ?: 'This order';
+  if (!in_array($act, shop_order_actions($o), true)) return "!$no has changed since the page opened, so nothing was done. Please check it and try again.";
+  shop_set_status($id, ['paid' => 'paid', 'deliver' => 'delivered', 'cancel' => 'cancelled', 'refund' => 'refunded'][$act]);
+  return $no . ['paid' => ' is now paid.', 'deliver' => ' is now delivered.', 'cancel' => ' is cancelled. Its items are back in stock.', 'refund' => ' is refunded. Its items are back in stock.'][$act];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
