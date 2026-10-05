@@ -64,6 +64,10 @@ function str($v, int $max): string { $s = trim(preg_replace('/\s+/u', ' ', (stri
 function validProduct($id): string { $id = (string)$id; if (!preg_match('/^[a-z0-9-]{1,48}$/', $id)) fail('Unknown product.'); return $id; }
 
 /* "Ahmed Saleem" → "Ahmed S."; only used when a verified buyer leaves the name blank, typed names show as written */
+/* "arjun menon" → "Arjun Menon": first letter of every word up, the rest left as typed */
+function cap(string $s): string {
+  return preg_replace_callback("/(^|[\\s\\-'(.,])(\\p{Ll})/u", fn($m) => $m[1] . mb_strtoupper($m[2]), $s) ?? $s;
+}
 function displayName(string $n): string {
   $parts = preg_split('/\s+/u', trim($n)) ?: [];
   if (!$parts || $parts[0] === '') return 'Customer';
@@ -167,10 +171,10 @@ try {
       $text = trim(mb_substr(str_replace("\r", '', (string)($in['text'] ?? '')), 0, MAX_TEXT));
       if (mb_strlen($text) < 4) fail('Please write a few words about the product.');
       $anon = !empty($in['anonymous']) && $in['anonymous'] !== 'false';
-      $rawName = str($in['name'] ?? '', 60);
+      $rawName = cap(str($in['name'] ?? '', 60));
       if (!$anon && $rawName === '') fail('Please enter your name, or choose to post anonymously.');
-      $city = str($in['city'] ?? '', 60);                                       // optional, e.g. "Pune, Maharashtra"
-      $country = str($in['country'] ?? '', 40);                                 // optional, picked from the form's list
+      $city = cap(str($in['city'] ?? '', 60));                                       // optional, e.g. "Pune, Maharashtra"
+      $country = cap(str($in['country'] ?? '', 40));                                 // optional, picked from the form's list
       if ($anon) { $city = ''; $country = ''; }
       if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
 
