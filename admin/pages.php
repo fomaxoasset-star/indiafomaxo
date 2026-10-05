@@ -97,50 +97,95 @@ if ($tab === 'orders') {
 }
 
 /* ============ Members ============ */
-if ($tab === 'members') {
-  $min = member_min(); $mq = trim((string)($_GET['q'] ?? '')); $list = members($min, $mq);
-  $body .= '<div class="row mtool"><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_min">'
-    . '<label class="chk" style="font-size:14px">Members have <input type="number" name="member_min" min="1" max="999" value="' . $min . '" style="width:70px"> or more orders</label><button class="btn line sm">Save</button></form>'
+$ckey = (string)($_GET['c'] ?? '');
+if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
+  /* the customer page */
+  $W = $C['web']; $wa = $C['phone'] ? 'https://wa.me/91' . $C['phone'] . '?text=' . rawurlencode('Hi ' . $C['name'] . ', this is FOMAXO. ') : '';
+  $dt = fn($s) => $s ? h(date('d M Y', is_int($s) ? $s : strtotime($s))) : '—';
+  $body .= '<div class="row ctop"><a class="btn line sm" href="' . h(self_url(['tab' => 'members'])) . '">‹ Members</a><h2>' . h($C['name']) . '</h2><span class="muted">' . h(phone_fmt($C['phone']) ?: $C['email']) . '</span><span class="sp"></span>'
+    . ($wa ? '<a class="btn sm" href="' . h($wa) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</div>';
+  $body .= '<div class="kpis n6" style="--n:6">'
+    . '<div class="kpi"><span>Orders</span><b>' . $C['count'] . '</b></div><div class="kpi"><span>Total spent</span><b>' . rupees($C['spent']) . '</b></div>'
+    . '<div class="kpi"><span>Average order</span><b>' . rupees($C['avg']) . '</b></div><div class="kpi"><span>Reviews</span><b>' . count($C['reviews']) . '</b></div>'
+    . '<div class="kpi"><span>Visits</span><b>' . count($W['visits']) . '</b></div><div class="kpi"><span>Time on site</span><b>' . ($W['visits'] ? duration($W['seconds']) : '—') . '</b></div></div>';
+  $body .= $sw('#cPanes', ['details' => 'Details', 'web' => 'On the website', 'orders' => 'Orders', 'reviews' => 'Reviews']) . '<div class="cust panes" id="cPanes">';
+  /* details */
+  $body .= '<div class="box on" data-pane="details"><div class="bh"><h3>Details</h3></div><div class="bb"><dl class="dl">'
+    . '<dt>Mobile</dt><dd>' . ($C['phone'] ? '<a href="tel:+91' . h($C['phone']) . '">' . h(phone_fmt($C['phone'])) . '</a> · <a href="' . h($wa) . '" target="_blank" rel="noopener">WhatsApp</a>' : '—') . '</dd>'
+    . '<dt>Email</dt><dd>' . ($C['email'] ? '<a href="mailto:' . h($C['email']) . '">' . h($C['email']) . '</a>' : '—') . '</dd>'
+    . '<dt>Address</dt><dd>' . h($C['address']) . '</dd><dt>State</dt><dd>' . h($C['state'] ?: '—') . '</dd>'
+    . '<dt>First order</dt><dd>' . $dt($C['first']) . '</dd><dt>Last order</dt><dd>' . $dt($C['last']) . '</dd>'
+    . '<dt>Cancelled</dt><dd>' . $C['cancelled'] . '</dd><dt>Unpaid</dt><dd>' . $C['unpaid'] . '</dd></dl></div></div>';
+  /* on the website */
+  $body .= '<div class="box" data-pane="web"><div class="bh"><h3>On the website</h3><span class="muted small">From the device they ordered on</span></div><div class="bb">';
+  if (!$W['visits']) $body .= '<p class="empty">No visits recorded yet. Visits are counted from the browser they checked out on, from when this was turned on.</p>';
+  else {
+    $body .= '<dl class="dl"><dt>Visits</dt><dd>' . count($W['visits']) . '</dd><dt>Time on site</dt><dd>' . duration($W['seconds']) . '</dd><dt>Pages viewed</dt><dd>' . $W['pages'] . '</dd>'
+      . '<dt>First visit</dt><dd>' . $dt($W['first']) . '</dd><dt>Last visit</dt><dd>' . $dt($W['last']) . '</dd><dt>Came from</dt><dd>' . h(SOURCES[$W['source']] ?? ucfirst($W['source'])) . '</dd>'
+      . '<dt>Device</dt><dd>' . h(ucfirst($W['device'])) . '</dd><dt>Left at checkout</dt><dd>' . $W['left'] . ' time' . ($W['left'] === 1 ? '' : 's') . '</dd></dl>';
+    if ($W['products']) { $body .= '<h4>Products viewed</h4>'; foreach ($W['products'] as $pid => $n) $body .= '<div class="li">' . $thumbOf($pid, 'th sm') . '<span class="grow"><b>' . h($CAT[$pid]['name'] ?? $pid) . '</b></span><span class="muted small">' . $n . ' view' . ($n === 1 ? '' : 's') . '</span></div>'; }
+    $body .= '<h4>Visits</h4>';
+    foreach ($W['visits'] as $v) $body .= '<div class="li"><span class="grow"><b>' . h(date('d M Y, H:i', (int)$v['started'])) . '</b><small>' . h(SOURCES[$v['source']] ?? ucfirst($v['source'])) . ' · ' . h(ucfirst($v['device'])) . ' · ' . (int)$v['pages'] . ' page' . ((int)$v['pages'] === 1 ? '' : 's')
+      . ($v['viewed'] ? ' · ' . h(implode(', ', array_map(fn($x) => $CAT[$x]['name'] ?? $x, $v['viewed']))) : '') . '</small></span><span class="muted small">' . duration($v['secs']) . '</span></div>';
+  }
+  $body .= '</div></div>';
+  /* orders */
+  $body .= '<div class="box" data-pane="orders"><div class="bh"><h3>Orders</h3><span class="muted small">' . count($C['all']) . ' in all</span></div><div class="bb np">';
+  foreach ($C['all'] as $o) {
+    $items = json_decode((string)$o['items'], true) ?: [];
+    $body .= '<a class="corder os-' . h($o['status']) . '" href="' . h(self_url(array_filter(['tab' => 'orders', 'q' => $o['no'] ?: $o['name'], 'status' => $o['status'] === 'awaiting' ? 'awaiting' : '']))) . '"><div class="ch"><b>' . h($o['no'] ?: 'Not paid') . '</b><span class="muted small">' . h(date('d M Y', strtotime($o['created']))) . ' · ' . h(pay_label($o)) . '</span><span class="sp"></span><b>' . rupees((int)$o['total']) . '</b><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']] ?? $o['status']) . '</span></div>';
+    foreach ($items as $it) $body .= '<div class="ci">' . $thumbOf((string)($it['id'] ?? ''), 'th xs') . '<span>' . (int)($it['qty'] ?? 0) . ' × ' . h($it['name'] ?? '') . '</span><span class="muted">' . rupees((int)($it['unit'] ?? 0)) . '</span></div>';
+    $body .= '</a>';
+  }
+  $body .= '</div></div>';
+  /* reviews */
+  $body .= '<div class="box" data-pane="reviews"><div class="bh"><h3>Reviews</h3></div><div class="bb">';
+  if (!$C['reviews']) $body .= '<p class="empty">No reviews from this customer yet.</p>';
+  foreach ($C['reviews'] as $r) $body .= '<div class="rv"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating']) . '<span class="sp"></span><span class="muted small">' . h(date('d M Y', (int)$r['created'])) . '</span>' . ($r['status'] !== 'live' ? '<span class="badge st-cancelled">Removed</span>' : '') . '</div><p>' . nl2br(h($r['body'])) . '</p></div>';
+  $body .= '</div></div></div>';
+} elseif ($tab === 'members') {
+  $min = member_min(); $spend = member_spend(); $mq = trim((string)($_GET['q'] ?? '')); $list = members($min, $spend, $mq);
+  $rule = $min . ' or more orders' . ($spend ? ' or ₹' . number_format($spend) . ' or more spent' : '');
+  $body .= '<div class="row mtool">'
+    . '<form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_min"><label class="mrule">Orders: at least<input type="number" name="member_min" min="1" max="999" value="' . $min . '"></label><button class="btn line sm">Save</button></form>'
+    . '<form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_spend"><label class="mrule">Spent: at least ₹<input type="number" name="member_spend" min="0" max="10000000" value="' . ($spend ?: '') . '" placeholder="off"></label><button class="btn line sm">Save</button></form>'
     . '<form method="get" class="msearch"><input type="hidden" name="tab" value="members"><input type="search" name="q" value="' . h($mq) . '" placeholder="Name, mobile or email"><button class="btn line sm">Search</button></form>'
     . '<a class="btn sm" href="' . h(self_url(array_filter(['do' => 'members_excel', 'q' => $mq]))) . '">Excel</a></div>';
-  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . count($list) . ' member' . (count($list) === 1 ? '' : 's') . ' with ' . $min . ' or more orders, grouped by mobile (or email), most spent first. Cancelled and test orders are left out. Tap a member to see their orders.</span></div><div class="bb np">';
-  if (!$list) $body .= '<p class="empty">' . ($mq !== '' ? 'No member matches “' . h($mq) . '”.' : 'No customer has ' . $min . ' or more orders yet. Lower the number above to see more.') . '</p>';
-  foreach ($list as $m) {
-    $msg = 'Hi ' . $m['name'] . ', thank you for being a FOMAXO regular!';
-    $body .= '<details class="order mem"><summary><span class="no">' . h($m['name']) . '</span>'
-      . '<span class="cu"><b>' . h(phone_fmt($m['phone']) ?: $m['email']) . '</b><small>' . h($m['state']) . '</small></span>'
-      . '<span class="mn"><b>' . $m['count'] . '</b><small>orders</small></span><span class="tt">' . rupees($m['spent']) . '</span><span class="pm">avg ' . rupees($m['avg']) . '</span>'
-      . '<span class="dt">' . h(date('d M Y', strtotime($m['first']))) . ' – ' . h(date('d M Y', strtotime($m['last']))) . '</span></summary>'
-      . '<div class="od"><div><h4>Contact</h4><p>' . ($m['phone'] ? '<a href="tel:+91' . h($m['phone']) . '">' . h(phone_fmt($m['phone'])) . '</a> · <a href="https://wa.me/91' . h($m['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a><br>' : '')
-      . ($m['email'] ? '<a href="mailto:' . h($m['email']) . '">' . h($m['email']) . '</a>' : '') . '</p><h4>Latest address</h4><p>' . h($m['address']) . '</p></div>'
-      . '<div><h4>Summary</h4><p>' . $m['count'] . ' orders · ' . rupees($m['spent']) . ' spent<br>Average order ' . rupees($m['avg']) . '<br>First order ' . h(date('d M Y', strtotime($m['first']))) . '<br>Last order ' . h(date('d M Y', strtotime($m['last']))) . '</p></div>'
-      . '<div class="items"><h4>Order history</h4>';
-    foreach (array_reverse($m['orders']) as $o) $body .= '<a class="li" href="' . h(self_url(['tab' => 'orders', 'q' => $o['no']])) . '"><span class="grow"><b>' . h($o['no']) . '</b><small>' . h(date('d M Y', strtotime($o['created']))) . ' · ' . ($o['method'] === 'cod' ? 'COD' : 'Online') . '</small></span><span>' . rupees((int)$o['total']) . '</span><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']]) . '</span></a>';
-    $body .= '</div></div></details>';
+  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . count($list) . ' member' . (count($list) === 1 ? '' : 's') . ' with ' . $rule . ', most spent first. Cancelled and test orders are left out. An empty amount box turns that filter off. Tap a member to open their page.</span></div><div class="bb np">';
+  if (!$list) $body .= '<p class="empty">' . ($mq !== '' ? 'No member matches “' . h($mq) . '”.' : 'No customer has ' . $rule . ' yet. Lower the numbers above to see more.') . '</p>';
+  else {
+    $body .= '<table class="grid mlist"><thead><tr><th>Name</th><th>Mobile</th><th class="hide-m">Email</th><th class="hide-m">Address</th><th class="r">Orders</th><th class="r">Spent</th></tr></thead><tbody>';
+    foreach ($list as $m) {
+      $url = h(self_url(['tab' => 'members', 'c' => $m['key']]));
+      $body .= '<tr data-href="' . $url . '"><td><a href="' . $url . '"><b>' . h($m['name']) . '</b></a><small class="show-m">' . h($m['state']) . '</small></td>'
+        . '<td>' . ($m['phone'] ? h(phone_fmt($m['phone'])) . '<small><a href="https://wa.me/91' . h($m['phone']) . '?text=' . rawurlencode('Hi ' . $m['name'] . ', thank you for being a FOMAXO regular!') . '" target="_blank" rel="noopener">WhatsApp</a></small>' : '—') . '</td>'
+        . '<td class="hide-m">' . h($m['email']) . '</td><td class="hide-m"><span class="clip">' . h($m['address']) . '</span></td><td class="r">' . $m['count'] . '</td><td class="r"><b>' . rupees($m['spent']) . '</b></td></tr>';
+    }
+    $body .= '</tbody></table><script>document.querySelectorAll("tr[data-href]").forEach(function(r){r.onclick=function(e){if(!e.target.closest("a"))location.href=r.dataset.href}})</script>';
   }
   $body .= '</div></div>';
 }
 
 /* ============ Stock ============ */
 if ($tab === 'stock') {
-  $STOCK = shop_stock(); $low = shop_low_stock();
+  $STOCK = shop_stock(); $low = shop_low_stock(); $COST = shop_costs();
   $body .= '<div class="row top"><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="low_stock">'
-    . '<label class="chk" style="font-size:14px">Show “Only X left” from <input type="number" name="low_stock" min="0" max="99" value="' . $low . '" style="width:70px"> left or fewer</label><button class="btn line sm">Save</button><span class="muted small">0 turns it off.</span></form></div>'
+    . '<label class="chk" style="font-size:14px">Show “Only X left” from <input type="number" name="low_stock" min="0" max="99" value="' . $low . '" style="width:70px"> left or fewer</label><button class="btn line sm">Save</button><span class="muted small">0 turns it off.</span></form>'
+    . '<input type="search" class="grow" id="stockFind" placeholder="Find a product" aria-label="Find a product" style="max-width:320px;margin-left:auto"></div>'
     . '<form method="post" class="box fill">' . $csrfField . '<input type="hidden" name="action" value="stock"><input type="hidden" name="low_stock" value="' . $low . '">'
-    . '<div class="bh"><span class="muted small">Write how many you have of each size. Orders take them off and cancelled orders put them back. At 0 the shop shows Sold out. Leave a box empty to not track that size.</span></div>'
-    . '<div class="bb np"><table class="grid"><thead><tr><th>Product</th><th>Size</th><th>In stock</th><th class="hide-m">On the shop</th></tr></thead><tbody>';
+    . '<div class="bb np"><table class="grid stock"><thead><tr><th>Product</th><th>Size</th><th>Stock</th><th>Cost ₹</th><th class="hide-m">On the shop</th></tr></thead><tbody>';
   foreach ($CAT as $id => $p) {
-    $first = true;
     foreach ($p['prices'] as $opt => $_) {
-      $v = $STOCK[$id][$opt] ?? null;
-      $state = !empty($p['hidden']) ? '<span class="badge st-awaiting">Hidden</span>' : ($v === null ? ($p['soldOut'] ? '<span class="badge st-cancelled">Sold out</span>' : '<span class="muted small">Not tracked</span>')
+      $v = $STOCK[$id][$opt] ?? null; $c = $COST[$id][$opt] ?? null;
+      $state = !empty($p['hidden']) ? '<span class="badge st-awaiting">Hidden</span>' : ($v === null ? ($p['soldOut'] ? '<span class="badge st-cancelled">Sold out</span>' : '<span class="muted small">Not counted</span>')
         : ($v < 1 ? '<span class="badge st-cancelled">Sold out</span>' : ($low && $v <= $low ? '<span class="badge st-new">Only ' . $v . ' left</span>' : '<span class="badge st-paid">In stock</span>')));
-      $body .= '<tr' . ($first ? ' class="first"' : '') . '><td>' . ($first ? '<div class="pc">' . $thumbOf($id) . '<div><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small></div></div>' : '') . '</td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
-        . '<td><input type="number" min="0" max="99999" name="stock[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($v === null ? '' : $v) . '" placeholder="—"></td><td class="hide-m">' . $state . '</td></tr>';
-      $first = false;
+      $body .= '<tr data-name="' . h(mb_strtolower($p['name'] . ' ' . kind_label($p['kind']))) . '"><td><div class="pc">' . $thumbOf($id, 'th sm') . '<div><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small></div></div></td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
+        . '<td><input type="number" min="0" max="99999" name="stock[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($v === null ? '' : $v) . '" placeholder="—"></td>'
+        . '<td><input type="number" min="0" step="0.01" name="cost[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($c === null ? '' : h((string)round($c / 100, 2))) . '" placeholder="—"></td><td class="hide-m">' . $state . '</td></tr>';
     }
   }
-  $body .= '</tbody></table></div><div class="bf"><button class="btn">Save stock</button><span class="muted small">Your cost per item is on each product’s Edit page.</span></div></form>';
+  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Reports use it to work out your profit.</span></div></form>'
+    . '<script>(function(){var f=document.getElementById("stockFind"),rows=document.querySelectorAll("table.stock tbody tr"),none=document.getElementById("stockNone");f.oninput=function(){var q=f.value.trim().toLowerCase(),n=0;rows.forEach(function(r){var on=!q||r.dataset.name.indexOf(q)>-1;r.hidden=!on;if(on)n++});none.hidden=n>0}})()</script>';
 }
 
 /* ============ Products ============ */
@@ -305,6 +350,52 @@ if ($tab === 'reports') {
   $body .= '<div class="box yr" data-pane="year"><div class="bb np"><table class="grid"><thead><tr>' . str_replace('Month', 'Year', $head) . '</tr></thead><tbody>';
   foreach (report_years() as $y) { $yt = report_sum(report_year($y)); $body .= '<tr><td><a href="' . h(self_url(['tab' => 'reports', 'year' => $y])) . '">' . $y . '</a></td><td class="r">' . $yt['orders'] . '</td><td class="r">' . rupees($yt['sales']) . '</td><td class="r">' . rupees($yt['discounts']) . '</td><td class="r">' . rupees($yt['fees']) . '</td><td class="r">' . rupees($yt['cost']) . '</td><td class="r">' . $m($yt['gross']) . '</td><td class="r">' . rupees($yt['expenses']) . '</td><td class="r"><b>' . $m($yt['net']) . '</b></td></tr>'; }
   $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Sales are orders marked New, Paid or Delivered, by order date, including the cash on delivery fee. Cancelled orders, unfinished payments and test payments are left out. Discounts are what customers saved against the “Was” price (already taken off sales). Fees are the card / UPI payment fee set in Settings. Gross profit = sales − fees − cost of goods. Net = gross profit − expenses.</p></div></div></div>';
+}
+
+/* ============ Reviews ============ */
+if ($tab === 'reviews') {
+  $rq = trim((string)($_GET['q'] ?? '')); $rv = (string)($_GET['v'] ?? ''); $rv = in_array($rv, ['1', '0'], true) ? $rv : '';
+  $ALL = reviews_list(); $list = reviews_list(array_filter(['q' => $rq], 'strlen') + ($rv !== '' ? ['verified' => (int)$rv] : []));
+  $nv = count(array_filter($ALL, fn($r) => (int)$r['verified'] === 1)); $nu = count($ALL) - $nv;
+  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv], 'strlen'); $back = h(json_encode($keep));
+  $body .= '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '')
+    . '<input type="search" name="q" value="' . h($rq) . '" placeholder="Words, name or mobile"><button class="btn line sm">Search</button>'
+    . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
+    . '<a class="chip' . ($rv === '0' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '0' ? '' : '0'] + $keep)) . '">Unverified <b>' . $nu . '</b></a></form>';
+  $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars by product', 'top' => 'Top reviewers']) . '<div class="revs panes" id="rvPanes">';
+  /* every review */
+  $body .= '<div class="box on" data-pane="list"><div class="bh"><span class="muted small">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . '. Removed reviews leave the website and the star rating; Put back shows them again.</span></div><div class="bb">';
+  if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
+  elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' ? ' match this search.' : ' yet.') . '</p>';
+  foreach ($list as $r) {
+    $live = $r['status'] === 'live';
+    $photos = json_decode((string)$r['photos'], true) ?: [];
+    $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
+      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '<span class="sp"></span>'
+      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form></div>'
+      . '<p>' . nl2br(h($r['body'])) . '</p>'
+      . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
+      . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
+      . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small></div>';
+  }
+  $body .= '</div></div>';
+  /* stars by product (live reviews only, as on the website) */
+  $by = [];
+  foreach ($ALL as $r) if ($r['status'] === 'live') { $by[$r['product']]['n'] = ($by[$r['product']]['n'] ?? 0) + 1; $by[$r['product']]['sum'] = ($by[$r['product']]['sum'] ?? 0) + (int)$r['rating']; }
+  uasort($by, fn($a, $b) => $b['n'] <=> $a['n']);
+  $body .= '<div class="box" data-pane="stars"><div class="bh"><h3>Stars by product</h3></div><div class="bb">';
+  if (!$by) $body .= '<p class="empty">No live reviews yet.</p>';
+  foreach ($by as $pid => $x) { $avg = $x['sum'] / $x['n']; $body .= '<div class="li">' . $thumbOf($pid, 'th sm') . '<span class="grow"><b>' . h($CAT[$pid]['name'] ?? $pid) . '</b><small>' . $x['n'] . ' review' . ($x['n'] === 1 ? '' : 's') . '</small></span>' . stars($avg) . '<b class="avg">' . number_format($avg, 1) . '</b></div>'; }
+  $body .= '</div></div>';
+  /* top reviewers: grouped by mobile (verified purchasers) or by name */
+  $tmin = top_reviewers_min(); $who = [];
+  foreach ($ALL as $r) { $k = $r['phone'] !== '' ? 'm:' . $r['phone'] : 'n:' . mb_strtolower($r['name']); $who[$k]['name'] = $r['customer'] ?: $r['name']; $who[$k]['phone'] = $r['phone']; $who[$k]['n'] = ($who[$k]['n'] ?? 0) + 1; $who[$k]['sum'] = ($who[$k]['sum'] ?? 0) + (int)$r['rating']; }
+  $who = array_filter($who, fn($w) => $w['n'] >= $tmin); uasort($who, fn($a, $b) => $b['n'] <=> $a['n']);
+  $body .= '<div class="box" data-pane="top"><div class="bh"><h3>Top reviewers</h3><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="top_reviewers"><input type="hidden" name="back" value="' . $back . '"><label class="mrule">at least<input type="number" name="top_reviewers" min="1" max="99" value="' . $tmin . '"> reviews</label><button class="btn line sm">Save</button></form></div><div class="bb">';
+  if (!$who) $body .= '<p class="empty">Nobody has ' . $tmin . ' or more reviews yet.</p>';
+  foreach ($who as $k => $w) $body .= '<div class="li"><span class="grow"><b>' . ($w['phone'] ? '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '">' . h($w['name']) . '</a>' : h($w['name'])) . '</b><small>' . ($w['phone'] ? h(phone_fmt($w['phone'])) . ' · ' : '') . 'average ' . number_format($w['sum'] / $w['n'], 1) . ' ★</small></span><b>' . $w['n'] . '</b><span class="muted small">reviews</span></div>';
+  $body .= '</div></div></div>';
 }
 
 /* ============ Settings ============ */

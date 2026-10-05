@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — private admin page: fomaxo.in/admin
-   Dashboard, Orders (FMX-IN-1001 …), Members, Stock, Products, Expenses, Analytics, Profit & loss and Settings. Everything is kept in the
+   Home, Products, Stock, Orders (FMX-IN-1001 …), Analytics, Expenses, Reports (profit & loss), Members, Reviews and Settings. Everything is kept in the
    shop database (api/shop-db.php). Helpers are in admin/lib.php; styles in admin.css, charts and phone switches in admin.js.
 
    Password: create  public_html/api/data/admin-password.txt  in Hostinger File Manager with your password as its only
@@ -17,7 +17,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '7';
+const ASSET_V = '14';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -33,7 +33,7 @@ function page(string $title, string $body, bool $in, string $tab = '', array $ta
   echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">'
     . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="stylesheet" href="/admin/admin.css?v=' . ASSET_V . '"></head><body' . ($in ? ' class="app"' : '') . '>'
     . '<header><a class="brand" href="/admin/">FOMAXO <span>Admin</span></a>' . ($in ? $nav('tabs') : '<span class="sp"></span>')
-    . '<span class="hlinks"><a class="site" href="/" target="_blank" rel="noopener">View website ↗</a>' . ($in ? '<a href="' . h(self_url(['do' => 'logout'])) . '">Sign out</a>' : '') . '</span></header>'
+    . '<span class="hlinks"><a class="site" href="/" target="_blank" rel="noopener"><span class="full">View website ↗</span><span class="short">Website ↗</span></a>' . ($in ? '<a href="' . h(self_url(['do' => 'logout'])) . '">Sign out</a>' : '') . '</span></header>'
     . ($in ? $nav('mtabs') : '') . '<main' . ($in ? '' : ' class="center"') . '>' . $body . '</main>'
     . ($in ? '<script src="/admin/admin.js?v=' . ASSET_V . '"></script>' : '') . '</body></html>';
   exit;
@@ -160,6 +160,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'stock'], 'Stock saved.');
   }
   if ($a === 'member_min') { shop_set('member_min', (string)max(1, min(999, (int)($_POST['member_min'] ?? 5)))); go(['tab' => 'members'], 'Members now need ' . member_min() . ' or more orders.'); }
+  if ($a === 'member_spend') {
+    $v = trim((string)($_POST['member_spend'] ?? '')); shop_set('member_spend', (string)max(0, min(10000000, (int)$v)));
+    go(['tab' => 'members'], member_spend() ? 'Customers who spent ₹' . number_format(member_spend()) . ' or more are members too.' : 'The amount filter is off.');
+  }
+  if ($a === 'review') {
+    $st = (string)($_POST['status'] ?? ''); review_set((int)($_POST['id'] ?? 0), $st);
+    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review removed from the website.' : 'Review is back on the website.');
+  }
+  if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
   if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5)))); go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'show') {
     $id = (string)($_POST['id'] ?? ''); $d = $LIVE[$id] ?? null;
@@ -218,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------------- downloads ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['orders', 'members', 'stock', 'products', 'expenses', 'analytics', 'reports', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
@@ -247,7 +256,7 @@ if ($do === 'report_excel') {
 }
 if ($do === 'members_excel') {
   $rows = array_map(fn($m) => [$m['name'], phone_fmt($m['phone']), $m['email'], $m['address'], $m['state'], $m['count'], round($m['spent'] / 100, 2), round($m['avg'] / 100, 2),
-    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), (string)($_GET['q'] ?? '')));
+    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), member_spend(), (string)($_GET['q'] ?? '')));
   send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
 }
 if ($do === 'expenses_excel') {
@@ -256,7 +265,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Dashboard', 'orders' => 'Orders', 'members' => 'Members', 'stock' => 'Stock', 'products' => 'Products', 'expenses' => 'Expenses', 'analytics' => 'Analytics', 'reports' => 'Profit &amp; loss', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'reviews' => 'Reviews', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';
