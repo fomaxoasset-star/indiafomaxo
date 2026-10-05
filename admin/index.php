@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — private admin page: fomaxo.in/admin
-   Dashboard, Orders (FMX-IN-1001 …), Stock, Products, Expenses, Analytics, Reports and Settings. Everything is kept in the
+   Dashboard, Orders (FMX-IN-1001 …), Members, Stock, Products, Expenses, Analytics, Profit & loss and Settings. Everything is kept in the
    shop database (api/shop-db.php). Helpers are in admin/lib.php; styles in admin.css, charts and phone switches in admin.js.
 
    Password: create  public_html/api/data/admin-password.txt  in Hostinger File Manager with your password as its only
@@ -17,7 +17,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '5';
+const ASSET_V = '7';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -159,6 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['low_stock'])) shop_set('low_stock', (string)max(0, min(99, (int)$_POST['low_stock'])));
     go(['tab' => 'stock'], 'Stock saved.');
   }
+  if ($a === 'member_min') { shop_set('member_min', (string)max(1, min(999, (int)($_POST['member_min'] ?? 5)))); go(['tab' => 'members'], 'Members now need ' . member_min() . ' or more orders.'); }
   if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5)))); go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'show') {
     $id = (string)($_POST['id'] ?? ''); $d = $LIVE[$id] ?? null;
@@ -217,9 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------------- downloads ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['orders', 'stock', 'products', 'expenses', 'analytics', 'reports', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['orders', 'members', 'stock', 'products', 'expenses', 'analytics', 'reports', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
-      'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? '')];
+      'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
 $do = (string)($_GET['do'] ?? '');
 if ($do === 'excel') {
@@ -244,17 +245,22 @@ if ($do === 'report_excel') {
   $t = report_sum($rep); $rows[] = ["Total $pyear", $t['orders'], $n($t['sales']), $n($t['discounts']), $n($t['fees']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
   send_sheet("FOMAXO-profit-and-loss-$pyear", ['Month', 'Orders', 'Sales (₹)', 'Discounts given (₹)', 'Payment fees (₹)', 'Cost of goods (₹)', 'Gross profit (₹)', 'Expenses (₹)', 'Net profit / loss (₹)', 'Items sold with no cost set'], $rows, 'Profit and loss');
 }
+if ($do === 'members_excel') {
+  $rows = array_map(fn($m) => [$m['name'], phone_fmt($m['phone']), $m['email'], $m['address'], $m['state'], $m['count'], round($m['spent'] / 100, 2), round($m['avg'] / 100, 2),
+    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), (string)($_GET['q'] ?? '')));
+  send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
+}
 if ($do === 'expenses_excel') {
   $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day, id'); $s->execute(["$pyear-01-01", ($pyear + 1) . '-01-01']);
   send_sheet("FOMAXO-expenses-$pyear", ['Date', 'Category', 'Details', 'Amount (₹)'], array_map(fn($x) => [$x['day'], $x['category'], $x['note'], round($x['amount'] / 100, 2)], $s->fetchAll()), 'Expenses');
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Dashboard', 'orders' => 'Orders', 'stock' => 'Stock', 'products' => 'Products', 'expenses' => 'Expenses', 'analytics' => 'Analytics', 'reports' => 'Reports', 'settings' => 'Settings'];
+$tabs = ['home' => 'Dashboard', 'orders' => 'Orders', 'members' => 'Members', 'stock' => 'Stock', 'products' => 'Products', 'expenses' => 'Expenses', 'analytics' => 'Analytics', 'reports' => 'Profit &amp; loss', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';
 $thumbOf = fn(string $id, string $cls = 'th') => thumb($CAT[$id] ?? null, $cls);
 $orderThumb = function (array $o) use ($thumbOf) { $it = (json_decode((string)$o['items'], true) ?: [])[0] ?? []; return $thumbOf((string)($it['id'] ?? ''), 'th sm'); };
 require __DIR__ . '/pages.php';
-page(strip_tags($tabs[$tab]), $body, true, $tab, $tabs);
+page(html_entity_decode($tabs[$tab]), $body, true, $tab, $tabs);

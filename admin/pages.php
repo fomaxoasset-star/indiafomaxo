@@ -13,8 +13,8 @@ if ($tab === 'home') {
   $rep = report_year((int)date('Y')); $m = $rep[date('Y-m')];
   $body .= '<div class="dash">'
     . '<div class="kpis n5" style="--n:5">'
-    . '<a class="kpi k-new" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'cod'])) . '"><span>Cash orders to deliver</span><b>' . ($todo['cod'][0] ?? 0) . '</b><small>' . rupees($todo['cod'][1] ?? 0) . ' to collect</small></a>'
-    . '<a class="kpi k-paid" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'online'])) . '"><span>Card orders to deliver</span><b>' . ($todo['online'][0] ?? 0) . '</b><small>Paid online</small></a>'
+    . '<a class="kpi k-new" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'cod'])) . '"><span>COD orders to deliver</span><b>' . ($todo['cod'][0] ?? 0) . '</b><small>' . rupees($todo['cod'][1] ?? 0) . ' to collect</small></a>'
+    . '<a class="kpi k-paid" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'online'])) . '"><span>Online orders to deliver</span><b>' . ($todo['online'][0] ?? 0) . '</b><small>Paid online</small></a>'
     . '<div class="kpi"><span>Sales today</span><b>' . rupees($tt) . '</b><small>' . $tn . ' order' . ($tn === 1 ? '' : 's') . '</small></div>'
     . '<a class="kpi" href="' . h(self_url(['tab' => 'reports'])) . '"><span>Sales this month</span><b>' . rupees($m['sales']) . '</b><small>' . $m['orders'] . ' order' . ($m['orders'] === 1 ? '' : 's') . '</small></a>'
     . '<a class="kpi ' . ($m['net'] < 0 ? 'bad' : 'good') . '" href="' . h(self_url(['tab' => 'reports'])) . '"><span>' . ($m['net'] < 0 ? 'Loss' : 'Profit') . ' this month</span><b>' . money($m['net']) . '</b><small>' . ($m['nocost'] ? $m['nocost'] . ' items with no cost set' : 'after costs and expenses') . '</small></a></div>';
@@ -35,7 +35,7 @@ if ($tab === 'home') {
   foreach ($alerts as [$id, $p, $opt, $v]) $body .= '<a class="li" href="' . h(self_url(['tab' => 'stock'])) . '">' . $thumbOf($id, 'th sm') . '<span class="grow"><b>' . h($p['name']) . '</b><small>' . h(opt_label($p, $opt)) . '</small></span>' . ($v < 1 ? '<span class="badge st-cancelled">Sold out</span>' : '<span class="badge st-new">' . $v . ' left</span>') . '</a>';
   $body .= '</div></div><div class="box c-orders on" data-pane="orders"><div class="bh"><h3>Latest orders</h3><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">All orders</a></div><div class="bb">';
   if (!$latest) $body .= '<p class="empty">No orders yet. New orders show here as they come in.</p>';
-  foreach ($latest as $o) $body .= '<a class="li" href="' . h(self_url(['tab' => 'orders', 'q' => $o['no']])) . '">' . $orderThumb($o) . '<span class="grow"><b>' . h($o['no']) . ' · ' . h($o['name']) . '</b><small>' . h(date('d M, H:i', strtotime($o['created']))) . ' · ' . ($o['method'] === 'cod' ? 'Cash' : 'Card / UPI') . '</small></span><span>' . rupees((int)$o['total']) . '</span><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']]) . '</span></a>';
+  foreach ($latest as $o) $body .= '<a class="li" href="' . h(self_url(['tab' => 'orders', 'q' => $o['no']])) . '">' . $orderThumb($o) . '<span class="grow"><b>' . h($o['no']) . ' · ' . h($o['name']) . '</b><small>' . h(date('d M, H:i', strtotime($o['created']))) . ' · ' . ($o['method'] === 'cod' ? 'COD' : 'Online') . '</small></span><span>' . rupees((int)$o['total']) . '</span><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']]) . '</span></a>';
   $body .= '</div></div></div>';
   $body .= '<div class="quick"><a class="btn" href="' . h(self_url(['tab' => 'expenses'])) . '">+ Add an expense</a><a class="btn" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '">+ Add a product</a>'
     . '<a class="btn line" href="' . h(self_url(['do' => 'excel'])) . '">Download all orders (Excel)</a><a class="btn line" href="' . h(self_url(['do' => 'report_excel', 'year' => date('Y')])) . '">Download ' . date('Y') . ' profit &amp; loss (Excel)</a></div></div>';
@@ -44,18 +44,26 @@ if ($tab === 'home') {
 
 /* ============ Orders ============ */
 if ($tab === 'orders') {
-  $counts = []; foreach (shop_db()->query('SELECT status, COUNT(*) n, SUM(total) t FROM orders GROUP BY status') as $r) $counts[$r['status']] = [(int)$r['n'], (int)$r['t']];
+  $SUM = order_summary($F);
   $page = max(1, (int)($_GET['page'] ?? 1));
   [$where, $args] = order_where($F);
   $cnt = shop_db()->prepare("SELECT COUNT(*) FROM orders$where"); $cnt->execute($args); $total = (int)$cnt->fetchColumn();
   $s = shop_db()->prepare("SELECT * FROM orders$where ORDER BY id DESC LIMIT " . ADMIN_PER_PAGE . ' OFFSET ' . (($page - 1) * ADMIN_PER_PAGE)); $s->execute($args);
   $orders = $s->fetchAll();
   $q = array_filter($F + ['tab' => 'orders']);
-  $body .= '<div class="kpis n4 hide-m" style="--n:4">';
-  foreach (['new', 'paid', 'delivered', 'cancelled'] as $st) $body .= '<a class="kpi k-' . $st . ($F['status'] === $st ? ' on' : '') . '" href="' . h(self_url(['tab' => 'orders', 'status' => $st])) . '"><span>' . FOMAXO_STATUSES[$st] . '</span><b>' . ($counts[$st][0] ?? 0) . '</b><small>' . rupees($counts[$st][1] ?? 0) . '</small></a>';
-  $body .= '</div><form class="filters" method="get"><input type="hidden" name="tab" value="orders">'
+  $body .= '<div class="kpis n4" style="--n:4">'
+    . '<a class="kpi k-new' . ($F['method'] === 'cod' ? ' on' : '') . '" href="' . h(self_url(array_filter(['method' => $F['method'] === 'cod' ? '' : 'cod'] + $q))) . '"><span>COD orders</span><b>' . $SUM['cod'][0] . '</b></a>'
+    . '<a class="kpi k-paid' . ($F['method'] === 'online' ? ' on' : '') . '" href="' . h(self_url(array_filter(['method' => $F['method'] === 'online' ? '' : 'online'] + $q))) . '"><span>Online orders</span><b>' . $SUM['online'][0] . '</b></a>'
+    . '<div class="kpi k-new"><span>COD amount</span><b>' . rupees($SUM['cod'][1]) . '</b></div>'
+    . '<div class="kpi k-paid"><span>Online amount</span><b>' . rupees($SUM['online'][1]) . '</b></div></div>';
+  if ($SUM['states']) {
+    $body .= '<div class="chips" aria-label="Orders by state">';
+    foreach ($SUM['states'] as $st => $n) $body .= '<a class="chip' . ($F['state'] === $st ? ' on' : '') . '" href="' . h(self_url(array_filter(['state' => $F['state'] === $st ? '' : $st] + $q))) . '">' . h($st) . ' <b>' . $n . '</b></a>';
+    $body .= '</div>';
+  }
+  $body .= '<form class="filters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '')
     . '<label>Status' . $sel('status', ['' => 'All orders', 'todo' => 'To deliver (New + Paid)', 'new' => 'New', 'paid' => 'Paid', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'awaiting' => 'Unfinished online payments'], $F['status']) . '</label>'
-    . '<label>Payment' . $sel('method', ['' => 'Cash and card', 'cod' => 'Cash on delivery', 'online' => 'Card / UPI (Razorpay)'], $F['method']) . '</label>'
+    . '<label>Payment' . $sel('method', ['' => 'COD and online', 'cod' => 'Cash on delivery (COD)', 'online' => 'Online (card / UPI)'], $F['method']) . '</label>'
     . '<label class="hide-m">From<input type="date" name="from" value="' . h($F['from']) . '"></label><label class="hide-m">To<input type="date" name="to" value="' . h($F['to']) . '"></label>'
     . '<label class="grow">Search<input type="search" name="q" value="' . h($F['q']) . '" placeholder="Order no, name, mobile, email or note"></label>'
     . '<button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
@@ -84,6 +92,31 @@ if ($tab === 'orders') {
     $body .= '<div class="pager">';
     for ($i = 1; $i <= (int)ceil($total / ADMIN_PER_PAGE); $i++) $body .= '<a' . ($i === $page ? ' class="on"' : '') . ' href="' . h(self_url($q + ['page' => $i])) . '">' . $i . '</a>';
     $body .= '</div>';
+  }
+  $body .= '</div></div>';
+}
+
+/* ============ Members ============ */
+if ($tab === 'members') {
+  $min = member_min(); $mq = trim((string)($_GET['q'] ?? '')); $list = members($min, $mq);
+  $body .= '<div class="row mtool"><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_min">'
+    . '<label class="chk" style="font-size:14px">Members have <input type="number" name="member_min" min="1" max="999" value="' . $min . '" style="width:70px"> or more orders</label><button class="btn line sm">Save</button></form>'
+    . '<form method="get" class="msearch"><input type="hidden" name="tab" value="members"><input type="search" name="q" value="' . h($mq) . '" placeholder="Name, mobile or email"><button class="btn line sm">Search</button></form>'
+    . '<a class="btn sm" href="' . h(self_url(array_filter(['do' => 'members_excel', 'q' => $mq]))) . '">Excel</a></div>';
+  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . count($list) . ' member' . (count($list) === 1 ? '' : 's') . ' with ' . $min . ' or more orders, grouped by mobile (or email), most spent first. Cancelled and test orders are left out. Tap a member to see their orders.</span></div><div class="bb np">';
+  if (!$list) $body .= '<p class="empty">' . ($mq !== '' ? 'No member matches “' . h($mq) . '”.' : 'No customer has ' . $min . ' or more orders yet. Lower the number above to see more.') . '</p>';
+  foreach ($list as $m) {
+    $msg = 'Hi ' . $m['name'] . ', thank you for being a FOMAXO regular!';
+    $body .= '<details class="order mem"><summary><span class="no">' . h($m['name']) . '</span>'
+      . '<span class="cu"><b>' . h(phone_fmt($m['phone']) ?: $m['email']) . '</b><small>' . h($m['state']) . '</small></span>'
+      . '<span class="mn"><b>' . $m['count'] . '</b><small>orders</small></span><span class="tt">' . rupees($m['spent']) . '</span><span class="pm">avg ' . rupees($m['avg']) . '</span>'
+      . '<span class="dt">' . h(date('d M Y', strtotime($m['first']))) . ' – ' . h(date('d M Y', strtotime($m['last']))) . '</span></summary>'
+      . '<div class="od"><div><h4>Contact</h4><p>' . ($m['phone'] ? '<a href="tel:+91' . h($m['phone']) . '">' . h(phone_fmt($m['phone'])) . '</a> · <a href="https://wa.me/91' . h($m['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a><br>' : '')
+      . ($m['email'] ? '<a href="mailto:' . h($m['email']) . '">' . h($m['email']) . '</a>' : '') . '</p><h4>Latest address</h4><p>' . h($m['address']) . '</p></div>'
+      . '<div><h4>Summary</h4><p>' . $m['count'] . ' orders · ' . rupees($m['spent']) . ' spent<br>Average order ' . rupees($m['avg']) . '<br>First order ' . h(date('d M Y', strtotime($m['first']))) . '<br>Last order ' . h(date('d M Y', strtotime($m['last']))) . '</p></div>'
+      . '<div class="items"><h4>Order history</h4>';
+    foreach (array_reverse($m['orders']) as $o) $body .= '<a class="li" href="' . h(self_url(['tab' => 'orders', 'q' => $o['no']])) . '"><span class="grow"><b>' . h($o['no']) . '</b><small>' . h(date('d M Y', strtotime($o['created']))) . ' · ' . ($o['method'] === 'cod' ? 'COD' : 'Online') . '</small></span><span>' . rupees((int)$o['total']) . '</span><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']]) . '</span></a>';
+    $body .= '</div></div></details>';
   }
   $body .= '</div></div>';
 }

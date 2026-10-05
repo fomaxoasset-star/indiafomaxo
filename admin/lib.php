@@ -160,6 +160,7 @@ function order_where(array $F): array {
   elseif (isset(FOMAXO_STATUSES[$F['status']])) { $w[] = 'status = ?'; $a[] = $F['status']; }
   else $w[] = "status <> 'awaiting'";
   if (in_array($F['method'], ['cod', 'online'], true)) { $w[] = 'method = ?'; $a[] = $F['method']; }
+  if (($F['state'] ?? '') !== '') { $w[] = 'state = ?'; $a[] = $F['state']; }
   if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $F['from'])) { $w[] = 'created >= ?'; $a[] = $F['from'] . ' 00:00:00'; }
   if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $F['to'])) { $w[] = 'created <= ?'; $a[] = $F['to'] . ' 23:59:59'; }
   if ($F['q'] !== '') {
@@ -174,6 +175,46 @@ function sales_between(string $from, string $to): array {
   $s = shop_db()->prepare("SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
   $s->execute([$from, $to]); $r = $s->fetch(); return [(int)$r['n'], (int)$r['t']];
 }
+
+/* the Orders boxes and state row: the same filters, without cancelled orders, unfinished payments or test payments */
+function order_summary(array $F): array {
+  [$where, $args] = order_where($F); $x = " AND status IN " . SALE_STATUSES . " AND test = 0";
+  $s = shop_db()->prepare("SELECT method, COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders$where$x GROUP BY method"); $s->execute($args);
+  $out = ['cod' => [0, 0], 'online' => [0, 0], 'states' => []];
+  foreach ($s as $r) $out[$r['method']] = [(int)$r['n'], (int)$r['t']];
+  [$where, $args] = order_where(['state' => ''] + $F);
+  $s = shop_db()->prepare("SELECT state, COUNT(*) n FROM orders$where$x AND state <> '' GROUP BY state ORDER BY n DESC, state"); $s->execute($args);
+  foreach ($s as $r) $out['states'][$r['state']] = (int)$r['n'];
+  return $out;
+}
+
+/* ---------------- members (repeat customers) ---------------- */
+function member_min(): int { return max(1, min(999, (int)(shop_setting('member_min') ?? '5'))); }
+/* customers grouped by mobile (last 10 digits), or email when there is no mobile; cancelled, unfinished and test orders left out; most spent first */
+function members(int $min, string $q = ''): array {
+  $M = [];
+  foreach (shop_db()->query("SELECT id, no, created, status, method, total, name, phone, email, address, state FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 ORDER BY created, id") as $o) {
+    $digits = substr(preg_replace('/\D/', '', (string)$o['phone']), -10);
+    $key = strlen($digits) === 10 ? "m:$digits" : (trim((string)$o['email']) !== '' ? 'e:' . strtolower(trim((string)$o['email'])) : '');
+    if ($key === '') continue;
+    $m = &$M[$key];
+    $m ??= ['key' => $key, 'phone' => strlen($digits) === 10 ? $digits : '', 'orders' => []];
+    $m['name'] = $o['name']; $m['email'] = $o['email'] ?: ($m['email'] ?? ''); $m['address'] = $o['address']; $m['state'] = $o['state'];
+    $m['orders'][] = $o; unset($m);
+  }
+  $q = strtolower(trim($q)); $qd = preg_replace('/\D/', '', $q);
+  $out = [];
+  foreach ($M as $m) {
+    if (count($m['orders']) < $min) continue;
+    if ($q !== '' && !str_contains(strtolower($m['name'] . ' ' . $m['email']), $q) && !(strlen($qd) >= 4 && str_contains($m['phone'], $qd))) continue;
+    $m['count'] = count($m['orders']); $m['spent'] = array_sum(array_map(fn($o) => (int)$o['total'], $m['orders']));
+    $m['avg'] = intdiv($m['spent'], $m['count']); $m['first'] = $m['orders'][0]['created']; $m['last'] = end($m['orders'])['created'];
+    $out[] = $m;
+  }
+  usort($out, fn($a, $b) => $b['spent'] <=> $a['spent'] ?: $b['count'] <=> $a['count']);
+  return $out;
+}
+function phone_fmt(string $digits): string { return $digits === '' ? '' : '+91 ' . substr($digits, 0, 5) . ' ' . substr($digits, 5); }
 
 /* ---------------- reports (profit & loss) ---------------- */
 function pay_fee_pct(): float { return max(0, min(10, (float)(shop_setting('pay_fee') ?? '2'))); }
