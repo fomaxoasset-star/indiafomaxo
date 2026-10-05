@@ -3085,11 +3085,12 @@ function contact(q){
       <label>Message<textarea name="msg" required></textarea></label>
       <button class="btn" type="submit">Send message</button>
     </form>
-  </div></div></section>${storeLocation(C.store)}`;
+  </div></div></section>${storeLocation(LIVE.store !== undefined ? LIVE.store : C.store)}`;
 }
 function storeLocation(st){
   if (!st || !st.address) return '';
   const q = encodeURIComponent(st.mapQuery || `${st.name}, ${st.address}`);
+  const link = /^https:\/\//.test(st.link || '') ? esc(st.link) : '';
   return `
   <section class="sec" id="store"><div class="wrap">
     ${secHead('Visit us', 'Our <em class="metal">store</em>')}
@@ -3097,7 +3098,7 @@ function storeLocation(st){
       <div class="info">
         <h3>${esc(st.name)}</h3>
         <dl><div><dt>Address</dt><dd>${esc(st.address)}</dd></div>${st.hours ? `<div><dt>Hours</dt><dd>${esc(st.hours)}</dd></div>` : ''}</dl>
-        <div class="ctas"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Get directions</a><a class="btn line" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Open in Google Maps</a></div>
+        <div class="ctas"><a class="btn" href="${link || `https://www.google.com/maps/dir/?api=1&destination=${q}`}" target="_blank" rel="noopener">Get directions</a><a class="btn line" href="${link || `https://www.google.com/maps/search/?api=1&query=${q}`}" target="_blank" rel="noopener">Open in Google Maps</a></div>
       </div>
       <div class="map"><span class="pin">FOMAXO</span><iframe src="https://maps.google.com/maps?q=${q}&z=16&output=embed" title="Map showing the ${esc(st.name)} location" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
     </div>

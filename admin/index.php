@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '17';
+const ASSET_V = '18';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -213,6 +213,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('notify_email', $email);
     $fee = trim((string)($_POST['pay_fee'] ?? '2')); if (is_numeric($fee)) shop_set('pay_fee', (string)max(0, min(10, round((float)$fee, 2))));
     go(['tab' => 'settings'], 'Settings saved.');
+  }
+  if ($a === 'store_loc') {
+    $f = fn(string $k, int $n) => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? ''))), 0, $n);
+    $link = trim((string)($_POST['map_link'] ?? ''));
+    if ($link !== '' && !preg_match('~^https://(www\.|maps\.)?(google\.[a-z.]+/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl/maps)~i', $link))
+      go(['tab' => 'settings'], '!Please paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps), or leave it empty.');
+    $loc = ['show' => !empty($_POST['show']), 'name' => $f('name', 80), 'address' => $f('address', 300), 'hours' => $f('hours', 120), 'link' => mb_substr($link, 0, 600)];
+    if ($loc['show'] && $loc['address'] === '') go(['tab' => 'settings'], '!Please write the store address, or untick “Show on the Contact page”.');
+    shop_set('store_loc', json_encode($loc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    go(['tab' => 'settings'], $loc['show'] ? 'Store location saved. It now shows on the Contact page.' : 'Store location saved. It is hidden on the Contact page.');
   }
   if ($a === 'mysql') {
     $err = shop_move_to_mysql(trim((string)($_POST['db_name'] ?? '')), trim((string)($_POST['db_user'] ?? '')), (string)($_POST['db_pass'] ?? ''));

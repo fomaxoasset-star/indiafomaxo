@@ -427,12 +427,25 @@ if ($tab === 'reviews') {
 /* ============ Settings ============ */
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
-  $body .= $sw('#setPanes', ['notify' => 'Emails', 'pw' => 'Password', 'db' => 'Database']) . '<div class="set panes" id="setPanes">'
+  $loc = shop_store_location() ?? (fomaxo_store_data()['contact']['store'] ?? []) + ['show' => true];
+  if (str_contains(strtoupper((string)($loc['address'] ?? '')), 'TO BE ADDED')) $loc['address'] = '';   // the placeholder in index.html
+  $mapQ = trim((string)($loc['link'] ?? '')) !== '' ? (shop_map_query_from_link((string)$loc['link']) ?: (string)($loc['address'] ?? '')) : trim(((string)($loc['mapQuery'] ?? '')) ?: ($loc['name'] ?? '') . ', ' . ($loc['address'] ?? ''), ', ');
+  $storeForm = '<form method="post" class="box" data-pane="store">' . $csrfField . '<input type="hidden" name="action" value="store_loc"><div class="bh"><h3>Store location</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
+    . '<label>Store name<input name="name" maxlength="80" value="' . h((string)($loc['name'] ?? 'FOMAXO Store')) . '" placeholder="FOMAXO Store"></label>'
+    . '<label>Address<textarea name="address" rows="3" maxlength="300" placeholder="Shop no, building, street, area, city, state, PIN">' . h((string)($loc['address'] ?? '')) . '</textarea></label>'
+    . '<label>Google Maps link <small>(optional)</small><input type="url" name="map_link" maxlength="600" value="' . h((string)($loc['link'] ?? '')) . '" placeholder="https://maps.app.goo.gl/…"></label>'
+    . '<p class="muted small" style="margin:0">In Google Maps, find your store, press <b>Share</b> and <b>Copy link</b>, then paste it here. The Get directions button uses it. Empty uses the address.</p>'
+    . '<label>Opening hours<input name="hours" maxlength="120" value="' . h((string)($loc['hours'] ?? '')) . '" placeholder="Open daily · 11 am – 9 pm"></label>'
+    . '<label class="chk"><input type="checkbox" name="show" value="1"' . (!empty($loc['show']) ? ' checked' : '') . '> Show on the Contact page</label>'
+    . (($loc['address'] ?? '') !== '' ? '<div class="map-prev"><iframe src="https://maps.google.com/maps?q=' . h(rawurlencode($mapQ)) . '&amp;z=16&amp;output=embed" title="Map preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' : '')
+    . '<button class="btn">Save store</button></div></form>';
+  $body .= $sw('#setPanes', ['notify' => 'Emails', 'store' => 'Store', 'pw' => 'Password', 'db' => 'Database']) . '<div class="set panes" id="setPanes">'
     . '<form method="post" class="box on" data-pane="notify">' . $csrfField . '<input type="hidden" name="action" value="settings"><div class="bh"><h3>Order emails</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Send new order emails to<input type="email" name="notify_email" value="' . h($email) . '" placeholder="' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '"></label>'
     . '<p class="muted small" style="margin:0">Every new order is emailed here, and so is a password reset link if you forget your password. Empty uses ' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '.</p>'
     . '<label>Card / UPI payment fee %<input type="number" name="pay_fee" min="0" max="10" step="0.01" value="' . h((string)pay_fee_pct()) . '"></label>'
     . '<p class="muted small" style="margin:0">Razorpay’s fee on each online payment, used for Fees in Reports.</p><button class="btn">Save</button></div></form>'
+    . $storeForm
     . '<form method="post" class="box" data-pane="pw" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="password"><div class="bh"><h3>Change your password</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Current password<input type="password" name="current" required autocomplete="current-password"></label>'
     . '<label>New password <small>(at least 8 characters)</small><input type="password" name="new" required minlength="8" autocomplete="new-password"></label>'
