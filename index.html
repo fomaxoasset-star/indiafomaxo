@@ -2182,7 +2182,7 @@ window.STORE = {
       products: ["gold", "dollar"], image: "gold-3" },
     { id: "prestige", name: "Prestige", kicker: "Everyday luxury", sizes: "50ml · 10ml",
       text: "Refined everyday luxury in two sizes — the 10ml pocket mini and the 50ml bottle, for every mood and every moment.",
-      products: ["oldmoney", "royalcandy", "matchacoco", "passionsin"], image: "oldmoney-1" },
+      products: ["oldmoney", "royalcandy", "matchacoco", "passionsin"], image: "oldmoney-collection" },
     { id: "car", name: "Car Fragrance", kicker: "Drive in style", sizes: "Hanging diffuser",
       text: "Premium hanging car perfumes — made with 90% renewable ingredients, with superior diffusion and long-lasting fragrance for 4–6 weeks.",
       products: ["passiondrive", "carrush", "drivenoir"], image: "car-drivenoir" }
@@ -2255,7 +2255,7 @@ const S = window.STORE;
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const app = $('#app');
-const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=2`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
+const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=3`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
 /* changes made on the admin page (fomaxo.in/admin): hidden products, new prices, added products, stock */
 const LIVE = window.STORE_LIVE || {};
 (function(){
@@ -2845,7 +2845,7 @@ function collections(sub){
   if (sub === 'elite'){ location.replace('#/collections'); return ''; }
   if (sub === 'discovery'){ location.replace('#/fragrances'); return ''; }
   const tiles = [
-    ['fragrance','Fragrance Collection','Elite, Signature and Prestige — plus FOMAXO car fragrance.','king-1'],
+    ['fragrance','Fragrance Collection','Elite, Signature and Prestige — plus FOMAXO car fragrance.','king-collection'],
     ['mini','Mini Collection','Luxury redefined in 10ml. Elegance no longer confined to the dressing table.','oldmoney-10-1'],
     ['personal-care','Personal Care Collection','Shower gels, shampoos, face washes and lip care, crafted with the same care as every FOMAXO creation.','personal-care-poster'],
     ['gifting','Bespoke Gifting','Luxury gifting for weddings, gatherings and corporate functions.','gift-set-3'],
