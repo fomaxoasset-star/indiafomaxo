@@ -188,7 +188,8 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .chip:hover{border-color:var(--line-2);color:var(--ivory)}
 .chip.on{border-color:var(--gold);color:var(--gold-hi);background:rgba(215,170,105,.08)}
 /* stock left, from the admin page */
-.stk-row:empty{display:none}.stk{display:inline-block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;padding:5px 9px;line-height:1.2}
+.stk-row:empty{display:none}.fstat{margin:10px 0 0;font-size:11px;letter-spacing:.04em;opacity:.6;text-align:center}
+.stk{display:inline-block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;padding:5px 9px;line-height:1.2}
 .stk.low{color:#e8b86a;box-shadow:inset 0 0 0 1px rgba(232,184,106,.55)}.stk.out{color:var(--muted);box-shadow:inset 0 0 0 1px var(--line-2)}
 .card .stk-row{margin-top:10px}.pcard .stk-row{margin-top:6px}.line-item .stk{margin-left:10px;font-size:10px;padding:3px 7px}
 html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(138,90,18,.55)}
@@ -1901,6 +1902,7 @@ html[data-mode="light"] .co-err{color:#a8322a}
       <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
     </div>
     <div class="fbase"><span>© 2026 FOMAXO™. All rights reserved.</span><span>Inspire greatness</span></div>
+    <p class="fstat">We count visits anonymously on our own server to improve the shop. No advertising trackers.</p>
   </div>
 </footer>
 
@@ -2184,7 +2186,7 @@ const LIVE = window.STORE_LIVE || {};
   /* details and photos edited on the admin page */
   S.products.forEach(p => { const e = ed[p.id]; if (!e) return;
     if (e.images && p.editorial && !e.images.includes(p.editorial)) p.editorial = e.images[Math.min(2, e.images.length - 1)];
-    if ('tier' in e && !p.kind) { (S.tiers || []).forEach(t => { if (t.id !== 'car') t.products = t.products.filter(x => x !== p.id); }); const t = e.tier && (S.tiers || []).find(x => x.id === e.tier); if (t) t.products.push(p.id); }
+    if ('tier' in e && !p.kind && (e.tier || '') !== (p.tier || '')) { (S.tiers || []).forEach(t => { if (t.id !== 'car') t.products = t.products.filter(x => x !== p.id); }); const t = e.tier && (S.tiers || []).find(x => x.id === e.tier); if (t) t.products.push(p.id); }
     Object.assign(p, e, {prices: {...e.prices}, compareAt: {...e.compareAt}});
     if (e.sizes) p.sizes = e.sizes.map(x => x === 'one' ? x : +x);
     if (!e.notes) delete p.notes; if (!e.tier) delete p.tier;
@@ -2207,6 +2209,43 @@ const LIVE = window.STORE_LIVE || {};
   S.featured = (S.featured || []).filter(id => !hid.has(id));
   (S.tiers || []).forEach(t => t.products = t.products.filter(id => !hid.has(id)));
   if (S.mini) S.mini.products = S.mini.products.filter(id => !hid.has(id));
+})();
+/* Visitor analytics on our own server (api/track.php): a random visitor id kept on this device and a visit id that ends
+   after 30 minutes without activity. No names, IP addresses or advertising trackers; checkout details are sent only
+   when typed at checkout, so the shop can follow up on orders that were not finished. */
+const TRK = (() => {
+  const rid = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8);
+  const get = (st, k) => { try { return st.getItem(k); } catch(e) { return null; } }, put = (st, k, v) => { try { st.setItem(k, v); } catch(e) {} };
+  const off = navigator.webdriver || /bot|crawl|spider|headless/i.test(navigator.userAgent);
+  let vid = get(localStorage, 'fx_vid'); if (!vid) { vid = rid(); put(localStorage, 'fx_vid', vid); }
+  const source = () => {
+    const qs = new URLSearchParams(location.search + '&' + (location.hash.split('?')[1] || '')), u = (qs.get('utm_source') || '').toLowerCase();
+    let r = ''; try { r = document.referrer ? new URL(document.referrer).hostname : ''; } catch(e) {}
+    if (r === location.hostname) r = '';
+    const t = u + ' ' + r;
+    if (/instagram|^ig\b/.test(t)) return 'instagram'; if (/whatsapp|wa\.me/.test(t)) return 'whatsapp';
+    if (/google/.test(t) || qs.has('gclid')) return 'google'; if (/facebook|fb\b|^fb/.test(t) || qs.has('fbclid')) return 'facebook';
+    if (/youtube|youtu\.be/.test(t)) return 'youtube'; if (/bing|yahoo|duckduckgo/.test(t)) return 'search';
+    return u || r ? 'other' : 'direct';
+  };
+  const visit = () => {
+    const last = +get(localStorage, 'fx_last') || 0; let sid = get(sessionStorage, 'fx_sid'), src = get(sessionStorage, 'fx_src');
+    if (!sid || Date.now() - last > 30 * 60e3) { sid = rid(); src = source(); put(sessionStorage, 'fx_sid', sid); put(sessionStorage, 'fx_src', src); }
+    put(localStorage, 'fx_last', String(Date.now())); return [sid, src];
+  };
+  const send = (t, x = {}) => {
+    if (off) return; const [s, src] = visit();
+    const body = JSON.stringify({t, v: vid, s, src, p: location.hash.replace(/^#/, '').split('?')[0] || '/', ...x});
+    try { if (!navigator.sendBeacon || !navigator.sendBeacon('api/track.php', body)) fetch('api/track.php', {method: 'POST', body, keepalive: true}).catch(() => {}); } catch(e) {}
+  };
+  setInterval(() => { if (document.visibilityState === 'visible' && Date.now() - (+get(localStorage, 'fx_last') || 0) < 30 * 60e3) send('ping'); }, 60e3);
+  let lastView = '';
+  return {
+    send,
+    view(path, seg){ if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]}); },
+    lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', total: subtotal(lines) || 0,
+      bag: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, name: P[l.id] ? `${P[l.id].name} · ${optLabel(P[l.id], l.opt)}` : l.id}))}}); }
+  };
 })();
 /* personal care items share the product page and bag, but stay out of the fragrance lists */
 const PC = ((S.personalCare && S.personalCare.products) || []).map(c => ({
@@ -2286,7 +2325,7 @@ function addToCart(id, opt, qty=1, silent, picks){
   const key = (picks || []).join('|');
   const l = cart.find(x => x.id === id && String(x.opt) === String(opt) && (x.picks || []).join('|') === key);
   if (l) l.qty = Math.min(99, l.qty + qty); else cart.push(picks ? {id, opt, qty, picks} : {id, opt, qty});
-  save();
+  save(); TRK.send('add', {id, opt, q: qty});
   if (!silent) toast(`${P[id].name} · ${optLabel(P[id], opt)} added to your bag`);
 }
 function lineImg(l){ const p = P[l.id]; return imgFor(p, l.opt); }
@@ -3337,6 +3376,9 @@ function bindCheckout(q){
   };
   $$('input[name=pay]', f).forEach(r => r.onchange = upd);
   f.addEventListener('input', upd); f.addEventListener('change', upd);
+  /* "Left at checkout" in the admin: name, mobile and bag, sent a moment after they are typed */
+  let leadT; f.addEventListener('input', e => { if (!['name', 'phone'].includes(e.target.name)) return; clearTimeout(leadT);
+    leadT = setTimeout(() => TRK.lead('details', {name: val('name'), phone: val('phone').replace(/\D/g, '')}, lines), 1500); });
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
@@ -3366,6 +3408,7 @@ function bindCheckout(q){
   }
   const busy = (on, label) => { btn.disabled = on; if (on) $('#coPayTxt').textContent = label; else upd(); };
   const done = (no, pay, review) => {
+    TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, '')});
     if (coBuy(q)) { try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {} } else { cart = []; save(); }
     location.hash = `#/thank-you?order=${encodeURIComponent(no)}&pay=${pay}${review ? '&rv=' + encodeURIComponent(review) : ''}`;
   };
@@ -3375,6 +3418,7 @@ function bindCheckout(q){
   f.onsubmit = async e => {
     e.preventDefault(); err.hidden = true;
     const c = details(); if (!c) return;
+    TRK.send('pay'); TRK.lead('payment', c, lines);
     if (method() === 'cod') {
       busy(true, 'Placing your order…');
       try { const d = await post('api/cod.php', payload(c)); done(d.order, 'cod', d.review); } catch(x) { busy(false); showErr(x.message); }
@@ -3437,6 +3481,8 @@ function route(){
     default: html = notFound();
   }
   if (html === '') return;
+  TRK.view(path, seg);
+  if (seg[0] === 'checkout' && coLines(q).length) TRK.send('checkout');
   document.body.classList.toggle('home', !seg[0]);
   app.innerHTML = `<div class="page-fade">${html}</div>`;
   const navKey = seg[0] === 'collections' && seg[1] === 'name' ? 'gift' : seg[0];

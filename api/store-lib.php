@@ -98,6 +98,21 @@ function fomaxo_store_product(string $id): ?array {
   return null;
 }
 
+/* Once: copies every product in index.html into the shop database, as it is today, so the admin page and the database
+   hold the whole product list. If the database cannot be reached, the shop falls back to index.html as before. */
+function fomaxo_seed_products(array $live): void {
+  $S = fomaxo_store_data(); if (!$S) return;
+  $all = array_merge($S['products'] ?? [], array_map(fn($p) => $p + ['kind' => 'care'], $S['personalCare']['products'] ?? []));
+  foreach ($all as $p) {
+    $id = (string)($p['id'] ?? ''); if ($id === '' || isset($live[$id])) continue;
+    $care = ($p['kind'] ?? '') === 'care';
+    $prices = array_filter(array_map(fn($v) => is_numeric($v) ? (float)$v : null, $care ? ['one' => $p['price'] ?? null] : (array)($p['prices'] ?? [])), fn($v) => $v !== null);
+    $was = array_map(fn($v) => is_numeric($v) ? (float)$v : 0, $care ? ['one' => $p['was'] ?? 0] : (array)($p['compareAt'] ?? []));
+    $edit = $p; unset($edit['id']); if ($care) unset($edit['kind']);
+    shop_save_product($id, false, false, ['prices' => $prices, 'compareAt' => $was, 'edit' => $edit, 'seeded' => 1]);
+  }
+  shop_set('products_seeded', shop_now());
+}
 function fomaxo_catalog(): array {
   static $cat; if ($cat !== null) return $cat;
   $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
@@ -133,7 +148,10 @@ function fomaxo_catalog(): array {
     }
   }
   /* products added, hidden or re-priced on the admin page (fomaxo.in/admin) */
-  try { $live = shop_products(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); $live = []; }
+  try {
+    $live = shop_products();
+    if (shop_setting('products_seeded') === null) { fomaxo_seed_products($live); $live = shop_products(); }
+  } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); $live = []; }
   foreach ($live as $id => $d) {
     if ($d['added']) {
       $kind = (string)($d['kind'] ?? '');
@@ -193,7 +211,10 @@ function fomaxo_price_order(array $in): array {
     $unit = (int)round($p['prices'][$opt] * 100);
     $total += $unit * $qty;
     $name = 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : '');
-    $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty] + (isset($COST[$id][$opt]) ? ['cost' => $COST[$id][$opt]] : []);   // cost at the time of the order, for profit & loss
+    $was = (int)round(($p['was'][$opt] ?? 0) * 100);
+    $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty]
+      + ($was > $unit ? ['was' => $was] : [])                                  // the crossed-out price, for discounts in Reports
+      + (isset($COST[$id][$opt]) ? ['cost' => $COST[$id][$opt]] : []);       // cost at the time of the order, for profit & loss
     $want["$id|$opt"] = ($want["$id|$opt"] ?? 0) + $qty;
     $have = $STOCK[$id][$opt] ?? null;
     if ($have !== null && $have < $want["$id|$opt"])
@@ -259,8 +280,28 @@ function fomaxo_review_url(string $token): string {
 }
 
 /* Emails the store and the customer about a confirmed order (paid online, or cash on delivery). */
+/* The shop owner's own browser: marked by a cookie set while signed in to /admin, so analytics leave those visits out. */
+function fomaxo_owner_token(): string {
+  $k = shop_setting('track_secret'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('track_secret', $k); }
+  return hash_hmac('sha256', 'owner', $k);
+}
+function fomaxo_is_admin_visitor(): bool {
+  $c = (string)($_COOKIE['fx_owner'] ?? '');
+  try { return $c !== '' && hash_equals(fomaxo_owner_token(), $c); } catch (Throwable $e) { return false; }
+}
+
+/* where order emails and password reset links go: the email set in Admin → Settings, else STORE.email in index.html */
+function fomaxo_store_email(): string {
+  try { $e = (string)shop_setting('notify_email'); } catch (Throwable $x) { $e = ''; }
+  return $e !== '' ? $e : (fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com');
+}
+/* mail(), or for local testing (FOMAXO_MAIL_LOG set) a line in that file instead */
+function fomaxo_mail(string $to, string $subject, string $body, string $headers): bool {
+  if ($log = getenv('FOMAXO_MAIL_LOG')) return (bool)@file_put_contents($log, json_encode(['to' => $to, 'subject' => $subject, 'body' => $body]) . "\n", FILE_APPEND);
+  return @mail($to, $subject, $body, $headers);
+}
 function fomaxo_send_emails(array $rec, string $how): void {
-  $store = fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com';
+  $store = fomaxo_store_email();
   $c = $rec['cust']; $total = rupees((int)$rec['total']);
   $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
   $from = "FOMAXO <orders@$host>";
@@ -269,11 +310,11 @@ function fomaxo_send_emails(array $rec, string $how): void {
   $body = "NEW ORDER {$rec['no']} — $how\n" . date('d M Y, H:i') . " (IST)\n" . (!empty($rec['payment']) ? "Razorpay payment: {$rec['payment']}\n" : '') . "\n$lines\n\n"
         . ($how === 'Cash on delivery' ? "TO COLLECT ON DELIVERY: $total" : "TOTAL PAID: $total") . "\nDelivery: Free\n\n"
         . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\nAddress: {$c['address']}\n" . ($c['note'] ? "Note: {$c['note']}\n" : '');
-  @mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\nReply-To: {$c['email']}\r\nContent-Type: text/plain; charset=UTF-8");
+  fomaxo_mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\nReply-To: {$c['email']}\r\nContent-Type: text/plain; charset=UTF-8");
   $cb = "Thank you for your order, {$c['name']}.\n\nOrder number: {$rec['no']}\n\n$lines\n\n"
       . ($how === 'Cash on delivery' ? "Total to pay on delivery: $total" : "Total paid: $total") . "\nDelivery: Free, to {$c['address']}\n\n"
       . "We will WhatsApp you on {$c['phone']} about your delivery.\n\n"
       . (!empty($rec['review']) ? "Once your order arrives, tell us what you think. Reviews written from this link show the ✓ VERIFIED PURCHASER badge:\n" . fomaxo_review_url($rec['review']) . "\n\n" : '')
       . "FOMAXO\nhttps://$host";
-  @mail($c['email'], $subj("Your FOMAXO order {$rec['no']}"), $cb, "From: $from\r\nReply-To: $store\r\nContent-Type: text/plain; charset=UTF-8");
+  fomaxo_mail($c['email'], $subj("Your FOMAXO order {$rec['no']}"), $cb, "From: $from\r\nReply-To: $store\r\nContent-Type: text/plain; charset=UTF-8");
 }
