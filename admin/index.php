@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '18';
+const ASSET_V = '19';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -214,20 +214,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fee = trim((string)($_POST['pay_fee'] ?? '2')); if (is_numeric($fee)) shop_set('pay_fee', (string)max(0, min(10, round((float)$fee, 2))));
     go(['tab' => 'settings'], 'Settings saved.');
   }
-  if ($a === 'store_loc') {
-    $f = fn($v, int $n) => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)$v)), 0, $n);
-    $stores = [];
-    foreach ((array)($_POST['st'] ?? []) as $i => $st) {
-      $st = (array)$st; $link = trim((string)($st['link'] ?? ''));
+  if (in_array($a, ['store_add', 'store_save', 'store_remove', 'stores_show'], true)) {
+    $loc = stores_all(); $i = (int)($_POST['i'] ?? -1);
+    if ($a === 'stores_show') $loc['show'] = ($_POST['show'] ?? '') === '1';
+    elseif ($a === 'store_remove') { if (!isset($loc['stores'][$i])) go(['tab' => 'stores']); array_splice($loc['stores'], $i, 1); }
+    else {
+      $f = fn(string $k, int $n) => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? ''))), 0, $n);
+      $link = trim((string)($_POST['link'] ?? ''));
       if ($link !== '' && !preg_match('~^https://(www\.|maps\.)?(google\.[a-z.]+/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl/maps)~i', $link))
-        go(['tab' => 'settings'], '!Store ' . ((int)$i + 1) . ': please paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps), or leave it empty.');
-      $one = ['name' => $f($st['name'] ?? '', 80), 'address' => $f($st['address'] ?? '', 300), 'hours' => $f($st['hours'] ?? '', 120), 'link' => mb_substr($link, 0, 600)];
-      if ($one['address'] !== '' || $one['link'] !== '') $stores[] = $one;
+        go(['tab' => 'stores'], '!Please paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps), or leave it empty.');
+      $one = ['name' => $f('name', 80) ?: 'FOMAXO Store', 'address' => $f('address', 300), 'hours' => $f('hours', 120), 'link' => mb_substr($link, 0, 600)];
+      if ($one['address'] === '' && $one['link'] === '') go(['tab' => 'stores'], '!Please paste the store’s Google Maps link or write its address.');
+      if ($a === 'store_add') { if (count($loc['stores']) >= 20) go(['tab' => 'stores'], '!You can show up to 20 stores.'); $loc['stores'][] = $one; }
+      elseif (isset($loc['stores'][$i])) $loc['stores'][$i] = $one;
     }
-    $show = !empty($_POST['show']);
-    if ($show && !$stores) go(['tab' => 'settings'], '!Please add a store address or Google Maps link, or untick “Show on the Contact page”.');
-    shop_set('store_loc', json_encode(['show' => $show, 'stores' => $stores], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    go(['tab' => 'settings'], $show ? 'Stores saved. They now show on the Contact page.' : 'Stores saved. They are hidden on the Contact page.');
+    shop_set('store_loc', json_encode($loc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    go(['tab' => 'stores'], ['store_add' => 'Store added. It now shows on the Contact page.', 'store_save' => 'Store saved.', 'store_remove' => 'Store removed.', 'stores_show' => $loc['show'] ? 'Stores now show on the Contact page.' : 'Stores are now hidden on the Contact page.'][$a]);
   }
   if ($a === 'mysql') {
     $err = shop_move_to_mysql(trim((string)($_POST['db_name'] ?? '')), trim((string)($_POST['db_user'] ?? '')), (string)($_POST['db_pass'] ?? ''));
@@ -245,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------------- downloads ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
@@ -288,7 +290,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'reviews' => 'Reviews', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'reviews' => 'Reviews', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';

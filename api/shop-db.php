@@ -138,6 +138,10 @@ function shop_store_location(): ?array {
   $v = shop_setting('store_loc'); if ($v === null) return null;
   $d = json_decode($v, true); return is_array($d) && isset($d['stores']) ? $d : null;
 }
+/* The stores as the admin page edits them: the saved list, or the ones in index.html until the first save. */
+function stores_all(): array {
+  return shop_store_location() ?? ['show' => true, 'stores' => array_values(array_map(fn($st) => array_intersect_key((array)$st, array_flip(['name', 'address', 'hours', 'link'])), fomaxo_store_data()['contact']['stores'] ?? []))];
+}
 /* A place for the map from a pasted Google Maps link: the pin's lat,lng, the place name or the search words.
    Short share links (maps.app.goo.gl) carry none of these, so the address is used for the map then. */
 function shop_map_query_from_link(string $url): string {

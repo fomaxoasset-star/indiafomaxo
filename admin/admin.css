@@ -241,3 +241,5 @@ body.zooming{overflow:hidden}
 }
 .map-prev{position:relative;height:170px;flex:none;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#0f0e0b}.map-prev iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .store-f{border:1px solid var(--line);border-radius:7px;padding:10px 12px 12px;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}.store-f legend{padding:0 6px;color:var(--gold);font-size:13px}.store-f legend small{color:var(--muted)}
+.stores-l{display:flex;flex-direction:column;gap:12px;padding-top:12px}.store-c{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;border:1px solid var(--line);border-radius:7px;padding:12px}.store-c .store-f{border:0;padding:0}.store-c .map-prev{height:auto;min-height:220px}.gold{color:var(--gold)}
+@media(max-width:760px){.store-c{grid-template-columns:1fr}.store-c .map-prev{min-height:180px}}

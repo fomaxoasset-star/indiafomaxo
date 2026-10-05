@@ -424,34 +424,37 @@ if ($tab === 'reviews') {
   $body .= '</div></div></div>';
 }
 
+/* ============ Stores (shown on the Contact page with a Google Map each) ============ */
+if ($tab === 'stores') {
+  $loc = stores_all();
+  $fields = fn(array $st) => '<label>Store name<input name="name" maxlength="80" value="' . h((string)($st['name'] ?? '')) . '" placeholder="FOMAXO Store" required></label>'
+    . '<label>Google Maps link<input type="url" name="link" maxlength="600" value="' . h((string)($st['link'] ?? '')) . '" placeholder="https://maps.app.goo.gl/…"></label>'
+    . '<label>Address <small>(optional if there is a link)</small><textarea name="address" rows="2" maxlength="300" placeholder="Shop no, building, street, area, city, PIN">' . h((string)($st['address'] ?? '')) . '</textarea></label>'
+    . '<label>Opening hours <small>(optional)</small><input name="hours" maxlength="120" value="' . h((string)($st['hours'] ?? '')) . '" placeholder="Open daily · 10 am – 10 pm"></label>';
+  $body .= $sw('#stPanes', ['list' => 'Your stores', 'add' => 'Add a store']) . '<div class="exp panes" id="stPanes">'
+    . '<form method="post" class="box" data-pane="add">' . $csrfField . '<input type="hidden" name="action" value="store_add"><div class="bh"><h3>Add a store</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
+    . $fields([]) . '<p class="muted small" style="margin:0">In Google Maps, open your store, press <b>Share</b> and <b>Copy link</b>, then paste it here.</p><button class="btn" style="width:100%">Add store</button></div></form>'
+    . '<div class="box on" data-pane="list"><div class="bh"><h3>Your stores · ' . count($loc['stores']) . '</h3>'
+    . '<form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="stores_show"><input type="hidden" name="show" value="' . ($loc['show'] ? '0' : '1') . '"><span class="muted small">' . ($loc['show'] ? 'Shown on the Contact page' : 'Hidden on the Contact page') . '</span><button class="btn line sm">' . ($loc['show'] ? 'Hide' : 'Show') . '</button></form></div><div class="bb stores-l">';
+  if (!$loc['stores']) $body .= '<p class="empty">No stores yet. Add one and it shows on the Contact page with a Google Map.</p>';
+  foreach ($loc['stores'] as $i => $st) {
+    $mapQ = shop_map_query_from_link((string)($st['link'] ?? '')) ?: trim(($st['name'] ?? '') . ', ' . ($st['address'] ?? ''), ', ');
+    $body .= '<div class="store-c"><form method="post" class="store-f">' . $csrfField . '<input type="hidden" name="action" value="store_save"><input type="hidden" name="i" value="' . $i . '"><b class="gold">Store ' . ($i + 1) . '</b>' . $fields($st)
+      . '<div class="row"><button class="btn">Save</button><button class="btn line danger" formnovalidate name="action" value="store_remove" data-confirm="Remove ' . h((string)($st['name'] ?: 'this store')) . ' from the Contact page?">Remove</button></div></form>'
+      . '<div class="map-prev"><iframe src="https://maps.google.com/maps?q=' . h(rawurlencode($mapQ)) . '&amp;z=16&amp;output=embed" title="Map preview, store ' . ($i + 1) . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div></div>';
+  }
+  $body .= '</div></div></div>';
+}
+
 /* ============ Settings ============ */
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
-  $loc = shop_store_location() ?? ['show' => true, 'stores' => fomaxo_store_data()['contact']['stores'] ?? []];
-  $stRows = '';
-  foreach (array_slice(array_pad($loc['stores'], 3, []), 0, 3) as $i => $st) {
-    $n = "st[$i]"; $mapQ = shop_map_query_from_link((string)($st['link'] ?? '')) ?: trim(($st['name'] ?? '') . ', ' . ($st['address'] ?? ''), ', ');
-    $has = ($st['address'] ?? '') !== '' || ($st['link'] ?? '') !== '';
-    $stRows .= '<fieldset class="store-f"><legend>Store ' . ($i + 1) . ($has ? '' : ' <small>(empty = not shown)</small>') . '</legend>'
-      . '<label>Store name<input name="' . $n . '[name]" maxlength="80" value="' . h((string)($st['name'] ?? '')) . '" placeholder="FOMAXO Store"></label>'
-      . '<label>Google Maps link<input type="url" name="' . $n . '[link]" maxlength="600" value="' . h((string)($st['link'] ?? '')) . '" placeholder="https://maps.app.goo.gl/…"></label>'
-      . '<label>Address <small>(optional)</small><textarea name="' . $n . '[address]" rows="2" maxlength="300" placeholder="Shop no, building, street, area, city, PIN">' . h((string)($st['address'] ?? '')) . '</textarea></label>'
-      . '<label>Opening hours <small>(optional)</small><input name="' . $n . '[hours]" maxlength="120" value="' . h((string)($st['hours'] ?? '')) . '" placeholder="Open daily · 10 am – 10 pm"></label>'
-      . ($has ? '<div class="map-prev"><iframe src="https://maps.google.com/maps?q=' . h(rawurlencode($mapQ)) . '&amp;z=16&amp;output=embed" title="Map preview, store ' . ($i + 1) . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' : '')
-      . '</fieldset>';
-  }
-  $storeForm = '<form method="post" class="box" data-pane="store">' . $csrfField . '<input type="hidden" name="action" value="store_loc"><div class="bh"><h3>Stores</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
-    . '<p class="muted small" style="margin:0">Shown on the Contact page with a Google Map each. In Google Maps, open your store, press <b>Share</b> and <b>Copy link</b>, then paste it here.</p>'
-    . $stRows
-    . '<label class="chk"><input type="checkbox" name="show" value="1"' . (!empty($loc['show']) ? ' checked' : '') . '> Show on the Contact page</label>'
-    . '<button class="btn">Save stores</button></div></form>';
-  $body .= $sw('#setPanes', ['notify' => 'Emails', 'store' => 'Stores', 'pw' => 'Password', 'db' => 'Database']) . '<div class="set panes" id="setPanes">'
+  $body .= $sw('#setPanes', ['notify' => 'Emails', 'pw' => 'Password', 'db' => 'Database']) . '<div class="set panes" id="setPanes">'
     . '<form method="post" class="box on" data-pane="notify">' . $csrfField . '<input type="hidden" name="action" value="settings"><div class="bh"><h3>Order emails</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Send new order emails to<input type="email" name="notify_email" value="' . h($email) . '" placeholder="' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '"></label>'
     . '<p class="muted small" style="margin:0">Every new order is emailed here, and so is a password reset link if you forget your password. Empty uses ' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '.</p>'
     . '<label>Card / UPI payment fee %<input type="number" name="pay_fee" min="0" max="10" step="0.01" value="' . h((string)pay_fee_pct()) . '"></label>'
     . '<p class="muted small" style="margin:0">Razorpay’s fee on each online payment, used for Fees in Reports.</p><button class="btn">Save</button></div></form>'
-    . $storeForm
     . '<form method="post" class="box" data-pane="pw" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="password"><div class="bh"><h3>Change your password</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Current password<input type="password" name="current" required autocomplete="current-password"></label>'
     . '<label>New password <small>(at least 8 characters)</small><input type="password" name="new" required minlength="8" autocomplete="new-password"></label>'
