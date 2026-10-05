@@ -164,8 +164,12 @@ try {
       $in = input();
       if (!empty($in['website'])) out(['ok' => true]);                          // honeypot: bots fill every field
       $ip = ipHash();
-      $s = db()->prepare('SELECT COUNT(*) FROM reviews WHERE ip = ? AND created > ?'); $s->execute([$ip, time() - 3600]);
-      if ($s->fetchColumn() >= SUBMITS_PER_HOUR) fail('Too many reviews from your connection. Please try again later.', 429);
+      // buyers writing from their order's review link have no limit: they can review every product they bought.
+      // only reviews without a link (anyone on the website) keep the spam guard of SUBMITS_PER_HOUR per connection
+      if (empty($in['token'])) {
+        $s = db()->prepare('SELECT COUNT(*) FROM reviews WHERE ip = ? AND created > ? AND verified = 0'); $s->execute([$ip, time() - 3600]);
+        if ($s->fetchColumn() >= SUBMITS_PER_HOUR) fail('Too many reviews from your connection. Please try again later.', 429);
+      }
 
       $product = validProduct($in['product'] ?? '');
       $rating = (int)($in['rating'] ?? 0); if ($rating < 1 || $rating > 5) fail('Please choose a star rating from 1 to 5.');
