@@ -282,3 +282,7 @@ body.zooming{overflow:hidden}
 .sbox:hover{border-color:var(--gold)}.sbox.s-low.on{border-color:var(--amber);background:#241d10}.sbox.s-out.on{border-color:var(--red);background:#2a1a17}
 .sonly{display:flex;align-items:center;gap:10px;margin:0;font-size:13px;color:var(--gold2)}
 @media (max-width:820px){.swarn{gap:6px}.sbox{padding:8px 10px}.sbox b{font-size:20px}}
+/* product edit page: photo order */
+.ph{width:140px;padding:6px;border:2px solid var(--line);border-radius:10px;box-sizing:content-box}.ph img{width:140px;height:140px}.ph.main{border-color:var(--gold)}
+.phl{font-size:12px;font-weight:600;color:var(--muted)}.ph.main .phl{color:var(--gold2)}
+.phb{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;gap:4px}.phb .btn{padding:5px 2px;min-height:30px;min-width:0;font-size:11px;overflow:hidden}.phb [data-mv="-1"],.phb [data-mv="1"]{font-size:16px;line-height:1}.phb .btn:disabled{opacity:.35;cursor:default}

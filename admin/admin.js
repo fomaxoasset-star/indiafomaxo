@@ -223,3 +223,23 @@
   var all = function () { boxes.forEach(draw); };
   window.addEventListener('resize', all); all();
 })();
+
+/* product edit page: ‹ › move a photo, Make main puts it first; the hidden photo_seq[] inputs follow, so Save keeps the order */
+(function () {
+  var box = document.getElementById('phs'); if (!box) return;
+  var mark = function () {
+    box.querySelectorAll('.ph').forEach(function (ph, i, all) {
+      ph.classList.toggle('main', i === 0); ph.querySelector('.phl').textContent = i ? 'Photo ' + (i + 1) : 'Main photo';
+      ph.querySelector('[data-mv="-1"]').disabled = i === 0; ph.querySelector('.mk').disabled = i === 0; ph.querySelector('[data-mv="1"]').disabled = i === all.length - 1;
+    });
+  };
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-mv]'); if (!b) return;
+    var ph = b.closest('.ph'), mv = b.dataset.mv;
+    if (mv === '0') box.insertBefore(ph, box.firstChild);
+    else if (mv === '-1' && ph.previousElementSibling) box.insertBefore(ph, ph.previousElementSibling);
+    else if (mv === '1' && ph.nextElementSibling) box.insertBefore(ph.nextElementSibling, ph);
+    mark(); ph.querySelector('input').dispatchEvent(new Event('input', {bubbles: true}));
+  });
+  mark();
+})();
