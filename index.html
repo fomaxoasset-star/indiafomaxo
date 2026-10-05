@@ -1677,6 +1677,7 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-set.hl{border-color:var(--gold)}
 .gf-set .gf-pics{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;aspect-ratio:4/3;background:var(--line);overflow:hidden}
 .gf-set .gf-pics img{width:100%;height:100%;object-fit:cover;background:#0b0a08}
+.gf-set .gf-pics img.none{background:#000}  /* No product chosen: plain black tile */
 .gf-set .gf-pics.photo{display:block;background:#0b0a08}
 .gf-set .gf-pics.photo img{position:absolute;inset:0;width:100%;height:100%}
 .gf-set .gf-pics.photo img.bg{object-fit:cover;filter:blur(18px) brightness(.55);transform:scale(1.15)}
@@ -2811,7 +2812,7 @@ const GIFT_SETS = [
   {id: 'birthday-box', name: 'Happy Birthday Box', badge: 'Keepsake', img: 'gift-name-birthday', v: 'Old Money in a clear keepsake box with a rose, fresh-look flowers and “Happy Birthday” on the glass.', items: [['oldmoney', 50]]},
   {id: 'wishes-box', name: 'Best Wishes Box', badge: 'Most gifted', img: 'gift-box-wishes', v: 'Two parfums and a Passion Sin care duo in a clear box, finished with flowers and ribbon.', items: [['royalcandy', 50], ['oldmoney', 50], ['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one']]},
   {id: 'signature-duo', name: 'The Signature Duo', v: 'Two parfums of your choice, side by side.', slots: 2, live: true, only: (p, sz) => !p.kind && p.tier !== 'elite' && (['gold', 'dollar'].includes(p.id) ? sz == 100 : sz == 50), items: [['gold', 100], ['dollar', 100]]},
-  {id: 'mini-quartet', name: 'Prestige Mini Quartet', v: 'Four pocket parfums to discover and share.', items: [['royalcandy', 10], ['oldmoney', 10], ['matchacoco', 10], ['passionsin', 10]]},
+  {id: 'mini-quartet', name: 'Prestige Mini', v: 'Pocket parfums in 10ml, to discover and share.', none: true, live: true, only: (p, sz) => !p.kind && sz == 10, items: [['royalcandy', 10], ['oldmoney', 10], ['matchacoco', 10], ['passionsin', 10]]},
   {id: 'ritual-box', name: 'The Ritual Box', v: 'Everyday luxury for hair, body and face.', items: [['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one'], ['pc-radiant-wash', 'one'], ['pc-kissberry', 'one']]},
   {id: 'lip-love', name: 'Lip Love', v: 'Two balms, beautifully boxed. A sweet little thank-you.', slots: 2, live: true, only: p => p.kind === 'care' && p.cat === 'lips', items: [['pc-kissberry', 'one'], ['pc-avokiss', 'one']]}
 ];
@@ -2819,8 +2820,8 @@ const giftSets = () => GIFT_SETS.map(g => ({...g, items: g.items.filter(([id, s]
   .filter(g => g.items.length === GIFT_SETS.find(x => x.id === g.id).items.length);
 /* every product that can be chosen in a gift set dropdown, one option per size */
 const GIFT_SLOTS = Math.max(...GIFT_SETS.map(g => g.items.length));   // every set shows this many dropdowns
-/* only: limit a set's dropdown to some products/sizes (no "No product" choice then) */
-const giftOptions = (selId, selSize, only) => (only ? '' : `<option value=""${selId ? '' : ' selected'}>No product</option>`) + [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.filter(sz => !sizeOut(p, sz) && (!only || only(p, sz))).map(sz => {
+/* only: limit a set's dropdown to some products/sizes (no "No product" choice then, unless none is set) */
+const giftOptions = (selId, selSize, only, none) => (only && !none ? '' : `<option value=""${selId ? '' : ' selected'}>No product</option>`) + [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.filter(sz => !sizeOut(p, sz) && (!only || only(p, sz))).map(sz => {
   const v = `${p.id}|${sz}`, label = p.kind ? p.name : `${p.name} · ${sz}ml`;
   return `<option value="${v}"${p.id === selId && String(sz) === String(selSize) ? ' selected' : ''}>${esc(label)}</option>`;
 })).join('');
@@ -2832,7 +2833,7 @@ function giftPage(){
   const setCard = (g, i) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
       <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${IMG(imgFor(P[id], s))}"${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
       <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-        <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s, g.only)}</select>`).join('')}</div>
+        <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s, g.only, g.none)}</select>`).join('')}</div>
         <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}Personalise</button></div>
       </div></article>`;
   const occ = [
@@ -2909,7 +2910,8 @@ function bindGift(){
   $$('[data-gpers]').forEach(b => b.onclick = () => { const g = GIFT_SETS.find(x => x.id === b.dataset.gpers); if (!g) return;
     const picks = $$(`[data-gpick="${g.id}"]`).filter(sel => sel.value).map(sel => { const [id, sz] = sel.value.split('|'); const p = P[id]; return p ? `- ${p.kind ? p.name : `${p.name} ${sz}ml`}` : ''; }).filter(Boolean);
     const a = document.createElement('a'); a.href = waLink(`Hello FOMAXO, I am interested in the "${g.name}" gift set with these products:\n${picks.join('\n')}\n\nPlease help me personalise it.`); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); });
-  $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|'); if (im && P[id]) im.src = IMG(imgFor(P[id], sz)); });
+  $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|'); if (!im) return;
+    im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG(imgFor(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
 }
 function pcBadges(p, size){
