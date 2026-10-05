@@ -63,7 +63,7 @@ function input(): array {
 function str($v, int $max): string { $s = trim(preg_replace('/\s+/u', ' ', (string)$v) ?? ''); return mb_substr($s, 0, $max); }
 function validProduct($id): string { $id = (string)$id; if (!preg_match('/^[a-z0-9-]{1,48}$/', $id)) fail('Unknown product.'); return $id; }
 
-/* "Ahmed Saleem" → "Ahmed S." */
+/* "Ahmed Saleem" → "Ahmed S."; only used when a verified buyer leaves the name blank, typed names show as written */
 function displayName(string $n): string {
   $parts = preg_split('/\s+/u', trim($n)) ?: [];
   if (!$parts || $parts[0] === '') return 'Customer';
@@ -181,13 +181,13 @@ try {
         $s = db()->prepare('SELECT 1 FROM reviews WHERE order_id = ? AND product = ?'); $s->execute([$o['id'], $product]);
         if ($s->fetchColumn()) fail('You have already reviewed this product from that order.');
         $verified = 1; $orderId = (int)$o['id'];
-        if ($rawName === '') $rawName = $o['customer'];
+        if ($rawName === '') $rawName = displayName($o['customer']);   // left blank: the order name, shortened
       }
 
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
       db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        ->execute([$product, $rating, $text, displayName($rawName), $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country]);
+        ->execute([$product, $rating, $text, $rawName, $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country]);
       out(['ok' => true, 'pending' => $status === 'pending']);
     }
 
