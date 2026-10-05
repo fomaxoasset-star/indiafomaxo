@@ -48,6 +48,36 @@
     });
   });
 
+  /* a "Saved" message fades away by itself after a few seconds (tap it to close it sooner); problems stay until closed */
+  var flash = document.querySelector('.flash');
+  if (flash) {
+    var shut = function () { flash.classList.add('gone'); setTimeout(function () { flash.remove(); window.dispatchEvent(new Event('resize')); }, 300); };
+    flash.addEventListener('click', shut);
+    if (!flash.classList.contains('bad')) setTimeout(shut, 4500);
+  }
+
+  /* forms: ask first where a [data-confirm] says so, then show "Saving…" so a button is not pressed twice */
+  document.addEventListener('submit', function (e) {
+    var f = e.target, b = e.submitter || f.querySelector('button:not([type=button])');
+    var ask = (b && b.dataset.confirm) || f.dataset.confirm;
+    if (ask && !confirm(ask)) { e.preventDefault(); return; }
+    if ((f.getAttribute('method') || '').toLowerCase() !== 'post' || !b) return;
+    dirty = false;
+    setTimeout(function () { b.disabled = true; b.dataset.label = b.textContent; b.textContent = 'Saving…'; }, 0);
+  });
+
+  /* Stock and product forms: changed boxes light up, and leaving with unsaved changes asks first */
+  var dirty = false;
+  document.querySelectorAll('form[data-watch]').forEach(function (f) {
+    f.addEventListener('input', function (e) { if (e.target.matches('input,select,textarea')) { e.target.classList.add('changed'); dirty = true; var n = f.querySelector('.unsaved'); if (n) n.hidden = false; } });
+  });
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* phones: "Filters" and "Dates" buttons open the less-used boxes */
+  document.querySelectorAll('[data-open]').forEach(function (b) {
+    b.addEventListener('click', function () { var t = document.querySelector(b.dataset.open); t.classList.toggle('open'); b.classList.toggle('on', t.classList.contains('open')); window.dispatchEvent(new Event('resize')); });
+  });
+
   /* a .sw switch shows one [data-pane] of its .panes at a time (phones only; on a computer all panes show) */
   document.querySelectorAll('.sw').forEach(function (sw) {
     var panes = document.querySelector(sw.dataset.for);

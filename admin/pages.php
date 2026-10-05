@@ -61,12 +61,13 @@ if ($tab === 'orders') {
     foreach ($SUM['states'] as $st => $n) $body .= '<a class="chip' . ($F['state'] === $st ? ' on' : '') . '" href="' . h(self_url(array_filter(['state' => $F['state'] === $st ? '' : $st] + $q))) . '">' . h($st) . ' <b>' . $n . '</b></a>';
     $body .= '</div>';
   }
-  $body .= '<form class="filters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '')
-    . '<label>Status' . $sel('status', ['' => 'All orders', 'todo' => 'To deliver (New + Paid)', 'new' => 'New', 'paid' => 'Paid', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'awaiting' => 'Unfinished online payments'], $F['status']) . '</label>'
-    . '<label>Payment' . $sel('method', ['' => 'COD and online', 'cod' => 'Cash on delivery (COD)', 'online' => 'Online (card / UPI)'], $F['method']) . '</label>'
+  $nf = count(array_filter([$F['status'], $F['method'], $F['from'], $F['to']], 'strlen'));
+  $body .= '<form class="filters' . ($nf ? ' open' : '') . '" id="ordFilters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '')
+    . '<label class="fx">Status' . $sel('status', ['' => 'All orders', 'todo' => 'To deliver (New + Paid)', 'new' => 'New', 'paid' => 'Paid', 'delivered' => 'Delivered', 'cancelled' => 'Cancelled', 'awaiting' => 'Unfinished online payments'], $F['status']) . '</label>'
+    . '<label class="fx">Payment' . $sel('method', ['' => 'COD and online', 'cod' => 'Cash on delivery (COD)', 'online' => 'Online (card / UPI)'], $F['method']) . '</label>'
     . '<label class="hide-m">From<input type="date" name="from" value="' . h($F['from']) . '"></label><label class="hide-m">To<input type="date" name="to" value="' . h($F['to']) . '"></label>'
-    . '<label class="grow">Search<input type="search" name="q" value="' . h($F['q']) . '" placeholder="Order no, name, mobile, email or note"></label>'
-    . '<button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
+    . '<label class="grow"><span class="hide-m">Search</span><input type="search" name="q" value="' . h($F['q']) . '" placeholder="Order no, name, mobile, email or note" aria-label="Search orders"></label>'
+    . '<button type="button" class="btn line show-m-i" data-open="#ordFilters">Filters' . ($nf ? ' (' . $nf . ')' : '') . '</button><button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
   $back = h(json_encode($q + ['page' => $page]));
   $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . ($F['status'] === 'awaiting' ? '. These shoppers opened online payment but did not finish. They have no order number and took no stock.' : '. Tap an order to see it and change its status.') . '</span></div><div class="bb np">';
   if (!$orders) $body .= '<p class="empty">No orders' . (array_filter($F) ? ' for this filter' : ' yet') . '.</p>';
@@ -85,7 +86,10 @@ if ($tab === 'orders') {
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
       . '<form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="status"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . '<label>Status' . $sel('status', array_diff_key(FOMAXO_STATUSES, $o['status'] === 'awaiting' ? [] : ['awaiting' => 1]), $o['status']) . '</label>'
-      . '<label>Your note<input name="admin_note" value="' . h($o['admin_note']) . '" maxlength="500" placeholder="Courier, tracking number…"></label><button class="btn sm">Save</button></form>'
+      . '<label>Your note<input name="admin_note" value="' . h($o['admin_note']) . '" maxlength="500" placeholder="Courier, tracking number…"></label>'
+      . '<div class="qbtns"><button class="btn line">Save</button>'
+      . (in_array($o['status'], ['new', 'paid'], true) ? '<button class="btn" name="status" value="delivered">✓ Mark delivered</button>' : '')
+      . ($o['status'] !== 'cancelled' && $o['status'] !== 'awaiting' ? '<button class="btn line danger" name="status" value="cancelled" data-confirm="Cancel order ' . h($o['no']) . '? Its items go back into stock.">Cancel order</button>' : '') . '</div></form>'
       . '<p class="muted small">Cancelling puts the items back in stock.</p></div></div></details>';
   }
   if ($total > ADMIN_PER_PAGE) {
@@ -172,7 +176,7 @@ if ($tab === 'stock') {
   $body .= '<div class="row top"><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="low_stock">'
     . '<label class="chk" style="font-size:14px">Show “Only X left” from <input type="number" name="low_stock" min="0" max="99" value="' . $low . '" style="width:70px"> left or fewer</label><button class="btn line sm">Save</button><span class="muted small">0 turns it off.</span></form>'
     . '<input type="search" class="grow" id="stockFind" placeholder="Find a product" aria-label="Find a product" style="max-width:320px;margin-left:auto"></div>'
-    . '<form method="post" class="box fill">' . $csrfField . '<input type="hidden" name="action" value="stock"><input type="hidden" name="low_stock" value="' . $low . '">'
+    . '<form method="post" class="box fill" data-watch>' . $csrfField . '<input type="hidden" name="action" value="stock"><input type="hidden" name="low_stock" value="' . $low . '">'
     . '<div class="bb np"><table class="grid stock"><thead><tr><th>Product</th><th>Size</th><th>Stock</th><th>Cost ₹</th><th class="hide-m">On the shop</th></tr></thead><tbody>';
   foreach ($CAT as $id => $p) {
     foreach ($p['prices'] as $opt => $_) {
@@ -184,7 +188,7 @@ if ($tab === 'stock') {
         . '<td><input type="number" min="0" step="0.01" name="cost[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($c === null ? '' : h((string)round($c / 100, 2))) . '" placeholder="—"></td><td class="hide-m">' . $state . '</td></tr>';
     }
   }
-  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Reports use it to work out your profit.</span></div></form>'
+  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="unsaved" hidden>Not saved yet</span><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Reports use it to work out your profit.</span></div></form>'
     . '<script>(function(){var f=document.getElementById("stockFind"),rows=document.querySelectorAll("table.stock tbody tr"),none=document.getElementById("stockNone");f.oninput=function(){var q=f.value.trim().toLowerCase(),n=0;rows.forEach(function(r){var on=!q||r.dataset.name.indexOf(q)>-1;r.hidden=!on;if(on)n++});none.hidden=n>0}})()</script>';
 }
 
@@ -197,7 +201,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   $COSTS = shop_costs(); $STOCK = shop_stock(); $n = $ep['notes'] ?? []; $v = fn($k) => h((string)($ep[$k] ?? ''));
   $hidden = !$adding && !empty($CAT[$editId]['hidden']);
   $cls = fn($k) => $adding ? ' class="' . $k . '"' : '';
-  $body .= '<form method="post" enctype="multipart/form-data" class="box fill" id="pf">' . $csrfField . '<input type="hidden" name="action" value="' . ($adding ? 'add' : 'edit') . '">' . ($adding ? '' : '<input type="hidden" name="id" value="' . h($editId) . '">')
+  $body .= '<form method="post" enctype="multipart/form-data" class="box fill" id="pf" data-watch>' . $csrfField . '<input type="hidden" name="action" value="' . ($adding ? 'add' : 'edit') . '">' . ($adding ? '' : '<input type="hidden" name="id" value="' . h($editId) . '">')
     . '<div class="bh"><h2>' . ($adding ? 'Add a product' : 'Edit ' . h($CAT[$editId]['name'])) . ' <small class="muted">' . ($adding ? '' : h(kind_label($kind))) . '</small></h2><a href="' . h(self_url(['tab' => 'products'])) . '">‹ All products</a></div><div class="bb"><div class="pform">'
     . ($adding ? '<label>Category<select name="kind" id="kind"><option value="">Fragrance (perfume)</option><option value="car">Car fragrance</option><option value="care">Personal care</option></select></label>' : '')
     . '<label>Name<input name="name" required maxlength="60" value="' . $v('name') . '" placeholder="e.g. Velvet Oud"></label>'
@@ -280,11 +284,11 @@ if ($tab === 'analytics') {
     preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['to'] ?? '')) ? $_GET['to'] : $today], default => [date('Y-m-d', strtotime('-6 day')), $today] };
   if ($from > $to) [$from, $to] = [$to, $from];
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
-  $body .= '<form class="range" method="get"><input type="hidden" name="tab" value="analytics"><span class="seg">'
-    . implode('', array_map(fn($k, $l) => '<a href="' . h(self_url(['tab' => 'analytics', 'r' => $k])) . '"' . ($r === $k ? ' class="on"' : '') . ">$l</a>", ['today', '7', '30'], ['Today', '7 days', '30 days'])) . '</span>'
-    . '<input type="hidden" name="r" value="custom"><input type="date" name="from" value="' . h($from) . '"><input type="date" name="to" value="' . h($to) . '"><button class="btn line sm">Show</button>'
+  $body .= '<form class="range' . ($r === 'custom' ? ' open' : '') . '" id="anRange" method="get"><input type="hidden" name="tab" value="analytics"><span class="seg">'
+    . implode('', array_map(fn($k, $l) => '<a href="' . h(self_url(['tab' => 'analytics', 'r' => $k])) . '"' . ($r === $k ? ' class="on"' : '') . ">$l</a>", ['today', '7', '30'], ['Today', '7 days', '30 days'])) . '<button type="button" class="show-m-i' . ($r === 'custom' ? ' on' : '') . '" data-open="#anRange">Dates</button></span>'
+    . '<input type="hidden" name="r" value="custom"><input class="fx" type="date" name="from" value="' . h($from) . '" aria-label="From"><input class="fx" type="date" name="to" value="' . h($to) . '" aria-label="To"><button class="btn line sm fx">Show</button>'
     . '<span class="muted small hide-m">' . h(date('d M Y', strtotime($from))) . ($from !== $to ? ' – ' . h(date('d M Y', strtotime($to))) : '') . '. Your own visits and bots are not counted.</span></form>';
-  $body .= '<div class="kpis n7" style="--n:7">'
+  $body .= '<div class="kpis n7 strip" style="--n:7">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
     . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
     . '<div class="kpi"><span>Conversion rate</span><b>' . ($A['conversion'] === null ? '—' : round($A['conversion'], 1) . '%') . '</b><small>visits that bought</small></div>'
@@ -328,17 +332,17 @@ if ($tab === 'analytics') {
   $body .= '</tbody></table></div></div>';
   /* left at checkout: everyone, kept for good */
   $L = checkout_leads();
-  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout (all dates)</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel'])) . '">Excel</a></div><div class="bb np"><table class="grid"><thead><tr><th>Date</th><th>Name</th><th>State · address</th><th>Products</th><th class="r">Bag</th><th>Left at</th><th>Ordered later</th><th></th></tr></thead><tbody>';
+  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout (all dates)</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel'])) . '">Excel</a></div><div class="bb np"><table class="grid ltab"><thead><tr><th>Date</th><th>Name</th><th>State · address</th><th>Products</th><th class="r">Bag</th><th>Left at</th><th>Ordered later</th><th></th></tr></thead><tbody>';
   if (!$L) $body .= '<tr><td colspan="8" class="empty">Nobody has typed their details at checkout yet.</td></tr>';
   foreach ($L as $l) {
     $names = lead_items($l);
     $msg = 'Hi ' . ($l['name'] ?: 'there') . ', this is FOMAXO. We saw you were about to order ' . ($names ?: 'from our shop') . '. Can we help you finish your order?';
-    $body .= '<tr' . ($l['later'] !== '' ? ' class="dim"' : '') . '><td class="nw">' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</td><td><b>' . h($l['name'] ?: '—') . '</b><small>' . h($l['phone'] ? phone_fmt($l['phone']) : 'no mobile') . '</small>' . ($l['email'] ? '<small>' . h($l['email']) . '</small>' : '') . '</td>'
-      . '<td><b>' . h($l['state'] ?: '—') . '</b><small class="clip">' . h($l['address']) . '</small></td>'
-      . '<td><small class="clip2">' . h($names) . '</small></td><td class="r nw">' . rupees((int)$l['total']) . '</td>'
-      . '<td>' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">Payment</span>' : '<span class="badge st-new">Details</span>') . '</td>'
-      . '<td>' . ($l['later'] === '' ? '<span class="muted">No</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '"><span class="badge st-paid">' . h($l['later']) . '</span></a>')) . '</td>'
-      . '<td class="r">' . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</td></tr>';
+    $body .= '<tr' . ($l['later'] !== '' ? ' class="dim"' : '') . '><td class="nw lt-date">' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</td><td class="lt-name"><b>' . h($l['name'] ?: '—') . '</b><small>' . h($l['phone'] ? phone_fmt($l['phone']) : 'no mobile') . '</small>' . ($l['email'] ? '<small>' . h($l['email']) . '</small>' : '') . '</td>'
+      . '<td class="lt-addr"><b>' . h($l['state'] ?: '—') . '</b><small class="clip">' . h($l['address']) . '</small></td>'
+      . '<td class="lt-items"><small class="clip2">' . h($names) . '</small></td><td class="r nw lt-bag">' . rupees((int)$l['total']) . '</td>'
+      . '<td class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</td>'
+      . '<td class="lt-later">' . ($l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '"><span class="badge st-paid">' . h($l['later']) . '</span></a>')) . '</td>'
+      . '<td class="r lt-wa">' . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</td></tr>';
   }
   $body .= '</tbody></table></div></div></div>';
 }
@@ -395,7 +399,7 @@ if ($tab === 'reviews') {
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
       . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '<span class="sp"></span>'
       . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form></div>'
+      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form></div>'
       . '<p>' . nl2br(h($r['body'])) . '</p>'
       . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
