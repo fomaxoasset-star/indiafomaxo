@@ -132,11 +132,11 @@ function shop_upsert(string $table, array $keys, array $row): void {
 
 function shop_setting(string $k): ?string { $s = shop_db()->prepare('SELECT v FROM settings WHERE k = ?'); $s->execute([$k]); $v = $s->fetchColumn(); return $v === false ? null : (string)$v; }
 function shop_set(string $k, string $v): void { shop_upsert('settings', ['k'], ['k' => $k, 'v' => $v]); }
-/* The store location set on the admin page (Settings → Store), shown on the Contact page with a Google Map.
-   null = never saved, so the site uses STORE.contact.store in index.html. */
+/* The stores set on the admin page (Settings → Stores), shown on the Contact page with a Google Map each.
+   null = never saved, so the site uses STORE.contact.stores in index.html. */
 function shop_store_location(): ?array {
   $v = shop_setting('store_loc'); if ($v === null) return null;
-  $d = json_decode($v, true); return is_array($d) ? $d : null;
+  $d = json_decode($v, true); return is_array($d) && isset($d['stores']) ? $d : null;
 }
 /* A place for the map from a pasted Google Maps link: the pin's lat,lng, the place name or the search words.
    Short share links (maps.app.goo.gl) carry none of these, so the address is used for the map then. */

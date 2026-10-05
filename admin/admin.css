@@ -240,3 +240,4 @@ body.zooming{overflow:hidden}
   .zkpis .zgrid{grid-template-columns:1fr 1fr;gap:10px}.zkpis .kpi{padding:14px}.zkpis .kpi span{font-size:12px}.zkpis .kpi b{font-size:28px}.zkpis .kpi small{font-size:13px}
 }
 .map-prev{position:relative;height:170px;flex:none;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#0f0e0b}.map-prev iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.store-f{border:1px solid var(--line);border-radius:7px;padding:10px 12px 12px;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}.store-f legend{padding:0 6px;color:var(--gold);font-size:13px}.store-f legend small{color:var(--muted)}

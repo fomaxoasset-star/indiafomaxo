@@ -445,7 +445,8 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .contact-list small{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
 .contact-list b{font-family:var(--display);font-weight:300;font-size:18px;letter-spacing:.04em;word-break:break-word}
 .contact-list a:hover b{color:var(--gold-hi)}
-/* contact: store location + map */
+/* contact: store locations + maps */
+.stores{display:grid;gap:clamp(18px,2.5vw,32px)}
 .store-loc{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1px;background:var(--line);border:1px solid var(--line)}
 .store-loc .info{background:var(--black);padding:clamp(26px,4vw,48px);display:flex;flex-direction:column;gap:22px;justify-content:center}
 .store-loc .info h3{font-family:var(--display);font-weight:300;font-size:clamp(24px,2.6vw,34px);letter-spacing:.04em;color:var(--ivory)}
@@ -2001,15 +2002,14 @@ window.STORE = {
     phones: [ { label: "Phone", number: "+91 73491 05165" } ],
     instagram: "fomaxo_india",
     website: "www.fomaxo.com",
-    // Store location on the Contact page. Write the full address; the map and the
-    // "Get directions" button use it. mapQuery is optional (a Google Maps place name
-    // or "lat,lng" if the pin should point somewhere more exact than the address).
-    store: {
-      name: "FOMAXO Store",
-      address: "STORE ADDRESS TO BE ADDED",   // placeholder: replace with the real store address
-      mapQuery: "",
-      hours: "Open daily · 11 am – 9 pm"      // placeholder: replace with the real opening hours
-    }
+    // FOMAXO stores on the Contact page, each with its own Google Map. link = the store's Google Maps link
+    // (the map pin and the buttons use it). address and hours are optional. Admin → Settings → Stores replaces these.
+    stores: [
+      { name: "Fomaxo Perfumes & Personal Care – Exclusive Store", address: "", hours: "", mapQuery: "11.7480704,75.4952403",
+        link: "https://www.google.com/maps/place/Fomaxo+Perfumes+%26+Personal+Care+-Exclusive+Store/@11.7480704,75.4926654,17z/data=!3m1!4b1!4m6!3m5!1s0x3ba427003171ab0f:0xfce1c2c80b3e78ac!8m2!3d11.7480704!4d75.4952403!16s%2Fg%2F11n9xdb1y0" },
+      { name: "Fomaxo Perfumes & Personal Care", address: "", hours: "", mapQuery: "11.8659076,75.409131",
+        link: "https://www.google.com/maps/place/Fomaxo+Perfumes+%26+Personal+Care/@11.8659076,75.409131,17z/data=!3m1!4b1!4m6!3m5!1s0x3ba4230000afd9df:0xb66aa32d6cf0af5d!8m2!3d11.8659076!4d75.409131!16s%2Fg%2F11zh752zvw" }
+    ]
   },
 
   // Shown on every product page. Add your delivery & returns policy.
@@ -3085,23 +3085,28 @@ function contact(q){
       <label>Message<textarea name="msg" required></textarea></label>
       <button class="btn" type="submit">Send message</button>
     </form>
-  </div></div></section>${storeLocation(LIVE.store !== undefined ? LIVE.store : C.store)}`;
+  </div></div></section>${storeLocation(LIVE.stores !== undefined ? LIVE.stores : C.stores)}`;
 }
-function storeLocation(st){
-  if (!st || !st.address) return '';
-  const q = encodeURIComponent(st.mapQuery || `${st.name}, ${st.address}`);
-  const link = /^https:\/\//.test(st.link || '') ? esc(st.link) : '';
-  return `
-  <section class="sec" id="store"><div class="wrap">
-    ${secHead('Visit us', 'Our <em class="metal">store</em>')}
+function storeLocation(list){
+  const stores = (list || []).filter(st => st && (st.address || st.link || st.mapQuery));
+  if (!stores.length) return '';
+  const one = st => {
+    const q = encodeURIComponent(st.mapQuery || [st.name, st.address].filter(Boolean).join(', '));
+    const link = /^https:\/\//.test(st.link || '') ? esc(st.link) : '';
+    return `
     <div class="store-loc rv-up">
       <div class="info">
-        <h3>${esc(st.name)}</h3>
-        <dl><div><dt>Address</dt><dd>${esc(st.address)}</dd></div>${st.hours ? `<div><dt>Hours</dt><dd>${esc(st.hours)}</dd></div>` : ''}</dl>
-        <div class="ctas"><a class="btn" href="${link || `https://www.google.com/maps/dir/?api=1&destination=${q}`}" target="_blank" rel="noopener">Get directions</a><a class="btn line" href="${link || `https://www.google.com/maps/search/?api=1&query=${q}`}" target="_blank" rel="noopener">Open in Google Maps</a></div>
+        <h3>${esc(st.name || 'FOMAXO Store')}</h3>
+        ${st.address || st.hours ? `<dl>${st.address ? `<div><dt>Address</dt><dd>${esc(st.address)}</dd></div>` : ''}${st.hours ? `<div><dt>Hours</dt><dd>${esc(st.hours)}</dd></div>` : ''}</dl>` : ''}
+        <div class="ctas"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Get directions</a><a class="btn line" href="${link || `https://www.google.com/maps/search/?api=1&query=${q}`}" target="_blank" rel="noopener">Open in Google Maps</a></div>
       </div>
-      <div class="map"><span class="pin">FOMAXO</span><iframe src="https://maps.google.com/maps?q=${q}&z=16&output=embed" title="Map showing the ${esc(st.name)} location" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
-    </div>
+      <div class="map"><span class="pin">FOMAXO</span><iframe src="https://maps.google.com/maps?q=${q}&z=16&output=embed" title="Map showing ${esc(st.name || 'the FOMAXO store')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
+    </div>`;
+  };
+  return `
+  <section class="sec" id="store"><div class="wrap">
+    ${secHead('Visit us', stores.length > 1 ? 'Our <em class="metal">stores</em>' : 'Our <em class="metal">store</em>')}
+    <div class="stores">${stores.map(one).join('')}</div>
   </div></section>`;
 }
 const PARTNER_FAQ = [

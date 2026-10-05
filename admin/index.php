@@ -215,14 +215,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'settings'], 'Settings saved.');
   }
   if ($a === 'store_loc') {
-    $f = fn(string $k, int $n) => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? ''))), 0, $n);
-    $link = trim((string)($_POST['map_link'] ?? ''));
-    if ($link !== '' && !preg_match('~^https://(www\.|maps\.)?(google\.[a-z.]+/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl/maps)~i', $link))
-      go(['tab' => 'settings'], '!Please paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps), or leave it empty.');
-    $loc = ['show' => !empty($_POST['show']), 'name' => $f('name', 80), 'address' => $f('address', 300), 'hours' => $f('hours', 120), 'link' => mb_substr($link, 0, 600)];
-    if ($loc['show'] && $loc['address'] === '') go(['tab' => 'settings'], '!Please write the store address, or untick “Show on the Contact page”.');
-    shop_set('store_loc', json_encode($loc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    go(['tab' => 'settings'], $loc['show'] ? 'Store location saved. It now shows on the Contact page.' : 'Store location saved. It is hidden on the Contact page.');
+    $f = fn($v, int $n) => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)$v)), 0, $n);
+    $stores = [];
+    foreach ((array)($_POST['st'] ?? []) as $i => $st) {
+      $st = (array)$st; $link = trim((string)($st['link'] ?? ''));
+      if ($link !== '' && !preg_match('~^https://(www\.|maps\.)?(google\.[a-z.]+/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl/maps)~i', $link))
+        go(['tab' => 'settings'], '!Store ' . ((int)$i + 1) . ': please paste a Google Maps link (it starts with https://maps.app.goo.gl or https://www.google.com/maps), or leave it empty.');
+      $one = ['name' => $f($st['name'] ?? '', 80), 'address' => $f($st['address'] ?? '', 300), 'hours' => $f($st['hours'] ?? '', 120), 'link' => mb_substr($link, 0, 600)];
+      if ($one['address'] !== '' || $one['link'] !== '') $stores[] = $one;
+    }
+    $show = !empty($_POST['show']);
+    if ($show && !$stores) go(['tab' => 'settings'], '!Please add a store address or Google Maps link, or untick “Show on the Contact page”.');
+    shop_set('store_loc', json_encode(['show' => $show, 'stores' => $stores], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    go(['tab' => 'settings'], $show ? 'Stores saved. They now show on the Contact page.' : 'Stores saved. They are hidden on the Contact page.');
   }
   if ($a === 'mysql') {
     $err = shop_move_to_mysql(trim((string)($_POST['db_name'] ?? '')), trim((string)($_POST['db_user'] ?? '')), (string)($_POST['db_pass'] ?? ''));

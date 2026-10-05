@@ -427,19 +427,25 @@ if ($tab === 'reviews') {
 /* ============ Settings ============ */
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
-  $loc = shop_store_location() ?? (fomaxo_store_data()['contact']['store'] ?? []) + ['show' => true];
-  if (str_contains(strtoupper((string)($loc['address'] ?? '')), 'TO BE ADDED')) $loc['address'] = '';   // the placeholder in index.html
-  $mapQ = trim((string)($loc['link'] ?? '')) !== '' ? (shop_map_query_from_link((string)$loc['link']) ?: (string)($loc['address'] ?? '')) : trim(((string)($loc['mapQuery'] ?? '')) ?: ($loc['name'] ?? '') . ', ' . ($loc['address'] ?? ''), ', ');
-  $storeForm = '<form method="post" class="box" data-pane="store">' . $csrfField . '<input type="hidden" name="action" value="store_loc"><div class="bh"><h3>Store location</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
-    . '<label>Store name<input name="name" maxlength="80" value="' . h((string)($loc['name'] ?? 'FOMAXO Store')) . '" placeholder="FOMAXO Store"></label>'
-    . '<label>Address<textarea name="address" rows="3" maxlength="300" placeholder="Shop no, building, street, area, city, state, PIN">' . h((string)($loc['address'] ?? '')) . '</textarea></label>'
-    . '<label>Google Maps link <small>(optional)</small><input type="url" name="map_link" maxlength="600" value="' . h((string)($loc['link'] ?? '')) . '" placeholder="https://maps.app.goo.gl/…"></label>'
-    . '<p class="muted small" style="margin:0">In Google Maps, find your store, press <b>Share</b> and <b>Copy link</b>, then paste it here. The Get directions button uses it. Empty uses the address.</p>'
-    . '<label>Opening hours<input name="hours" maxlength="120" value="' . h((string)($loc['hours'] ?? '')) . '" placeholder="Open daily · 11 am – 9 pm"></label>'
+  $loc = shop_store_location() ?? ['show' => true, 'stores' => fomaxo_store_data()['contact']['stores'] ?? []];
+  $stRows = '';
+  foreach (array_slice(array_pad($loc['stores'], 3, []), 0, 3) as $i => $st) {
+    $n = "st[$i]"; $mapQ = shop_map_query_from_link((string)($st['link'] ?? '')) ?: trim(($st['name'] ?? '') . ', ' . ($st['address'] ?? ''), ', ');
+    $has = ($st['address'] ?? '') !== '' || ($st['link'] ?? '') !== '';
+    $stRows .= '<fieldset class="store-f"><legend>Store ' . ($i + 1) . ($has ? '' : ' <small>(empty = not shown)</small>') . '</legend>'
+      . '<label>Store name<input name="' . $n . '[name]" maxlength="80" value="' . h((string)($st['name'] ?? '')) . '" placeholder="FOMAXO Store"></label>'
+      . '<label>Google Maps link<input type="url" name="' . $n . '[link]" maxlength="600" value="' . h((string)($st['link'] ?? '')) . '" placeholder="https://maps.app.goo.gl/…"></label>'
+      . '<label>Address <small>(optional)</small><textarea name="' . $n . '[address]" rows="2" maxlength="300" placeholder="Shop no, building, street, area, city, PIN">' . h((string)($st['address'] ?? '')) . '</textarea></label>'
+      . '<label>Opening hours <small>(optional)</small><input name="' . $n . '[hours]" maxlength="120" value="' . h((string)($st['hours'] ?? '')) . '" placeholder="Open daily · 10 am – 10 pm"></label>'
+      . ($has ? '<div class="map-prev"><iframe src="https://maps.google.com/maps?q=' . h(rawurlencode($mapQ)) . '&amp;z=16&amp;output=embed" title="Map preview, store ' . ($i + 1) . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' : '')
+      . '</fieldset>';
+  }
+  $storeForm = '<form method="post" class="box" data-pane="store">' . $csrfField . '<input type="hidden" name="action" value="store_loc"><div class="bh"><h3>Stores</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
+    . '<p class="muted small" style="margin:0">Shown on the Contact page with a Google Map each. In Google Maps, open your store, press <b>Share</b> and <b>Copy link</b>, then paste it here.</p>'
+    . $stRows
     . '<label class="chk"><input type="checkbox" name="show" value="1"' . (!empty($loc['show']) ? ' checked' : '') . '> Show on the Contact page</label>'
-    . (($loc['address'] ?? '') !== '' ? '<div class="map-prev"><iframe src="https://maps.google.com/maps?q=' . h(rawurlencode($mapQ)) . '&amp;z=16&amp;output=embed" title="Map preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>' : '')
-    . '<button class="btn">Save store</button></div></form>';
-  $body .= $sw('#setPanes', ['notify' => 'Emails', 'store' => 'Store', 'pw' => 'Password', 'db' => 'Database']) . '<div class="set panes" id="setPanes">'
+    . '<button class="btn">Save stores</button></div></form>';
+  $body .= $sw('#setPanes', ['notify' => 'Emails', 'store' => 'Stores', 'pw' => 'Password', 'db' => 'Database']) . '<div class="set panes" id="setPanes">'
     . '<form method="post" class="box on" data-pane="notify">' . $csrfField . '<input type="hidden" name="action" value="settings"><div class="bh"><h3>Order emails</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Send new order emails to<input type="email" name="notify_email" value="' . h($email) . '" placeholder="' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '"></label>'
     . '<p class="muted small" style="margin:0">Every new order is emailed here, and so is a password reset link if you forget your password. Empty uses ' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '.</p>'
