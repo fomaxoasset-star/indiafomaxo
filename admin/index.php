@@ -180,6 +180,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $st = (string)($_POST['status'] ?? ''); review_set((int)($_POST['id'] ?? 0), $st);
     go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review removed from the website.' : 'Review is back on the website.');
   }
+  if ($a === 'review_reply') {
+    $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? ''); review_reply((int)($_POST['id'] ?? 0), $txt);
+    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), trim($txt) === '' ? 'Reply removed from the website.' : 'Reply is on the website under the review.');
+  }
   if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
   if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5)))); go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'show') {

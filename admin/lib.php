@@ -358,6 +358,13 @@ function review_set(int $id, string $status): void {
   if (!in_array($status, ['live', 'hidden'], true) || !($db = reviews_db())) return;
   $db->prepare('UPDATE reviews SET status = ? WHERE id = ?')->execute([$status, $id]);
 }
+/* FOMAXO's public answer under a review; an empty text removes it */
+function review_reply(int $id, string $text): void {
+  if (!($db = reviews_db())) return;
+  if (!in_array('reply', array_column($db->query('PRAGMA table_info(reviews)')->fetchAll(), 'name'), true)) $db->exec("ALTER TABLE reviews ADD COLUMN reply TEXT NOT NULL DEFAULT ''");
+  $text = mb_substr(trim(str_replace("\r", '', $text)), 0, 1000);
+  $db->prepare('UPDATE reviews SET reply = ? WHERE id = ?')->execute([$text, $id]);
+}
 function top_reviewers_min(): int { return max(1, min(99, (int)(shop_setting('top_reviewers') ?? '2'))); }
 function stars(float $r): string { $f = (int)round($r); return '<span class="stars" aria-label="' . round($r, 1) . ' out of 5">' . str_repeat('★', $f) . '<i>' . str_repeat('★', 5 - $f) . '</i></span>'; }
 

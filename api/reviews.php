@@ -47,6 +47,7 @@ function db(): PDO {
   $cols = array_column($db->query('PRAGMA table_info(reviews)')->fetchAll(), 'name');
   if (!in_array('city', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN city TEXT NOT NULL DEFAULT ''");
   if (!in_array('country', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN country TEXT NOT NULL DEFAULT ''");
+  if (!in_array('reply', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN reply TEXT NOT NULL DEFAULT ''");          // FOMAXO's answer, written in Admin → Reviews
   return $db;
 }
 
@@ -80,7 +81,7 @@ function publicReview(array $r): array {
     'name' => $r['anonymous'] ? 'Anonymous' : $r['name'], 'verified' => (bool)$r['verified'],
     'city' => $r['anonymous'] ? '' : ($r['city'] ?? ''), 'country' => $r['anonymous'] ? '' : ($r['country'] ?? ''),   // anonymous: no place, no flag
     'photos' => array_map(fn($p) => 'api/reviews.php?action=photo&f=' . rawurlencode($p), json_decode($r['photos'], true) ?: []),
-    'helpful' => (int)$r['helpful'], 'date' => gmdate('Y-m-d', (int)$r['created'])];
+    'helpful' => (int)$r['helpful'], 'date' => gmdate('Y-m-d', (int)$r['created']), 'reply' => $r['reply'] ?? ''];
 }
 
 function orderByToken(string $t): ?array {
