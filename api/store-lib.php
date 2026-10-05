@@ -40,6 +40,64 @@ function fomaxo_config(): array {
 }
 
 /* ---- the price list, read from window.STORE in index.html ---- */
+/* window.STORE from index.html as a PHP array (its object literal read as JSON: comments, unquoted keys and trailing commas
+   are handled). The admin page uses it to fill in the product edit form. Returns [] if it cannot be read. */
+function fomaxo_store_data(): array {
+  static $data; if ($data !== null) return $data;
+  $src = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
+  $i = strpos($src, 'window.STORE = {'); if ($i === false) return $data = [];
+  $i += strlen('window.STORE = '); $n = strlen($src); $out = ''; $depth = 0;
+  $skip = function (int $j) use ($src, $n): int {   // past whitespace and comments
+    while ($j < $n) {
+      if (ctype_space($src[$j])) { $j++; continue; }
+      if ($src[$j] === '/' && ($src[$j + 1] ?? '') === '/') { $e = strpos($src, "\n", $j); $j = $e === false ? $n : $e; continue; }
+      if ($src[$j] === '/' && ($src[$j + 1] ?? '') === '*') { $e = strpos($src, '*/', $j + 2); $j = $e === false ? $n : $e + 2; continue; }
+      break;
+    }
+    return $j;
+  };
+  while ($i < $n) {
+    $i = $skip($i); if ($i >= $n) break; $c = $src[$i];
+    if ($c === '"' || $c === "'" || $c === '`') {
+      $str = ''; $i++;
+      while ($i < $n && $src[$i] !== $c) {
+        if ($src[$i] === '\\') {
+          $e = $src[$i + 1] ?? '';
+          if ($e === 'u') { $str .= mb_chr(hexdec(substr($src, $i + 2, 4)), 'UTF-8'); $i += 6; continue; }
+          $str .= ['n' => "\n", 't' => "\t", 'r' => "\r"][$e] ?? $e; $i += 2; continue;
+        }
+        $str .= $src[$i++];
+      }
+      $i++;
+      $out .= json_encode($str, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+      continue;
+    }
+    if (preg_match('/\G[A-Za-z_$][\w$]*|\G-?\d+(\.\d+)?/A', $src, $m, 0, $i)) {
+      $w = $m[0]; $i += strlen($w);
+      if (($src[$skip($i)] ?? '') === ':') $out .= json_encode($w);
+      elseif (in_array($w, ['true', 'false', 'null'], true) || is_numeric($w)) $out .= $w;
+      elseif ($w === 'undefined') $out .= 'null';
+      else return $data = [];   // something that is not plain data
+      continue;
+    }
+    if ($c === ',') { $nx = $src[$skip($i + 1)] ?? ''; if ($nx !== '}' && $nx !== ']') $out .= ','; $i++; continue; }
+    if ($c === '{' || $c === '[') $depth++;
+    if ($c === '}' || $c === ']') $depth--;
+    if (!in_array($c, ['{', '}', '[', ']', ':'], true)) return $data = [];
+    $out .= $c; $i++;
+    if ($depth === 0) break;
+  }
+  $data = json_decode($out, true);
+  return $data = is_array($data) ? $data : [];
+}
+/* one product as written in index.html: fragrances and car perfumes from products, personal care from personalCare.products */
+function fomaxo_store_product(string $id): ?array {
+  $S = fomaxo_store_data();
+  foreach ($S['products'] ?? [] as $p) if (($p['id'] ?? '') === $id) return $p;
+  foreach ($S['personalCare']['products'] ?? [] as $p) if (($p['id'] ?? '') === $id) return $p + ['kind' => 'care'];
+  return null;
+}
+
 function fomaxo_catalog(): array {
   static $cat; if ($cat !== null) return $cat;
   $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
@@ -85,6 +143,15 @@ function fomaxo_catalog(): array {
         'was' => array_map('floatval', (array)($d['compareAt'] ?? [])), 'soldOut' => false,
         'img' => str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : '', 'added' => true];
     } elseif (!isset($cat['products'][$id])) continue;
+    elseif (isset($d['edit'])) {   // details edited on the admin page: name, sizes, prices and photos replace those in index.html
+      $e = $d['edit']; $p = &$cat['products'][$id]; $kind = $p['kind'];
+      if (isset($e['name'])) $p['name'] = (string)$e['name'] . ($kind === 'care' ? ' ' . explode(' — ', (string)($e['type'] ?? ''))[0] : '');
+      if (isset($e['vol'])) $p['vol'] = (string)$e['vol'];
+      $p['prices'] = array_map('floatval', (array)($d['prices'] ?? $p['prices'])); $p['was'] = array_map('floatval', (array)($d['compareAt'] ?? []));
+      $img = (string)($e['images'][0] ?? $e['image'] ?? '');
+      if ($img !== '') $p['img'] = str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : "assets/img/$img.webp";
+      unset($p);
+    }
     else foreach (['prices' => 'prices', 'compareAt' => 'was'] as $from => $to)
       foreach ((array)($d[$from] ?? []) as $k => $v) if (isset($cat['products'][$id]['prices'][$k]) && is_numeric($v)) $cat['products'][$id][$to][$k] = (float)$v;
     $cat['products'][$id]['hidden'] = $d['hidden'];

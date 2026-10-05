@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /* FOMAXO India — what the admin page changes, for the website.
    GET api/live.php          → a small script setting window.STORE_LIVE: stock left per product and size, products
-                               added or hidden on the admin page, and changed prices. index.html loads it before the shop.
+                               added, hidden or edited on the admin page, and changed prices. index.html loads it before the shop.
    GET api/live.php?img=…    → a product photo uploaded on the admin page (kept in fomaxo-private/product-images). */
 require __DIR__ . '/store-lib.php';
 header('X-Content-Type-Options: nosniff');
@@ -19,10 +19,11 @@ if (isset($_GET['img'])) {
 header('Content-Type: application/javascript; charset=utf-8');
 header('Cache-Control: no-store');
 try {
-  $live = ['stock' => shop_stock(), 'lowStock' => shop_low_stock(), 'hidden' => [], 'prices' => [], 'compareAt' => [], 'added' => []];
+  $live = ['stock' => shop_stock(), 'lowStock' => shop_low_stock(), 'hidden' => [], 'prices' => [], 'compareAt' => [], 'added' => [], 'edits' => []];
   foreach (shop_products() as $id => $d) {
     if ($d['hidden']) $live['hidden'][] = $id;
     if ($d['added']) { $p = $d['site'] ?? null; if (is_array($p) && !$d['hidden']) $live['added'][] = $p; continue; }
+    if (!empty($d['edit']) && !$d['hidden']) $live['edits'][$id] = $d['edit'];
     if (!empty($d['prices'])) $live['prices'][$id] = $d['prices'];
     if (!empty($d['compareAt'])) $live['compareAt'][$id] = $d['compareAt'];
   }
