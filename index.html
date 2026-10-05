@@ -374,6 +374,8 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-reply{margin:2px 0 4px;padding:14px 18px;border-left:2px solid var(--gold);background:rgba(201,162,92,.08)}
 .rv-reply b{display:block;font-weight:500;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-hi);margin-bottom:6px}
 .rv-reply p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ivory)}
+.rv-ctas{display:flex;flex-wrap:wrap;gap:12px;padding-top:40px;border-top:1px solid var(--line)}.rv-ctas .btn{flex:0 0 250px;justify-content:center;text-align:center}
+@media(max-width:620px){.rv-ctas .btn{flex:1 1 0;min-width:0;padding-left:10px;padding-right:10px}}
 .rv-none{padding:30px 0;color:var(--muted)}
 .rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px}
 .rv-pick{display:flex;gap:4px}
@@ -3358,7 +3360,7 @@ function bindReviews(p){
 }
 
 /* #/review?t=… — the link a customer gets after a paid order */
-const reviewOrderPage = () => { document.title = 'Review your order — FOMAXO'; return pageHead('Review your order', 'Share your <em class="metal">experience</em>', 'Tell other customers what you thought. Your reviews will carry the Verified Purchaser badge.') + `<section style="padding:0 0 120px"><div class="wrap" id="rvOrder"><p class="rv-none">Loading your order…</p></div></section>`; };
+const reviewOrderPage = () => { document.title = 'Review your order — FOMAXO'; return pageHead('Review your order', 'Share your <em class="metal">experience</em>', 'Tell other customers what you thought. Your reviews will carry the Verified Purchaser badge.') + `<section style="padding:0 0 120px"><div class="wrap" id="rvOrder"><p class="rv-none">Loading your order…</p></div><div class="wrap rv-ctas"><a class="btn" href="#/fragrances">Continue Shopping</a><a class="btn line" href="#/contact">Contact Us</a></div></section>`; };
 async function bindReviewOrder(token){
   const box = $('#rvOrder');
   try {
