@@ -57,8 +57,8 @@ if ($tab === 'orders') {
     . '<div class="kpi k-new"><span>COD amount</span><b>' . rupees($SUM['cod'][1]) . '</b></div>'
     . '<div class="kpi k-paid"><span>Online amount</span><b>' . rupees($SUM['online'][1]) . '</b></div></div>';
   $TC = order_track_counts($F);
-  $body .= '<div class="chips track-chips" aria-label="Orders by tracking">';
-  foreach (TRACK_CHIPS as $k => $label) $body .= '<a class="chip tc-' . $k . ($F['status'] === $k ? ' on' : '') . '" href="' . h(self_url(array_filter(['status' => $F['status'] === $k ? '' : $k] + $q))) . '">' . $label . ' <b>' . ($TC[$k] ?? 0) . '</b></a>';
+  $body .= '<div class="steps5" aria-label="Orders by step">';
+  foreach (TRACK_CHIPS as $k => $label) $body .= '<a class="step tc-' . $k . ($F['status'] === $k ? ' on' : '') . '" href="' . h(self_url(array_filter(['status' => $F['status'] === $k ? '' : $k] + $q))) . '"><span>' . $label . '</span><b>' . ($TC[$k] ?? 0) . '</b></a>';
   $body .= '</div>';
   if ($SUM['states']) {
     $body .= '<div class="chips" aria-label="Orders by state">';
@@ -84,7 +84,7 @@ if ($tab === 'orders') {
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . '</small></span>'
       . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
       . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . '</span></summary>'
-      . '<div class="otop">' . order_tracker($o) . ($btns ? '<div class="acts">' . $btns . '</div>' : '') . '</div>'
+      . '<div class="otop">' . order_tracker($o) . '</div>'
       . '<div class="od"><div class="items"><h4>Items</h4>';
     foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . rupees((int)($it['unit'] ?? 0)) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
     $body .= ($o['cod_fee'] ? '<p class="small muted">Cash on delivery fee ' . rupees((int)$o['cod_fee']) . '</p>' : '') . '<p><b>Total ' . rupees((int)$o['total']) . '</b></p></div>'
@@ -92,7 +92,7 @@ if ($tab === 'orders') {
       . ($o['note'] ? '<p class="muted">Customer note: ' . h($o['note']) . '</p>' : '') . '</div>'
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
       . '<form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="status"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . '<label>Status' . $sel('status', array_diff_key(FOMAXO_STATUSES, $o['status'] === 'awaiting' ? [] : ['awaiting' => 1]), $o['status']) . '</label>'
+      . '<label>Status <small class="muted">(saves when you pick)</small>' . str_replace('<select name="status">', '<select name="status" data-autosave data-no="' . h($o['no']) . '">', $sel('status', order_status_options($o), $o['status'])) . '</label>'
       . '<label>Your note<input name="admin_note" value="' . h($o['admin_note']) . '" maxlength="500" placeholder="Courier, tracking number…"></label>'
       . '<div class="qbtns"><button class="btn line">Save</button></div></form>'
       . '<p class="muted small">Cancelling or refunding puts the items back in stock.</p></div></div></details>';

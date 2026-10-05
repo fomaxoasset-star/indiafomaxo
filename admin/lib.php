@@ -205,6 +205,20 @@ function order_tags(array $o): string {
   $paid = shop_is_paid($o);
   return '<span class="badge st-' . $st[0] . '">' . h($st[1]) . '</span><span class="badge ' . ($paid ? 'pd-yes">Paid' : 'pd-no">Unpaid') . '</span>';
 }
+/* the order page's Status list, with clear names: Pending · Unpaid (cash), Pending · Paid, Delivered, Undelivered (on a delivered order: back to Pending),
+   Cancelled, Refunded, and Card not paid (online orders) */
+function order_status_options(array $o): array {
+  $cod = $o['method'] === 'cod'; $st = $o['status'];
+  $opts = [];
+  if ($cod || $st === 'new') $opts['new'] = 'Pending · Unpaid';
+  $opts['paid'] = 'Pending · Paid (not delivered)';
+  $opts['delivered'] = 'Delivered';
+  if ($st === 'delivered') $opts['undelivered'] = 'Undelivered';
+  $opts['cancelled'] = 'Cancelled';
+  $opts['refunded'] = 'Refunded';
+  if (!$cod || $st === 'awaiting') $opts['awaiting'] = 'Card not paid';
+  return $opts;
+}
 /* the three one-tap buttons of an active order (Paid or Refund · Mark delivered · Cancel order); they submit the page's #qa form.
    A button that does not apply is greyed out; Paid and Delivered stay lit once done. Cancelled and refunded orders have none. */
 function order_buttons(array $o): string {

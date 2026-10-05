@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '20';
+const ASSET_V = '22';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -146,9 +146,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if ($a === 'status') {
     $oid = (int)($_POST['id'] ?? 0); $ns = (string)($_POST['status'] ?? '');
+    if ($ns === 'undelivered') {   // back to Pending: a cash order is unpaid again unless it was marked paid before delivery
+      $s = shop_db()->prepare('SELECT * FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
+      if (!$o || $o['status'] !== 'delivered') go($back, '!' . ($o['no'] ?? 'That order') . ' is not delivered, so nothing was changed.');
+      $ns = $o['method'] === 'cod' && $o['paid_at'] === $o['delivered_at'] ? 'new' : 'paid';
+    }
     shop_set_status($oid, $ns, mb_substr(trim((string)($_POST['admin_note'] ?? '')), 0, 500));
-    $s = shop_db()->prepare('SELECT no, status FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
-    go($back, $o ? ($o['no'] ?: 'The order') . ' is ' . (FOMAXO_STATUSES[$o['status']] ?? $o['status']) . (in_array($o['status'], ['cancelled', 'refunded'], true) ? '. Its items are back in stock.' : '. Saved.') : 'Order updated.');
+    $s = shop_db()->prepare('SELECT * FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
+    go($back, $o ? ($o['no'] ?: 'The order') . ' is ' . (in_array($o['status'], ['new', 'paid'], true) ? 'Pending · ' . (shop_is_paid($o) ? 'Paid' : 'Unpaid') : FOMAXO_STATUSES[$o['status']] ?? $o['status']) . (in_array($o['status'], ['cancelled', 'refunded'], true) ? '. Its items are back in stock.' : '. Saved.') : 'Order updated.');
   }
   if ($a === 'quick') {   // one-tap order buttons: back to the same filtered list
     [$act, $oid] = array_pad(explode(':', (string)($_POST['q'] ?? ''), 2), 2, '0');
