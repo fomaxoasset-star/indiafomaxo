@@ -2813,7 +2813,7 @@ const GIFT_SETS = [
   {id: 'wishes-box', name: 'Best Wishes Box', badge: 'Most gifted', img: 'gift-box-wishes', v: 'Two parfums and a Passion Sin care duo in a clear box, finished with flowers and ribbon.', items: [['royalcandy', 50], ['oldmoney', 50], ['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one']]},
   {id: 'signature-duo', name: 'The Signature Duo', v: 'Two parfums of your choice, side by side.', slots: 2, live: true, only: (p, sz) => !p.kind && p.tier !== 'elite' && (['gold', 'dollar'].includes(p.id) ? sz == 100 : sz == 50), items: [['gold', 100], ['dollar', 100]]},
   {id: 'mini-quartet', name: 'Prestige Mini', v: 'Pocket parfums in 10ml, to discover and share.', none: true, live: true, only: (p, sz) => !p.kind && sz == 10, items: [['royalcandy', 10], ['oldmoney', 10], ['matchacoco', 10], ['passionsin', 10]]},
-  {id: 'ritual-box', name: 'The Ritual Box', v: 'Everyday luxury for hair, body and face.', items: [['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one'], ['pc-radiant-wash', 'one'], ['pc-kissberry', 'one']]},
+  {id: 'ritual-box', name: 'Care Box', v: 'Everyday luxury for hair, body, face and lips.', none: true, live: true, only: p => p.kind === 'care', items: [['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one'], ['pc-radiant-wash', 'one'], ['pc-kissberry', 'one']]},
   {id: 'lip-love', name: 'Lip Love', v: 'Two balms, beautifully boxed. A sweet little thank-you.', slots: 2, live: true, only: p => p.kind === 'care' && p.cat === 'lips', items: [['pc-kissberry', 'one'], ['pc-avokiss', 'one']]}
 ];
 const giftSets = () => GIFT_SETS.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
