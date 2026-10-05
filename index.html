@@ -447,20 +447,23 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .contact-list a:hover b{color:var(--gold-hi)}
 /* contact: store locations + maps */
 #store.sec{padding-top:clamp(8px,2vw,28px)}#store .sec-head{margin-bottom:clamp(18px,2.4vw,32px)}
-.stores{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:clamp(14px,1.8vw,24px)}
-.store-loc{display:flex;flex-direction:column;background:var(--black);border:1px solid var(--line)}
-.store-loc .map{order:-1;position:relative;height:clamp(190px,18vw,250px);overflow:hidden;border-bottom:1px solid var(--line)}
-.store-loc .map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(1) invert(.92) contrast(.9) sepia(.35) hue-rotate(-12deg) brightness(.95)}
-html[data-mode="light"] .store-loc .map iframe{filter:grayscale(.55) sepia(.25) contrast(.95)}
-.store-loc .map .pin{position:absolute;left:10px;top:10px;z-index:1;font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);background:var(--black);padding:6px 10px;border:1px solid var(--line-2);pointer-events:none}
-.store-loc .info{padding:clamp(16px,1.8vw,22px);display:flex;flex-direction:column;gap:12px;flex:1}
-.store-loc .info h3{font-family:var(--display);font-weight:300;font-size:clamp(16px,1.4vw,19px);letter-spacing:.04em;line-height:1.35;color:var(--ivory)}
-.store-loc .info dl{display:grid;gap:8px}
-.store-loc .info dl div{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:baseline}
-.store-loc .info dt{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold)}
-.store-loc .info dd{color:var(--muted);font-size:14px;line-height:1.55}
-.store-loc .info .ctas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:auto}
-.store-loc .info .ctas .btn{width:100%;min-height:44px;padding:0 10px;font-size:10px;letter-spacing:.14em}
+.store-map{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);border:1px solid var(--line);background:var(--black)}
+.st-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-right:1px solid var(--line);max-height:440px;overflow:auto}
+.st-item{border-bottom:1px solid var(--line);transition:background .3s}.st-item:last-child{border-bottom:0}
+.st-item.on{background:linear-gradient(90deg,rgba(215,170,105,.12),transparent);box-shadow:inset 3px 0 0 var(--gold)}
+.st-pick{display:flex;gap:14px;align-items:flex-start;width:100%;padding:18px 20px 8px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;font:inherit}
+.st-no{font-family:var(--display);font-size:13px;letter-spacing:.1em;color:var(--gold);padding-top:2px}
+.st-tx{display:flex;flex-direction:column;gap:4px;min-width:0}
+.st-tx b{font-family:var(--display);font-weight:300;font-size:16px;letter-spacing:.04em;line-height:1.35;color:var(--ivory)}
+.st-pick:hover .st-tx b,.st-item.on .st-tx b{color:var(--gold-hi)}
+.st-tx small{font-size:13px;line-height:1.5;color:var(--muted)}
+.st-acts{display:flex;gap:18px;padding:0 20px 16px 47px;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.st-acts a{color:var(--gold);border-bottom:1px solid transparent;padding-bottom:2px}.st-acts a:hover{color:var(--gold-hi);border-color:var(--gold-hi)}
+.store-map .map{position:relative;min-height:340px;height:100%;overflow:hidden}
+.store-map .map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(1) invert(.92) contrast(.9) sepia(.35) hue-rotate(-12deg) brightness(.95)}
+html[data-mode="light"] .store-map .map iframe{filter:grayscale(.55) sepia(.25) contrast(.95)}
+.store-map .map .pin{position:absolute;left:10px;top:10px;z-index:1;font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);background:var(--black);padding:6px 10px;border:1px solid var(--line-2);pointer-events:none}
+@media(max-width:800px){.store-map{grid-template-columns:minmax(0,1fr)}.store-map .map{order:-1;min-height:0;height:260px;border-bottom:1px solid var(--line)}.st-list{border-right:0;max-height:none}.st-pick{padding:14px 16px 6px}.st-acts{padding:0 16px 14px 43px}}
 
 /* ---------- drawers ---------- */
 .scrim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .5s}
@@ -3090,25 +3093,27 @@ function contact(q){
 function storeLocation(list){
   const stores = (list || []).filter(st => st && (st.address || st.link || st.mapQuery));
   if (!stores.length) return '';
-  const one = st => {
-    const q = encodeURIComponent(st.mapQuery || [st.name, st.address].filter(Boolean).join(', '));
-    const link = /^https:\/\//.test(st.link || '') ? esc(st.link) : '';
-    return `
-    <div class="store-loc rv-up">
-      <div class="info">
-        <h3>${esc(st.name || 'FOMAXO Store')}</h3>
-        ${st.address || st.hours ? `<dl>${st.address ? `<div><dt>Address</dt><dd>${esc(st.address)}</dd></div>` : ''}${st.hours ? `<div><dt>Hours</dt><dd>${esc(st.hours)}</dd></div>` : ''}</dl>` : ''}
-        <div class="ctas"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Get directions</a><a class="btn line" href="${link || `https://www.google.com/maps/search/?api=1&query=${q}`}" target="_blank" rel="noopener">Google Maps</a></div>
-      </div>
-      <div class="map"><span class="pin">FOMAXO</span><iframe src="https://maps.google.com/maps?q=${q}&z=16&output=embed" title="Map showing ${esc(st.name || 'the FOMAXO store')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
-    </div>`;
+  const qOf = st => encodeURIComponent(st.mapQuery || [st.name, st.address].filter(Boolean).join(', '));
+  const embed = st => `https://maps.google.com/maps?q=${qOf(st)}&z=16&output=embed`;
+  const item = (st, i) => {
+    const q = qOf(st), link = /^https:\/\//.test(st.link || '') ? esc(st.link) : `https://www.google.com/maps/search/?api=1&query=${q}`;
+    return `<li class="st-item${i ? '' : ' on'}"><button type="button" class="st-pick" data-map="${esc(embed(st))}" aria-pressed="${i ? 'false' : 'true'}"><span class="st-no">${String(i + 1).padStart(2, '0')}</span><span class="st-tx"><b>${esc(st.name || 'FOMAXO Store')}</b>${st.address ? `<small>${esc(st.address)}</small>` : ''}${st.hours ? `<small>${esc(st.hours)}</small>` : ''}</span></button>
+      <div class="st-acts"><a href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Get directions</a><a href="${link}" target="_blank" rel="noopener">Google Maps ↗</a></div></li>`;
   };
   return `
   <section class="sec" id="store"><div class="wrap">
     ${secHead('Visit us', stores.length > 1 ? 'Our <em class="metal">stores</em>' : 'Our <em class="metal">store</em>')}
-    <div class="stores">${stores.map(one).join('')}</div>
+    <div class="store-map rv-up">
+      <ul class="st-list">${stores.map(item).join('')}</ul>
+      <div class="map"><span class="pin">FOMAXO</span><iframe id="storeMap" src="${esc(embed(stores[0]))}" title="Map of the FOMAXO stores" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
+    </div>
   </div></section>`;
 }
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.st-pick'); if (!b) return;
+  const m = $('#storeMap'); if (m && m.src !== b.dataset.map) m.src = b.dataset.map;
+  document.querySelectorAll('.st-item').forEach(li => { const on = li.contains(b); li.classList.toggle('on', on); li.querySelector('.st-pick').setAttribute('aria-pressed', on); });
+});
 const PARTNER_FAQ = [
   ['What is the FOMAXO franchise?','FOMAXO is a Dubai-based brand offering premium personal care with strong brand identity and repeat customer demand. The franchise model is designed for scalable growth across malls, kiosks, high streets and distribution formats, structured according to each partner country’s approved business plan.'],
   ['Will I have an exclusive territory?','FOMAXO may grant exclusive territory rights based on the agreed number of outlets and the approved country development plan. Exclusivity is determined on a case-by-case basis to ensure proper market coverage, brand positioning and sustainable growth.'],
