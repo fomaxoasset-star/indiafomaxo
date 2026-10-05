@@ -74,7 +74,7 @@ function displayName(string $n): string {
 function publicReview(array $r): array {
   return ['id' => (int)$r['id'], 'product' => $r['product'], 'rating' => (int)$r['rating'], 'text' => $r['body'],
     'name' => $r['anonymous'] ? 'Anonymous' : $r['name'], 'verified' => (bool)$r['verified'],
-    'city' => $r['city'] ?? '', 'country' => $r['country'] ?? '',
+    'city' => $r['anonymous'] ? '' : ($r['city'] ?? ''), 'country' => $r['anonymous'] ? '' : ($r['country'] ?? ''),   // anonymous: no place, no flag
     'photos' => array_map(fn($p) => 'api/reviews.php?action=photo&f=' . rawurlencode($p), json_decode($r['photos'], true) ?: []),
     'helpful' => (int)$r['helpful'], 'date' => gmdate('Y-m-d', (int)$r['created'])];
 }
@@ -171,6 +171,7 @@ try {
       if (!$anon && $rawName === '') fail('Please enter your name, or choose to post anonymously.');
       $city = str($in['city'] ?? '', 60);                                       // optional, e.g. "Pune, Maharashtra"
       $country = str($in['country'] ?? '', 40);                                 // optional, picked from the form's list
+      if ($anon) { $city = ''; $country = ''; }
       if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
 
       $verified = 0; $orderId = null;

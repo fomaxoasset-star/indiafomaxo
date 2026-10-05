@@ -3249,7 +3249,7 @@ function bindRvForm(form, p, token, done){
   const paint = n => stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); });
   stars.forEach(b => { b.onclick = () => { rating = +b.dataset.star; paint(rating); }; b.onmouseenter = () => paint(+b.dataset.star); b.onmouseleave = () => paint(rating); });
   const anon = form.elements.anonymous, name = form.elements.name;
-  anon.onchange = () => { name.disabled = anon.checked; };
+  anon.onchange = () => { name.disabled = form.elements.city.disabled = form.elements.country.disabled = anon.checked; };   // anonymous hides name, place and flag
   const city = form.elements.city, nation = form.elements.country;
   rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
   rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : st).slice(0, q ? 6 : 8).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
@@ -3269,7 +3269,7 @@ function bindRvForm(form, p, token, done){
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';
     const fd = new FormData(); fd.append('product', p.id); fd.append('rating', rating); fd.append('text', form.elements.text.value);
     fd.append('name', anon.checked ? '' : name.value); fd.append('anonymous', anon.checked ? '1' : ''); fd.append('website', form.elements.website.value);
-    fd.append('city', city.value.trim()); fd.append('country', (rvNation(nation.value) || [nation.value.trim()])[0]);
+    if (!anon.checked) { fd.append('city', city.value.trim()); fd.append('country', (rvNation(nation.value) || [nation.value.trim()])[0]); }
     if (token) fd.append('token', token); files.forEach(f => fd.append('photos[]', f));
     const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
     try { const d = await rvPost('submit', fd); done(d); }
@@ -3281,6 +3281,7 @@ function bindRvForm(form, p, token, done){
 let rvVoted = []; try { rvVoted = JSON.parse(localStorage.getItem('fomaxo_rv_voted') || '[]'); } catch(e) {}
 /* "— Kerala, 🇮🇳": the city as typed, the nation as its flag (its name when the flag is unknown) */
 function rvPlace(r){
+  if (r.name === 'Anonymous') return '';
   const n = rvNation(r.country), parts = [r.city, n ? `<span class="rv-flag" title="${esc(n[0])}" role="img" aria-label="${esc(n[0])}">${rvFlag(n[1])}</span>` : r.country].filter(Boolean);
   return parts.length ? `<span class="rv-from"> — ${parts.map((x, i) => i === 0 && r.city ? esc(x) : (n ? x : esc(x))).join(', ')}</span>` : '';
 }
