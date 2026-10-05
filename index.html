@@ -445,6 +445,21 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .contact-list small{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
 .contact-list b{font-family:var(--display);font-weight:300;font-size:18px;letter-spacing:.04em;word-break:break-word}
 .contact-list a:hover b{color:var(--gold-hi)}
+/* contact: store location + map */
+.store-loc{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.store-loc .info{background:var(--black);padding:clamp(26px,4vw,48px);display:flex;flex-direction:column;gap:22px;justify-content:center}
+.store-loc .info h3{font-family:var(--display);font-weight:300;font-size:clamp(24px,2.6vw,34px);letter-spacing:.04em;color:var(--ivory)}
+.store-loc .info dl{display:grid;gap:18px}
+.store-loc .info dt{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.store-loc .info dd{color:var(--muted);font-size:15px;line-height:1.7}
+.store-loc .info .ctas{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;max-width:380px}
+.store-loc .info .ctas .btn{width:100%}
+.store-loc .map{position:relative;min-height:420px;background:var(--black);overflow:hidden}
+.store-loc .map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(1) invert(.92) contrast(.9) sepia(.35) hue-rotate(-12deg) brightness(.95)}
+html[data-mode="light"] .store-loc .map iframe{filter:grayscale(.55) sepia(.25) contrast(.95)}
+.store-loc .map .pin{position:absolute;left:14px;top:14px;z-index:1;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);background:var(--black);padding:8px 12px;border:1px solid var(--line-2);pointer-events:none}
+@media(max-width:900px){.store-loc{grid-template-columns:minmax(0,1fr)}.store-loc .map{min-height:320px}}
+@media(max-width:900px){.store-loc .info .ctas{max-width:none}}
 
 /* ---------- drawers ---------- */
 .scrim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .5s}
@@ -1985,7 +2000,16 @@ window.STORE = {
     email: "fomaxoasset@gmail.com",
     phones: [ { label: "Phone", number: "+91 73491 05165" } ],
     instagram: "fomaxo_india",
-    website: "www.fomaxo.com"
+    website: "www.fomaxo.com",
+    // Store location on the Contact page. Write the full address; the map and the
+    // "Get directions" button use it. mapQuery is optional (a Google Maps place name
+    // or "lat,lng" if the pin should point somewhere more exact than the address).
+    store: {
+      name: "FOMAXO Store",
+      address: "STORE ADDRESS TO BE ADDED",   // placeholder: replace with the real store address
+      mapQuery: "",
+      hours: "Open daily · 11 am – 9 pm"      // placeholder: replace with the real opening hours
+    }
   },
 
   // Shown on every product page. Add your delivery & returns policy.
@@ -3061,7 +3085,23 @@ function contact(q){
       <label>Message<textarea name="msg" required></textarea></label>
       <button class="btn" type="submit">Send message</button>
     </form>
-  </div></div></section>`;
+  </div></div></section>${storeLocation(C.store)}`;
+}
+function storeLocation(st){
+  if (!st || !st.address) return '';
+  const q = encodeURIComponent(st.mapQuery || `${st.name}, ${st.address}`);
+  return `
+  <section class="sec" id="store"><div class="wrap">
+    ${secHead('Visit us', 'Our <em class="metal">store</em>')}
+    <div class="store-loc rv-up">
+      <div class="info">
+        <h3>${esc(st.name)}</h3>
+        <dl><div><dt>Address</dt><dd>${esc(st.address)}</dd></div>${st.hours ? `<div><dt>Hours</dt><dd>${esc(st.hours)}</dd></div>` : ''}</dl>
+        <div class="ctas"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${q}" target="_blank" rel="noopener">Get directions</a><a class="btn line" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Open in Google Maps</a></div>
+      </div>
+      <div class="map"><span class="pin">FOMAXO</span><iframe src="https://maps.google.com/maps?q=${q}&z=16&output=embed" title="Map showing the ${esc(st.name)} location" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
+    </div>
+  </div></section>`;
 }
 const PARTNER_FAQ = [
   ['What is the FOMAXO franchise?','FOMAXO is a Dubai-based brand offering premium personal care with strong brand identity and repeat customer demand. The franchise model is designed for scalable growth across malls, kiosks, high streets and distribution formats, structured according to each partner country’s approved business plan.'],
