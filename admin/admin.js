@@ -19,7 +19,7 @@
   };
   document.addEventListener('touchstart', function (e) {
     t0 = null;
-    if (e.touches.length !== 1 || !matchMedia('(max-width:820px)').matches) return;
+    if (e.touches.length !== 1 || !matchMedia('(max-width:820px)').matches || document.body.classList.contains('zooming')) return;
     if (window.visualViewport && visualViewport.scale > 1.05) return;   /* zoomed in with two fingers: let them pan */
     var el = e.target, act = document.activeElement;
     if (el.closest('input,textarea,select,[contenteditable],.mbar') || (act && /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName))) return;
@@ -89,6 +89,67 @@
       window.dispatchEvent(new Event('resize'));
     });
   });
+
+  /* analytics: tap any number tile or box to open it big (full screen on phones); ✕, Esc, a tap outside or Back closes it */
+  var an = document.querySelector('.an');
+  if (an) {
+    var zoomer = null;
+    var zoomables = Array.prototype.slice.call(document.querySelectorAll('.kpis.strip>.kpi, .an>.box'));
+    var shutZoom = function (fromHistory) {
+      if (!zoomer) return;
+      zoomer.remove(); zoomer = null; document.body.classList.remove('zooming');
+      if (!fromHistory && history.state && history.state.zoom) history.back();
+    };
+    var openZoom = function (src) {
+      shutZoom(true);
+      var copy;
+      if (src.classList.contains('kpi')) {
+        /* a number tile opens all the tiles big, with the one tapped lit up */
+        copy = document.createElement('div'); copy.className = 'box zkpis';
+        var dates = document.querySelector('.range .muted.small');
+        copy.innerHTML = '<div class="bh"><h3>At a glance</h3></div><div class="bb"><div class="zgrid"></div>' + (dates ? '<p class="muted small"></p>' : '') + '</div>';
+        if (dates) copy.querySelector('p').textContent = dates.textContent;
+        src.parentNode.querySelectorAll('.kpi').forEach(function (k) {
+          var c = k.cloneNode(true); c.classList.remove('zoomable'); c.removeAttribute('tabindex'); c.removeAttribute('role'); c.removeAttribute('title');
+          if (k === src) c.classList.add('on');
+          copy.querySelector('.zgrid').appendChild(c);
+        });
+      } else copy = src.cloneNode(true);
+      copy.classList.add('zbox'); copy.classList.remove('on');
+      copy.querySelectorAll('.zopen').forEach(function (b) { b.remove(); });
+      var x = document.createElement('button'); x.type = 'button'; x.className = 'zx'; x.setAttribute('aria-label', 'Close'); x.textContent = '✕';
+      var head = copy.querySelector('.bh');
+      if (head) head.appendChild(x); else copy.appendChild(x);
+      zoomer = document.createElement('div'); zoomer.className = 'zoomer'; zoomer.setAttribute('role', 'dialog'); zoomer.setAttribute('aria-modal', 'true');
+      zoomer.appendChild(copy); document.body.appendChild(zoomer); document.body.classList.add('zooming');
+      zoomer.addEventListener('click', function (e) {
+        if (e.target === zoomer || e.target.closest('.zx')) { shutZoom(); return; }
+        /* Today / 7 days / 30 days / Year inside the big countries and states box */
+        var b = e.target.closest('.seg.rs button[data-r]'); if (!b) return;
+        copy.querySelectorAll('.seg.rs button').forEach(function (y) { y.classList.toggle('on', y === b); });
+        copy.querySelectorAll('.rl').forEach(function (l) { l.hidden = l.dataset.r !== b.dataset.r; });
+      });
+      history.pushState({zoom: 1}, '');
+      x.focus();
+    };
+    zoomables.forEach(function (el) {
+      el.classList.add('zoomable');
+      if (el.classList.contains('kpi')) { el.tabIndex = 0; el.setAttribute('role', 'button'); el.title = 'Open bigger'; }
+      else {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'zopen'; b.title = 'Open bigger'; b.setAttribute('aria-label', 'Open bigger'); b.textContent = '⤢';
+        var bh = el.querySelector('.bh'); if (bh) bh.appendChild(b);
+      }
+      el.addEventListener('click', function (e) {
+        if (e.target.closest('.zopen')) { openZoom(el); return; }
+        if (e.target.closest('a,button,input,select,textarea,label,form,.seg')) return;
+        if (getSelection && String(getSelection()).length) return;   /* selecting text to copy, not opening */
+        openZoom(el);
+      });
+      el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); openZoom(el); } });
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && zoomer) shutZoom(); });
+    window.addEventListener('popstate', function () { shutZoom(true); });
+  }
 
   /* bar charts: one series each, gold bars, a few grid lines, a tooltip on hover or tap */
   var dataEl = document.getElementById('chartData'); if (!dataEl) return;
