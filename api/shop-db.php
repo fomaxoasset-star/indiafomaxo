@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-/* FOMAXO India — the shop database: orders (FMX-1001, FMX-1002 …), stock per product and size, products added or
+/* FOMAXO India — the shop database: orders (FMX-IN-1001, FMX-IN-1002 …), stock per product and size, products added or
    hidden on the admin page, and admin settings. Used by store-lib.php, live.php and admin/index.php.
 
    It is a MySQL database on Hostinger when fomaxo-private/db-config.php (or api/data/db-config.php, which is moved there
@@ -45,6 +45,9 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS products(id VARCHAR(48) NOT NULL PRIMARY KEY, added INT NOT NULL DEFAULT 0, hidden INT NOT NULL DEFAULT 0,
       data $text NOT NULL, sort INT NOT NULL DEFAULT 0, updated VARCHAR(19) NOT NULL DEFAULT '')$tail",
     "CREATE TABLE IF NOT EXISTS settings(k VARCHAR(40) NOT NULL PRIMARY KEY, v $text NOT NULL)$tail",
+    "CREATE TABLE IF NOT EXISTS costs(product VARCHAR(48) NOT NULL, opt VARCHAR(16) NOT NULL, cost INT NOT NULL, PRIMARY KEY(product, opt))$tail",
+    "CREATE TABLE IF NOT EXISTS expenses(id $auto, day VARCHAR(10) NOT NULL, category VARCHAR(40) NOT NULL, note VARCHAR(200) NOT NULL DEFAULT '',
+      amount INT NOT NULL, created VARCHAR(19) NOT NULL)$tail",
   ] as $sql) $db->exec($sql);
 }
 
@@ -61,7 +64,7 @@ function shop_move_to_mysql(string $name, string $user, string $pass): string {
     $src = shop_db();
     if ($src->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && !(int)$dst->query('SELECT COUNT(*) FROM orders')->fetchColumn()) {
       $dst->beginTransaction();
-      foreach (['settings', 'stock', 'products', 'orders'] as $t) {
+      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses'] as $t) {
         $dst->exec("DELETE FROM $t");
         foreach ($src->query("SELECT * FROM $t") as $r) {
           $cols = array_keys($r);
@@ -105,7 +108,7 @@ function shop_low_stock(): int { return max(0, (int)(shop_setting('low_stock') ?
 function shop_next_no(PDO $db): string {
   $db->prepare("UPDATE settings SET v = " . (shop_is_mysql() ? 'CAST(v AS UNSIGNED) + 1' : 'CAST(v AS INTEGER) + 1') . " WHERE k = 'order_counter'")->execute();
   $s = $db->prepare("SELECT v FROM settings WHERE k = 'order_counter'"); $s->execute();
-  return 'FMX-' . (int)$s->fetchColumn();
+  return 'FMX-IN-' . (int)$s->fetchColumn();
 }
 
 /* ---------------- stock ---------------- */
@@ -139,6 +142,17 @@ function shop_group_items(array $items): array {
   $g = [];
   foreach ($items as $it) { $k = $it['id'] . '|' . $it['opt']; $g[$k] = [$it['id'], (string)$it['opt'], ($g[$k][2] ?? 0) + (int)$it['qty'], $it['name']]; }
   return array_values($g);
+}
+
+/* ---------------- what each product costs you (for profit & loss), in paise ---------------- */
+function shop_costs(): array {
+  $out = [];
+  foreach (shop_db()->query('SELECT product, opt, cost FROM costs') as $r) $out[$r['product']][$r['opt']] = (int)$r['cost'];
+  return $out;
+}
+function shop_set_cost(string $id, string $opt, ?int $paise): void {
+  if ($paise === null) shop_db()->prepare('DELETE FROM costs WHERE product = ? AND opt = ?')->execute([$id, $opt]);
+  else shop_upsert('costs', ['product', 'opt'], ['product' => $id, 'opt' => $opt, 'cost' => max(0, $paise)]);
 }
 
 /* ---------------- products added or changed on the admin page ---------------- */

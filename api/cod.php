@@ -28,7 +28,7 @@ if (count($recent) >= 5) fail('Too many orders from this connection. Please What
 $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
 $total = $order['subtotal'] + $cod['fee'];
-/* one transaction: check and take the stock, then give the order the next number (FMX-1001, FMX-1002 …) */
+/* one transaction: check and take the stock, then give the order the next number (FMX-IN-1001, FMX-IN-1002 …) */
 try {
   $rec = shop_tx(function (PDO $db) use ($order, $cust, $cod, $total) {
     $short = shop_take_stock($db, $order['items'], true);

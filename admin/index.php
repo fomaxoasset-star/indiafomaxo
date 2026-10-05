@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — private admin page: fomaxo.in/admin
-   Orders (FMX-1001 …) with payment type and status, an Excel download, stock per product and size, and products
+   Orders (FMX-IN-1001 …) with payment type and status, an Excel download, stock per product and size, and products
    added, hidden or re-priced. Everything is kept in the shop database (api/shop-db.php).
 
    Password: create  public_html/api/data/admin-password.txt  in Hostinger File Manager with your password as its only
@@ -16,6 +16,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
+const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Shipping & courier', 'Marketing & ads', 'Payment gateway fees', 'Salaries', 'Rent', 'Website & software', 'Travel', 'Other'];
 const ADMIN_CSS = <<<'CSS'
 :root{--bg:#0c0b09;--panel:#16140f;--panel2:#1d1a14;--line:#2e2a21;--text:#efe8da;--muted:#a59c89;--gold:#c9a45c;--gold2:#e3c68a;--red:#d46a5a;--green:#7fb38a;--blue:#7ea4d6;--amber:#d9a648}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -42,6 +43,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}in
 .badge{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:99px;border:1px solid currentColor;text-align:center}
 .st-new{color:var(--amber)}.st-paid{color:var(--green)}.st-delivered{color:var(--blue)}.st-cancelled{color:var(--red)}.st-awaiting{color:var(--muted)}
 .order.os-new{border-left-color:var(--amber)}.order.os-paid{border-left-color:var(--green)}.order.os-delivered{border-left-color:var(--blue)}.order.os-cancelled{border-left-color:var(--red);opacity:.75}
+.exp-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}.exp-row label{min-width:150px}.exp-row .grow{flex:1;min-width:220px}
+.monthnav{display:flex;align-items:center;gap:12px}.monthnav h2{margin:0;min-width:150px;text-align:center}.monthnav select{width:auto}
+.stats.two{grid-template-columns:1fr 2fr;margin-top:14px}.stat.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 18px;align-content:center}.stat.cats div{display:flex;justify-content:space-between;gap:8px;font-size:13px}.stat.cats div span{text-transform:none;letter-spacing:0;font-size:13px;color:var(--text)}.stat.cats div b{font-size:14px;font-weight:600}.dash .grid td small{display:block}
+.card-t{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.grid .r{text-align:right}.grid tfoot td{font-weight:600;border-top:1px solid var(--gold);padding:10px 8px}
+.pnl tr.future td{color:var(--muted);opacity:.6}.neg{color:var(--red)}.warn{color:var(--amber)}.stat.profit b{color:var(--green)}.stat.loss b{color:var(--red)}
+.dash{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}.dash .card{margin:0}.dash .row-head h2{margin:0}.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.stats + h2{margin-top:6px}
+@media(max-width:820px){.dash{grid-template-columns:1fr}}
+.linkbtn{background:none;border:0;color:var(--red);cursor:pointer;font:inherit;font-size:13px;padding:0}
+@media(max-width:820px){.stats.two{grid-template-columns:1fr}.pnl{display:block;overflow-x:auto;white-space:nowrap}.card-t{display:block;overflow-x:auto}}
 .pager{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}.pager a{padding:6px 11px;border:1px solid var(--line);border-radius:6px;text-decoration:none}.pager a.on{border-color:var(--gold)}
 table.grid{width:100%;border-collapse:collapse;margin-top:14px}.grid th{text-align:left;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px;border-bottom:1px solid var(--line)}
 .grid td{padding:7px 8px;border-bottom:1px solid #221f18;vertical-align:middle}.grid tr.first td{border-top:1px solid var(--line)}.grid td b{display:block}.grid td small{color:var(--muted);font-size:12px}.grid input{max-width:120px}
@@ -143,8 +153,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         shop_set_stock((string)$id, (string)$opt, $v === '' ? null : max(0, (int)$v));
       }
     }
+    foreach ((array)($_POST['cost'] ?? []) as $id => $opts) {
+      if (!isset($CAT[$id])) continue;
+      foreach ((array)$opts as $opt => $v) {
+        if (!isset($CAT[$id]['prices'][$opt])) continue;
+        $v = trim((string)$v);
+        shop_set_cost((string)$id, (string)$opt, $v === '' || !is_numeric($v) ? null : (int)round((float)$v * 100));
+      }
+    }
     if (isset($_POST['low_stock'])) shop_set('low_stock', (string)max(0, min(99, (int)$_POST['low_stock'])));
-    go(['tab' => 'stock'], 'Stock saved.');
+    go(['tab' => 'stock'], 'Stock and costs saved.');
   }
   if ($a === 'product') {
     $id = (string)($_POST['id'] ?? ''); $p = $CAT[$id] ?? null;
@@ -177,6 +195,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'products']);
   }
   if ($a === 'add') { $msg = add_product($CAT); go(['tab' => 'products'] + ($msg === '' ? [] : ['add' => 1]), $msg === '' ? 'Product added. It is on the website now.' : $msg); }
+  if ($a === 'expense') {
+    $day = (string)($_POST['day'] ?? ''); $amt = (string)($_POST['amount'] ?? ''); $cat = (string)($_POST['category'] ?? '');
+    $back = ['tab' => 'expenses', 'month' => substr($day, 0, 7)];
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) || !strtotime($day)) go($back, 'Please choose the date of the expense.');
+    if (!is_numeric($amt) || $amt <= 0) go($back, 'Please write the amount in rupees.');
+    if (!in_array($cat, EXPENSE_CATEGORIES, true)) $cat = 'Other';
+    shop_db()->prepare('INSERT INTO expenses(day, category, note, amount, created) VALUES(?,?,?,?,?)')
+      ->execute([$day, $cat, mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['note'] ?? ''))), 0, 200), (int)round((float)$amt * 100), shop_now()]);
+    go($back, 'Expense added: ' . rupees((int)round((float)$amt * 100)) . ' on ' . date('d M Y', strtotime($day)) . '.');
+  }
+  if ($a === 'expense_delete') {
+    shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+    go(['tab' => 'expenses', 'month' => (string)($_POST['month'] ?? '')], 'Expense deleted.');
+  }
   if ($a === 'mysql') {
     $err = shop_move_to_mysql(trim((string)($_POST['db_name'] ?? '')), trim((string)($_POST['db_user'] ?? '')), (string)($_POST['db_pass'] ?? ''));
     go(['tab' => 'settings'], $err === '' ? 'Connected. Orders, stock and products are now saved in your Hostinger MySQL database.' : $err);
@@ -267,7 +299,7 @@ function save_images(string $id) {
 }
 
 /* ---------------- orders: filters, list and Excel ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['orders', 'stock', 'products', 'settings'], true) ? $_GET['tab'] : 'orders';
+$tab = in_array($_GET['tab'] ?? '', ['home', 'orders', 'stock', 'products', 'expenses', 'pnl', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? '')];
 function order_where(array $F): array {
@@ -287,6 +319,50 @@ function order_where(array $F): array {
 }
 function pay_label(array $o): string { return $o['method'] === 'cod' ? 'Cash on delivery' : 'Online (Razorpay)' . ($o['test'] ? ' · TEST' : ''); }
 
+/* ---------------- profit & loss ---------------- */
+/* Sales are orders that are New, Paid or Delivered (not cancelled, not unfinished payments, not Razorpay test orders), by order date.
+   Product cost is the cost per item saved on the Stock tab, as it was when the order was placed (or today's cost for older orders). */
+function pnl_year(int $year): array {
+  $m = []; for ($i = 1; $i <= 12; $i++) $m[sprintf('%04d-%02d', $year, $i)] = ['orders' => 0, 'sales' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0];
+  $costs = shop_costs();
+  $s = shop_db()->prepare("SELECT created, total, cod_fee, items FROM orders WHERE status IN ('new', 'paid', 'delivered') AND test = 0 AND created >= ? AND created < ?");
+  $s->execute(["$year-01-01", ($year + 1) . '-01-01']);
+  foreach ($s as $o) {
+    $k = substr($o['created'], 0, 7); if (!isset($m[$k])) continue;
+    $m[$k]['orders']++; $m[$k]['sales'] += (int)$o['total']; $m[$k]['fees'] += (int)$o['cod_fee'];
+    foreach (json_decode((string)$o['items'], true) ?: [] as $it) {
+      $c = $it['cost'] ?? ($costs[$it['id'] ?? ''][(string)($it['opt'] ?? '')] ?? null);
+      if ($c === null) $m[$k]['nocost'] += (int)($it['qty'] ?? 0); else $m[$k]['cost'] += (int)$c * (int)($it['qty'] ?? 0);
+    }
+  }
+  $e = shop_db()->prepare('SELECT day, amount FROM expenses WHERE day >= ? AND day < ?'); $e->execute(["$year-01-01", ($year + 1) . '-01-01']);
+  foreach ($e as $x) { $k = substr($x['day'], 0, 7); if (isset($m[$k])) $m[$k]['expenses'] += (int)$x['amount']; }
+  foreach ($m as &$r) { $r['gross'] = $r['sales'] - $r['cost']; $r['net'] = $r['gross'] - $r['expenses']; } unset($r);
+  return $m;
+}
+function pnl_sum(array $rows): array {
+  $t = ['orders' => 0, 'sales' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0, 'gross' => 0, 'net' => 0];
+  foreach ($rows as $r) foreach ($t as $k => $_) $t[$k] += $r[$k];
+  return $t;
+}
+function pnl_years(): array {
+  $y = [(int)date('Y')];
+  foreach (shop_db()->query("SELECT DISTINCT substr(created, 1, 4) y FROM orders UNION SELECT DISTINCT substr(day, 1, 4) FROM expenses") as $r) if ((int)$r['y'] > 2000) $y[] = (int)$r['y'];
+  $y = array_unique($y); rsort($y); return $y;
+}
+$pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
+if (($_GET['do'] ?? '') === 'pnl_excel') {
+  $rows = []; $n = fn($p) => round($p / 100, 2);
+  foreach (pnl_year($pyear) as $k => $r) $rows[] = [date('M Y', strtotime("$k-01")), $r['orders'], $n($r['sales']), $n($r['cost']), $n($r['gross']), $n($r['expenses']), $n($r['net']), $r['nocost'] ?: ''];
+  $t = pnl_sum(pnl_year($pyear)); $rows[] = ["Total $pyear", $t['orders'], $n($t['sales']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
+  send_sheet("FOMAXO-profit-and-loss-$pyear", ['Month', 'Orders', 'Sales (₹)', 'Product cost (₹)', 'Gross profit (₹)', 'Expenses (₹)', 'Net profit / loss (₹)', 'Items with no cost set'], $rows, 'Profit and loss');
+}
+if (($_GET['do'] ?? '') === 'expenses_excel') {
+  $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day, id'); $s->execute(["$pyear-01-01", ($pyear + 1) . '-01-01']);
+  $rows = array_map(fn($x) => [$x['day'], $x['category'], $x['note'], round($x['amount'] / 100, 2)], $s->fetchAll());
+  send_sheet("FOMAXO-expenses-$pyear", ['Date', 'Category', 'Details', 'Amount (₹)'], $rows, 'Expenses');
+}
+
 if (($_GET['do'] ?? '') === 'excel') {
   [$where, $args] = order_where($F);
   $s = shop_db()->prepare("SELECT * FROM orders$where ORDER BY id"); $s->execute($args);
@@ -304,7 +380,7 @@ if (($_GET['do'] ?? '') === 'excel') {
 }
 
 /* A real Excel file (.xlsx). Falls back to a CSV that Excel opens if the server has no ZipArchive. */
-function send_sheet(string $name, array $head, array $rows): void {
+function send_sheet(string $name, array $head, array $rows, string $sheetName = 'Orders'): void {
   if (!class_exists('ZipArchive')) {
     header('Content-Type: text/csv; charset=utf-8'); header("Content-Disposition: attachment; filename=\"$name.csv\"");
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF"); fputcsv($out, $head);
@@ -329,7 +405,7 @@ function send_sheet(string $name, array $head, array $rows): void {
   $tmp = tempnam(sys_get_temp_dir(), 'fx'); $z = new ZipArchive(); $z->open($tmp, ZipArchive::OVERWRITE);
   $z->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
   $z->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
-  $z->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Orders" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Orders!$A$1:$' . $col(count($head) - 1) . '$' . (count($rows) + 1) . '</definedName></definedNames></workbook>');
+  $z->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' . $x($sheetName) . '" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">\'' . $x($sheetName) . '\'!$A$1:$' . $col(count($head) - 1) . '$' . (count($rows) + 1) . '</definedName></definedNames></workbook>');
   $z->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
   $z->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3E7CC"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment vertical="top"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>');
   $z->addFromString('xl/worksheets/sheet1.xml', $sheet);
@@ -342,9 +418,45 @@ function send_sheet(string $name, array $head, array $rows): void {
 
 /* ---------------- pages ---------------- */
 $flash = $_SESSION['flash'] ?? ''; unset($_SESSION['flash']);
-$tabs = ['orders' => 'Orders', 'stock' => 'Stock', 'products' => 'Products', 'settings' => 'Settings'];
+$tabs = ['home' => 'Dashboard', 'orders' => 'Orders', 'stock' => 'Stock', 'products' => 'Products', 'expenses' => 'Expenses', 'pnl' => 'Profit &amp; loss', 'settings' => 'Settings'];
 $nav = '<nav class="tabs">' . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url(['tab' => $k])) . '"' . ($k === $tab ? ' class="on"' : '') . ">$v</a>", array_keys($tabs), $tabs)) . '<a class="out" href="' . h(self_url(['do' => 'logout'])) . '">Sign out</a></nav>';
 $body = $nav . ($flash ? '<p class="flash">' . h($flash) . '</p>' : '');
+
+if ($tab === 'home') {
+  $year = (int)date('Y'); $cur = date('Y-m'); $rows = pnl_year($year); $m = $rows[$cur]; $y = pnl_sum($rows);
+  $money = fn($p) => ($p < 0 ? '−' . rupees(-$p) : rupees($p));
+  $pl = fn($p) => '<div class="stat ' . ($p < 0 ? 'loss' : 'profit') . '"><b>' . $money($p) . '</b><span>' . ($p < 0 ? 'Loss' : 'Profit') . '</span>';
+  $body .= '<h2>' . h(date('F Y')) . '</h2><div class="stats">'
+    . '<a class="stat" href="' . h(self_url(['tab' => 'orders', 'from' => "$cur-01", 'to' => date('Y-m-t')])) . '"><b>' . rupees($m['sales']) . '</b><span>Sales this month</span><small>' . $m['orders'] . ' order' . ($m['orders'] === 1 ? '' : 's') . '</small></a>'
+    . '<div class="stat"><b>' . rupees($m['cost']) . '</b><span>Product cost</span><small>' . ($m['nocost'] ? '<span class="warn">' . $m['nocost'] . ' items have no cost set</span>' : 'From cost per item') . '</small></div>'
+    . '<a class="stat" href="' . h(self_url(['tab' => 'expenses'])) . '"><b>' . rupees($m['expenses']) . '</b><span>Expenses this month</span><small>Add an expense</small></a>'
+    . $pl($m['net']) . '<small>Sales minus product cost and expenses</small></div></div>';
+  $body .= '<h2>' . $year . ' so far</h2><div class="stats">'
+    . '<div class="stat"><b>' . rupees($y['sales']) . '</b><span>Sales this year</span><small>' . $y['orders'] . ' order' . ($y['orders'] === 1 ? '' : 's') . '</small></div>'
+    . '<div class="stat"><b>' . rupees($y['cost']) . '</b><span>Product cost</span><small>' . ($y['nocost'] ? '<span class="warn">' . $y['nocost'] . ' items have no cost set</span>' : '&nbsp;') . '</small></div>'
+    . '<div class="stat"><b>' . rupees($y['expenses']) . '</b><span>Expenses this year</span><small>&nbsp;</small></div>'
+    . $pl($y['net']) . '<small><a href="' . h(self_url(['tab' => 'pnl'])) . '">See every month</a></small></div></div>';
+  /* orders waiting for you */
+  $todo = shop_db()->query("SELECT * FROM orders WHERE status IN ('new', 'paid') ORDER BY id DESC LIMIT 8")->fetchAll();
+  $nTodo = (int)shop_db()->query("SELECT COUNT(*) FROM orders WHERE status IN ('new', 'paid')")->fetchColumn();
+  $body .= '<div class="dash"><div class="card"><div class="row-head"><h2>Orders to send</h2><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">All orders</a></div>';
+  if (!$todo) $body .= '<p class="muted">Nothing waiting. New and paid orders show here until you mark them Delivered.</p>';
+  else {
+    $body .= '<p class="muted small">' . $nTodo . ' order' . ($nTodo === 1 ? '' : 's') . ' not yet delivered. Open one in Orders to change its status.</p><table class="grid"><tbody>';
+    foreach ($todo as $o) $body .= '<tr><td><a href="' . h(self_url(['tab' => 'orders', 'q' => $o['no']])) . '"><b>' . h($o['no']) . '</b></a><small>' . h(date('d M', strtotime($o['created']))) . '</small></td><td>' . h($o['name']) . '<small>' . h($o['method'] === 'cod' ? 'Cash on delivery' : 'Paid online') . '</small></td><td class="r">' . rupees((int)$o['total']) . '</td><td class="r"><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']]) . '</span></td></tr>';
+    $body .= '</tbody></table>';
+  }
+  $body .= '</div>';
+  /* stock running low */
+  $STOCK = shop_stock(); $low = shop_low_stock(); $alerts = [];
+  foreach ($CAT as $id => $p) { if (!empty($p['hidden'])) continue; foreach ($p['prices'] as $opt => $_) { $v = $STOCK[$id][$opt] ?? null; if ($v !== null && $v <= $low) $alerts[] = [$p, (string)$opt, $v]; } }
+  usort($alerts, fn($a, $b) => $a[2] <=> $b[2]);
+  $body .= '<div class="card"><div class="row-head"><h2>Stock running low</h2><a class="btn line sm" href="' . h(self_url(['tab' => 'stock'])) . '">Update stock</a></div>';
+  if (!$alerts) $body .= '<p class="muted">Everything counted has more than ' . $low . ' left.' . ($STOCK ? '' : ' Write your stock on the Stock tab so the website can show “Only 3 left” and “Sold out”.') . '</p>';
+  else { $body .= '<table class="grid"><tbody>'; foreach (array_slice($alerts, 0, 10) as [$p, $opt, $v]) $body .= '<tr><td><b>' . h($p['name']) . '</b><small>' . h(opt_label($p, $opt)) . '</small></td><td class="r">' . ($v < 1 ? '<span class="badge st-cancelled">Sold out</span>' : '<span class="badge st-new">' . $v . ' left</span>') . '</td></tr>'; $body .= '</tbody></table>' . (count($alerts) > 10 ? '<p class="muted small">and ' . (count($alerts) - 10) . ' more</p>' : ''); }
+  $body .= '</div></div>';
+  $body .= '<div class="quick"><a class="btn" href="' . h(self_url(['tab' => 'expenses'])) . '">+ Add an expense</a><a class="btn line" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '#add">+ Add a product</a><a class="btn line" href="' . h(self_url(['do' => 'excel'])) . '">Download all orders (Excel)</a><a class="btn line" href="' . h(self_url(['do' => 'pnl_excel', 'year' => $year])) . '">Download ' . $year . ' profit &amp; loss (Excel)</a></div>';
+}
 
 if ($tab === 'orders') {
   $counts = [];
@@ -392,11 +504,12 @@ if ($tab === 'orders') {
 }
 
 if ($tab === 'stock') {
-  $STOCK = shop_stock(); $low = shop_low_stock();
-  $body .= '<form method="post" class="card">' . $csrfField . '<input type="hidden" name="action" value="stock"><h2>Stock</h2>'
+  $STOCK = shop_stock(); $COSTS = shop_costs(); $low = shop_low_stock();
+  $body .= '<form method="post" class="card">' . $csrfField . '<input type="hidden" name="action" value="stock"><h2>Stock and cost</h2>'
     . '<p class="muted">Write how many you have of each size. Every order takes its items off by itself, and a cancelled order puts them back. Leave a box empty to not count that size (it never sells out). At 0 the website shows <b>Sold out</b>.</p>'
     . '<label class="inline">Show “Only N left” from <input type="number" name="low_stock" min="0" max="99" value="' . $low . '"> left or fewer</label>'
-    . '<table class="grid"><thead><tr><th>Product</th><th>Size</th><th>In stock</th><th>On the website</th></tr></thead><tbody>';
+    . '<p class="muted"><b>Cost per item</b> is what one piece costs you (buying or making it). Profit &amp; loss uses it to work out your profit on each sale.</p>'
+    . '<table class="grid"><thead><tr><th>Product</th><th>Size</th><th>In stock</th><th>Cost per item ₹</th><th>On the website</th></tr></thead><tbody>';
   foreach ($CAT as $id => $p) {
     $first = true;
     foreach ($p['prices'] as $opt => $_) {
@@ -404,11 +517,12 @@ if ($tab === 'stock') {
       $state = !empty($p['hidden']) ? '<span class="badge st-cancelled">Hidden</span>' : ($v === null ? ($p['soldOut'] ? '<span class="badge st-cancelled">Out of stock (index.html)</span>' : '<span class="muted">Not counted</span>')
         : ($v < 1 ? '<span class="badge st-cancelled">Sold out</span>' : ($v <= $low ? '<span class="badge st-new">Only ' . $v . ' left</span>' : '<span class="badge st-paid">In stock</span>')));
       $body .= '<tr' . ($first ? ' class="first"' : '') . '><td>' . ($first ? '<b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small>' : '') . '</td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
-        . '<td><input type="number" min="0" max="99999" name="stock[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($v === null ? '' : $v) . '" placeholder="—"></td><td>' . $state . '</td></tr>';
+        . '<td><input type="number" min="0" max="99999" name="stock[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($v === null ? '' : $v) . '" placeholder="—"></td>'
+        . '<td><input type="number" min="0" step="0.01" name="cost[' . h($id) . '][' . h((string)$opt) . ']" value="' . (isset($COSTS[$id][$opt]) ? h(rtrim(rtrim(number_format($COSTS[$id][$opt] / 100, 2, '.', ''), '0'), '.')) : '') . '" placeholder="—"></td><td>' . $state . '</td></tr>';
       $first = false;
     }
   }
-  $body .= '</tbody></table><div class="sticky"><button class="btn">Save stock</button></div></form>';
+  $body .= '</tbody></table><div class="sticky"><button class="btn">Save stock and costs</button></div></form>';
 }
 
 if ($tab === 'products') {
@@ -441,6 +555,55 @@ if ($tab === 'products') {
     . '<label class="chk"><input type="checkbox" name="new_tag" value="1" checked> Show a “New” label</label>'
     . '<div class="wide"><button class="btn">Add product</button></div></form></details>'
     . '<script>(function(){var k=document.getElementById("kind");function u(){var v=k.value;document.querySelectorAll(".k-frag").forEach(function(e){e.hidden=v!==""});document.querySelectorAll(".k-care").forEach(function(e){e.hidden=v!=="care"});document.querySelectorAll(".k-one").forEach(function(e){e.hidden=v===""});}k.onchange=u;u();})();</script>';
+}
+
+if ($tab === 'expenses') {
+  $month = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['month'] ?? '')) ? $_GET['month'] : date('Y-m');
+  $prev = date('Y-m', strtotime("$month-01 -1 month")); $next = date('Y-m', strtotime("$month-01 +1 month"));
+  $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day DESC, id DESC'); $s->execute(["$month-01", "$next-01"]);
+  $list = $s->fetchAll(); $total = array_sum(array_column($list, 'amount'));
+  $byCat = []; foreach ($list as $x) $byCat[$x['category']] = ($byCat[$x['category']] ?? 0) + (int)$x['amount']; arsort($byCat);
+  $today = date('Y-m-d'); $defDay = substr($today, 0, 7) === $month ? $today : "$month-01";
+  $body .= '<form method="post" class="card exp-add">' . $csrfField . '<input type="hidden" name="action" value="expense"><h2>Add an expense</h2><div class="exp-row">'
+    . '<label>Date<input type="date" name="day" value="' . h($defDay) . '" required></label>'
+    . '<label>Category<select name="category">' . implode('', array_map(fn($c) => '<option>' . h($c) . '</option>', EXPENSE_CATEGORIES)) . '</select></label>'
+    . '<label class="grow">Details <small>(optional)</small><input name="note" maxlength="200" placeholder="e.g. 200 gift boxes, Instagram ads"></label>'
+    . '<label>Amount ₹<input type="number" name="amount" min="0.01" step="0.01" required></label><button class="btn">Add</button></div></form>';
+  $body .= '<div class="row-head"><div class="monthnav"><a class="btn line sm" href="' . h(self_url(['tab' => 'expenses', 'month' => $prev])) . '">‹</a><h2>' . h(date('F Y', strtotime("$month-01"))) . '</h2><a class="btn line sm" href="' . h(self_url(['tab' => 'expenses', 'month' => $next])) . '">›</a></div>'
+    . '<a class="btn line" href="' . h(self_url(['do' => 'expenses_excel', 'year' => substr($month, 0, 4)])) . '">Download ' . h(substr($month, 0, 4)) . ' expenses (Excel)</a></div>';
+  $body .= '<div class="stats two"><div class="stat"><b>' . rupees($total) . '</b><span>Spent this month</span><small>' . count($list) . ' expense' . (count($list) === 1 ? '' : 's') . '</small></div><div class="stat cats">'
+    . ($byCat ? implode('', array_map(fn($c, $v) => '<div><span>' . h($c) . '</span><b>' . rupees($v) . '</b></div>', array_keys($byCat), $byCat)) : '<span>No expenses yet this month</span>') . '</div></div>';
+  if ($list) {
+    $body .= '<table class="grid card-t"><thead><tr><th>Date</th><th>Category</th><th>Details</th><th class="r">Amount</th><th></th></tr></thead><tbody>';
+    foreach ($list as $x) $body .= '<tr><td>' . h(date('d M', strtotime($x['day']))) . '</td><td>' . h($x['category']) . '</td><td>' . h($x['note']) . '</td><td class="r">' . rupees((int)$x['amount']) . '</td>'
+      . '<td class="r"><form method="post" onsubmit="return confirm(\'Delete this expense?\')">' . $csrfField . '<input type="hidden" name="action" value="expense_delete"><input type="hidden" name="id" value="' . (int)$x['id'] . '"><input type="hidden" name="month" value="' . h($month) . '"><button class="linkbtn">Delete</button></form></td></tr>';
+    $body .= '</tbody></table>';
+  }
+}
+
+if ($tab === 'pnl') {
+  $rows = pnl_year($pyear); $t = pnl_sum($rows); $cur = date('Y-m');
+  $money = fn($p) => '<span class="' . ($p < 0 ? 'neg' : '') . '">' . ($p < 0 ? '−' . rupees(-$p) : rupees($p)) . '</span>';
+  $body .= '<div class="row-head"><div class="monthnav"><h2>Profit &amp; loss</h2><form method="get"><input type="hidden" name="tab" value="pnl"><select name="year" onchange="this.form.submit()">'
+    . implode('', array_map(fn($y) => '<option' . ($y === $pyear ? ' selected' : '') . '>' . $y . '</option>', pnl_years())) . '</select></form></div>'
+    . '<a class="btn line" href="' . h(self_url(['do' => 'pnl_excel', 'year' => $pyear])) . '">Download ' . $pyear . ' (Excel)</a></div>';
+  $body .= '<div class="stats">'
+    . '<div class="stat"><b>' . rupees($t['sales']) . '</b><span>Sales ' . $pyear . '</span><small>' . $t['orders'] . ' orders</small></div>'
+    . '<div class="stat"><b>' . rupees($t['cost']) . '</b><span>Product cost</span><small>Gross profit ' . strip_tags($money($t['gross'])) . '</small></div>'
+    . '<div class="stat"><b>' . rupees($t['expenses']) . '</b><span>Expenses</span><small><a href="' . h(self_url(['tab' => 'expenses'])) . '">Add expenses</a></small></div>'
+    . '<div class="stat ' . ($t['net'] < 0 ? 'loss' : 'profit') . '"><b>' . strip_tags($money($t['net'])) . '</b><span>' . ($t['net'] < 0 ? 'Net loss' : 'Net profit') . '</span><small>' . ($t['sales'] ? round($t['net'] / $t['sales'] * 100) . '% of sales' : '—') . '</small></div></div>';
+  $body .= '<table class="grid card-t pnl"><thead><tr><th>Month</th><th class="r">Orders</th><th class="r">Sales</th><th class="r">Product cost</th><th class="r">Gross profit</th><th class="r">Expenses</th><th class="r">Net profit / loss</th></tr></thead><tbody>';
+  foreach ($rows as $k => $r) {
+    $future = $k > $cur;
+    $body .= '<tr' . ($future ? ' class="future"' : '') . '><td>' . h(date('F', strtotime("$k-01"))) . '</td><td class="r">' . $r['orders'] . '</td><td class="r">' . rupees($r['sales']) . '</td><td class="r">' . rupees($r['cost']) . ($r['nocost'] ? ' <small class="warn" title="Items sold with no cost per item set">+' . $r['nocost'] . ' items with no cost</small>' : '') . '</td>'
+      . '<td class="r">' . $money($r['gross']) . '</td><td class="r">' . rupees($r['expenses']) . '</td><td class="r"><b>' . $money($r['net']) . '</b></td></tr>';
+  }
+  $body .= '</tbody><tfoot><tr><td>Total ' . $pyear . '</td><td class="r">' . $t['orders'] . '</td><td class="r">' . rupees($t['sales']) . '</td><td class="r">' . rupees($t['cost']) . '</td><td class="r">' . $money($t['gross']) . '</td><td class="r">' . rupees($t['expenses']) . '</td><td class="r"><b>' . $money($t['net']) . '</b></td></tr></tfoot></table>';
+  /* every year side by side */
+  $body .= '<h2 style="margin-top:28px">By year</h2><table class="grid card-t pnl"><thead><tr><th>Year</th><th class="r">Orders</th><th class="r">Sales</th><th class="r">Product cost</th><th class="r">Expenses</th><th class="r">Net profit / loss</th></tr></thead><tbody>';
+  foreach (pnl_years() as $y) { $yt = pnl_sum(pnl_year($y)); $body .= '<tr><td><a href="' . h(self_url(['tab' => 'pnl', 'year' => $y])) . '">' . $y . '</a></td><td class="r">' . $yt['orders'] . '</td><td class="r">' . rupees($yt['sales']) . '</td><td class="r">' . rupees($yt['cost']) . '</td><td class="r">' . rupees($yt['expenses']) . '</td><td class="r"><b>' . $money($yt['net']) . '</b></td></tr>'; }
+  $body .= '</tbody></table>';
+  $body .= '<p class="muted small">Sales are orders marked New, Paid or Delivered, by order date, including the cash on delivery fee. Cancelled orders, unfinished online payments and Razorpay test orders are left out. Product cost uses the <a href="' . h(self_url(['tab' => 'stock'])) . '">cost per item</a> on the Stock tab. Add Razorpay fees, courier bills and other running costs under Expenses.' . ($t['nocost'] ? ' <b class="warn">' . $t['nocost'] . ' items sold this year have no cost per item set, so profit looks higher than it is.</b>' : '') . '</p>';
 }
 
 if ($tab === 'settings') {
