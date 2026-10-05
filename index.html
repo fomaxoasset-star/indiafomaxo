@@ -1721,7 +1721,9 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-enq{position:relative;border:1px solid var(--gold);padding:clamp(40px,6vw,90px) clamp(24px,5vw,80px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:20px;overflow:hidden;background:radial-gradient(ellipse at top,rgba(215,170,105,.12),transparent 60%)}
 .gf-enq h2{font-size:clamp(28px,3.6vw,52px)}
 .gf-enq .lead{max-width:640px}
-.gf-enq .ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.gf-enq .ctas{display:grid;grid-template-columns:repeat(2,300px);gap:14px;justify-content:center;width:100%}
+.gf-enq .ctas .btn{width:100%;padding-left:16px;padding-right:16px;min-height:56px}
+@media(max-width:760px){.gf-enq .ctas{grid-template-columns:minmax(0,1fr);max-width:380px;gap:12px}}
 .gf-enq .btn svg{width:20px;height:20px}
 .gf-enq .small{color:var(--muted);font-size:13px;letter-spacing:.06em}
 @media(max-width:1100px){.gf-sets{grid-template-columns:repeat(2,minmax(0,1fr))}.gf-occ{grid-template-columns:repeat(2,minmax(0,1fr))}.gf-promise{grid-template-columns:repeat(2,minmax(0,1fr))}.gf-promise div:nth-child(3){border-left:0}.gf-promise div:nth-child(n+3){border-top:1px solid var(--line)}.gf-steps{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:34px}}
