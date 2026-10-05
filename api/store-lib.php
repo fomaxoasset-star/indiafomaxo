@@ -7,6 +7,7 @@ declare(strict_types=1);
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
 
 date_default_timezone_set('Asia/Kolkata');
+require_once __DIR__ . '/shop-db.php';
 
 $PRIV = getenv('FOMAXO_PRIVATE') ?: dirname(__DIR__, 2) . '/fomaxo-private';
 if (!is_dir($PRIV) && !@mkdir($PRIV, 0750, true)) $PRIV = __DIR__ . '/data';   // fallback: api/data is closed to the web by its .htaccess
@@ -28,10 +29,13 @@ function rupees(int $paise): string { $r = $paise / 100; return '₹' . ($paise 
 function fomaxo_config(): array {
   global $PRIV; static $cfg;
   if ($cfg !== null) return $cfg;
-  $drop = __DIR__ . '/data/razorpay-config.php';
-  if (is_file($drop) && realpath($PRIV) !== realpath(__DIR__ . '/data') && @rename($drop, "$PRIV/razorpay-config.php")) @chmod("$PRIV/razorpay-config.php", 0600);
-  $cfg = [];
-  foreach (["$PRIV/config.php", $drop, "$PRIV/razorpay-config.php"] as $f) if (is_file($f)) { $c = require $f; if (is_array($c)) $cfg = $c + $cfg; }
+  $cfg = []; $files = ["$PRIV/config.php"];
+  foreach (['razorpay-config.php', 'db-config.php'] as $n) {   // db-config.php: the Hostinger MySQL database for orders and stock (api/shop-db.php)
+    $drop = __DIR__ . "/data/$n";
+    if (is_file($drop) && realpath($PRIV) !== realpath(__DIR__ . '/data') && @rename($drop, "$PRIV/$n")) @chmod("$PRIV/$n", 0600);
+    array_push($files, $drop, "$PRIV/$n");
+  }
+  foreach ($files as $f) if (is_file($f)) { $c = require $f; if (is_array($c)) $cfg = $c + $cfg; }
   return $cfg;
 }
 
@@ -62,9 +66,28 @@ function fomaxo_catalog(): array {
       }
       if (!$prices) continue;
       $kind = $get('kind') ?: (preg_match('/\btype:\s*"/', $o) ? 'care' : '');
+      $was = [];
+      if (preg_match('/\bcompareAt:\s*\{([^}]*)\}/', $o, $x)) { preg_match_all('/"?([\w]+)"?\s*:\s*([\d.]+)/', $x[1], $pp, PREG_SET_ORDER); foreach ($pp as [, $k, $v]) $was[$k] = (float)$v; }
+      elseif (preg_match('/\bwas:\s*([\d.]+)/', $o, $x)) $was['one'] = (float)$x[1];
       $cat['products'][$id] = ['name' => $get('name') . ($kind === 'care' ? ' ' . explode(' — ', $get('type'))[0] : ''),
-        'kind' => $kind, 'vol' => $get('vol'), 'prices' => $prices, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o)];
+        'kind' => $kind, 'vol' => $get('vol'), 'prices' => $prices, 'was' => $was, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o),
+        'img' => preg_match('/\bimages?:\s*\[?\s*"([^"]+)"/', $o, $x) ? 'assets/img/' . $x[1] . '.webp' : '', 'hidden' => false, 'added' => false];
     }
+  }
+  /* products added, hidden or re-priced on the admin page (fomaxo.in/admin) */
+  try { $live = shop_products(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); $live = []; }
+  foreach ($live as $id => $d) {
+    if ($d['added']) {
+      $kind = (string)($d['kind'] ?? '');
+      $img = (string)(($d['site']['images'][0] ?? $d['site']['image'] ?? ''));
+      $cat['products'][$id] = ['name' => (string)($d['name'] ?? $id) . ($kind === 'care' ? ' ' . explode(' — ', (string)($d['type'] ?? ''))[0] : ''),
+        'kind' => $kind, 'vol' => (string)($d['vol'] ?? ''), 'prices' => array_map('floatval', (array)($d['prices'] ?? [])),
+        'was' => array_map('floatval', (array)($d['compareAt'] ?? [])), 'soldOut' => false,
+        'img' => str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : '', 'added' => true];
+    } elseif (!isset($cat['products'][$id])) continue;
+    else foreach (['prices' => 'prices', 'compareAt' => 'was'] as $from => $to)
+      foreach ((array)($d[$from] ?? []) as $k => $v) if (isset($cat['products'][$id]['prices'][$k]) && is_numeric($v)) $cat['products'][$id][$to][$k] = (float)$v;
+    $cat['products'][$id]['hidden'] = $d['hidden'];
   }
   if (preg_match('/\bcod:\s*\{([^}]*)\}/', $src, $x)) {
     $min = preg_match('/\bmin:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
@@ -83,12 +106,15 @@ function fomaxo_price_order(array $in): array {
   $lines = is_array($in['lines'] ?? null) ? $in['lines'] : [];
   if (!$lines || count($lines) > 30) return ['error' => 'Your bag is empty.'];
   $items = []; $total = 0;
+  try { $STOCK = shop_stock(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.']; }
+  $want = [];
   foreach ($lines as $l) {
     $id = is_string($l['id'] ?? null) ? $l['id'] : '';
     $opt = (string)($l['opt'] ?? '');
     $qty = (int)($l['qty'] ?? 0);
     $p = $CAT[$id] ?? null;
-    if (!$p || !isset($p['prices'][$opt]) || $p['soldOut'] || $qty < 1 || $qty > 99)
+    /* a stock number set on the admin page wins over soldOut in index.html; a product hidden on the admin page can't be bought */
+    if (!$p || !isset($p['prices'][$opt]) || !empty($p['hidden']) || ($p['soldOut'] && !isset($STOCK[$id][$opt])) || $qty < 1 || $qty > 99)
       return ['error' => 'An item in your bag is no longer available. Please refresh and try again.'];
     $size = $p['kind'] === 'set' ? "Set of $opt" : ($p['kind'] === 'care' ? $p['vol'] : ($p['kind'] === 'car' ? 'Car perfume' : "{$opt}ml"));
     $desc = '';
@@ -99,7 +125,12 @@ function fomaxo_price_order(array $in): array {
     }
     $unit = (int)round($p['prices'][$opt] * 100);
     $total += $unit * $qty;
-    $items[] = ['id' => $id, 'name' => 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : ''), 'desc' => $desc, 'unit' => $unit, 'qty' => $qty];
+    $name = 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : '');
+    $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty];
+    $want["$id|$opt"] = ($want["$id|$opt"] ?? 0) + $qty;
+    $have = $STOCK[$id][$opt] ?? null;
+    if ($have !== null && $have < $want["$id|$opt"])
+      return ['error' => $have < 1 ? "$name is sold out. Please remove it from your bag." : "Only $have left of $name. Please lower the quantity in your bag."];
   }
   if ($total < 100) return ['error' => 'This order cannot be paid online. Please order on WhatsApp.'];
   $rows = array_map(fn($it) => "• {$it['qty']} x {$it['name']}" . ($it['desc'] ? " ({$it['desc']})" : '') . ' — ' . rupees($it['unit'] * $it['qty']), $items);
@@ -126,10 +157,8 @@ function fomaxo_customer(array $in): array {
   return $o;
 }
 
-function fomaxo_order_no(): string { return 'FMX-IN-' . date('ymd') . '-' . strtoupper(bin2hex(random_bytes(2))); }
 function fomaxo_orders_dir(): string { global $PRIV; $d = "$PRIV/orders"; if (!is_dir($d)) @mkdir($d, 0700, true); return $d; }
-function fomaxo_save_order(string $key, array $rec): void { file_put_contents(fomaxo_orders_dir() . '/' . preg_replace('/[^A-Za-z0-9_\-]/', '', $key) . '.json', json_encode($rec, JSON_UNESCAPED_UNICODE), LOCK_EX); }
-function fomaxo_load_order(string $key): ?array { $f = fomaxo_orders_dir() . '/' . preg_replace('/[^A-Za-z0-9_\-]/', '', $key) . '.json'; return is_file($f) ? json_decode((string)file_get_contents($f), true) : null; }
+/* Orders themselves are saved in the shop database (api/shop-db.php), numbered FMX-1001, FMX-1002 … */
 
 /* A private copy of every order, as a spreadsheet: ../fomaxo-private/orders/orders.csv */
 function fomaxo_log_order(array $row): void {

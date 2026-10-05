@@ -27,11 +27,23 @@ $recent = array_filter(array_map('intval', is_file($rl) ? file($rl, FILE_IGNORE_
 if (count($recent) >= 5) fail('Too many orders from this connection. Please WhatsApp us to complete your order.', 429);
 $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
-$no = fomaxo_order_no();
 $total = $order['subtotal'] + $cod['fee'];
-$rec = ['no' => $no, 'created' => date('Y-m-d H:i'), 'total' => $total, 'codFee' => $cod['fee'], 'rows' => $order['rows'], 'ids' => array_column($order['items'], 'id'), 'cust' => $cust, 'cod' => true];
+/* one transaction: check and take the stock, then give the order the next number (FMX-1001, FMX-1002 …) */
+try {
+  $rec = shop_tx(function (PDO $db) use ($order, $cust, $cod, $total) {
+    $short = shop_take_stock($db, $order['items'], true);
+    if ($short !== '') return ['error' => $short];
+    $rec = ['ref' => 'cod-' . bin2hex(random_bytes(8)), 'no' => shop_next_no($db), 'created' => shop_now(), 'method' => 'cod', 'status' => 'new',
+      'total' => $total, 'codFee' => $cod['fee'], 'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'stock_taken' => true];
+    shop_insert_order($db, $rec);
+    return $rec;
+  });
+} catch (Throwable $e) { error_log('FOMAXO COD order: ' . $e->getMessage()); fail('We could not place your order right now. Please try again or WhatsApp us.', 500); }
+if (isset($rec['error'])) fail($rec['error'], 409);
+$no = $rec['no'];
+$rec['ids'] = array_column($order['items'], 'id'); $rec['cod'] = true;
 $rec['review'] = fomaxo_review_token($rec);   // Verified Purchaser review link, sent in the confirmation email
-fomaxo_save_order($no, $rec);
+if ($rec['review'] !== '') shop_db()->prepare('UPDATE orders SET review = ? WHERE ref = ?')->execute([$rec['review'], $rec['ref']]);
 fomaxo_log_order([date('Y-m-d H:i'), $no, 'Cash on delivery', rupees($total), $cust['name'], $cust['phone'], $cust['email'], $cust['address'], $cust['note'], implode(' | ', $order['rows']), '']);
 fomaxo_send_emails($rec, 'Cash on delivery');
 out(['status' => 'placed', 'order' => $no, 'total' => $total / 100, 'review' => $rec['review']]);
