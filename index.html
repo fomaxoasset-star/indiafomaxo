@@ -2243,7 +2243,8 @@ const TRK = (() => {
   return {
     send,
     view(path, seg){ if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]}); },
-    lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', total: subtotal(lines) || 0,
+    lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', email: c.email || '', state: c.state || '',
+      address: [c.house, c.street, c.landmark, c.city, c.pin].filter(Boolean).join(', '), total: subtotal(lines) || 0,
       bag: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, name: P[l.id] ? `${P[l.id].name} · ${optLabel(P[l.id], l.opt)}` : l.id}))}}); }
   };
 })();
@@ -3376,9 +3377,10 @@ function bindCheckout(q){
   };
   $$('input[name=pay]', f).forEach(r => r.onchange = upd);
   f.addEventListener('input', upd); f.addEventListener('change', upd);
-  /* "Left at checkout" in the admin: name, mobile and bag, sent a moment after they are typed */
-  let leadT; f.addEventListener('input', e => { if (!['name', 'phone'].includes(e.target.name)) return; clearTimeout(leadT);
-    leadT = setTimeout(() => TRK.lead('details', {name: val('name'), phone: val('phone').replace(/\D/g, '')}, lines), 1500); });
+  /* "Left at checkout" in the admin: the details and bag, sent a moment after they are typed */
+  let leadT; const leadOf = () => ({name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin')});
+  f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin'].includes(e.target.name)) return; clearTimeout(leadT);
+    leadT = setTimeout(() => TRK.lead('details', leadOf(), lines), 1500); });
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };

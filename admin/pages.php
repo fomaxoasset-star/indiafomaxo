@@ -292,7 +292,7 @@ if ($tab === 'analytics') {
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
     . '<div class="kpi"><span>Purchases</span><b>' . $A['purchases'] . '</b><small>orders</small></div>'
     . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['purchases'] ? rupees(intdiv($A['revenue'], $A['purchases'])) . ' per order' : '&nbsp;') . '</small></div></div>';
-  $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
+  $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'countries' => 'Countries', 'states' => 'States', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
   /* funnel */
   $body .= '<div class="box p-funnel on" data-pane="funnel"><div class="bh"><h3>From visit to purchase</h3></div><div class="bb"><div class="fun">';
   $prev = null; $top = max(1, $f['view']);
@@ -304,27 +304,41 @@ if ($tab === 'analytics') {
   }
   $body .= '</div><p class="muted small">Counted per visit. A visit ends after 30 minutes without activity.</p></div></div>';
   /* sources */
-  $tot = max(1, array_sum($A['sources']));
-  $body .= '<div class="box srcs" data-pane="sources"><div class="bh"><h3>Where visitors came from</h3></div><div class="bb">';
-  if (!$A['sources']) $body .= '<p class="empty">No visits yet in these dates.</p>';
-  foreach ($A['sources'] as $k => $n) $body .= '<div class="li"><span class="grow"><b>' . h(SOURCES[$k] ?? ucfirst($k)) . '</b></span><span class="bar"><i style="width:' . round($n / $tot * 100) . '%"></i></span><span style="width:70px;text-align:right">' . $n . ' <small>' . round($n / $tot * 100) . '%</small></span></div>';
-  $body .= '<p class="muted small">Add ?utm_source=instagram (or whatsapp) to links you share, so every visit from them is counted under that name.</p></div></div>';
+  $body .= '<div class="box srcs" data-pane="sources"><div class="bh"><h3>Where visitors come from</h3></div><div class="bb np"><table class="grid"><thead><tr><th>Source</th><th class="r">Visitors</th><th class="r">Visits</th><th class="r">Bought</th><th class="r">Conv.</th></tr></thead><tbody>';
+  if (!$A['sources']) $body .= '<tr><td colspan="5" class="empty">No visits yet in these dates.</td></tr>';
+  foreach ($A['sources'] as $k => $x) $body .= '<tr><td><b>' . h(SOURCES[$k] ?? ucfirst($k)) . '</b></td><td class="r">' . number_format($x['visitors']) . '</td><td class="r">' . number_format($x['visits']) . '</td><td class="r">' . number_format($x['bought']) . '</td><td class="r">' . ($x['visits'] ? round($x['bought'] / $x['visits'] * 100, 1) . '%' : '—') . '</td></tr>';
+  $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Add ?utm_source=instagram (or whatsapp) to links you share, so every visit from them is counted under that name.</p></div></div>';
+  /* top countries and Indian states, each with its own Today / 7 days / 30 days / Year */
+  $G = geo_stats(); $RS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year'];
+  foreach (['countries' => 'Top countries', 'states' => 'Visitors by Indian state'] as $gk => $gt) {
+    $body .= '<div class="box geo" data-pane="' . $gk . '"><div class="bh"><h3>' . $gt . '</h3><span class="seg rs">' . implode('', array_map(fn($k, $l) => '<button type="button" data-r="' . $k . '"' . ($k === 'd7' ? ' class="on"' : '') . ">$l</button>", array_keys($RS), $RS)) . '</span></div><div class="bb">';
+    foreach ($RS as $rk => $_) {
+      $rows = $G[$gk][$rk]; $mx = max(1, ...array_values($rows ?: [1]));
+      $body .= '<div class="rl" data-r="' . $rk . '"' . ($rk === 'd7' ? '' : ' hidden') . '>';
+      if (!$rows) $body .= '<p class="empty">No visits ' . ($rk === 'today' ? 'today' : 'in this time') . '.</p>';
+      foreach ($rows as $name => $n) $body .= '<div class="li"><span class="grow">' . ($gk === 'countries' ? '<span class="flag">' . fomaxo_flag((string)$name) . '</span> ' . h(fomaxo_country_name((string)$name)) : h((string)$name)) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
+      $body .= '</div>';
+    }
+    $body .= '<p class="muted small">' . ($gk === 'states' ? 'Approximate: phone networks often show the state of their nearest hub. ' : '') . 'Looked up from the visitor’s IP address on this server; only the country' . ($gk === 'states' ? ' and state are' : ' is') . ' kept. IP geolocation by <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>.</p></div></div>';
+  }
   /* products */
-  $body .= '<div class="box" data-pane="products"><div class="bh"><h3>Products</h3></div><div class="bb np"><table class="grid"><thead><tr><th>Product</th><th class="r">Views</th><th class="r">Added</th><th class="r">Sold</th><th class="r">Revenue</th></tr></thead><tbody>';
+  $body .= '<div class="box p-prod" data-pane="products"><div class="bh"><h3>Products</h3></div><div class="bb np"><table class="grid"><thead><tr><th>Product</th><th class="r">Views</th><th class="r">Added</th><th class="r">Sold</th><th class="r">Revenue</th></tr></thead><tbody>';
   if (!$A['products']) $body .= '<tr><td colspan="5" class="empty">No product views yet in these dates.</td></tr>';
   foreach ($A['products'] as $id => $p) $body .= '<tr><td><div class="pc">' . $thumbOf($id, 'th sm') . '<b>' . h($CAT[$id]['name']) . '</b></div></td><td class="r">' . $p['views'] . '</td><td class="r">' . $p['adds'] . '</td><td class="r">' . $p['units'] . '</td><td class="r">' . rupees($p['rev']) . '</td></tr>';
   $body .= '</tbody></table></div></div>';
-  /* left at checkout */
-  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small">Typed a name or mobile, then did not order</span></div><div class="bb np"><table class="grid"><thead><tr><th>When</th><th>Name</th><th>Left at</th><th>Bag</th><th class="r">Total</th><th></th></tr></thead><tbody>';
-  if (!$A['leads']) $body .= '<tr><td colspan="6" class="empty">Nobody left at checkout in these dates.</td></tr>';
-  foreach ($A['leads'] as $l) {
-    $bag = json_decode((string)$l['bag'], true) ?: [];
-    $names = implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], $bag));
+  /* left at checkout: everyone, kept for good */
+  $L = checkout_leads();
+  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout (all dates)</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel'])) . '">Excel</a></div><div class="bb np"><table class="grid"><thead><tr><th>Date</th><th>Name</th><th>State · address</th><th>Products</th><th class="r">Bag</th><th>Left at</th><th>Ordered later</th><th></th></tr></thead><tbody>';
+  if (!$L) $body .= '<tr><td colspan="8" class="empty">Nobody has typed their details at checkout yet.</td></tr>';
+  foreach ($L as $l) {
+    $names = lead_items($l);
     $msg = 'Hi ' . ($l['name'] ?: 'there') . ', this is FOMAXO. We saw you were about to order ' . ($names ?: 'from our shop') . '. Can we help you finish your order?';
-    $body .= '<tr><td>' . h(date('d M, H:i', strtotime($l['updated']))) . '</td><td><b>' . h($l['name'] ?: '—') . '</b><small>' . h($l['phone'] ? '+91 ' . substr($l['phone'], 0, 5) . ' ' . substr($l['phone'], 5) : 'no mobile') . '</small></td>'
+    $body .= '<tr' . ($l['later'] !== '' ? ' class="dim"' : '') . '><td class="nw">' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</td><td><b>' . h($l['name'] ?: '—') . '</b><small>' . h($l['phone'] ? phone_fmt($l['phone']) : 'no mobile') . '</small>' . ($l['email'] ? '<small>' . h($l['email']) . '</small>' : '') . '</td>'
+      . '<td><b>' . h($l['state'] ?: '—') . '</b><small class="clip">' . h($l['address']) . '</small></td>'
+      . '<td><small class="clip2">' . h($names) . '</small></td><td class="r nw">' . rupees((int)$l['total']) . '</td>'
       . '<td>' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">Payment</span>' : '<span class="badge st-new">Details</span>') . '</td>'
-      . '<td><div class="pc">' . implode('', array_map(fn($b) => $thumbOf((string)$b['id'], 'th sm'), array_slice($bag, 0, 3))) . '<small style="max-width:220px">' . h($names) . '</small></div></td>'
-      . '<td class="r">' . rupees((int)$l['total']) . '</td><td class="r">' . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</td></tr>';
+      . '<td>' . ($l['later'] === '' ? '<span class="muted">No</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '"><span class="badge st-paid">' . h($l['later']) . '</span></a>')) . '</td>'
+      . '<td class="r">' . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</td></tr>';
   }
   $body .= '</tbody></table></div></div></div>';
 }
@@ -333,10 +347,17 @@ if ($tab === 'analytics') {
 if ($tab === 'reports') {
   $rows = report_year($pyear); $t = report_sum($rows); $cur = date('Y-m');
   $m = fn($p) => '<span class="' . ($p < 0 ? 'neg' : '') . '">' . money($p) . '</span>';
+  /* phones: this month and this year at a glance, above the Year picker */
+  $cy = report_year((int)date('Y')); $cm = report_sum([$cy[$cur]]); $ct = report_sum($cy);
+  $body .= '<div class="kpis mq">'
+    . '<div class="kpi"><span>Sales this month</span><b>' . rupees($cm['sales']) . '</b><small>' . $cm['orders'] . ($cm['orders'] === 1 ? ' order' : ' orders') . '</small></div>'
+    . '<div class="kpi ' . ($cm['net'] < 0 ? 'bad' : 'good') . '"><span>Profit this month</span><b>' . money($cm['net']) . '</b><small>' . h(date('F')) . '</small></div>'
+    . '<div class="kpi"><span>Sales this year</span><b>' . rupees($ct['sales']) . '</b><small>' . $ct['orders'] . ($ct['orders'] === 1 ? ' order' : ' orders') . '</small></div>'
+    . '<div class="kpi ' . ($ct['net'] < 0 ? 'bad' : 'good') . '"><span>Profit this year</span><b>' . money($ct['net']) . '</b><small>' . date('Y') . '</small></div></div>';
   $body .= '<div class="row"><h2>Profit &amp; loss</h2><form method="get"><input type="hidden" name="tab" value="reports">' . $sel('year', array_combine(report_years(), report_years()), $pyear) . '</form><span class="sp"></span>'
     . '<a class="btn line" href="' . h(self_url(['do' => 'report_excel', 'year' => $pyear])) . '">Download ' . $pyear . ' (Excel)</a></div>'
     . '<script>document.querySelector("select[name=year]").onchange=function(){this.form.submit()}</script>';
-  $body .= '<div class="kpis n5" style="--n:5">'
+  $body .= '<div class="kpis n5 hide-m" style="--n:5">'
     . '<div class="kpi"><span>Sales ' . $pyear . '</span><b>' . rupees($t['sales']) . '</b><small>' . $t['orders'] . ' orders · ' . rupees($t['discounts']) . ' discounts</small></div>'
     . '<div class="kpi"><span>Cost of goods</span><b>' . rupees($t['cost']) . '</b><small>' . ($t['nocost'] ? '<span class="warn">' . $t['nocost'] . ' items with no cost set</span>' : 'from My cost on each product') . '</small></div>'
     . '<div class="kpi"><span>Payment fees</span><b>' . rupees($t['fees']) . '</b><small>' . pay_fee_pct() . '% of card / UPI sales</small></div>'
@@ -355,16 +376,17 @@ if ($tab === 'reports') {
 /* ============ Reviews ============ */
 if ($tab === 'reviews') {
   $rq = trim((string)($_GET['q'] ?? '')); $rv = (string)($_GET['v'] ?? ''); $rv = in_array($rv, ['1', '0'], true) ? $rv : '';
-  $ALL = reviews_list(); $list = reviews_list(array_filter(['q' => $rq], 'strlen') + ($rv !== '' ? ['verified' => (int)$rv] : []));
+  $rp = (string)($_GET['p'] ?? ''); if (!preg_match('/^[\w-]{1,60}$/', $rp)) $rp = '';
+  $ALL = reviews_list(); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + ($rv !== '' ? ['verified' => (int)$rv] : []));
   $nv = count(array_filter($ALL, fn($r) => (int)$r['verified'] === 1)); $nu = count($ALL) - $nv;
-  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv], 'strlen'); $back = h(json_encode($keep));
-  $body .= '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '')
+  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp], 'strlen'); $back = h(json_encode($keep));
+  $body .= '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '')
     . '<input type="search" name="q" value="' . h($rq) . '" placeholder="Words, name or mobile"><button class="btn line sm">Search</button>'
     . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
     . '<a class="chip' . ($rv === '0' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '0' ? '' : '0'] + $keep)) . '">Unverified <b>' . $nu . '</b></a></form>';
-  $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars by product', 'top' => 'Top reviewers']) . '<div class="revs panes" id="rvPanes">';
+  $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars By Product', 'top' => 'Top Reviewers']) . '<div class="revs panes" id="rvPanes">';
   /* every review */
-  $body .= '<div class="box on" data-pane="list"><div class="bh"><span class="muted small">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . '. Removed reviews leave the website and the star rating; Put back shows them again.</span></div><div class="bb">';
+  $body .= '<div class="box on" data-pane="list"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . '. Removed reviews leave the website and the star rating; Put back shows them again.</span></div><div class="bb">';
   if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
   elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' ? ' match this search.' : ' yet.') . '</p>';
   foreach ($list as $r) {
@@ -384,15 +406,15 @@ if ($tab === 'reviews') {
   $by = [];
   foreach ($ALL as $r) if ($r['status'] === 'live') { $by[$r['product']]['n'] = ($by[$r['product']]['n'] ?? 0) + 1; $by[$r['product']]['sum'] = ($by[$r['product']]['sum'] ?? 0) + (int)$r['rating']; }
   uasort($by, fn($a, $b) => $b['n'] <=> $a['n']);
-  $body .= '<div class="box" data-pane="stars"><div class="bh"><h3>Stars by product</h3></div><div class="bb">';
+  $body .= '<div class="box" data-pane="stars"><div class="bh"><h3>Stars By Product</h3><span class="muted small">Tap a product to see its reviews</span></div><div class="bb">';
   if (!$by) $body .= '<p class="empty">No live reviews yet.</p>';
-  foreach ($by as $pid => $x) { $avg = $x['sum'] / $x['n']; $body .= '<div class="li">' . $thumbOf($pid, 'th sm') . '<span class="grow"><b>' . h($CAT[$pid]['name'] ?? $pid) . '</b><small>' . $x['n'] . ' review' . ($x['n'] === 1 ? '' : 's') . '</small></span>' . stars($avg) . '<b class="avg">' . number_format($avg, 1) . '</b></div>'; }
+  foreach ($by as $pid => $x) { $avg = $x['sum'] / $x['n']; $body .= '<a class="li' . ($pid === $rp ? ' on' : '') . '" href="' . h(self_url(['p' => $pid === $rp ? '' : $pid] + $keep)) . '">' . $thumbOf($pid, 'th sm') . '<span class="grow"><b>' . h($CAT[$pid]['name'] ?? $pid) . '</b><small>' . $x['n'] . ' review' . ($x['n'] === 1 ? '' : 's') . '</small></span>' . stars($avg) . '<b class="avg">' . number_format($avg, 1) . '</b></a>'; }
   $body .= '</div></div>';
   /* top reviewers: grouped by mobile (verified purchasers) or by name */
   $tmin = top_reviewers_min(); $who = [];
   foreach ($ALL as $r) { $k = $r['phone'] !== '' ? 'm:' . $r['phone'] : 'n:' . mb_strtolower($r['name']); $who[$k]['name'] = $r['customer'] ?: $r['name']; $who[$k]['phone'] = $r['phone']; $who[$k]['n'] = ($who[$k]['n'] ?? 0) + 1; $who[$k]['sum'] = ($who[$k]['sum'] ?? 0) + (int)$r['rating']; }
   $who = array_filter($who, fn($w) => $w['n'] >= $tmin); uasort($who, fn($a, $b) => $b['n'] <=> $a['n']);
-  $body .= '<div class="box" data-pane="top"><div class="bh"><h3>Top reviewers</h3><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="top_reviewers"><input type="hidden" name="back" value="' . $back . '"><label class="mrule">at least<input type="number" name="top_reviewers" min="1" max="99" value="' . $tmin . '"> reviews</label><button class="btn line sm">Save</button></form></div><div class="bb">';
+  $body .= '<div class="box" data-pane="top"><div class="bh"><h3>Top Reviewers</h3><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="top_reviewers"><input type="hidden" name="back" value="' . $back . '"><label class="mrule">at least<input type="number" name="top_reviewers" min="1" max="99" value="' . $tmin . '"> reviews</label><button class="btn line sm">Save</button></form></div><div class="bb">';
   if (!$who) $body .= '<p class="empty">Nobody has ' . $tmin . ' or more reviews yet.</p>';
   foreach ($who as $k => $w) $body .= '<div class="li"><span class="grow"><b>' . ($w['phone'] ? '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '">' . h($w['name']) . '</a>' : h($w['name'])) . '</b><small>' . ($w['phone'] ? h(phone_fmt($w['phone'])) . ' · ' : '') . 'average ' . number_format($w['sum'] / $w['n'], 1) . ' ★</small></span><b>' . $w['n'] . '</b><span class="muted small">reviews</span></div>';
   $body .= '</div></div></div>';

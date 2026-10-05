@@ -8,6 +8,7 @@ declare(strict_types=1);
    line, then open fomaxo.in/admin. The page stores a scrambled copy (a hash) and deletes the file. A forgotten password
    can also be reset from the sign-in page: the link goes to the order notification email set in Settings. */
 require dirname(__DIR__) . '/api/store-lib.php';
+require dirname(__DIR__) . '/api/geo-lib.php';
 require __DIR__ . '/lib.php';
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
@@ -17,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '14';
+const ASSET_V = '15';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -31,10 +32,10 @@ $csrfField = '<input type="hidden" name="csrf" value="' . h($CSRF) . '">';
 function page(string $title, string $body, bool $in, string $tab = '', array $tabs = []): void {
   $nav = fn($cls) => '<nav class="' . $cls . '">' . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url($k === 'home' ? [] : ['tab' => $k])) . '"' . ($k === $tab ? ' class="on"' : '') . ">$v</a>", array_keys($tabs), $tabs)) . '</nav>';
   echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">'
-    . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="stylesheet" href="/admin/admin.css?v=' . ASSET_V . '"></head><body' . ($in ? ' class="app"' : '') . '>'
+    . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap"><link rel="stylesheet" href="/admin/admin.css?v=' . ASSET_V . '"></head><body' . ($in ? ' class="app"' : '') . '>'
     . '<header><a class="brand" href="/admin/">FOMAXO <span>Admin</span></a>' . ($in ? $nav('tabs') : '<span class="sp"></span>')
     . '<span class="hlinks"><a class="site" href="/" target="_blank" rel="noopener"><span class="full">View website ↗</span><span class="short">Website ↗</span></a>' . ($in ? '<a href="' . h(self_url(['do' => 'logout'])) . '">Sign out</a>' : '') . '</span></header>'
-    . ($in ? $nav('mtabs') : '') . '<main' . ($in ? '' : ' class="center"') . '>' . $body . '</main>'
+    . ($in ? '<div class="mbar"><button type="button" class="tprev" aria-label="Previous tab">‹</button>' . $nav('mtabs') . '<button type="button" class="tnext" aria-label="Next tab">›</button></div>' : '') . '<main' . ($in ? '' : ' class="center"') . '>' . $body . '</main>'
     . ($in ? '<script src="/admin/admin.js?v=' . ASSET_V . '"></script>' : '') . '</body></html>';
   exit;
 }
@@ -258,6 +259,11 @@ if ($do === 'members_excel') {
   $rows = array_map(fn($m) => [$m['name'], phone_fmt($m['phone']), $m['email'], $m['address'], $m['state'], $m['count'], round($m['spent'] / 100, 2), round($m['avg'] / 100, 2),
     substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), member_spend(), (string)($_GET['q'] ?? '')));
   send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
+}
+if ($do === 'leads_excel') {
+  $rows = array_map(fn($l) => [substr($l['updated'], 0, 16), $l['name'], $l['phone'] ? phone_fmt($l['phone']) : '', $l['email'], $l['state'], $l['address'], lead_items($l), round($l['total'] / 100, 2),
+    $l['step'] === 'payment' ? 'Payment page' : 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later'])], checkout_leads());
+  send_sheet('FOMAXO-left-at-checkout-' . date('Y-m-d'), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later'], $rows, 'Left at checkout');
 }
 if ($do === 'expenses_excel') {
   $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day, id'); $s->execute(["$pyear-01-01", ($pyear + 1) . '-01-01']);

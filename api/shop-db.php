@@ -18,6 +18,12 @@ function shop_db(): PDO {
   if (!empty($cfg['db_name']) && !empty($cfg['db_user'])) $SHOP_DB = shop_mysql($cfg);
   else { $SHOP_DB = new PDO("sqlite:$PRIV/shop.sqlite", null, null, SHOP_PDO); $SHOP_DB->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;'); }
   shop_schema($SHOP_DB);
+  if (shop_setting('schema') !== '2') {   // columns added after the tables first went live
+    foreach (["visits ADD country VARCHAR(2) NOT NULL DEFAULT ''", "visits ADD region VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD email VARCHAR(120) NOT NULL DEFAULT ''",
+      "leads ADD state VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD address VARCHAR(300) NOT NULL DEFAULT ''"] as $alter)
+      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    shop_set('schema', '2');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -66,10 +72,11 @@ function shop_schema(PDO $db): void {
     /* "Left at checkout": what a shopper had typed and had in the bag, one row per visit, until they buy */
     "CREATE TABLE IF NOT EXISTS leads(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, created VARCHAR(19) NOT NULL, updated VARCHAR(19) NOT NULL,
       name VARCHAR(80) NOT NULL DEFAULT '', phone VARCHAR(16) NOT NULL DEFAULT '', step VARCHAR(10) NOT NULL DEFAULT '', bag $text NOT NULL, total INT NOT NULL DEFAULT 0,
-      ordered INT NOT NULL DEFAULT 0)$tail",
+      ordered INT NOT NULL DEFAULT 0, email VARCHAR(120) NOT NULL DEFAULT '', state VARCHAR(60) NOT NULL DEFAULT '', address VARCHAR(300) NOT NULL DEFAULT '')$tail",
     /* one row per visit: when it started and was last seen (pages and the once-a-minute ping), for time on site */
     "CREATE TABLE IF NOT EXISTS visits(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, started INT NOT NULL, last INT NOT NULL,
-      source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0)$tail",
+      source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0,
+      country VARCHAR(2) NOT NULL DEFAULT '', region VARCHAR(60) NOT NULL DEFAULT '')$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }

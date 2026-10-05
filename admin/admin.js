@@ -1,7 +1,52 @@
 /* FOMAXO India admin: phone switches between boxes, and the Sales / Visitors bar charts on the dashboard. */
 (function () {
   /* phones: keep the open tab in view in the scrolling tab strip */
-  var tabOn = document.querySelector('.mtabs .on'); if (tabOn) tabOn.parentNode.scrollLeft = tabOn.offsetLeft - (tabOn.parentNode.clientWidth - tabOn.clientWidth) / 2;
+  var tabOn = document.querySelector('.mtabs .on'); if (tabOn) { var bar = tabOn.parentNode, br = bar.getBoundingClientRect(), tr = tabOn.getBoundingClientRect(); bar.scrollLeft += tr.left - br.left - (br.width - tr.width) / 2; }
+
+  /* phones: ‹ and › at the ends of the tab strip, and a swipe left / right on the page, open the next / previous tab */
+  var tabLinks = Array.prototype.slice.call(document.querySelectorAll('.mtabs a')), tabAt = tabLinks.indexOf(tabOn);
+  var goTab = function (step) { var a = tabLinks[tabAt + step]; if (a) location.href = a.href; };
+  var prevB = document.querySelector('.mbar .tprev'), nextB = document.querySelector('.mbar .tnext');
+  if (prevB) { prevB.disabled = tabAt <= 0; prevB.onclick = function () { goTab(-1); }; }
+  if (nextB) { nextB.disabled = tabAt < 0 || tabAt >= tabLinks.length - 1; nextB.onclick = function () { goTab(1); }; }
+  var t0 = null;
+  var sideScroller = function (el) {
+    for (; el && el !== document.body; el = el.parentElement) {
+      var ox = getComputedStyle(el).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 2) return true;
+    }
+    return false;
+  };
+  document.addEventListener('touchstart', function (e) {
+    t0 = null;
+    if (e.touches.length !== 1 || !matchMedia('(max-width:820px)').matches) return;
+    if (window.visualViewport && visualViewport.scale > 1.05) return;   /* zoomed in with two fingers: let them pan */
+    var el = e.target, act = document.activeElement;
+    if (el.closest('input,textarea,select,[contenteditable],.mbar') || (act && /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName))) return;
+    if (sideScroller(el)) return;
+    t0 = {x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now()};
+  }, {passive: true});
+  document.addEventListener('touchmove', function (e) { if (e.touches.length > 1) t0 = null; }, {passive: true});
+  document.addEventListener('touchend', function (e) {
+    if (!t0) return;
+    var p = e.changedTouches[0], dx = p.clientX - t0.x, dy = p.clientY - t0.y; var ok = Date.now() - t0.t < 800; t0 = null;
+    if (ok && Math.abs(dx) > 60 && Math.abs(dy) < 40 && Math.abs(dx) > Math.abs(dy) * 2) goTab(dx < 0 ? 1 : -1);
+  }, {passive: true});
+
+  /* a link button in a .seg lights up as soon as it is tapped, before the next page loads */
+  document.querySelectorAll('.seg a').forEach(function (a) {
+    a.addEventListener('click', function () { a.parentNode.querySelectorAll('a').forEach(function (x) { x.classList.toggle('on', x === a); }); });
+  });
+
+  /* analytics: Today / 7 days / 30 days / Year inside the countries and states boxes */
+  document.querySelectorAll('.seg.rs').forEach(function (seg) {
+    var box = seg.closest('.box');
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-r]'); if (!b) return;
+      seg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+      box.querySelectorAll('.rl').forEach(function (l) { l.hidden = l.dataset.r !== b.dataset.r; });
+    });
+  });
 
   /* a .sw switch shows one [data-pane] of its .panes at a time (phones only; on a computer all panes show) */
   document.querySelectorAll('.sw').forEach(function (sw) {

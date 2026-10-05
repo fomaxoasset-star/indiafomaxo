@@ -281,6 +281,7 @@ function reviews_list(array $f = []): array {
     $r['phone'] = substr(preg_replace('/\D/', '', (string)$r['phone']), -10);
     if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
+    if (isset($f['product']) && $r['product'] !== $f['product']) continue;
     if ($q !== '' && !str_contains(mb_strtolower($r['body'] . ' ' . $r['name'] . ' ' . $r['customer']), $q) && !(strlen($qd) >= 4 && str_contains($r['phone'], $qd))) continue;
     $out[] = $r;
   }
@@ -341,8 +342,10 @@ function analytics(string $from, string $to, array $CAT): array {
     'now' => (int)$q('SELECT COUNT(*) FROM online WHERE last > ?', [time() - 300])->fetchColumn()];
   $out['funnel'] = [];
   foreach (FUNNEL as $t => $_) $out['funnel'][$t] = (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
+  /* where visitors come from: visitors, visits and visits that bought, per source */
   $out['sources'] = [];
-  foreach ($q('SELECT source, COUNT(DISTINCT sid) n FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ? GROUP BY source ORDER BY n DESC', $a) as $r) $out['sources'][$r['source']] = (int)$r['n'];
+  foreach ($q('SELECT source, COUNT(DISTINCT vid) v, COUNT(DISTINCT sid) n FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ? GROUP BY source ORDER BY v DESC, n DESC', $a) as $r) $out['sources'][$r['source']] = ['visitors' => (int)$r['v'], 'visits' => (int)$r['n'], 'bought' => 0];
+  foreach ($q('SELECT source, COUNT(DISTINCT sid) n FROM events WHERE type = \'buy\' AND ts >= ? AND ts <= ? GROUP BY source', $a) as $r) if (isset($out['sources'][$r['source']])) $out['sources'][$r['source']]['bought'] = (int)$r['n'];
   [$out['purchases'], $out['revenue']] = sales_between(...$a);
   $f = $out['funnel'];
   $out['conversion'] = $f['view'] ? $f['buy'] / $f['view'] * 100 : null;
@@ -360,17 +363,36 @@ function analytics(string $from, string $to, array $CAT): array {
   foreach ($pr as &$p) $p += ['views' => 0, 'adds' => 0, 'units' => 0, 'rev' => 0]; unset($p);
   uasort($pr, fn($x, $y) => [$y['views'], $y['units']] <=> [$x['views'], $x['units']]);
   $out['products'] = $pr;
-  /* left at checkout: typed a name or mobile but no order from that visit or that mobile since */
-  $leads = $q('SELECT * FROM leads WHERE ordered = 0 AND updated >= ? AND updated <= ? ORDER BY updated DESC LIMIT 200', $a)->fetchAll();
-  if ($leads) {
-    $since = min(array_column($leads, 'created'));
-    $phones = [];
-    foreach ($q("SELECT phone, created FROM orders WHERE status <> 'awaiting' AND created >= ?", [$since]) as $o) { $ph = substr(preg_replace('/\D/', '', $o['phone']), -10); $phones[$ph] = max($phones[$ph] ?? '', $o['created']); }
-    $leads = array_values(array_filter($leads, fn($l) => $l['phone'] === '' || !isset($phones[$l['phone']]) || $phones[$l['phone']] < $l['created']));
-  }
-  $out['leads'] = $leads;
   return $out;
 }
+/* top countries, and visitors by Indian state, for Today, 7 days, 30 days and the last 12 months (distinct visitors, from api/track.php's lookup) */
+function geo_stats(): array {
+  $out = [];
+  foreach (['today' => strtotime('today'), 'd7' => strtotime('-6 day', strtotime('today')), 'd30' => strtotime('-29 day', strtotime('today')), 'year' => strtotime(date('Y-m-01') . ' -11 month')] as $r => $from) {
+    $s = shop_db()->prepare("SELECT country, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND country <> '' GROUP BY country ORDER BY n DESC LIMIT 30"); $s->execute([$from]);
+    $out['countries'][$r] = array_column($s->fetchAll(), 'n', 'country');
+    $s = shop_db()->prepare("SELECT region, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND country = 'IN' AND region <> '' GROUP BY region ORDER BY n DESC"); $s->execute([$from]);
+    $out['states'][$r] = array_column($s->fetchAll(), 'n', 'region');
+  }
+  return $out;
+}
+/* "Left at checkout": everyone who typed their details at checkout, kept for good, newest first, with the order they placed later if any */
+function checkout_leads(): array {
+  $db = shop_db();
+  $leads = $db->query('SELECT * FROM leads ORDER BY updated DESC')->fetchAll();
+  if (!$leads) return [];
+  $orders = [];
+  foreach ($db->query("SELECT no, phone, created FROM orders WHERE status <> 'awaiting' AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;
+  foreach ($leads as &$l) {
+    $l['later'] = '';
+    foreach ($orders[$l['phone']] ?? [] as $o) if ($o['created'] >= substr($l['created'], 0, 16)) { $l['later'] = (string)$o['no']; break; }
+    if ($l['later'] === '' && (int)$l['ordered']) $l['later'] = 'yes';
+  }
+  unset($l);
+  return $leads;
+}
+function lead_items(array $l): string { return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: [])); }
+
 /* chart series for the dashboard: [labels, full labels, values] for Today (hours), 7 and 30 days, and the last 12 months */
 function series(): array {
   $db = shop_db(); $now = time(); $today = date('Y-m-d');

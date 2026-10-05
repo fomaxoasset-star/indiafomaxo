@@ -4,8 +4,10 @@ declare(strict_types=1);
    POST (navigator.sendBeacon from index.html) {t: type, v: visitor id, s: visit id, src, p: path, id, opt, q, lead}
    Types: view (page), product (product page), add (to bag), checkout, pay (payment step), buy (order placed), lead (checkout
    details typed), ping (still on the site). Visitor and visit ids are random strings made in the browser; no IP address,
-   name or cookie is stored for ordinary visits. Bots and the shop owner's own visits (signed in to /admin) are not counted. */
+   name or cookie is stored for ordinary visits. Each visit's country and (in India) state are looked up from the IP address on this
+   server (api/geo, DB-IP Lite); only the country and state are kept, never the address. Bots and the shop owner's own visits (signed in to /admin) are not counted. */
 require __DIR__ . '/store-lib.php';
+require __DIR__ . '/geo-lib.php';
 header('Content-Type: text/plain; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -42,10 +44,13 @@ try {
     foreach (array_slice((array)($l['bag'] ?? []), 0, 20) as $b) if (is_array($b))
       $bag[] = ['id' => $txt($b['id'] ?? '', 48), 'opt' => $txt((string)($b['opt'] ?? ''), 16), 'qty' => max(1, min(99, (int)($b['qty'] ?? 1))), 'name' => $txt($b['name'] ?? '', 90)];
     $step = in_array($l['step'] ?? '', ['details', 'payment'], true) ? $l['step'] : 'details';
+    $email = filter_var($txt($l['email'] ?? '', 120), FILTER_VALIDATE_EMAIL) ?: '';
+    $state = in_array($l['state'] ?? '', FOMAXO_STATES, true) ? $l['state'] : '';
     $s = $db->prepare('SELECT step, created FROM leads WHERE sid = ?'); $s->execute([$sid]); $old = $s->fetch();
     if ($old && $old['step'] === 'payment') $step = 'payment';   // never step back
     shop_upsert('leads', ['sid'], ['sid' => $sid, 'vid' => $vid, 'created' => $old['created'] ?? shop_now(), 'updated' => shop_now(), 'name' => $name,
-      'phone' => strlen($phone) === 10 ? $phone : '', 'step' => $step, 'bag' => json_encode($bag, JSON_UNESCAPED_UNICODE), 'total' => max(0, min(100000000, (int)round((float)($l['total'] ?? 0) * 100))), 'ordered' => 0]);
+      'phone' => strlen($phone) === 10 ? $phone : '', 'step' => $step, 'bag' => json_encode($bag, JSON_UNESCAPED_UNICODE), 'total' => max(0, min(100000000, (int)round((float)($l['total'] ?? 0) * 100))), 'ordered' => 0,
+      'email' => $email, 'state' => $state, 'address' => $txt($l['address'] ?? '', 300)]);
     exit;
   }
   $src = preg_match('/^[a-z]{1,16}$/', (string)($in['src'] ?? '')) ? (string)$in['src'] : 'direct';
@@ -53,7 +58,7 @@ try {
   $product = preg_match('/^[a-z0-9-]{1,48}$/', (string)($in['id'] ?? '')) ? (string)$in['id'] : '';
   $device = preg_match('/Mobi|Android|iPhone|iPad/i', $ua) ? 'phone' : 'computer';
   $s = $db->prepare('SELECT 1 FROM visits WHERE sid = ?'); $s->execute([$sid]);
-  if (!$s->fetchColumn()) try { $db->prepare('INSERT INTO visits(sid, vid, started, last, source, device, pages) VALUES(?,?,?,?,?,?,?)')->execute([$sid, $vid, $now, $now, $src, $device, $t === 'view' ? 1 : 0]); } catch (Throwable $e) { /* the same visit, sent twice at once */ }
+  if (!$s->fetchColumn()) try { $db->prepare('INSERT INTO visits(sid, vid, started, last, source, device, pages, country, region) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$sid, $vid, $now, $now, $src, $device, $t === 'view' ? 1 : 0, ...fomaxo_geo(fomaxo_geo_ip())]); } catch (Throwable $e) { /* the same visit, sent twice at once */ }
   $db->prepare('INSERT INTO events(ts, vid, sid, type, source, path, product, qty, device) VALUES(?,?,?,?,?,?,?,?,?)')
     ->execute([shop_now(), $vid, $sid, $t, $src, $path, $product, max(0, min(99, (int)($in['q'] ?? 0))), $device]);
   if ($t === 'buy') $db->prepare('UPDATE leads SET ordered = 1 WHERE sid = ?')->execute([$sid]);
