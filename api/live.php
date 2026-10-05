@@ -19,6 +19,7 @@ if (isset($_GET['img'])) {
 header('Content-Type: application/javascript; charset=utf-8');
 header('Cache-Control: no-store');
 try {
+  fomaxo_catalog();   // the first time, this copies the products in index.html into the database
   $live = ['stock' => shop_stock(), 'lowStock' => shop_low_stock(), 'hidden' => [], 'prices' => [], 'compareAt' => [], 'added' => [], 'edits' => []];
   foreach (shop_products() as $id => $d) {
     if ($d['hidden']) $live['hidden'][] = $id;

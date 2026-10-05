@@ -19,7 +19,18 @@ function shop_db(): PDO {
   else { $SHOP_DB = new PDO("sqlite:$PRIV/shop.sqlite", null, null, SHOP_PDO); $SHOP_DB->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;'); }
   shop_schema($SHOP_DB);
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
+  if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
+}
+/* Once, when this version first runs: the owner asked to start from zero. Every order so far (tests) is copied to
+   fomaxo-private/orders-before-fresh-start-<date>.json, then removed, and numbering starts again at FMX-IN-1001. */
+function shop_fresh_start(): void {
+  global $PRIV;
+  $db = shop_db(); $all = $db->query('SELECT * FROM orders ORDER BY id')->fetchAll();
+  if ($all && @file_put_contents("$PRIV/orders-before-fresh-start-" . date('Y-m-d-His') . '.json', json_encode($all, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX) === false) return;   // no backup, no delete
+  $db->exec('DELETE FROM orders');
+  shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1));
+  shop_set('fresh_start', shop_now());
 }
 const SHOP_PDO = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC];
 function shop_mysql(array $cfg): PDO {
@@ -48,7 +59,17 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS costs(product VARCHAR(48) NOT NULL, opt VARCHAR(16) NOT NULL, cost INT NOT NULL, PRIMARY KEY(product, opt))$tail",
     "CREATE TABLE IF NOT EXISTS expenses(id $auto, day VARCHAR(10) NOT NULL, category VARCHAR(40) NOT NULL, note VARCHAR(200) NOT NULL DEFAULT '',
       amount INT NOT NULL, created VARCHAR(19) NOT NULL)$tail",
+    /* visitor analytics (api/track.php): anonymous visitor and visit ids made in the browser, no IP address or cookies from others */
+    "CREATE TABLE IF NOT EXISTS events(id $auto, ts VARCHAR(19) NOT NULL, vid VARCHAR(16) NOT NULL, sid VARCHAR(16) NOT NULL, type VARCHAR(10) NOT NULL,
+      source VARCHAR(16) NOT NULL DEFAULT '', path VARCHAR(120) NOT NULL DEFAULT '', product VARCHAR(48) NOT NULL DEFAULT '', qty INT NOT NULL DEFAULT 0, device VARCHAR(8) NOT NULL DEFAULT '')$tail",
+    "CREATE TABLE IF NOT EXISTS online(vid VARCHAR(16) NOT NULL PRIMARY KEY, last INT NOT NULL)$tail",
+    /* "Left at checkout": what a shopper had typed and had in the bag, one row per visit, until they buy */
+    "CREATE TABLE IF NOT EXISTS leads(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, created VARCHAR(19) NOT NULL, updated VARCHAR(19) NOT NULL,
+      name VARCHAR(80) NOT NULL DEFAULT '', phone VARCHAR(16) NOT NULL DEFAULT '', step VARCHAR(10) NOT NULL DEFAULT '', bag $text NOT NULL, total INT NOT NULL DEFAULT 0,
+      ordered INT NOT NULL DEFAULT 0)$tail",
   ] as $sql) $db->exec($sql);
+  foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)'] as $sql)
+    try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
 }
 
 /* Admin page: move the shop from shop.sqlite into a Hostinger MySQL database. Checks the login, copies every order, stock number,
@@ -64,7 +85,7 @@ function shop_move_to_mysql(string $name, string $user, string $pass): string {
     $src = shop_db();
     if ($src->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && !(int)$dst->query('SELECT COUNT(*) FROM orders')->fetchColumn()) {
       $dst->beginTransaction();
-      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses'] as $t) {
+      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads'] as $t) {
         $dst->exec("DELETE FROM $t");
         foreach ($src->query("SELECT * FROM $t") as $r) {
           $cols = array_keys($r);
