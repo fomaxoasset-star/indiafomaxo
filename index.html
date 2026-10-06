@@ -524,8 +524,7 @@ html[data-mode="light"] .store-map .map iframe{filter:grayscale(.55) sepia(.25) 
   .dr-foot .sub-row .price{font-size:22px}
   .dr-foot .btn{min-height:46px;padding-top:0;padding-bottom:0}
   .dr-foot .pay-note{margin:-2px 0 0;font-size:11px}
-  .dr-foot #doCheckout:not(.line)~.bag-more{grid-column:1/-1}
-  .dr-foot #doCheckout.line,.dr-foot .bag-more{grid-column:auto;min-height:40px;font-size:10px;letter-spacing:.14em;padding:0 6px}
+  .dr-foot .bag-more{min-height:40px;font-size:10px;letter-spacing:.14em}
   .bag-like{margin:18px -16px 4px}.bag-like h5{margin:0 16px 10px}.bl-row{padding:0 16px 10px;scroll-padding:0 16px}
   .bl-card{flex-basis:118px}
   .line-item{grid-template-columns:64px 1fr;gap:12px;padding:14px 0}.line-item img{width:64px}
@@ -2587,9 +2586,9 @@ function renderCart(){
   const r = $('.bl-row', body); if (r) r.scrollLeft = rowX;
   const t = subtotal(cart);
   foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div><div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
-    ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p><button class="btn line block" id="doCheckout">Order via WhatsApp</button>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
+    ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
     <a class="btn line block bag-more" href="#/fragrances" data-close>Continue shopping</a>`;
-  $('#doCheckout').onclick = () => checkout(cart);
+  const dc = $('#doCheckout'); if (dc) dc.onclick = () => checkout(cart);
   const gc = $('#goCheckout'); if (gc) gc.onclick = () => goCheckout('#/checkout');
 }
 $('#cartBody').addEventListener('click', e => {
