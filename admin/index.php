@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '22';
+const ASSET_V = '24';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -293,9 +293,11 @@ if ($do === 'members_excel') {
   send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
 }
 if ($do === 'leads_excel') {
+  $okDay = fn(string $d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $d);
+  $dd = $okDay($F['from']) && $okDay($F['to']) ? [min($F['from'], $F['to']), max($F['from'], $F['to'])] : [];   // the dates picked on Analytics
   $rows = array_map(fn($l) => [substr($l['updated'], 0, 16), $l['name'], $l['phone'] ? phone_fmt($l['phone']) : '', $l['email'], $l['state'], $l['address'], lead_items($l), round($l['total'] / 100, 2),
-    $l['step'] === 'payment' ? 'Payment page' : 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later'])], checkout_leads());
-  send_sheet('FOMAXO-left-at-checkout-' . date('Y-m-d'), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later'], $rows, 'Left at checkout');
+    $l['step'] === 'payment' ? 'Payment page' : 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later'])], checkout_leads(...$dd));
+  send_sheet('FOMAXO-left-at-checkout-' . ($dd ? implode('-to-', $dd) : date('Y-m-d')), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later'], $rows, 'Left at checkout');
 }
 if ($do === 'expenses_excel') {
   $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day, id'); $s->execute(["$pyear-01-01", ($pyear + 1) . '-01-01']);
