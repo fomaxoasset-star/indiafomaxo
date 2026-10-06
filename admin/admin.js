@@ -1,4 +1,4 @@
-/* FOMAXO India admin: phone switches between boxes, and the Sales / Visitors bar charts on the dashboard. */
+/* FOMAXO India admin: phone switches between boxes, dd/mm/yyyy date boxes, the Sales / Visitors bar charts on the dashboard and the Reports line graph. */
 (function () {
   /* phones: keep the open tab in view in the scrolling tab strip */
   var tabOn = document.querySelector('.mtabs .on'); if (tabOn) { var bar = tabOn.parentNode, br = bar.getBoundingClientRect(), tr = tabOn.getBoundingClientRect(); bar.scrollLeft += tr.left - br.left - (br.width - tr.width) / 2; }
@@ -38,15 +38,51 @@
     a.addEventListener('click', function () { a.parentNode.querySelectorAll('a').forEach(function (x) { x.classList.toggle('on', x === a); }); });
   });
 
-  /* analytics: Today / 7 days / 30 days / Year inside the countries and states boxes */
-  document.querySelectorAll('.seg.rs').forEach(function (seg) {
-    var box = seg.closest('.box');
-    seg.addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-r]'); if (!b) return;
-      seg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
-      box.querySelectorAll('.rl').forEach(function (l) { l.hidden = l.dataset.r !== b.dataset.r; });
+  /* date boxes: typed as dd/mm/yyyy (the slashes appear by themselves), whatever date format the computer is set to;
+     the calendar icon opens the date picker, which always hands back year-month-day, so day and month never swap */
+  var DATE_MSG = 'Type the date as dd/mm/yyyy';
+  var ymd = function (v) {   /* "06/10/2026" → "2026-10-06", or '' when it is not a real date */
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v); if (!m) return '';
+    var d = +m[1], mo = +m[2], y = +m[3], t = new Date(y, mo - 1, d);
+    return y >= 2000 && y <= 2100 && t.getFullYear() === y && t.getMonth() === mo - 1 && t.getDate() === d ? m[3] + '-' + m[2] + '-' + m[1] : '';
+  };
+  var dateOk = function (inp) { var v = inp.value.trim(); return v === '' ? !inp.required : !!ymd(v); };
+  var dateMsg = function (inp, show) {
+    var box = inp.closest('.dbox'), msg = box.querySelector('.derr');
+    if (show && !msg) { msg = document.createElement('small'); msg.className = 'derr'; msg.textContent = DATE_MSG; box.appendChild(msg); }
+    if (!show && msg) msg.remove();
+    box.classList.toggle('bad', !!show);
+  };
+  document.querySelectorAll('input[data-date]').forEach(function (inp) {
+    var pick = inp.parentNode.querySelector('.dcal input');
+    inp.addEventListener('input', function (e) {
+      /* keep digits and slashes; a slash after one digit adds the 0 (6/ → 06/); a slash appears after the day and the month */
+      var seg = [''], i = 0, v = inp.value, back = e.inputType && e.inputType.indexOf('delete') === 0;
+      for (var c = 0; c < v.length; c++) {
+        var ch = v[c];
+        if (/\d/.test(ch)) { if (seg[i].length === (i < 2 ? 2 : 4)) { if (i === 2) continue; seg[++i] = ''; } seg[i] += ch; }
+        else if (ch === '/' && seg[i].length && i < 2) { if (seg[i].length === 1) seg[i] = '0' + seg[i]; seg[++i] = ''; }
+      }
+      var out = seg.join('/'); if (!back && i < 2 && seg[i].length === 2) out += '/';
+      if (out !== v) { var end = inp.selectionStart === v.length; inp.value = out; if (end) inp.setSelectionRange(out.length, out.length); }
+      if (inp.closest('.dbox').classList.contains('bad') && dateOk(inp)) dateMsg(inp, false);
+    });
+    inp.addEventListener('blur', function () { dateMsg(inp, !dateOk(inp)); });
+    if (!pick) return;
+    pick.addEventListener('click', function () { pick.value = ymd(inp.value.trim()); try { pick.showPicker(); } catch (x) { /* the browser opens it itself */ } });
+    pick.addEventListener('change', function () {
+      if (!pick.value) return;
+      var p = pick.value.split('-'); inp.value = p[2] + '/' + p[1] + '/' + p[0]; dateMsg(inp, false);
+      inp.dispatchEvent(new Event('input', {bubbles: true}));
     });
   });
+  /* a wrong date stops the form and says how to type it */
+  document.addEventListener('submit', function (e) {
+    var bad = Array.prototype.filter.call(e.target.querySelectorAll('input[data-date]'), function (i) { return !dateOk(i); });
+    if (!bad.length) return;
+    e.preventDefault(); e.stopPropagation();
+    bad.forEach(function (i) { dateMsg(i, true); }); bad[0].focus();
+  }, true);
 
   /* a "Saved" message fades away by itself after a few seconds (tap it to close it sooner); problems stay until closed */
   var flash = document.querySelector('.flash');
@@ -126,9 +162,9 @@
       if (src.classList.contains('kpi')) {
         /* a number tile opens all the tiles big, with the one tapped lit up */
         copy = document.createElement('div'); copy.className = 'box zkpis';
-        var dates = document.querySelector('.range .muted.small');
+        var dates = document.querySelector('.dbar .dspan');
         copy.innerHTML = '<div class="bh"><h3>At a glance</h3></div><div class="bb"><div class="zgrid"></div>' + (dates ? '<p class="muted small"></p>' : '') + '</div>';
-        if (dates) copy.querySelector('p').textContent = dates.textContent;
+        if (dates) copy.querySelector('p').textContent = dates.textContent.replace(/^\. ?/, '');
         src.parentNode.querySelectorAll('.kpi').forEach(function (k) {
           var c = k.cloneNode(true); c.classList.remove('zoomable'); c.removeAttribute('tabindex'); c.removeAttribute('role'); c.removeAttribute('title');
           if (k === src) c.classList.add('on');
@@ -142,13 +178,7 @@
       if (head) head.appendChild(x); else copy.appendChild(x);
       zoomer = document.createElement('div'); zoomer.className = 'zoomer'; zoomer.setAttribute('role', 'dialog'); zoomer.setAttribute('aria-modal', 'true');
       zoomer.appendChild(copy); document.body.appendChild(zoomer); document.body.classList.add('zooming');
-      zoomer.addEventListener('click', function (e) {
-        if (e.target === zoomer || e.target.closest('.zx')) { shutZoom(); return; }
-        /* Today / 7 days / 30 days / Year inside the big countries and states box */
-        var b = e.target.closest('.seg.rs button[data-r]'); if (!b) return;
-        copy.querySelectorAll('.seg.rs button').forEach(function (y) { y.classList.toggle('on', y === b); });
-        copy.querySelectorAll('.rl').forEach(function (l) { l.hidden = l.dataset.r !== b.dataset.r; });
-      });
+      zoomer.addEventListener('click', function (e) { if (e.target === zoomer || e.target.closest('.zx')) shutZoom(); });
       history.pushState({zoom: 1}, '');
       x.focus();
     };
@@ -171,56 +201,102 @@
     window.addEventListener('popstate', function () { shutZoom(true); });
   }
 
-  /* bar charts: one series each, gold bars, a few grid lines, a tooltip on hover or tap */
-  var dataEl = document.getElementById('chartData'); if (!dataEl) return;
-  var DATA = JSON.parse(dataEl.textContent);
-  var inr = function (p) { var r = p / 100; return '₹' + r.toLocaleString('en-IN', {maximumFractionDigits: r < 100 ? 2 : 0}); };
+  /* charts: the dashboard's Sales / Visitors bars for the dates picked, and the Reports line graph */
+  var inr = function (p) { var r = p / 100, neg = r < 0; r = Math.abs(r); return (neg ? '−' : '') + '₹' + r.toLocaleString('en-IN', {maximumFractionDigits: r < 100 ? 2 : 0}); };
   var short = function (v, money) {
-    var r = money ? v / 100 : v;
+    var r = Math.abs(money ? v / 100 : v), neg = v < 0;
     var s = r >= 1e7 ? (r / 1e7).toFixed(1).replace(/\.0$/, '') + 'Cr' : r >= 1e5 ? (r / 1e5).toFixed(1).replace(/\.0$/, '') + 'L' : r >= 1e3 ? (r / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(r));
-    return (money ? '₹' : '') + s;
+    return (neg ? '−' : '') + (money ? '₹' : '') + s;
   };
   var nice = function (max) { if (max <= 0) return 1; var p = Math.pow(10, Math.floor(Math.log10(max))), f = max / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; };
+  var showTip = function (el, tip, html, x, y) {
+    var rc = el.getBoundingClientRect();
+    tip.innerHTML = html; tip.style.left = Math.min(rc.width - 60, Math.max(60, x - rc.left)) + 'px'; tip.style.top = (y - rc.top) + 'px'; tip.hidden = false;
+  };
+  var charts = [];
 
-  function draw(box) {
-    var kind = box.dataset.chart, range = box.dataset.range || 'd7', d = DATA[kind][range], money = kind === 'sales';
-    var el = box.querySelector('.chart'), svg = el.querySelector('svg'), tip = el.querySelector('.tip');
-    var W = el.clientWidth - 24, H = el.clientHeight - 14; if (W < 50 || H < 50) return;
-    var padL = 46, padB = 20, padT = 8, iw = W - padL - 4, ih = H - padB - padT;
-    var vals = d.values, n = vals.length, max = nice(Math.max.apply(null, vals.concat([money ? 100 : 2]))), gap = n > 20 ? 2 : 4;
-    if (!money && max % 2) max += 1;
-    var bw = Math.max(2, iw / n - gap), out = '';
-    for (var g = 0; g <= 2; g++) {
-      var y = padT + ih - ih * g / 2;
-      out += '<line x1="' + padL + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" stroke="#2e2a21" stroke-width="1"/>'
-        + '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" fill="#a59c89" font-size="11">' + short(max * g / 2, money) + '</text>';
-    }
-    var every = Math.ceil(n / (W < 420 ? 6 : 12));
-    vals.forEach(function (v, i) {
-      var x = padL + i * (iw / n) + gap / 2, h = v > 0 ? Math.max(2, ih * v / max) : 0, y = padT + ih - h, r = Math.min(4, bw / 2, h);
-      if (h > 0) out += '<path d="M' + x + ',' + (padT + ih) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + y + ' ' + (x + bw) + ',' + (y + r) + 'V' + (padT + ih) + 'Z" fill="#c9a45c"/>';
-      out += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * iw / n) + '" y="' + padT + '" width="' + (iw / n) + '" height="' + ih + '" fill="transparent"/>';
-      if (i % every === 0) out += '<text x="' + (x + bw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" fill="#a59c89" font-size="11">' + d.labels[i] + '</text>';
-    });
-    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = out;
-    var tot = vals.reduce(function (a, b) { return a + b; }, 0);
-    box.querySelector('.ctot').innerHTML = '<b>' + (money ? inr(tot) : (kind === 'visitors' ? d.total : tot).toLocaleString('en-IN')) + '</b>' + d.caption;
-    svg.onmousemove = svg.onclick = function (e) {
-      var t = e.target.closest('.hit'); if (!t) { tip.hidden = true; return; }
-      var i = +t.dataset.i, rc = el.getBoundingClientRect(), rt = t.getBoundingClientRect();
-      tip.innerHTML = '<b>' + (money ? inr(vals[i]) : vals[i] + (vals[i] === 1 ? ' visitor' : ' visitors')) + '</b>' + d.full[i];
-      tip.style.left = Math.min(rc.width - 60, Math.max(60, rt.left - rc.left + rt.width / 2)) + 'px'; tip.style.top = (rt.top - rc.top + 30) + 'px'; tip.hidden = false;
+  var dataEl = document.getElementById('chartData');
+  if (dataEl) {
+    var DATA = JSON.parse(dataEl.textContent);
+    var drawBars = function (box) {
+      var kind = box.dataset.chart, d = DATA[kind], money = kind === 'sales';
+      var el = box.querySelector('.chart'), svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+      var W = el.clientWidth - 24, H = el.clientHeight - 14; if (W < 50 || H < 50) return;
+      var padL = 46, padB = 20, padT = 8, iw = W - padL - 4, ih = H - padB - padT;
+      var vals = d.values, n = vals.length, max = nice(Math.max.apply(null, vals.concat([money ? 100 : 2]))), gap = n > 40 ? 1 : n > 20 ? 2 : 4;
+      if (!money && max % 2) max += 1;
+      var bw = Math.max(1, iw / n - gap), out = '';
+      for (var g = 0; g <= 2; g++) {
+        var y = padT + ih - ih * g / 2;
+        out += '<line x1="' + padL + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" stroke="#2e2a21" stroke-width="1"/>'
+          + '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" fill="#a59c89" font-size="11">' + short(max * g / 2, money) + '</text>';
+      }
+      var every = Math.ceil(n / (W < 420 ? 6 : 12));
+      vals.forEach(function (v, i) {
+        var x = padL + i * (iw / n) + gap / 2, h = v > 0 ? Math.max(2, ih * v / max) : 0, y = padT + ih - h, r = Math.min(4, bw / 2, h);
+        if (h > 0) out += '<path d="M' + x + ',' + (padT + ih) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + y + ' ' + (x + bw) + ',' + (y + r) + 'V' + (padT + ih) + 'Z" fill="#c9a45c"/>';
+        out += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * iw / n) + '" y="' + padT + '" width="' + (iw / n) + '" height="' + ih + '" fill="transparent"/>';
+        if (i % every === 0) out += '<text x="' + (x + bw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" fill="#a59c89" font-size="11">' + d.labels[i] + '</text>';
+      });
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = out;
+      var tot = vals.reduce(function (a, b) { return a + b; }, 0);
+      box.querySelector('.ctot').innerHTML = '<b>' + (money ? inr(tot) : d.total.toLocaleString('en-IN')) + '</b>';
+      box.querySelector('.ctot').appendChild(document.createTextNode(box.dataset.caption || ''));
+      svg.onmousemove = svg.onclick = function (e) {
+        var t = e.target.closest('.hit'); if (!t) { tip.hidden = true; return; }
+        var i = +t.dataset.i, rt = t.getBoundingClientRect();
+        showTip(el, tip, '<b>' + (money ? inr(vals[i]) : vals[i] + (vals[i] === 1 ? ' visitor' : ' visitors')) + '</b>' + d.full[i], rt.left + rt.width / 2, rt.top + 30);
+      };
+      svg.onmouseleave = function () { tip.hidden = true; };
     };
-    svg.onmouseleave = function () { tip.hidden = true; };
+    document.querySelectorAll('[data-chart]').forEach(function (box) { charts.push(function () { drawBars(box); }); });
   }
-  var boxes = document.querySelectorAll('[data-chart]');
-  boxes.forEach(function (box) {
-    box.querySelector('.seg').addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-r]'); if (!b) return;
-      box.dataset.range = b.dataset.r; box.querySelectorAll('.seg button').forEach(function (x) { x.classList.toggle('on', x === b); }); draw(box);
+
+  /* Reports: a gold line with a dot for each day or month; tap a dot for its amount; the total shows at the bottom right */
+  var gEl = document.getElementById('repGraph');
+  if (gEl) {
+    var G = JSON.parse(gEl.textContent), gbox = gEl.closest('.rgraph');
+    var drawLine = function () {
+      var key = gbox.dataset.g, money = key !== 'orders', vals = G[key], n = vals.length;
+      var el = gbox.querySelector('.chart'), svg = el.querySelector('svg'), tip = el.querySelector('.tip'); tip.hidden = true;
+      var W = el.clientWidth - 24, H = el.clientHeight - 14; if (W < 50 || H < 50) return;
+      var padL = 50, padR = 12, padB = 20, padT = 12, iw = W - padL - padR, ih = H - padB - padT;
+      var hi = nice(Math.max.apply(null, vals.concat([money ? 100 : 2]))), lo = Math.min.apply(null, vals.concat([0]));
+      lo = lo < 0 ? -nice(-lo) : 0;
+      var X = function (i) { return padL + (n === 1 ? iw / 2 : iw * i / (n - 1)); }, Y = function (v) { return padT + ih - ih * (v - lo) / (hi - lo); };
+      var out = '', steps = lo < 0 ? [lo, 0, hi] : [0, hi / 2, hi];
+      steps.forEach(function (v) {
+        out += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="' + (v === 0 && lo < 0 ? '#5a4c2e' : '#2e2a21') + '" stroke-width="1"/>'
+          + '<text x="' + (padL - 8) + '" y="' + (Y(v) + 4) + '" text-anchor="end" fill="#a59c89" font-size="11">' + short(v, money) + '</text>';
+      });
+      var pts = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
+      out += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#c9a45c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+      var every = Math.ceil(n / (W < 420 ? 6 : 12)), r = n > 60 ? 2.5 : 3.5;
+      vals.forEach(function (v, i) {
+        out += '<circle class="dot" data-i="' + i + '" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + r + '" fill="' + (v < 0 ? '#d46a5a' : '#e3c68a') + '" stroke="#16140f" stroke-width="1.5"/>';
+        var w = n === 1 ? iw : iw / (n - 1);
+        out += '<rect class="hit" data-i="' + i + '" x="' + (X(i) - w / 2) + '" y="' + padT + '" width="' + w + '" height="' + ih + '" fill="transparent"/>';
+        if (i % every === 0) out += '<text x="' + X(i) + '" y="' + (H - 4) + '" text-anchor="' + (i === 0 && n > 1 ? 'start' : 'middle') + '" fill="#a59c89" font-size="11">' + G.labels[i] + '</text>';
+      });
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = out;
+      var tot = vals.reduce(function (a, b) { return a + b; }, 0);
+      gbox.querySelector('.gtot b').textContent = money ? inr(tot) : tot.toLocaleString('en-IN') + (tot === 1 ? ' order' : ' orders');
+      gbox.querySelector('.gtot b').className = key === 'profit' && tot < 0 ? 'neg' : '';
+      svg.onclick = svg.onmousemove = function (e) {
+        var t = e.target.closest('.hit'); if (!t) { tip.hidden = true; return; }
+        var i = +t.dataset.i, d = svg.querySelector('.dot[data-i="' + i + '"]'), rd = d.getBoundingClientRect();
+        svg.querySelectorAll('.dot.on').forEach(function (x) { x.classList.remove('on'); x.setAttribute('r', r); }); d.classList.add('on'); d.setAttribute('r', r + 2);
+        showTip(el, tip, '<b>' + (money ? inr(vals[i]) : vals[i] + (vals[i] === 1 ? ' order' : ' orders')) + '</b>' + G.full[i], rd.left + rd.width / 2, rd.top - 4);
+      };
+      svg.onmouseleave = function () { tip.hidden = true; };
+    };
+    gbox.querySelector('.gm').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-g]'); if (!b) return;
+      gbox.dataset.g = b.dataset.g; gbox.querySelectorAll('.gm button').forEach(function (x) { x.classList.toggle('on', x === b); }); drawLine();
     });
-  });
-  var all = function () { boxes.forEach(draw); };
+    charts.push(drawLine);
+  }
+  var all = function () { charts.forEach(function (f) { f(); }); };
   window.addEventListener('resize', all); all();
 })();
 
