@@ -1500,6 +1500,8 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
 @media(min-width:761px){
   .hero-cine{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:auto;min-height:0;max-height:none;padding-top:80px}
   .hero-cine .hc-slides{position:relative;inset:auto;width:100%;aspect-ratio:2688/1520;flex:none}
+  /* never taller than the screen under the menu bar, so the whole banner shows at once */
+  .hero-cine .hc-slides{width:min(100%,calc((100svh - 128px) * 2688 / 1520));margin:0 auto}
   .hero-cine .hc-slide .hc-bg,.hero-cine .hc-slide.on .hc-bg,.hero-cine .hc-slide.prev .hc-bg{width:100%;transform:none;filter:none}
   .hero-cine .hc-veil,.hero-cine .hc-frame{display:none}
   .hero-cine .hc-copy{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"em h1 ctas" "em lead ctas";align-items:center;column-gap:clamp(20px,3vw,48px);row-gap:6px;width:100%;max-width:none;margin:0;padding:clamp(26px,3vw,40px) clamp(24px,4vw,72px) 0;text-align:left;border-bottom:1px solid rgba(215,170,105,.18);padding-bottom:clamp(22px,2.6vw,34px)}
