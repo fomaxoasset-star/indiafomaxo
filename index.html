@@ -1976,6 +1976,41 @@ html[data-mode="light"] .co-err{color:#a8322a}
   .co-btn{font-size:12px;letter-spacing:.16em;padding:0 18px}
   .co-trust{font-size:14px}
 }
+/* product heading: collection above the name, the type in a small gold line just below it */
+.ptitle{display:flex;flex-direction:column;gap:10px}
+.buy .ptype{font-size:11.5px;font-weight:500;letter-spacing:.34em;text-transform:uppercase;color:var(--gold)}
+@media(max-width:600px){.buy .ptype{font-size:12.5px;letter-spacing:.12em}}
+/* laptop product page: same order as before, tighter spacing so everything down to the last section fits one 1440x900 screen */
+@media(min-width:961px){
+  .pdp-crumbs{padding-top:10px!important}
+  .pdp{padding-top:14px}
+  .gallery{top:96px}
+  .buy{gap:12px}
+  .buy>div:first-child{gap:8px!important;padding-bottom:12px}
+  .buy .sub{font-size:11px}
+  .ptitle{gap:6px}
+  .buy h1{font-size:clamp(34px,2.8vw,42px);line-height:1}
+  .buy .ptype{font-size:11px}
+  .buy .price-rate{flex-direction:row;align-items:center;flex-wrap:wrap;gap:6px 18px;margin-top:2px}
+  .buy .p-rate-stars{font-size:13px;letter-spacing:.12em}
+  .buy .p-rate-num{font-size:11px;letter-spacing:.12em}
+  .buy .pprice,.buy .pprice:has(.was){font-size:28px}
+  .buy .lead{font-size:18px;line-height:1.4;margin-top:0}
+  .buy .opt-label{margin-bottom:8px}
+  .sizes{gap:10px}
+  .sizes button{padding:7px 8px 6px;gap:2px;line-height:1.25}
+  .sizes button b{font-size:18px}
+  .sizes button .sz-p{margin-top:0;font-size:13px}
+  .qty{height:44px}
+  .buy .btn{min-height:44px}
+  .buy-trust{margin:-4px 0 0;font-size:12px}
+  .pshare{margin:-6px 0 0;font-size:12px}
+  .perks div{padding:7px 14px;font-size:12.5px;line-height:1.4;gap:10px}
+  .perks svg{width:16px;height:16px}
+  .acc summary{padding:10px 0;font-size:11.5px;line-height:1.4}
+  .acc summary::after{line-height:1}
+  .acc .body{padding-bottom:18px}
+}
 </style>
 <script>document.body.classList.add("home")</script>
 
@@ -2357,6 +2392,10 @@ const LIVE = window.STORE_LIVE || {};
   (S.tiers || []).forEach(t => t.products = t.products.filter(id => !hid.has(id)));
   if (S.mini) S.mini.products = S.mini.products.filter(id => !hid.has(id));
 })();
+/* every perfume is unisex: its type always ends in "· Unisex", also for products added or edited on the admin page,
+   and never twice (an existing "Unisex" anywhere in the type is taken out first). Car perfume, personal care and sets keep their type. */
+const unisexType = f => { const t = String(f || '').replace(/[\s·•|,/(–—-]*\bunisex\b\)?/gi, '').replace(/^[\s·•|,/–—-]+|[\s·•|,/(–—-]+$/g, '').trim(); return (t ? t + ' · ' : '') + 'Unisex'; };
+S.products.forEach(p => { if (!p.kind) p.family = unisexType(p.family); });
 /* Visitor analytics on our own server (api/track.php): a random visitor id kept on this device and a visit id that ends
    after 30 minutes without activity. No names, IP addresses or advertising trackers; checkout details are sent only
    when typed at checkout, so the shop can follow up on orders that were not finished. */
@@ -2805,8 +2844,9 @@ function product(id, q){
   const related = isCar ? [...CAR.filter(x => x.id !== p.id), ...FRAG].slice(0, 4) : isCare ? PC.filter(x => x.id !== p.id).sort((a, b) => (b.cat === p.cat) - (a.cat === p.cat)).slice(0, 4) : FRAG.filter(x => x.id !== p.id).slice(0, 4);
   const ship = S.shipping.length ? S.shipping.map(s => `<p>${esc(s)}</p>`).join('') : `<p class="ph">Add your delivery &amp; returns information in assets/data.js.</p>`;
   document.title = `${p.name} — FOMAXO`;
+  const wide = matchMedia('(min-width: 961px)').matches;   /* laptop: every section starts closed so the page fits one screen */
   return `<div class="wrap page-fade">
-    <div class="crumbs" style="padding-top:34px"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${isCare ? '<a href="#/personal-care">Personal Care</a>' : '<a href="#/fragrances?f=fragrance">Fragrance</a>'}${isCar ? ' &nbsp;/&nbsp; <a href="#/fragrances?f=car">Car Fragrance</a>' : ''} &nbsp;/&nbsp; ${esc(p.name)}</div>
+    <div class="crumbs pdp-crumbs" style="padding-top:34px"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${isCare ? '<a href="#/personal-care">Personal Care</a>' : '<a href="#/fragrances?f=fragrance">Fragrance</a>'}${isCar ? ' &nbsp;/&nbsp; <a href="#/fragrances?f=car">Car Fragrance</a>' : ''} &nbsp;/&nbsp; ${esc(p.name)}</div>
     <div class="pdp">
       <div class="gallery">
         <div class="thumbs">${gallery.map((g,i) => `<button class="${i?'':'on'}" data-g="${g}" aria-label="Image ${i+1}"><img src="${IMG(g)}" alt="" loading="lazy"></button>`).join('')}</div>
@@ -2814,8 +2854,8 @@ function product(id, q){
       </div>
       <div class="buy">
         <div style="display:flex;flex-direction:column;gap:14px">
-          <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a> · ` : ''}${esc(p.family)}</span>
-          <h1>${esc(p.name)}</h1>
+          <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a>` : esc(CAT_NAME[catOf(p)])}</span>
+          <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
           <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a></div>
           <div class="stk-row" id="pstock">${stockTag(p, size)}</div>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
@@ -2834,8 +2874,8 @@ function product(id, q){
         <a class="pshare" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}Share with a friend on WhatsApp</a>
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
-          <details open><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
-          ${p.notes && p.notes.key ? `<details open><summary>Fragrance notes</summary><div class="body notes-list"><div><b>Key notes</b><span>${esc(p.notes.key)}</span></div></div></details>` : ''}${p.notes && !p.notes.key ? `<details><summary>Fragrance notes</summary><div class="body notes-list"><div><b>Top</b><span>${esc(p.notes.top)}</span></div><div><b>Heart</b><span>${esc(p.notes.heart)}</span></div><div><b>Base</b><span>${esc(p.notes.base)}</span></div></div></details>` : ''}
+          <details${wide ? '' : ' open'}><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
+          ${p.notes && p.notes.key ? `<details${wide ? '' : ' open'}><summary>Fragrance notes</summary><div class="body notes-list"><div><b>Key notes</b><span>${esc(p.notes.key)}</span></div></div></details>` : ''}${p.notes && !p.notes.key ? `<details><summary>Fragrance notes</summary><div class="body notes-list"><div><b>Top</b><span>${esc(p.notes.top)}</span></div><div><b>Heart</b><span>${esc(p.notes.heart)}</span></div><div><b>Base</b><span>${esc(p.notes.base)}</span></div></div></details>` : ''}
           <details><summary>Shipping &amp; delivery</summary><div class="body">${ship}</div></details>
           ${isCare || isCar ? '' : `<details><summary>Gifting &amp; personalisation</summary><div class="body"><p>Designed as the perfect gift for weddings, functions and special occasions. Premium packaging makes it ready to gift without extra effort.</p><p>Custom engraving is available on bottles for names, initials or special messages.</p><p><a class="link ext" href="#/collections/name" aria-label="Explore Exclusive Personalized Gifting">Explore Exclusive Personalized Gifting<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a></p></div></details>`}
         </div>
