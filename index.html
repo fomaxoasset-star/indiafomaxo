@@ -2362,9 +2362,11 @@ const TRK = (() => {
     if (!sid || Date.now() - last > 30 * 60e3) { sid = rid(); src = source(); put(sessionStorage, 'fx_sid', sid); put(sessionStorage, 'fx_src', src); }
     put(localStorage, 'fx_last', String(Date.now())); return [sid, src];
   };
+  /* iPads say "Macintosh" like a computer, but have a touch screen */
+  const tablet = /iPad|Tablet/i.test(navigator.userAgent) || (/Android/i.test(navigator.userAgent) && !/Mobi/i.test(navigator.userAgent)) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   const send = (t, x = {}) => {
     if (off) return; const [s, src] = visit();
-    const body = JSON.stringify({t, v: vid, s, src, p: location.hash.replace(/^#/, '').split('?')[0] || '/', ...x});
+    const body = JSON.stringify({t, v: vid, s, src, p: location.hash.replace(/^#/, '').split('?')[0] || '/', ...(tablet ? {d: 'tablet'} : {}), ...x});
     try { if (!navigator.sendBeacon || !navigator.sendBeacon('api/track.php', body)) fetch('api/track.php', {method: 'POST', body, keepalive: true}).catch(() => {}); } catch(e) {}
   };
   setInterval(() => { if (document.visibilityState === 'visible' && Date.now() - (+get(localStorage, 'fx_last') || 0) < 30 * 60e3) send('ping'); }, 60e3);

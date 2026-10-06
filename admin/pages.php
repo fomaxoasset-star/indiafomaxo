@@ -314,7 +314,7 @@ if ($tab === 'analytics') {
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
     . '<div class="kpi"><span>Purchases</span><b>' . $A['purchases'] . '</b><small>orders</small></div>'
     . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['purchases'] ? rupees(intdiv($A['revenue'], $A['purchases'])) . ' per order' : '&nbsp;') . '</small></div></div>';
-  $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'countries' => 'Countries', 'states' => 'States', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
+  $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'devices' => 'Devices', 'countries' => 'Countries', 'states' => 'States', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
   /* funnel */
   $body .= '<div class="box p-funnel on" data-pane="funnel"><div class="bh"><h3>From visit to purchase</h3></div><div class="bb"><div class="fun">';
   $prev = null; $top = max(1, $f['view']);
@@ -330,6 +330,17 @@ if ($tab === 'analytics') {
   if (!$A['sources']) $body .= '<tr><td colspan="5" class="empty">No visits yet in these dates.</td></tr>';
   foreach ($A['sources'] as $k => $x) $body .= '<tr><td><b>' . h(SOURCES[$k] ?? ucfirst($k)) . '</b></td><td class="r">' . number_format($x['visitors']) . '</td><td class="r">' . number_format($x['visits']) . '</td><td class="r">' . number_format($x['bought']) . '</td><td class="r">' . ($x['visits'] ? round($x['bought'] / $x['visits'] * 100, 1) . '%' : '—') . '</td></tr>';
   $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Add ?utm_source=instagram (or whatsapp) to links you share, so every visit from them is counted under that name.</p></div></div>';
+  /* phone, tablet or desktop */
+  $dv = array_sum(array_column($A['devices'], 'visitors'));
+  $body .= '<div class="box devs" data-pane="devices"><div class="bh"><h3>Phone, tablet or desktop</h3></div><div class="bb">';
+  if (!$A['devices']) $body .= '<p class="empty">No visits yet in these dates.</p>';
+  foreach (DEVICES as $k => $label) {
+    if (!$A['devices']) break;
+    $x = $A['devices'][$k] ?? ['visitors' => 0, 'visits' => 0, 'bought' => 0]; $sh = $dv ? $x['visitors'] / $dv * 100 : 0;
+    $body .= '<div class="dv"><b class="dn">' . $label . '</b><span class="bar"><i style="width:' . round($sh, 1) . '%"></i></span><b class="num">' . round($sh) . '%</b><small>' . number_format($x['visitors']) . ' visitor' . ($x['visitors'] === 1 ? '' : 's') . ' · ' . number_format($x['bought']) . ' bought'
+      . ($x['visits'] ? ' (' . round($x['bought'] / $x['visits'] * 100, 1) . '%)' : '') . '</small></div>';
+  }
+  $body .= '</div></div>';
   /* top countries and Indian states: the dates picked at the top first, then their own Today / 7 days / 30 days / Year */
   $G = geo_stats($from, $to); $RS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year'];
   $rOn = ['today' => 'today', '7' => 'd7', '30' => 'd30'][$r] ?? 'sel';

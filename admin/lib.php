@@ -408,6 +408,7 @@ function report_years(): array {
 
 /* ---------------- analytics ---------------- */
 const SOURCES = ['instagram' => 'Instagram', 'whatsapp' => 'WhatsApp', 'google' => 'Google', 'facebook' => 'Facebook', 'youtube' => 'YouTube', 'search' => 'Other search engines', 'direct' => 'Direct (typed or saved link)', 'other' => 'Other websites'];
+const DEVICES = ['phone' => 'Phone', 'tablet' => 'Tablet', 'computer' => 'Desktop'];
 const FUNNEL = ['view' => 'Visited the shop', 'product' => 'Viewed a product', 'add' => 'Added to bag', 'checkout' => 'Opened checkout', 'pay' => 'Reached payment', 'buy' => 'Bought'];
 function analytics(string $from, string $to, array $CAT): array {
   $db = shop_db(); $a = ["$from 00:00:00", "$to 23:59:59"];
@@ -421,6 +422,10 @@ function analytics(string $from, string $to, array $CAT): array {
   $out['sources'] = [];
   foreach ($q('SELECT source, COUNT(DISTINCT vid) v, COUNT(DISTINCT sid) n FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ? GROUP BY source ORDER BY v DESC, n DESC', $a) as $r) $out['sources'][$r['source']] = ['visitors' => (int)$r['v'], 'visits' => (int)$r['n'], 'bought' => 0];
   foreach ($q('SELECT source, COUNT(DISTINCT sid) n FROM events WHERE type = \'buy\' AND ts >= ? AND ts <= ? GROUP BY source', $a) as $r) if (isset($out['sources'][$r['source']])) $out['sources'][$r['source']]['bought'] = (int)$r['n'];
+  /* phone, tablet or computer: visitors, visits and visits that bought, per device */
+  $out['devices'] = [];
+  foreach ($q('SELECT device, COUNT(DISTINCT vid) v, COUNT(DISTINCT sid) n FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ? GROUP BY device ORDER BY v DESC', $a) as $r) $out['devices'][$r['device'] ?: 'computer'] = ['visitors' => (int)$r['v'], 'visits' => (int)$r['n'], 'bought' => 0];
+  foreach ($q('SELECT device, COUNT(DISTINCT sid) n FROM events WHERE type = \'buy\' AND ts >= ? AND ts <= ? GROUP BY device', $a) as $r) if (isset($out['devices'][$r['device'] ?: 'computer'])) $out['devices'][$r['device'] ?: 'computer']['bought'] += (int)$r['n'];
   [$out['purchases'], $out['revenue']] = sales_between(...$a);
   $f = $out['funnel'];
   $out['conversion'] = $f['view'] ? $f['buy'] / $f['view'] * 100 : null;
