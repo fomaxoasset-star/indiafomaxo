@@ -331,3 +331,13 @@
   });
   mark();
 })();
+
+(function () {
+  /* Offer: the end date shows only for "Countdown to an end date", the note only for "Always on" */
+  var ofr = document.getElementById('offerForm');
+  if (ofr) {
+    var ofShow = function () { var m = (ofr.querySelector('input[name=mode]:checked') || {}).value;
+      ofr.querySelector('.ofend').hidden = m !== 'end'; ofr.querySelector('.ofalw').hidden = m !== 'always'; };
+    ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
+  }
+})();

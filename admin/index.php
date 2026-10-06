@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — private admin page: fomaxo.in/admin
-   Home, Products, Stock, Orders (FMX-IN-1001 …), Analytics, Expenses, Reports (profit & loss), Members, Reviews and Settings. Everything is kept in the
+   Home, Products, Stock, Orders (FMX-IN-1001 …), Coupons, Offer (the limited-time offer), Analytics, Expenses, Reports (profit & loss), Members, Reviews and Settings. Everything is kept in the
    shop database (api/shop-db.php). Helpers are in admin/lib.php; styles in admin.css, charts and phone switches in admin.js.
 
    Password: create  public_html/api/data/admin-password.txt  in Hostinger File Manager with your password as its only
@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '31';
+const ASSET_V = '32';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -227,6 +227,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_db()->prepare('DELETE FROM coupons WHERE code = ?')->execute([$code]);
     go(['tab' => 'coupons'], "$code is deleted. Orders that used it still show the code.");
   }
+  if ($a === 'offer_save') { $msg = save_offer(); go(['tab' => 'offer'], $msg); }
+  if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
     go(['tab' => 'expenses'], 'Expense deleted.');
@@ -271,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------------- downloads ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
@@ -319,7 +321,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'coupons' => 'Coupons', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offer', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';

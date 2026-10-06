@@ -2140,6 +2140,36 @@ html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px
   .acc summary::after{line-height:1}
   .acc .body{padding-bottom:18px}
 }
+/* ================= LIMITED-TIME OFFER (Admin → Offer): popup and slim countdown lines ================= */
+.ofl{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;line-height:1.2;color:var(--gold)}
+.ofl svg{width:14px;height:14px;flex:none}
+.ofl .ofl-k{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.ofl b{font-weight:600;color:var(--gold-hi);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ofl.box{width:100%;max-width:440px;padding:8px 12px;border-radius:4px;box-shadow:inset 0 0 0 1px var(--gold)}
+.ofl.card-l{justify-content:center;flex-wrap:wrap;font-size:10px;letter-spacing:.12em;gap:4px 10px}
+.card .ofl.card-l{justify-content:flex-start;margin-top:8px}
+@media(max-width:600px){.ofl.box{font-size:10px;letter-spacing:.1em;padding:7px 10px}.ofl.card-l{font-size:9px;letter-spacing:.08em;flex-direction:column}}
+.ofp{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.72);opacity:0;transition:opacity .35s}
+.ofp.on{opacity:1}
+.ofp-box{position:relative;width:100%;max-width:380px;padding:30px 26px 20px;text-align:center;background:var(--panel);border-radius:6px;box-shadow:0 0 0 1px var(--line-2),0 30px 80px -20px rgba(0,0,0,.8);transform:translateY(10px) scale(.98);transition:transform .35s var(--ease)}
+.ofp.on .ofp-box{transform:none}
+.ofp-x{position:absolute;top:6px;right:8px;width:36px;height:36px;font-size:26px;line-height:1;color:var(--muted)}
+.ofp-x:hover{color:var(--ivory)}
+.ofp-k{font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:var(--gold)}
+.ofp-pct{margin-top:6px;font-family:var(--display);font-weight:500;font-size:58px;line-height:1;letter-spacing:.02em;text-transform:uppercase}
+.ofp-pct small{display:block;margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.3em;color:var(--muted)}
+.ofp-on{margin-top:8px;font-size:15px;color:var(--ivory)}
+.ofp-cd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px}
+.ofp-cd div{padding:10px 0 8px;border-radius:4px;box-shadow:inset 0 0 0 1px var(--line-2);background:var(--black)}
+.ofp-cd b{display:block;font-family:var(--display);font-size:26px;font-weight:500;line-height:1;color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.ofp-cd span{display:block;margin-top:5px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.ofp-hurry{margin-top:16px;font-size:17px;font-weight:700;letter-spacing:.14em;color:#e5483d}
+html[data-mode="light"] .ofp-hurry{color:#c4291f}
+.ofp-go{margin-top:16px;min-height:48px}
+.ofp-no{margin-top:12px;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.ofp-no:hover{color:var(--ivory)}
+@media(max-width:600px){.ofp-box{max-width:340px;padding:26px 18px 16px}.ofp-pct{font-size:48px}.ofp-cd{gap:6px;margin-top:16px}.ofp-cd b{font-size:22px}.ofp-cd span{font-size:9px;letter-spacing:.1em}.ofp-hurry{margin-top:14px;font-size:15px}.ofp-go{margin-top:14px}}
+@media(prefers-reduced-motion:reduce){.ofp,.ofp-box{transition:none}}
 </style>
 <script>document.body.classList.add("home")</script>
 
@@ -2613,6 +2643,18 @@ const offTag = (p, s) => { const n = pctOff(p, s); return n ? `<span class="off-
 const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size);
   if (m && cls === 'pprice') return `<span class="pnow">${n ? `<s class="pold">${money(p.compareAt[size], curOf(p))}</s>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
   return m ? `<span class="${cls}">${wasHTML(p, size)}${m}</span>` : `<span class="${cls} na">Price on request</span>`; };
+/* the limited-time offer set on Admin → Offer (STORE_LIVE.offer): end = the moment it ends (ms), 0 = always on with no clock.
+   Prices are never changed here. The big % is the biggest real saving on a fragrance that has an old price. */
+const OFFER = (() => { const o = LIVE.offer; if (!o || (o.end && o.end <= Date.now())) return null;
+  const pct = Math.max(0, ...S.products.flatMap(p => p.sizes.map(s => pctOff(p, s))));
+  return {end: +o.end || 0, popup: !!o.popup && pct > 0, line: !!o.line, pct}; })();
+const offerLeft = () => { const t = Math.max(0, Math.floor((OFFER.end - Date.now()) / 1000)); return [Math.floor(t / 86400), Math.floor(t % 86400 / 3600), Math.floor(t % 3600 / 60), t % 60]; };
+const pad2 = n => String(n).padStart(2, '0');
+const offerText = () => { if (!OFFER.end) return 'Hurry up!!!'; const [d, h, m, s] = offerLeft(); return `Ends in ${d}D ${pad2(h)}H ${pad2(m)}M ${pad2(s)}S`; };
+const CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+/* the slim line by sale prices: a gold box on the product page, a plain line on shop cards; only on products with an old price */
+const offerLine = (p, cls) => OFFER && OFFER.line && p.sizes.some(s => pctOff(p, s) > 0)
+  ? `<div class="ofl ${cls}"><span class="ofl-k">${CLOCK}Limited time offer</span><b data-ofcd>${offerText()}</b></div>` : '';
 const fromHTML = p => { const v = p.sizes.map(s => p.prices[s]).filter(hasPrice); const mn = Math.min(...v), ms = p.sizes.find(s => p.prices[s] == mn); return v.length ? `<span class="price">${p.sizes.length > 1 ? '<small>from</small> ' : ''}${wasHTML(p, ms)}${money(mn, curOf(p))}</span>` : `<span class="price na">Price on request</span>`; };
 const pRateHTML = (r, n) => n
   ? `<span class="p-rate-stars" aria-hidden="true">${'★'.repeat(Math.round(r))}<i>${'★'.repeat(5 - Math.round(r))}</i></span><span class="p-rate-num"><b>${(+r).toFixed(1)}</b> · ${n} review${n > 1 ? 's' : ''}</span>`
@@ -2787,6 +2829,7 @@ function card(p, opts={}){
       <span class="quick"><span class="btn line sm block" style="background:rgba(5,5,5,.7)">View details</span></span>
     </a>
     <div class="row1"><h3><a href="#/product/${p.id}">${esc(p.name)}</a></h3><span data-price>${priceHTML(p, size)}</span></div>
+    ${offerLine(p, 'card-l')}
     <p class="desc">${esc(p.short)}</p>
     ${chips}<div class="stk-row" data-stk>${stockTag(p, size)}</div>
     <div class="acts${isOut(p) || sizeOut(p, size) ? ' one' : ''}" data-acts>${cardActs(p, size)}</div>
@@ -2995,7 +3038,7 @@ function product(id, q){
           <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
-          <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div></div>
+          <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div></div>${offerLine(p, 'box')}
           <div class="stk-row" id="pstock">${stockTag(p, size)}</div>
         </div>
         ${p.sizes.length > 1 ? `<div><div class="opt-label"><span>${isSet ? 'Choose your set' : 'Size'}</span><span id="sizeName">${optLabel(p, size)}</span></div>
@@ -3301,6 +3344,7 @@ function pcCard(p, i=0, o={}){
     </a>
     <div class="pc-info">
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
+      ${offerLine(p, 'card-l')}
       <div class="pc-price">${isSet ? fromHTML(p) : priceHTML(p, size)}</div><div class="stk-row" data-stk>${isSet ? '' : stockTag(p, size)}</div>
       ${starsHTML(p)}
       ${p.short ? `<p class="pc-tagline">${esc(p.short)}</p>` : ''}
@@ -4087,6 +4131,46 @@ $('#footShop').innerHTML = `<a href="#/fragrances">All products</a><a href="#/co
 $('#footIg').href = `https://www.instagram.com/${S.contact.instagram}/`;
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;
 addEventListener('hashchange', route);
+/* the limited-time offer: one clock for the popup and every countdown line, which hide by themselves at the end (never restarted).
+   The popup comes about 2.5 seconds after arrival, once per visit, never on the checkout or thank-you page. */
+if (OFFER) {
+  const onCheckout = () => /^#\/(checkout|thank-you)/.test(location.hash);
+  const seen = () => { try { return sessionStorage.getItem('fx_offer') === '1'; } catch(e) { return false; } };
+  let pop = null, back = null, due = false;
+  const closePop = () => { if (!pop) return; const el = pop; pop = null; el.classList.remove('on'); document.body.classList.remove('lock'); removeEventListener('keydown', esc);
+    setTimeout(() => el.remove(), 350); if (back && back.focus) back.focus({preventScroll: true}); };
+  const esc = e => { if (e.key === 'Escape') closePop(); };
+  const cdBoxes = () => offerLeft().map((n, i) => `<div><b>${i ? pad2(n) : n}</b><span>${['Days', 'Hours', 'Min', 'Sec'][i]}</span></div>`).join('');
+  const openPop = () => {
+    if (pop || !OFFER.popup || seen() || onCheckout()) return;
+    due = false;
+    try { sessionStorage.setItem('fx_offer', '1'); } catch(e) {}
+    back = document.activeElement;
+    pop = document.createElement('div'); pop.className = 'ofp';
+    pop.innerHTML = `<div class="ofp-box" role="dialog" aria-modal="true" aria-labelledby="ofpK" tabindex="-1">
+      <button class="ofp-x" type="button" aria-label="Close">×</button>
+      <p class="ofp-k" id="ofpK">Limited time offer</p>
+      <p class="ofp-pct"><small>Up to</small><span class="metal">${OFFER.pct}% off</span></p>
+      <p class="ofp-on">on selected fragrances</p>
+      ${OFFER.end ? `<div class="ofp-cd" data-ofbox aria-label="Time left">${cdBoxes()}</div>` : ''}
+      <p class="ofp-hurry">HURRY UP!!!</p>
+      <a class="btn block ofp-go" href="#/fragrances">Shop the offer</a>
+      <button class="ofp-no" type="button">No thanks</button></div>`;
+    pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('.ofp-x,.ofp-no,.ofp-go')) closePop(); });
+    document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', esc);
+    requestAnimationFrame(() => { if (pop) { pop.classList.add('on'); $('.ofp-box', pop).focus({preventScroll: true}); } });
+  };
+  if (OFFER.popup && !seen()) setTimeout(() => { due = true; openPop(); }, 2500);
+  /* arriving on checkout first: the popup waits until they move to another page */
+  addEventListener('hashchange', () => { if (onCheckout()) closePop(); else if (due) setTimeout(openPop, 600); });
+  if (OFFER.end) {
+    const tick = setInterval(() => {
+      if (Date.now() >= OFFER.end) { clearInterval(tick); closePop(); OFFER.line = OFFER.popup = false; $$('.ofl').forEach(x => x.remove()); return; }
+      $$('[data-ofcd]').forEach(x => x.textContent = offerText());
+      const bx = pop && $('[data-ofbox]', pop); if (bx) bx.innerHTML = cdBoxes();
+    }, 1000);
+  }
+}
 /* clicking a link to the page you are already on scrolls back to the top */
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="#/"]'); if (!a || e.defaultPrevented) return; const h = a.getAttribute('href'); if (h === (location.hash || '#/')){ e.preventDefault(); closePanels(); window.scrollTo({top: 0, behavior: 'smooth'}); } });
 

@@ -161,6 +161,39 @@ if ($tab === 'coupons') {
   $body .= '</div></div></div>';
 }
 
+/* ============ Offer: the limited-time offer popup and countdown lines on the website ============ */
+if ($tab === 'offer') {
+  $O = shop_offer(); $left = $O['mode'] === 'end' && $O['end'] !== '' ? strtotime($O['end']) - time() : 0;
+  $what = implode(' + ', array_filter([$O['popup'] ? 'popup' : '', $O['line'] ? 'line by prices' : '']));
+  [$best, $bestName] = offer_best_pct($CAT);
+  [$sk, $status] = match (true) {
+    $O['mode'] === 'off' => ['off', 'Off. Nothing shows on the website.'],
+    $what === '' => ['off', 'Nothing shows: tick Popup or Line by sale prices below.'],
+    $O['mode'] === 'end' && $left <= 0 => ['end', 'Ended ' . offer_when($O['end']) . '. Nothing shows on the website now.'],
+    $O['mode'] === 'end' => ['on', 'On: ends ' . offer_when($O['end']) . ' (' . offer_left($left) . '). Showing: ' . $what . '.'],
+    default => ['on', 'On, always (no timer). Showing: ' . $what . '.'],
+  };
+  $end = $O['end'] !== '' ? $O['end'] : '';
+  $radio = fn(string $v, string $label) => '<label><input type="radio" name="mode" value="' . $v . '"' . ($O['mode'] === $v ? ' checked' : '') . '>' . $label . '</label>';
+  $tick = fn(string $k, string $label) => '<label class="cpon"><input type="checkbox" name="' . $k . '" value="1"' . ($O[$k] ? ' checked' : '') . '><span>' . $label . '</span></label>';
+  $body .= '<div class="box ofr fill"><div class="bh"><h3>Limited-time offer</h3><span class="badge cb-' . $sk . '">' . ['on' => 'On', 'off' => 'Off', 'end' => 'Ended'][$sk] . '</span></div><div class="bb">'
+    . '<p class="ofst ofst-' . $sk . '">' . h($status) . '</p>'
+    . '<p class="muted small">' . ($best ? 'The popup says <b class="gold">' . $best . '% OFF</b>: the biggest saving on a fragrance right now (' . h($bestName) . '). It follows the old and new prices on Products by itself.'
+      : '<span class="warn">No fragrance has an old price on Products right now, so the popup stays hidden.</span> The line shows only on products with an old price.') . '</p>'
+    . '<form method="post" class="cpf" id="offerForm">' . $csrfField . '<input type="hidden" name="action" value="offer_save">'
+    . '<div><b>Timer</b><span class="seg ck ofm">' . $radio('end', 'Countdown to an end date') . $radio('always', 'Always on (no timer)') . $radio('off', 'Off') . '</span></div>'
+    . '<div class="ofend"' . ($O['mode'] === 'end' ? '' : ' hidden') . '>'
+    . '<div class="qbtns"><span class="muted small" style="align-self:center">Ends in</span>' . implode('', array_map(fn($hh, $l) => '<button class="btn line sm" name="quick" value="' . $hh . '">' . $l . '</button>', [24, 48, 72, 168], ['24 hours', '48 hours', '3 days', '7 days'])) . '</div>'
+    . '<label>or ends on <small>(India time, IST; no time = 11:59 pm)</small><div class="cpt2">' . date_box('end', substr($end, 0, 10), 'Ends on')
+    . '<input type="time" name="end_time" value="' . h(strlen($end) > 10 ? substr($end, 11, 5) : '') . '" aria-label="End time"></div></label>'
+    . '<p class="muted small" style="margin:0">The popup and line count down to this moment, then hide by themselves. The clock never starts again on its own.</p></div>'
+    . '<p class="muted small ofalw"' . ($O['mode'] === 'always' ? '' : ' hidden') . ' style="margin:0">The popup and line show with no clock (“Limited time offer · HURRY UP!!!”) until you turn the offer off.</p>'
+    . '<div><b>What shows</b><div class="oftk">' . $tick('popup', 'Popup <small class="muted">(about 2.5 seconds after someone arrives, once per visit, never at checkout)</small>') . $tick('line', 'Line by sale prices <small class="muted">(product page and shop cards, on products with an old price)</small>') . '</div></div>'
+    . '<div class="row"><button class="btn">Save</button><button class="btn danger" name="action" value="offer_off" formnovalidate data-confirm="Turn the offer off? The popup and lines leave the website.">Turn everything off</button></div>'
+    . '<p class="muted small" style="margin:0">This page does not change any prices. Prices stay as set on Products.</p>'
+    . '</form></div></div>';
+}
+
 /* ============ Members ============ */
 $ckey = (string)($_GET['c'] ?? '');
 if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {

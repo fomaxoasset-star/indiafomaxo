@@ -358,6 +358,25 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null): array 
   return ['code' => $code, 'discount' => $off, 'label' => coupon_label($c), 'ends' => coupon_ends($c)];
 }
 
+/* ---------------- limited-time offer (Admin → Offer) ---------------- */
+/* Kept in the setting 'offer': mode 'end' (counts down to `end`, 'Y-m-d H:i' India time), 'always' (no clock) or 'off';
+   `popup` and `line` say what the website shows. It never changes prices. */
+function shop_offer(): array {
+  $o = json_decode((string)shop_setting('offer'), true);
+  $o = is_array($o) ? $o : [];
+  return ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
+    'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true)];
+}
+/* what the website gets (STORE_LIVE.offer): null when nothing should show, also once the end has passed.
+   end = the end as milliseconds since 1970 (0 = always on), so every phone counts to the same moment */
+function shop_offer_live(): ?array {
+  $o = shop_offer();
+  if ($o['mode'] === 'off' || (!$o['popup'] && !$o['line'])) return null;
+  $end = 0;
+  if ($o['mode'] === 'end') { $t = strtotime($o['end']); if ($t === false || $t <= time()) return null; $end = $t * 1000; }
+  return ['end' => $end, 'popup' => $o['popup'], 'line' => $o['line']];
+}
+
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
 function shop_import_json_orders(): void {
   $dir = fomaxo_orders_dir();

@@ -316,6 +316,44 @@ function order_tracker(array $o): string {
   return $out . '</ol>';
 }
 
+/* ---------------- limited-time offer ---------------- */
+/* Saves the Offer page form. The quick buttons (24 hours … 7 days) count from now; otherwise the typed date and time (India time).
+   Returns the message to show ('!' first when nothing was saved). */
+function save_offer(): string {
+  $mode = in_array($_POST['mode'] ?? '', ['end', 'always', 'off'], true) ? $_POST['mode'] : 'off';
+  $o = ['mode' => $mode, 'end' => shop_offer()['end'], 'popup' => !empty($_POST['popup']), 'line' => !empty($_POST['line'])];
+  $quick = (int)($_POST['quick'] ?? 0);
+  if ($quick > 0) { $o['mode'] = 'end'; $o['end'] = date('Y-m-d H:i', time() + min($quick, 24 * 7) * 3600); }
+  elseif ($mode === 'end') {
+    $day = parse_day($_POST['end'] ?? ''); $t = trim((string)($_POST['end_time'] ?? ''));
+    if ($day === '') return '!Please type the end date as dd/mm/yyyy, or tap 24 hours, 48 hours, 3 days or 7 days.';
+    if ($t !== '' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t)) return '!Please pick the end time, or leave it empty for the end of that day.';
+    $o['end'] = $day . ' ' . ($t ?: '23:59');
+    if ($o['end'] <= date('Y-m-d H:i')) return '!That end date and time has already passed. Please pick a later one.';
+  }
+  shop_set('offer', json_encode($o));
+  if ($o['mode'] === 'off') return 'Saved. The offer is off, so nothing shows on the website.';
+  if (!$o['popup'] && !$o['line']) return 'Saved, but nothing is ticked under “What shows”, so nothing shows on the website.';
+  return $o['mode'] === 'end' ? 'Saved. The offer is on and ends ' . offer_when($o['end']) . '.' : 'Saved. The offer is on with no timer until you turn it off.';
+}
+/* "09/10/2026, 11:59 pm" */
+function offer_when(string $ymdhi): string { return date('d/m/Y, g:i a', strtotime($ymdhi)); }
+/* time left as "2d 14h left" / "3h 5m left" / "12m left" */
+function offer_left(int $secs): string {
+  $d = intdiv($secs, 86400); $h = intdiv($secs % 86400, 3600); $m = intdiv($secs % 3600, 60);
+  return ($d ? "{$d}d {$h}h" : ($h ? "{$h}h {$m}m" : max(1, $m) . 'm')) . ' left';
+}
+/* the biggest real % saving on a fragrance (perfumes, car perfumes and sets) that is on the website, with its name: what the popup's big "% OFF" shows */
+function offer_best_pct(array $cat): array {
+  $best = [0, ''];
+  foreach ($cat as $p) {
+    if ($p['kind'] === 'care' || !empty($p['hidden'])) continue;
+    foreach ($p['prices'] as $k => $v) { $w = (float)($p['was'][$k] ?? 0);
+      if ($w > $v && $v > 0 && ($n = (int)round(($w - $v) / $w * 100)) > $best[0]) $best = [$n, $p['name']]; }
+  }
+  return $best;
+}
+
 /* ---------------- coupons ---------------- */
 /* Adds or changes a coupon from the Coupons page form. Returns the message to show ('!' first when nothing was saved). */
 function save_coupon(): string {
