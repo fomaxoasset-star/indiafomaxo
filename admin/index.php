@@ -228,6 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'coupons'], "$code is deleted. Orders that used it still show the code.");
   }
   if ($a === 'offer_save') { $msg = save_offer(); go(['tab' => 'offer'], $msg); }
+  if ($a === 'newprod_save') { go(['tab' => 'offer'], save_newprod($CAT)); }
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);

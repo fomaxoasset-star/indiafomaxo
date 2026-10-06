@@ -365,7 +365,12 @@ function shop_offer(): array {
   $o = json_decode((string)shop_setting('offer'), true);
   $o = is_array($o) ? $o : [];
   return ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
-    'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true)];
+    'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true), 'pct' => max(0, min(99, (int)($o['pct'] ?? 0)))];
+}
+/* the New product popup (Admin → Offer): on, kind 'soon' (Coming soon) or 'new' (Just arrived), name, a short line, and a product id ('' = none) */
+function shop_newprod(): array {
+  $n = json_decode((string)shop_setting('newprod'), true); $n = is_array($n) ? $n : [];
+  return ['on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? '')];
 }
 /* what the website gets (STORE_LIVE.offer): null when nothing should show, also once the end has passed.
    end = the end as milliseconds since 1970 (0 = always on), so every phone counts to the same moment */
@@ -374,7 +379,17 @@ function shop_offer_live(): ?array {
   if ($o['mode'] === 'off' || (!$o['popup'] && !$o['line'])) return null;
   $end = 0;
   if ($o['mode'] === 'end') { $t = strtotime($o['end']); if ($t === false || $t <= time()) return null; $end = $t * 1000; }
-  return ['end' => $end, 'popup' => $o['popup'], 'line' => $o['line']];
+  $live = ['end' => $end, 'popup' => $o['popup'], 'line' => $o['line']];
+  if ($o['pct'] > 0) $live['pct'] = min($o['pct'], fomaxo_best_pct()[0]);   // a typed % never goes above the real biggest saving
+  return $live;
+}
+/* what the website gets for the New product popup (STORE_LIVE.newProduct): null when off. key changes when the popup changes, so each visitor sees each one once. */
+function shop_newprod_live(): ?array {
+  $n = shop_newprod();
+  if (!$n['on'] || $n['name'] === '') return null;
+  $p = $n['id'] !== '' ? (fomaxo_catalog()['products'][$n['id']] ?? null) : null;
+  return ['kind' => $n['kind'], 'name' => $n['name'], 'line' => $n['line'], 'id' => $p && empty($p['hidden']) ? $n['id'] : '', 'img' => $p['img'] ?? '',
+    'key' => substr(md5($n['kind'] . '|' . $n['name'] . '|' . $n['id']), 0, 10)];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */

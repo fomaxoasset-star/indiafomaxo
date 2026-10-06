@@ -31,6 +31,7 @@ try {
   if (($loc = shop_store_location()) !== null)
     $live['stores'] = $loc['show'] ? array_map(fn($st) => $st + ['mapQuery' => shop_map_query_from_link((string)($st['link'] ?? ''))], $loc['stores']) : false;
   if (($offer = shop_offer_live()) !== null) $live['offer'] = $offer;   // the limited-time offer popup and countdown lines
+  if (($np = shop_newprod_live()) !== null) $live['newProduct'] = $np;   // the Coming soon / Just arrived popup
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {
   error_log('FOMAXO live: ' . $e->getMessage());
