@@ -56,7 +56,8 @@ try {
   $src = preg_match('/^[a-z]{1,16}$/', (string)($in['src'] ?? '')) ? (string)$in['src'] : 'direct';
   $path = mb_substr(preg_replace('/[^\w\/\-.]/', '', (string)($in['p'] ?? '/')) ?? '/', 0, 120);
   $product = preg_match('/^[a-z0-9-]{1,48}$/', (string)($in['id'] ?? '')) ? (string)$in['id'] : '';
-  $device = preg_match('/Mobi|Android|iPhone|iPad/i', $ua) ? 'phone' : 'computer';
+  $device = ($in['d'] ?? '') === 'tablet' || preg_match('/iPad|Tablet/i', $ua) || (preg_match('/Android/i', $ua) && !preg_match('/Mobi/i', $ua)) ? 'tablet'
+    : (preg_match('/Mobi|Android|iPhone/i', $ua) ? 'phone' : 'computer');
   $s = $db->prepare('SELECT 1 FROM visits WHERE sid = ?'); $s->execute([$sid]);
   if (!$s->fetchColumn()) try { $db->prepare('INSERT INTO visits(sid, vid, started, last, source, device, pages, country, region) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$sid, $vid, $now, $now, $src, $device, $t === 'view' ? 1 : 0, ...fomaxo_geo(fomaxo_geo_ip())]); } catch (Throwable $e) { /* the same visit, sent twice at once */ }
   $db->prepare('INSERT INTO events(ts, vid, sid, type, source, path, product, qty, device) VALUES(?,?,?,?,?,?,?,?,?)')
