@@ -2069,7 +2069,11 @@ html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px
   .co-sum{display:flex;flex-direction:column;padding:22px 26px}
   .co-sum .co-save{margin-bottom:12px}
   .co-sum-head{margin-bottom:10px}
-  .co-item{padding:10px 0;grid-template-columns:58px minmax(0,1fr) auto}
+  /* a long bag scrolls inside the summary, so the page still fits one screen */
+  .co-items{max-height:186px;overflow-y:auto;overscroll-behavior:contain;margin:0 -10px 0 -10px;padding:0 10px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;border-bottom:0}
+  .co-items:has(.co-item:nth-child(3)){-webkit-mask-image:linear-gradient(#000 80%,transparent);mask-image:linear-gradient(#000 80%,transparent);padding-bottom:20px}
+  .co-sum .co-rows{border-top:1px solid var(--line)}
+  .co-item{padding:12px 0 10px;grid-template-columns:58px minmax(0,1fr) auto}
   .co-img img{width:58px;height:58px}
   .co-it b{font-size:14px}
   .co-ip span{font-size:19px}
