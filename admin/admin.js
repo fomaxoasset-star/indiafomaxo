@@ -161,7 +161,7 @@
       }
       el.addEventListener('click', function (e) {
         if (e.target.closest('.zopen')) { openZoom(el); return; }
-        if (e.target.closest('a,button,input,select,textarea,label,form,.seg')) return;
+        if (e.target.closest('a,button,input,select,textarea,label,form,.seg,details')) return;   /* a Left at checkout line opens in place */
         if (getSelection && String(getSelection()).length) return;   /* selecting text to copy, not opening */
         openZoom(el);
       });

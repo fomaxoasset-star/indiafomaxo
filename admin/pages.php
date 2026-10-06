@@ -330,13 +330,15 @@ if ($tab === 'analytics') {
   if (!$A['sources']) $body .= '<tr><td colspan="5" class="empty">No visits yet in these dates.</td></tr>';
   foreach ($A['sources'] as $k => $x) $body .= '<tr><td><b>' . h(SOURCES[$k] ?? ucfirst($k)) . '</b></td><td class="r">' . number_format($x['visitors']) . '</td><td class="r">' . number_format($x['visits']) . '</td><td class="r">' . number_format($x['bought']) . '</td><td class="r">' . ($x['visits'] ? round($x['bought'] / $x['visits'] * 100, 1) . '%' : '—') . '</td></tr>';
   $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Add ?utm_source=instagram (or whatsapp) to links you share, so every visit from them is counted under that name.</p></div></div>';
-  /* top countries and Indian states, each with its own Today / 7 days / 30 days / Year */
-  $G = geo_stats(); $RS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year'];
+  /* top countries and Indian states: the dates picked at the top first, then their own Today / 7 days / 30 days / Year */
+  $G = geo_stats($from, $to); $RS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year'];
+  $rOn = ['today' => 'today', '7' => 'd7', '30' => 'd30'][$r] ?? 'sel';
+  if ($rOn === 'sel') $RS = ['sel' => date_span($from, $to)] + $RS;
   foreach (['countries' => 'Top countries', 'states' => 'Visitors by Indian state'] as $gk => $gt) {
-    $body .= '<div class="box geo" data-pane="' . $gk . '"><div class="bh"><h3>' . $gt . '</h3><span class="seg rs">' . implode('', array_map(fn($k, $l) => '<button type="button" data-r="' . $k . '"' . ($k === 'd7' ? ' class="on"' : '') . ">$l</button>", array_keys($RS), $RS)) . '</span></div><div class="bb">';
+    $body .= '<div class="box geo" data-pane="' . $gk . '"><div class="bh"><h3>' . $gt . '</h3><span class="seg rs">' . implode('', array_map(fn($k, $l) => '<button type="button" data-r="' . $k . '"' . ($k === $rOn ? ' class="on"' : '') . '>' . h($l) . '</button>', array_keys($RS), $RS)) . '</span></div><div class="bb">';
     foreach ($RS as $rk => $_) {
       $rows = $G[$gk][$rk]; $mx = max(1, ...array_values($rows ?: [1]));
-      $body .= '<div class="rl" data-r="' . $rk . '"' . ($rk === 'd7' ? '' : ' hidden') . '>';
+      $body .= '<div class="rl" data-r="' . $rk . '"' . ($rk === $rOn ? '' : ' hidden') . '>';
       if (!$rows) $body .= '<p class="empty">No visits ' . ($rk === 'today' ? 'today' : 'in this time') . '.</p>';
       foreach ($rows as $name => $n) $body .= '<div class="li"><span class="grow">' . ($gk === 'countries' ? '<span class="flag">' . fomaxo_flag((string)$name) . '</span> ' . h(fomaxo_country_name((string)$name)) : h((string)$name)) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
       $body .= '</div>';
@@ -348,21 +350,31 @@ if ($tab === 'analytics') {
   if (!$A['products']) $body .= '<tr><td colspan="5" class="empty">No product views yet in these dates.</td></tr>';
   foreach ($A['products'] as $id => $p) $body .= '<tr><td><div class="pc">' . $thumbOf($id, 'th sm') . '<b>' . h($CAT[$id]['name']) . '</b></div></td><td class="r">' . $p['views'] . '</td><td class="r">' . $p['adds'] . '</td><td class="r">' . $p['units'] . '</td><td class="r">' . rupees($p['rev']) . '</td></tr>';
   $body .= '</tbody></table></div></div>';
-  /* left at checkout: everyone, kept for good */
-  $L = checkout_leads();
-  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout (all dates)</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel'])) . '">Excel</a></div><div class="bb np"><table class="grid ltab"><thead><tr><th>Date</th><th>Name</th><th>State · address</th><th>Products</th><th class="r">Bag</th><th>Left at</th><th>Ordered later</th><th></th></tr></thead><tbody>';
-  if (!$L) $body .= '<tr><td colspan="8" class="empty">Nobody has typed their details at checkout yet.</td></tr>';
+  /* left at checkout: everyone who typed their details in these dates (all of them are kept for good) */
+  $L = checkout_leads($from, $to);
+  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts"><div class="lt-hd"><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span><span></span></div>';
+  if (!$L) $body .= '<p class="empty">Nobody typed their details at checkout in these dates.</p>';
+  /* one line per person (date, name, state, bag, where they stopped, ordered later); WhatsApp at the end only for an Indian mobile number (6–9 and 10 digits, what WhatsApp works on); tap the line to open mobile, email, address and products */
   foreach ($L as $l) {
     $names = lead_items($l);
     $msg = 'Hi ' . ($l['name'] ?: 'there') . ', this is FOMAXO. We saw you were about to order ' . ($names ?: 'from our shop') . '. Can we help you finish your order?';
-    $body .= '<tr' . ($l['later'] !== '' ? ' class="dim"' : '') . '><td class="nw lt-date">' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</td><td class="lt-name"><b>' . h($l['name'] ?: '—') . '</b><small>' . h($l['phone'] ? phone_fmt($l['phone']) : 'no mobile') . '</small>' . ($l['email'] ? '<small>' . h($l['email']) . '</small>' : '') . '</td>'
-      . '<td class="lt-addr"><b>' . h($l['state'] ?: '—') . '</b><small class="clip">' . h($l['address']) . '</small></td>'
-      . '<td class="lt-items"><small class="clip2">' . h($names) . '</small></td><td class="r nw lt-bag">' . rupees((int)$l['total']) . '</td>'
-      . '<td class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</td>'
-      . '<td class="lt-later">' . ($l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '"><span class="badge st-paid">' . h($l['later']) . '</span></a>')) . '</td>'
-      . '<td class="r lt-wa">' . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</td></tr>';
+    $later = $l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<span class="badge st-paid">' . h($l['later']) . '</span>');
+    $body .= '<details class="lt' . ($l['later'] !== '' ? ' dim' : '') . '"><summary>'
+      . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
+      . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
+      . '<span class="lt-later">' . $later . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . '"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg><span>WhatsApp</span></a>' : '') . '</span>'
+      . '<span class="lt-chev" aria-hidden="true"></span></summary>'
+      . '<div class="lt-more"><dl>'
+      . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
+      . '<dt>Mobile</dt><dd>' . h($l['phone'] ? phone_fmt($l['phone']) : 'No mobile') . '</dd>'
+      . ($l['email'] ? '<dt>Email</dt><dd>' . h($l['email']) . '</dd>' : '')
+      . '<dt>Address</dt><dd>' . h(trim($l['address'] . ($l['state'] ? ', ' . $l['state'] : ''), ', ') ?: '—') . '</dd>'
+      . '<dt>Products</dt><dd>' . h($names ?: '—') . '</dd>'
+      . '<dt>Ordered later</dt><dd>' . ($l['later'] !== '' && $l['later'] !== 'yes' ? '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '">Order ' . h($l['later']) . '</a>' : ($l['later'] === 'yes' ? 'Yes' : 'Not ordered')) . '</dd></dl>'
+      . '</div></details>';
   }
-  $body .= '</tbody></table></div></div></div>';
+  $body .= '</div></div></div></div>';
 }
 
 /* ============ Reports ============ */
@@ -415,19 +427,20 @@ if ($tab === 'reviews') {
     $live = $r['status'] === 'live';
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
-      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '<span class="sp"></span>'
-      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form></div>'
+      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '</div>'
       . '<p>' . nl2br(h($r['body'])) . '</p>'
       . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
       . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
       . (($r['reply'] ?? '') !== '' ? '<div class="rvr"><b>Reply from FOMAXO</b><p>' . nl2br(h($r['reply'])) . '</p></div>' : '')
-      . '<details class="rvr-edit"><summary class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</summary>'
-      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Thank you for your review…" required>' . h($r['reply'] ?? '') . '</textarea>'
-      . '<div class="row"><button class="btn sm">' . (($r['reply'] ?? '') === '' ? 'Post reply' : 'Save reply') . '</button>'
-      . (($r['reply'] ?? '') !== '' ? '<button class="btn line sm danger" name="delete" value="1" formnovalidate data-confirm="Remove your reply from the website?">Delete reply</button>' : '') . '</div></form></details></div>';
+      . '<input type="checkbox" class="rvr-tg" id="rvr' . (int)$r['id'] . '" hidden>'
+      . '<div class="rvr-acts"><label for="rvr' . (int)$r['id'] . '" class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</label>'
+      . (($r['reply'] ?? '') !== '' ? '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '"><button class="btn line sm danger" name="delete" value="1" data-confirm="Remove your reply from the website?">Delete reply</button></form>' : '')
+      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form>' . '</div>'
+      . '<form method="post" class="rvr-form">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+      . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…" required>' . h($r['reply'] ?? '') . '</textarea>'
+      . '<div class="row"><button class="btn sm">Save reply</button></div></form></div>';
   }
   $body .= '</div></div>';
   /* stars by product (live reviews only, as on the website) */
