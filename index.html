@@ -1738,7 +1738,9 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .buy .pprice,.buy .pprice:has(.was){font-weight:300;font-size:32px;letter-spacing:.02em;color:var(--gold-hi)}
 .buy .pprice:has(.was){flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:4px 14px}
 .buy .pprice .was{order:2;font-size:.56em;margin:0;color:var(--muted);text-decoration-color:currentColor;text-decoration-thickness:1px}
-.buy .save{order:3;align-self:center;margin:0;font-size:10.5px;letter-spacing:.24em;padding:6px 10px;background:transparent;color:var(--gold);box-shadow:inset 0 0 0 1px var(--line-2)}
+.buy .pprice:has(.save)::after{content:'';order:3;flex-basis:100%;height:0}
+.buy .pprice:has(.save){row-gap:12px}
+.buy .save{order:4;align-self:flex-start;margin:0;font-size:10.5px;letter-spacing:.24em;padding:6px 10px;background:transparent;color:var(--gold);box-shadow:inset 0 0 0 1px var(--line-2)}
 .buy .p-rate-stars{font-size:15px;letter-spacing:.22em}
 .buy .p-rate-num{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 .buy .p-rate-num b{font-size:13px;font-weight:500;letter-spacing:.06em}
@@ -2003,15 +2005,17 @@ html[data-mode="light"] .co-err{color:#a8322a}
 /* laptop product page: same order as before, tighter spacing so everything down to the last section fits one 1440x900 screen */
 @media(min-width:961px){
   .pdp-crumbs{padding-top:10px!important}
-  .pdp{padding-top:14px}
+  .pdp{padding-top:8px}
   .gallery{top:96px}
-  .buy{gap:12px}
+  .buy{gap:10px}
   .buy>div:first-child{gap:8px!important;padding-bottom:12px}
   .buy .sub{font-size:11px}
   .ptitle{gap:6px}
   .buy h1{font-size:clamp(34px,2.8vw,42px);line-height:1}
   .buy .ptype{font-size:11px}
-  .buy .price-rate{flex-direction:row;align-items:center;flex-wrap:wrap;gap:6px 18px;margin-top:2px}
+  .buy .price-rate{flex-direction:column;align-items:flex-start;gap:7px;margin-top:0}
+  .buy .pprice:has(.save){row-gap:6px}
+  .buy .save{padding:5px 9px;font-size:10px}
   .buy .p-rate-stars{font-size:13px;letter-spacing:.12em}
   .buy .p-rate-num{font-size:11px;letter-spacing:.12em}
   .buy .pprice,.buy .pprice:has(.was){font-size:28px}
@@ -2025,9 +2029,9 @@ html[data-mode="light"] .co-err{color:#a8322a}
   .buy .btn{min-height:44px}
   .buy-trust{margin:-4px 0 0;font-size:12px}
   .pshare{margin:-6px 0 0;font-size:12px}
-  .perks div{padding:7px 14px;font-size:12.5px;line-height:1.4;gap:10px}
+  .perks div{padding:5px 14px;font-size:12.5px;line-height:1.4;gap:10px}
   .perks svg{width:16px;height:16px}
-  .acc summary{padding:10px 0;font-size:11.5px;line-height:1.4}
+  .acc summary{padding:7px 0;font-size:11.5px;line-height:1.4}
   .acc summary::after{line-height:1}
   .acc .body{padding-bottom:18px}
 }
