@@ -452,6 +452,7 @@ if ($tab === 'reviews') {
       . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form>' . '</div>'
       . '<form method="post" class="rvr-form">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…" required>' . h($r['reply'] ?? '') . '</textarea>'
+      . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
       . '<div class="row"><button class="btn sm">Save reply</button></div></form></div>';
   }
   $body .= '</div></div>';
