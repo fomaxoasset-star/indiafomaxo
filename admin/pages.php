@@ -339,9 +339,9 @@ if ($tab === 'analytics') {
   $body .= '</tbody></table></div></div>';
   /* left at checkout: everyone who typed their details in these dates (all of them are kept for good) */
   $L = checkout_leads($from, $to);
-  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts"><div class="lt-hd"><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span></div>';
+  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts"><div class="lt-hd"><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span><span></span></div>';
   if (!$L) $body .= '<p class="empty">Nobody typed their details at checkout in these dates.</p>';
-  /* one line per person (date, name, state, bag, where they stopped, ordered later); tap it to open mobile, email, address, products and WhatsApp */
+  /* one line per person (date, name, state, bag, where they stopped, ordered later); WhatsApp at the end only for an Indian mobile number (6–9 and 10 digits, what WhatsApp works on); tap the line to open mobile, email, address and products */
   foreach ($L as $l) {
     $names = lead_items($l);
     $msg = 'Hi ' . ($l['name'] ?: 'there') . ', this is FOMAXO. We saw you were about to order ' . ($names ?: 'from our shop') . '. Can we help you finish your order?';
@@ -349,7 +349,9 @@ if ($tab === 'analytics') {
     $body .= '<details class="lt' . ($l['later'] !== '' ? ' dim' : '') . '"><summary>'
       . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
       . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
-      . '<span class="lt-later">' . $later . '</span><span class="lt-chev" aria-hidden="true"></span></summary>'
+      . '<span class="lt-later">' . $later . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . '"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg><span>WhatsApp</span></a>' : '') . '</span>'
+      . '<span class="lt-chev" aria-hidden="true"></span></summary>'
       . '<div class="lt-more"><dl>'
       . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
       . '<dt>Mobile</dt><dd>' . h($l['phone'] ? phone_fmt($l['phone']) : 'No mobile') . '</dd>'
@@ -357,7 +359,7 @@ if ($tab === 'analytics') {
       . '<dt>Address</dt><dd>' . h(trim($l['address'] . ($l['state'] ? ', ' . $l['state'] : ''), ', ') ?: '—') . '</dd>'
       . '<dt>Products</dt><dd>' . h($names ?: '—') . '</dd>'
       . '<dt>Ordered later</dt><dd>' . ($l['later'] !== '' && $l['later'] !== 'yes' ? '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '">Order ' . h($l['later']) . '</a>' : ($l['later'] === 'yes' ? 'Yes' : 'Not ordered')) . '</dd></dl>'
-      . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</div></details>';
+      . '</div></details>';
   }
   $body .= '</div></div></div></div>';
 }
