@@ -37,6 +37,11 @@ function shop_db(): PDO {
       try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '4');
   }
+  if (shop_setting('schema') === '4') {   // coupon time limits: a start, and an end that can carry an hour ('Y-m-d H:i')
+    try { $SHOP_DB->exec("ALTER TABLE coupons ADD starts VARCHAR(16) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
+    if ($SHOP_DB->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $SHOP_DB->exec("ALTER TABLE coupons MODIFY ends VARCHAR(16) NOT NULL DEFAULT ''");
+    shop_set('schema', '5');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -91,10 +96,11 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS visits(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, started INT NOT NULL, last INT NOT NULL,
       source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0,
       country VARCHAR(2) NOT NULL DEFAULT '', region VARCHAR(60) NOT NULL DEFAULT '')$tail",
-    /* coupon codes made on the admin page: kind 'pct' (value = % off) or 'amt' (value = paise off); min_order in paise, ends Y-m-d ('' = no end),
+    /* coupon codes made on the admin page: kind 'pct' (value = % off) or 'amt' (value = paise off); min_order in paise, starts and ends 'Y-m-d H:i' ('' = no limit; an old end of only 'Y-m-d' lasts the whole day),
        max_uses 0 = no limit. Uses are counted from the orders that carry the code. */
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
-      ends VARCHAR(10) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL)$tail",
+      ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
+      starts VARCHAR(16) NOT NULL DEFAULT '')$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
@@ -325,6 +331,16 @@ function shop_coupons(): array {
   return $out;
 }
 function shop_coupon_uses(PDO $db, string $code): int { $s = $db->prepare('SELECT COUNT(*) FROM orders WHERE coupon = ? AND ' . COUPON_USED); $s->execute([$code]); return (int)$s->fetchColumn(); }
+/* when a coupon starts and stops working, as 'Y-m-d H:i' ('' = no limit); the end minute still works */
+function coupon_starts(array $c): string { return (string)($c['starts'] ?? ''); }
+function coupon_ends(array $c): string { $e = (string)$c['ends']; return strlen($e) === 10 ? "$e 23:59" : $e; }
+/* 'soon' (not started yet), 'over' (past its end) or '' (inside its time limit) */
+function coupon_time(array $c): string {
+  $now = date('Y-m-d H:i');
+  return coupon_starts($c) !== '' && coupon_starts($c) > $now ? 'soon' : (coupon_ends($c) !== '' && coupon_ends($c) < $now ? 'over' : '');
+}
+/* "10 Oct 2026, 6:00 pm" */
+function coupon_when(string $ymdhi): string { return date('j M Y, g:i a', strtotime($ymdhi)); }
 function coupon_label(array $c): string { return $c['kind'] === 'pct' ? (int)$c['value'] . '% off' : rupees((int)$c['value']) . ' off'; }
 /* Checks a code for a bag of $subtotal paise. Returns ['error' => …] or ['code', 'discount' (paise), 'label'].
    The bag always keeps at least ₹1 to pay, so online payment still works. */
@@ -333,12 +349,13 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null): array 
   if ($code === '') return ['error' => 'Please type your coupon code.'];
   $s = $db->prepare('SELECT * FROM coupons WHERE code = ?'); $s->execute([$code]); $c = $s->fetch();
   if (!$c || !(int)$c['active']) return ['error' => "$code is not a valid coupon code."];
-  if ($c['ends'] !== '' && $c['ends'] < date('Y-m-d')) return ['error' => "Coupon $code has expired."];
+  if (coupon_time($c) === 'soon') return ['error' => "Coupon $code starts on " . coupon_when(coupon_starts($c)) . '.'];
+  if (coupon_time($c) === 'over') return ['error' => "Coupon $code has expired."];
   if ((int)$c['max_uses'] > 0 && shop_coupon_uses($db, $code) >= (int)$c['max_uses']) return ['error' => "Coupon $code has been fully used."];
   if ($subtotal < (int)$c['min_order']) return ['error' => "Coupon $code is for orders of " . rupees((int)$c['min_order']) . ' and above. Add ' . rupees((int)$c['min_order'] - $subtotal) . ' more to use it.'];
   $off = $c['kind'] === 'pct' ? (int)round($subtotal * min(100, max(0, (int)$c['value'])) / 100) : (int)$c['value'];
   $off = max(0, min($off, $subtotal - 100));
-  return ['code' => $code, 'discount' => $off, 'label' => coupon_label($c)];
+  return ['code' => $code, 'discount' => $off, 'label' => coupon_label($c), 'ends' => coupon_ends($c)];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
