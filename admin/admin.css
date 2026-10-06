@@ -340,3 +340,4 @@ body.zooming{overflow:hidden}
 }
 .geo .bh{flex-wrap:nowrap}.geo .bh::after{display:none}.geo .bh .muted{margin-left:auto}
 @media (min-width:821px){.filters .dfl{min-width:0;flex:0 0 136px}.filters .grow{min-width:150px}.filters label.fx:not(.dfl){min-width:0;flex:0 1 150px}}
+.emo{display:flex;flex-wrap:wrap;gap:6px}.emo button{width:44px;height:44px;padding:0;border:1px solid var(--line,#3a3326);border-radius:10px;background:transparent;font-size:22px;line-height:1;cursor:pointer;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}.emo button:hover,.emo button:focus-visible{border-color:var(--gold,#b8892f);background:rgba(184,137,47,.12)}.emo button:active{transform:scale(.92)}

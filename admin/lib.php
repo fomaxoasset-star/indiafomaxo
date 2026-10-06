@@ -424,6 +424,8 @@ function review_set(int $id, string $status): void {
   if (!in_array($status, ['live', 'hidden'], true) || !($db = reviews_db())) return;
   $db->prepare('UPDATE reviews SET status = ? WHERE id = ?')->execute([$status, $id]);
 }
+/* tap-to-add emoji under the review reply box, in this order */
+const REPLY_EMOJI = ['🙏', '❤️', '😊', '✨', '🎁', '👍', '😍', '🥰', '🌸', '💐', '🤗', '😢'];
 /* FOMAXO's public answer under a review; an empty text removes it */
 function review_reply(int $id, string $text): void {
   if (!($db = reviews_db())) return;

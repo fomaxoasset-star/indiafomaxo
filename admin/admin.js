@@ -122,6 +122,18 @@
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
+  /* Reviews: an emoji button under the reply box goes in where the cursor is */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-emo]');
+    if (!b) return;
+    var t = b.closest('form').querySelector('textarea'), em = b.dataset.emo;
+    var s = t.selectionStart == null ? t.value.length : t.selectionStart, n = t.selectionEnd == null ? s : t.selectionEnd;
+    if (t.value.length - (n - s) + em.length > t.maxLength && t.maxLength > 0) return;
+    t.value = t.value.slice(0, s) + em + t.value.slice(n);
+    t.focus(); t.setSelectionRange(s + em.length, s + em.length);
+    t.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+
   /* Stock and product forms: changed boxes light up, and leaving with unsaved changes asks first */
   var dirty = false;
   document.querySelectorAll('form[data-watch]').forEach(function (f) {
