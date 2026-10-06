@@ -2363,7 +2363,7 @@ const STOCK = LIVE.stock || {}, LOW = LIVE.lowStock ?? 5;
 const stockLeft = (p, s) => { const v = STOCK[p.id] && STOCK[p.id][s]; return v === undefined || v === null ? null : +v; };
 const sizeOut = (p, s) => { const v = stockLeft(p, s); return v === null ? !!p.soldOut : v < 1; };
 const isOut = p => !!p && p.sizes.every(s => sizeOut(p, s));
-const stockTag = (p, s) => { if (!p || isOut(p)) return ''; if (sizeOut(p, s)) return '<span class="stk out">Sold out</span>'; const v = stockLeft(p, s); return v !== null && v <= LOW ? `<span class="stk low">Only ${v} left</span>` : ''; };
+const stockTag = (p, s) => { if (!p || isOut(p)) return ''; if (sizeOut(p, s)) return '<span class="stk out">Out of Stock — Restocking Soon</span>'; const v = stockLeft(p, s); return v !== null && v <= LOW ? `<span class="stk low">Only ${v} left</span>` : ''; };
 const OUT_BTN = (cls='btn sm', label='Out of stock') => `<button class="${cls} oos" type="button" disabled>${label}</button>`;
 const FRAG = S.products.filter(p => !p.kind);          // perfumes
 const CAR = S.products.filter(p => p.kind === 'car');  // car fragrance
@@ -2421,7 +2421,7 @@ const onBagCheckout = () => /^#\/checkout(\?|$)/.test(location.hash) && !/[?&]bu
 let coDirty = false;
 const save = () => { try { localStorage.setItem('fomaxo_cart', JSON.stringify(cart)); } catch(e) {} renderCart(); if (onBagCheckout()) coDirty = true; };
 function addToCart(id, opt, qty=1, silent, picks){
-  if (isOut(P[id]) || sizeOut(P[id], opt)) { toast(`${P[id].name} · ${optLabel(P[id], opt)} is sold out`); return; }
+  if (isOut(P[id]) || sizeOut(P[id], opt)) { toast(`${P[id].name} · ${optLabel(P[id], opt)} is out of stock`); return; }
   const left = stockLeft(P[id], opt);
   if (left !== null && cartQty(id, opt) + qty > left) { qty = left - cartQty(id, opt); if (qty < 1) { toast(`Only ${left} left of ${P[id].name} · ${optLabel(P[id], opt)}, and they are all in your bag`); return; } toast(`Only ${left} left, so we added ${qty}`); silent = true; }
   const key = (picks || []).join('|');
@@ -2447,7 +2447,7 @@ function checkout(lines){
 }
 function buyNow(lines){
   if (!lines.length) return;
-  if (lines.some(l => isOut(P[l.id]) || sizeOut(P[l.id], l.opt))) { toast('This product is sold out in this size'); return; }
+  if (lines.some(l => isOut(P[l.id]) || sizeOut(P[l.id], l.opt))) { toast('This size is out of stock'); return; }
   if (lines.some(l => { const v = stockLeft(P[l.id], l.opt); return v !== null && (l.qty || 1) > v; })) { toast(`Only ${stockLeft(P[lines[0].id], lines[0].opt)} left. Please lower the quantity`); return; }
   /* Buy Now puts the item in the bag (once) and checks out the whole bag, so Add To Cart items are never dropped */
   lines.forEach(n => { const key = (n.picks || []).join('|');
@@ -2550,7 +2550,7 @@ function card(p, opts={}){
     <div class="acts${isOut(p) || sizeOut(p, size) ? ' one' : ''}" data-acts>${cardActs(p, size)}</div>
   </article>`;
 }
-const cardActs = (p, s) => isOut(p) ? OUT_BTN('btn line sm') : sizeOut(p, s) ? OUT_BTN('btn line sm', 'Sold out') : '<button class="btn line sm tc" data-add>Add To Cart</button><button class="btn sm tc" data-buy>Buy Now</button>';
+const cardActs = (p, s) => isOut(p) ? OUT_BTN('btn line sm') : sizeOut(p, s) ? OUT_BTN('btn line sm') : '<button class="btn line sm tc" data-add>Add To Cart</button><button class="btn sm tc" data-buy>Buy Now</button>';
 app.addEventListener('click', e => {
   const c = e.target.closest('.card'); if (!c) return;
   const p = P[c.dataset.id];
@@ -2754,7 +2754,7 @@ function product(id, q){
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
         </div>
         ${p.sizes.length > 1 ? `<div><div class="opt-label"><span>${isSet ? 'Choose your set' : 'Size'}</span><span id="sizeName">${optLabel(p, size)}</span></div>
-          <div class="sizes" id="sizes">${p.sizes.map(s => `<button data-s="${s}" class="${s===size?'on':''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}"><b>${isSet ? s + ' vials' : sizeLabel(s)}</b><small>${sizeOut(p, s) && !isOut(p) ? 'Sold out' : isSet ? (money(p.prices[s]) || '2ml each') : s===10?'Mini · travel':s===50?'Everyday':'Signature'}</small></button>`).join('')}</div></div>`
+          <div class="sizes" id="sizes">${p.sizes.map(s => `<button data-s="${s}" class="${s===size?'on':''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}"><b>${isSet ? s + ' vials' : sizeLabel(s)}</b><small>${sizeOut(p, s) && !isOut(p) ? 'Out of stock' : isSet ? (money(p.prices[s]) || '2ml each') : s===10?'Mini · travel':s===50?'Everyday':'Signature'}</small></button>`).join('')}</div></div>`
           : `<div class="opt-label" style="margin:0"><span>Size</span><span>${isSet ? '2ml vials' : optLabel(p, size)}</span></div>`}
         ${isSet ? `<div id="picker"><div class="opt-label"><span>Choose your fragrances</span><span id="pickCount">0 / ${size}</span></div>
           <div class="picks">${pickable(p).map(f => `<button type="button" class="pick" data-pick="${f.id}" aria-pressed="false"><img src="${IMG(f.images[0])}" alt="" loading="lazy"><span>${esc(f.name)}</span><i>✓</i></button>`).join('')}</div>
@@ -2828,7 +2828,7 @@ function bindProduct(p){
   function sizeState(){
     const out = sizeOut(p, size), a = $('#addBtn'), b = $('#buyBtn');
     $('#pstock').innerHTML = stockTag(p, size);
-    if (a) { a.disabled = out; a.classList.toggle('oos', out); a.textContent = out ? 'Sold out' : 'Add To Cart'; }
+    if (a) { a.disabled = out; a.classList.toggle('oos', out); a.textContent = out ? 'Out of stock' : 'Add To Cart'; }
     if (b) b.hidden = out;
     if (left() !== null && getQ() > left()) qty.value = Math.max(1, left());
   }
@@ -2836,7 +2836,7 @@ function bindProduct(p){
   $('#addBtn').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); };
   $('#buyBtn').onclick = () => { if (ready()) buyNow([isSet ? {id:p.id, opt:size, qty:getQ(), picks:[...picks]} : {id:p.id, opt:size, qty:getQ()}], $('#buyBtn')); };
   const mb = $('#mbuy');
-  function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) || 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : sizeOut(p, size) ? OUT_BTN('btn sm', 'Sold out') : '<button class="btn line sm tc" id="mbAdd">Add To Cart</button><button class="btn sm tc" id="mbBuy">Buy Now</button>'}`; if (isOut(p) || sizeOut(p, size)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; $('#mbBuy').onclick = () => $('#buyBtn').click(); }
+  function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) || 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : sizeOut(p, size) ? OUT_BTN('btn sm') : '<button class="btn line sm tc" id="mbAdd">Add To Cart</button><button class="btn sm tc" id="mbBuy">Buy Now</button>'}`; if (isOut(p) || sizeOut(p, size)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; $('#mbBuy').onclick = () => $('#buyBtn').click(); }
   renderMbuy();
   const addBtn = $('#addBtn');
   mobileBarCheck = () => { const r = addBtn.getBoundingClientRect(); mb.classList.toggle('show', r.bottom < 0 && $('#reviews').getBoundingClientRect().top > innerHeight*.6); };
@@ -3044,7 +3044,7 @@ function pcCard(p, i=0, o={}){
   const sizes = multi ? `<div class="pc-sizes" role="group" aria-label="Size">${[...p.sizes].sort((a, b) => b - a).map(s => `<button type="button" class="pc-size${s === size ? ' on' : ''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}" data-psize="${s}" aria-pressed="${s === size}">${esc(optLabel(p, s))}</button>`).join('')}</div>` : '';
   const btn = isOut(p) ? '<button class="pc-add oos" type="button" disabled>Out of stock</button>'
     : isSet ? `<div class="pc-btns"><a class="pc-add pc-line" href="${href}">Add To Cart</a><a class="pc-add" href="${href}">Buy Now</a></div>`
-    : sizeOut(p, size) ? `<div class="pc-btns"><button class="pc-add pc-line oos" type="button" data-pcadd="${p.id}" data-opt="${size}" disabled>Sold out</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}" hidden>Buy Now</button></div>`
+    : sizeOut(p, size) ? `<div class="pc-btns"><button class="pc-add pc-line oos" type="button" data-pcadd="${p.id}" data-opt="${size}" disabled>Out of stock</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}" hidden>Buy Now</button></div>`
     : `<div class="pc-btns"><button class="pc-add pc-line" type="button" data-pcadd="${p.id}" data-opt="${size}">Add To Cart</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}">Buy Now</button></div>`;
   return `<article class="pcard${o.noRv ? '' : ' rv-up d' + (i % 4)}" data-pc="${p.id}">
     <a class="pc-img" href="${href}" aria-label="${esc(p.name)}">
@@ -3070,7 +3070,7 @@ app.addEventListener('click', e => {
   $$('[data-pcadd],[data-pcbuy]', c).forEach(x => x.dataset.opt = s);
   const st = $('[data-stk]', c); if (st) st.innerHTML = stockTag(p, s);
   const out = sizeOut(p, s), pa = $('[data-pcadd]', c), pb = $('[data-pcbuy]', c);
-  if (pa) { pa.disabled = out; pa.classList.toggle('oos', out); pa.textContent = out ? 'Sold out' : 'Add To Cart'; } if (pb) pb.hidden = out;
+  if (pa) { pa.disabled = out; pa.classList.toggle('oos', out); pa.textContent = out ? 'Out of stock' : 'Add To Cart'; } if (pb) pb.hidden = out;
 });
 function personalCare(q){
   const cats = (S.personalCare && S.personalCare.categories) || [['all','All']];

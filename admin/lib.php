@@ -67,14 +67,15 @@ function product_post(string $kind) {
   }
   return [$f, $prices, $was, $costs, $stock];
 }
-/* photos ticked to keep (in order), then new uploads; the one picked as main goes first */
+/* the kept photos in the order set on the page (photo_seq[]), less any ticked Remove, then new uploads (or new uploads first) */
 function product_photos(string $id, array $old) {
-  $keep = array_values(array_filter($old, fn($k) => in_array($k, (array)($_POST['keep'] ?? []), true)));
+  /* photo_seq[] is the order set with ‹ › and Make main; photos missing from it keep their old place after it */
+  $seq = array_values(array_intersect(array_unique(array_map('strval', (array)($_POST['photo_seq'] ?? []))), $old));
+  $keep = array_values(array_diff(array_merge($seq, array_diff($old, $seq)), array_map('strval', (array)($_POST['remove'] ?? []))));
   $new = save_images($id); if (is_string($new)) return $new;
   $new = array_map(fn($f) => "up/$f", $new);
   $main = (string)($_POST['main'] ?? '');
   $images = $main === 'new' && $new ? array_merge($new, $keep) : array_merge($keep, $new);
-  if (in_array($main, $keep, true)) $images = array_values(array_unique([$main, ...$images]));
   $images = array_slice($images, 0, 8);
   return $images ?: 'Please keep or add at least one photo.';
 }

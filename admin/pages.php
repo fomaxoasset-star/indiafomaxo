@@ -178,6 +178,12 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
 /* ============ Stock ============ */
 if ($tab === 'stock') {
   $STOCK = shop_stock(); $low = shop_low_stock(); $COST = shop_costs();
+  /* warning boxes: Running low (1 up to the "Only X left" level) and Out of stock (0); sizes not counted are in neither */
+  $nLow = $nOut = 0;
+  foreach ($CAT as $id => $p) foreach ($p['prices'] as $opt => $_) { $v = $STOCK[$id][$opt] ?? null; if ($v === null) continue; if ($v < 1) $nOut++; elseif ($low && $v <= $low) $nLow++; }
+  $body .= '<div class="swarn"><button type="button" class="sbox s-low" data-only="low" aria-pressed="false"><span>⚠ Running low</span><b>' . $nLow . '</b><small>' . ($low ? $low . ' left or fewer' : '“Only X left” is off') . '</small></button>'
+    . '<button type="button" class="sbox s-out" data-only="out" aria-pressed="false"><span>Out of stock</span><b>' . $nOut . '</b><small>0 left</small></button></div>'
+    . '<p class="sonly" hidden><span></span> <button type="button" class="btn line sm" data-only="">Show all</button></p>';
   $body .= '<div class="row top"><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="low_stock">'
     . '<label class="chk" style="font-size:14px">Show “Only X left” from <input type="number" name="low_stock" min="0" max="99" value="' . $low . '" style="width:70px"> left or fewer</label><button class="btn line sm">Save</button><span class="muted small">0 turns it off.</span></form>'
     . '<input type="search" class="grow" id="stockFind" placeholder="Find a product" aria-label="Find a product" style="max-width:320px;margin-left:auto"></div>'
@@ -188,13 +194,18 @@ if ($tab === 'stock') {
       $v = $STOCK[$id][$opt] ?? null; $c = $COST[$id][$opt] ?? null;
       $state = !empty($p['hidden']) ? '<span class="badge st-awaiting">Hidden</span>' : ($v === null ? ($p['soldOut'] ? '<span class="badge st-cancelled">Sold out</span>' : '<span class="muted small">Not counted</span>')
         : ($v < 1 ? '<span class="badge st-cancelled">Sold out</span>' : ($low && $v <= $low ? '<span class="badge st-new">Only ' . $v . ' left</span>' : '<span class="badge st-paid">In stock</span>')));
-      $body .= '<tr data-name="' . h(mb_strtolower($p['name'] . ' ' . kind_label($p['kind']))) . '"><td><div class="pc">' . $thumbOf($id, 'th sm') . '<div><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small></div></div></td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
+      $body .= '<tr data-s="' . ($v === null ? '' : ($v < 1 ? 'out' : ($low && $v <= $low ? 'low' : ''))) . '" data-name="' . h(mb_strtolower($p['name'] . ' ' . kind_label($p['kind']))) . '"><td><div class="pc">' . $thumbOf($id, 'th sm') . '<div><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small></div></div></td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
         . '<td><input type="number" min="0" max="99999" name="stock[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($v === null ? '' : $v) . '" placeholder="—"></td>'
         . '<td><input type="number" min="0" step="0.01" name="cost[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($c === null ? '' : h((string)round($c / 100, 2))) . '" placeholder="—"></td><td class="hide-m">' . $state . '</td></tr>';
     }
   }
   $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="unsaved" hidden>Not saved yet</span><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Reports use it to work out your profit.</span></div></form>'
-    . '<script>(function(){var f=document.getElementById("stockFind"),rows=document.querySelectorAll("table.stock tbody tr"),none=document.getElementById("stockNone");f.oninput=function(){var q=f.value.trim().toLowerCase(),n=0;rows.forEach(function(r){var on=!q||r.dataset.name.indexOf(q)>-1;r.hidden=!on;if(on)n++});none.hidden=n>0}})()</script>';
+    . '<script>(function(){var f=document.getElementById("stockFind"),rows=document.querySelectorAll("table.stock tbody tr"),none=document.getElementById("stockNone"),only="",note=document.querySelector(".sonly");'
+    . 'function show(){var q=f.value.trim().toLowerCase(),n=0;rows.forEach(function(r){var on=(!q||r.dataset.name.indexOf(q)>-1)&&(!only||r.dataset.s===only);r.hidden=!on;if(on)n++});none.textContent=only&&!q?(only==="low"?"Nothing is running low.":"Nothing is out of stock."):"No product matches.";none.hidden=n>0;'
+    . 'document.querySelectorAll(".sbox").forEach(function(b){var on=b.dataset.only===only;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});note.hidden=!only;note.firstChild.textContent=only?"Showing only "+(only==="low"?"sizes running low.":"sizes out of stock."):""}'
+    . 'f.oninput=show;document.querySelectorAll("[data-only]").forEach(function(b){b.onclick=function(){only=b.dataset.only&&b.dataset.only!==only?b.dataset.only:"";show()}});'
+    /* save sends only the boxes you changed, so sizes hidden by a filter (and stock sold since the page opened) stay as they are */
+    . 'f.closest(".row").nextElementSibling.addEventListener("submit",function(e){e.target.querySelectorAll("table.stock input").forEach(function(i){if(i.value===i.defaultValue)i.disabled=true})})})()</script>';
 }
 
 /* ============ Products ============ */
@@ -231,10 +242,12 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
       . '<label>My cost ₹<input type="number" step="0.01" min="0" name="cost[]" placeholder="optional" value="' . h($cost) . '"></label>'
       . ($adding ? '<label>Stock<input type="number" min="0" name="stock[]" placeholder="not tracked"></label>' : '') . '</div>';
   }
-  $body .= '</div><h3>Photos</h3><div class="wide"><p class="muted small" style="margin:0 0 8px">' . ($imgs ? 'Untick a photo to remove it. The main photo shows first in the shop. ' : '') . 'Add photos straight from your phone’s camera roll.</p><div class="photos">';
-  foreach ($imgs as $k) $body .= '<div class="ph"><img src="' . h(img_url($k)) . '" alt="" loading="lazy"><label class="chk"><input type="checkbox" name="keep[]" value="' . h($k) . '" checked> Keep</label><label class="chk"><input type="radio" name="main" value="' . h($k) . '"' . ($k === $imgs[0] ? ' checked' : '') . '> Main photo</label></div>';
+  $body .= '</div><h3>Photos</h3><div class="wide"><p class="muted small" style="margin:0 0 8px">' . ($imgs ? 'Use ‹ › to move a photo, or Make main to put it first. The main photo shows on the shop card and first on the product page. Tick Remove to delete a photo. ' : '') . 'Add photos straight from your phone’s camera roll.</p><div class="photos" id="phs">';
+  foreach ($imgs as $i => $k) $body .= '<div class="ph' . ($i ? '' : ' main') . '"><input type="hidden" name="photo_seq[]" value="' . h($k) . '"><b class="phl">' . ($i ? 'Photo ' . ($i + 1) : 'Main photo') . '</b><img src="' . h(img_url($k)) . '" alt="" loading="lazy">'
+    . '<div class="phb"><button type="button" class="btn line sm" data-mv="-1" aria-label="Move left">‹</button><button type="button" class="btn line sm mk" data-mv="0">Make main</button><button type="button" class="btn line sm" data-mv="1" aria-label="Move right">›</button></div>'
+    . '<label class="chk"><input type="checkbox" name="remove[]" value="' . h($k) . '"> Remove</label></div>';
   $body .= '</div><label style="margin-top:10px">Add photos <small>(up to 4 at a time)</small><input type="file" name="photos[]" accept="image/*" multiple' . ($adding ? ' required' : '') . '></label>'
-    . ($imgs ? '<label class="chk" style="margin-top:8px"><input type="radio" name="main" value="new"> Make the first new photo the main photo</label>' : '') . '</div></div></div>'
+    . ($imgs ? '<label class="chk" style="margin-top:8px"><input type="checkbox" name="main" value="new"> Make the first new photo the main photo</label>' : '') . '</div></div></div>'
     . '<div class="bf"><button class="btn">' . ($adding ? 'Add product' : 'Save changes') . '</button><a class="btn line" href="' . h(self_url(['tab' => 'products'])) . '">Cancel</a></div></form>';
   if ($adding) $body .= '<script>(function(){var k=document.getElementById("kind");function u(){var v=k.value;document.querySelectorAll(".k-frag").forEach(function(e){e.hidden=v!==""});document.querySelectorAll(".k-care").forEach(function(e){e.hidden=v!=="care"});document.querySelectorAll(".k-one").forEach(function(e){e.hidden=v===""});}k.onchange=u;u();})();</script>';
 } elseif ($tab === 'products') {
