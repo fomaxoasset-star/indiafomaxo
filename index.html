@@ -400,6 +400,11 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-form input[name=name],.rv-form input[name=city],.rv-form input[name=country]{text-transform:capitalize}
 .rv-form input[name=name]::placeholder,.rv-form input[name=city]::placeholder,.rv-form input[name=country]::placeholder{text-transform:none}
 .rv-sug{position:absolute;left:0;right:0;top:100%;z-index:5;margin:4px 0 0;padding:4px 0;list-style:none;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 14px 30px rgba(0,0,0,.35);text-transform:none;letter-spacing:.02em}
+.rv-dd{position:relative;display:block}.rv-dd input{width:100%;box-sizing:border-box;padding-right:44px!important}
+.rv-dd-btn{position:absolute;right:0;top:0;bottom:0;width:42px;background:transparent;border:0;cursor:pointer}
+.rv-dd-btn::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-6px 0 0 -4px;border-right:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold);transform:rotate(45deg)}
+.rv-dd input:disabled+.rv-dd-btn{opacity:.35;cursor:default}
+.rv-sug{max-height:288px;overflow-y:auto;overscroll-behavior:contain}
 .rv-sug li{padding:10px 14px;font-size:14px;color:var(--ivory);cursor:pointer}
 .rv-sug li:hover,.rv-sug li.on{background:rgba(201,162,92,.14);color:var(--gold-hi)}
 .rv-from{font-weight:400;font-size:13px;letter-spacing:.02em;color:var(--muted)}
@@ -3445,7 +3450,7 @@ function rvForm(p, token, customer){
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
     <div class="rv-loc">
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
-      <label class="rv-city"><span>Nation <i>(optional)</i></span><input name="country" maxlength="40" autocomplete="off" placeholder="Start typing, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
+      <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
     </div>
     <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label>
     <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -3455,18 +3460,21 @@ function rvForm(p, token, customer){
   </form>`;
 }
 /* type-ahead list under an input: find(q) returns [value, html] pairs; onFocus also opens it while empty */
+/* type-ahead list under a field; a field with a ▾ button (Nation) is also a dropdown: tap ▾ for the full list, type to filter it */
 function rvSuggest(input, find, onFocus){
-  const ul = input.nextElementSibling; let at = -1, items = [];
+  const box = input.closest('label'), ul = $('.rv-sug', box), btn = $('.rv-dd-btn', box); let at = -1, items = [];
   const show = list => { at = -1; items = list; ul.innerHTML = list.map(([v, h]) => `<li role="option">${h}</li>`).join(''); ul.hidden = !list.length; input.setAttribute('aria-expanded', !!list.length); };
   const pick = i => { input.value = items[i][0]; show([]); };
   input.oninput = () => show(find(input.value.trim().toLowerCase()));
   if (onFocus) input.onfocus = input.oninput;
   input.onkeydown = e => { const li = $$('li', ul); if (ul.hidden || !li.length) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : li.length - 1)) % li.length; li.forEach((l, i) => l.classList.toggle('on', i === at)); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : li.length - 1)) % li.length; li.forEach((l, i) => l.classList.toggle('on', i === at)); li[at].scrollIntoView({block: 'nearest'}); }
     else if (e.key === 'Enter' && at >= 0) { e.preventDefault(); pick(at); }
     else if (e.key === 'Escape') show([]); };
   ul.onmousedown = e => { const li = e.target.closest('li'); if (li) { e.preventDefault(); pick([...ul.children].indexOf(li)); } };
   input.onblur = () => setTimeout(() => show([]), 120);
+  if (btn) { btn.onmousedown = e => e.preventDefault();
+    btn.onclick = () => { if (input.disabled) return; if (!ul.hidden) return show([]); input.focus(); show(find('')); ul.scrollTop = 0; }; }
 }
 function bindRvForm(form, p, token, done){
   let rating = 0; const stars = $$('[data-star]', form), err = $('.rv-err', form);
@@ -3476,7 +3484,7 @@ function bindRvForm(form, p, token, done){
   anon.onchange = () => { name.disabled = form.elements.city.disabled = form.elements.country.disabled = anon.checked; };   // anonymous hides name, place and flag
   const city = form.elements.city, nation = form.elements.country;
   rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
-  rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : st).slice(0, q ? 6 : 8).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
+  rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : RV_NATIONS).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
     const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
