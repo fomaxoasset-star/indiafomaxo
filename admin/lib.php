@@ -18,6 +18,66 @@ function thumb(?array $p, string $cls = 'th'): string {
 }
 const SALE_STATUSES = "('new', 'paid', 'delivered')";
 
+/* ---------------- dates: typed as dd/mm/yyyy everywhere ---------------- */
+/* "06/10/2026" (also 6/10/2026, or 2026-10-06 from links and the calendar) → "2026-10-06"; anything else → '' */
+function parse_day($s): string {
+  $s = trim((string)$s);
+  if (preg_match('~^(\d{1,2})/(\d{1,2})/(\d{4})$~', $s, $m)) [$d, $mo, $y] = [(int)$m[1], (int)$m[2], (int)$m[3]];
+  elseif (preg_match('~^(\d{4})-(\d{2})-(\d{2})$~', $s, $m)) [$y, $mo, $d] = [(int)$m[1], (int)$m[2], (int)$m[3]];
+  else return '';
+  return $y >= 2000 && $y <= 2100 && checkdate($mo, $d, $y) ? sprintf('%04d-%02d-%02d', $y, $mo, $d) : '';
+}
+/* "2026-10-06" → "06/10/2026" */
+function dmy(string $ymd): string { return $ymd === '' ? '' : date('d/m/Y', strtotime($ymd)); }
+/* a date box: type dd/mm/yyyy (admin.js adds the slashes and checks it); the calendar icon on the right opens the date picker */
+function date_box(string $name, string $ymd, string $label = '', bool $required = false): string {
+  return '<span class="dbox"><input type="text" name="' . h($name) . '" value="' . h(dmy($ymd)) . '" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" data-date'
+    . ($label !== '' ? ' aria-label="' . h($label) . '"' : '') . ($required ? ' required' : '') . '>'
+    . '<span class="dcal" title="Pick from the calendar"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M4 6.5h16v13H4zM4 10.5h16M8.5 3.5v5M15.5 3.5v5"/></svg>'
+    . '<input type="date" tabindex="-1" aria-label="Pick ' . h($label ?: 'a date') . ' from the calendar"></span></span>';
+}
+/* the date bar on each page: which quick buttons it has, and where it starts */
+const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
+  'reports' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all']];
+const DATE_PRESETS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
+/* the first and last day of a quick button ('' for All); Year is the last 12 months */
+function preset_span(string $r): array {
+  $t = date('Y-m-d');
+  return match ($r) { 'today' => [$t, $t], 'd7' => [date('Y-m-d', strtotime('-6 day')), $t], 'd30' => [date('Y-m-d', strtotime('-29 day')), $t],
+    'year' => [date('Y-m-d', strtotime(date('Y-m-01') . ' -11 month')), $t], default => ['', ''] };
+}
+/* the dates a page shows: picked now (?r= and ?from= ?to=), else the last ones picked on that page, else its start. Each page remembers its own. */
+function pick_dates(string $page): array {
+  [$presets, $start] = DATE_BARS[$page];
+  $saved = json_decode((string)shop_setting('dates'), true) ?: [];
+  $r = (string)($_GET['r'] ?? ''); $save = $r !== '';
+  if ($r === '' && (isset($_GET['from']) || isset($_GET['to']))) { $r = 'custom'; $save = true; }
+  if ($save) { $f = parse_day($_GET['from'] ?? ''); $t = parse_day($_GET['to'] ?? ''); }
+  else { $s = (array)($saved[$page] ?? []); $r = (string)($s['r'] ?? $start); $f = (string)($s['from'] ?? ''); $t = (string)($s['to'] ?? ''); }
+  if ($r === 'custom') {
+    if ($f === '' && $t === '') $r = in_array('all', $presets, true) ? 'all' : $start;
+    else { if ($f === '') $f = $t; if ($t === '') $t = $f; if ($f > $t) [$f, $t] = [$t, $f]; }
+  }
+  if ($r !== 'custom' && !in_array($r, $presets, true)) $r = $start;
+  if ($r !== 'custom') [$f, $t] = preset_span($r);
+  if ($save) { $saved[$page] = ['r' => $r] + ($r === 'custom' ? ['from' => $f, 'to' => $t] : []); shop_set('dates', json_encode($saved)); }
+  return ['page' => $page, 'r' => $r, 'from' => $f, 'to' => $t];
+}
+/* "Today", "7 days", "30 days", "12 months", "All dates", or the dates ("1–5 Oct") */
+function period_label(array $D): string {
+  return ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => '12 months', 'all' => 'All dates'][$D['r']] ?? date_span($D['from'], $D['to']);
+}
+/* the bar at the top of a page: quick buttons, From and To, Show. $keep: the page's other filters, kept when dates change */
+function date_bar(array $D, array $keep = [], string $note = ''): string {
+  $tab = $D['page']; [$presets] = DATE_BARS[$tab];
+  $out = '<form class="dbar" method="get"><input type="hidden" name="tab" value="' . h($tab) . '">';
+  foreach ($keep as $k => $v) if ((string)$v !== '') $out .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
+  $out .= '<span class="seg">' . implode('', array_map(fn($k) => '<a href="' . h(self_url(['tab' => $tab, 'r' => $k] + array_filter($keep, 'strlen'))) . '"' . ($D['r'] === $k ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>', $presets)) . '</span>'
+    . '<label class="dfl"><span>From</span>' . date_box('from', $D['from'], 'From') . '</label><label class="dfl"><span>To</span>' . date_box('to', $D['to'], 'To') . '</label>'
+    . '<button class="btn line sm">Show</button><span class="muted small dspan">' . h($D['r'] === 'all' ? 'All dates' : date_span($D['from'], $D['to']) . ($D['from'] !== $D['to'] ? ' · ' . (int)round((strtotime($D['to']) - strtotime($D['from'])) / 86400 + 1) . ' days' : '')) . h($note) . '</span></form>';
+  return $out;
+}
+
 /* ---------------- products ---------------- */
 /* A product as the website shows it now: index.html with any edits made here, or the product added here. */
 function product_now(string $id, array $LIVE): ?array {
@@ -261,9 +321,13 @@ function member_min(): int { return max(1, min(999, (int)(shop_setting('member_m
 /* rupees; a customer who spent this much is a member too, whatever their order count (empty or 0 turns it off) */
 function member_spend(): int { return max(0, min(10000000, (int)(shop_setting('member_spend') ?? '0'))); }
 /* customers with $min or more orders, or who spent ₹$spend or more, grouped by mobile (last 10 digits), or email when there is no mobile; cancelled, unfinished and test orders left out; most spent first */
-function members(int $min, int $spend, string $q = ''): array {
+function members(int $min, int $spend, string $q = '', string $from = '', string $to = ''): array {
   $M = [];
-  foreach (shop_db()->query("SELECT id, no, created, status, method, total, name, phone, email, address, state FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 ORDER BY created, id") as $o) {
+  /* with dates picked, only the orders placed in them count */
+  $s = shop_db()->prepare("SELECT id, no, created, status, method, total, name, phone, email, address, state FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0"
+    . ($from !== '' ? ' AND created >= ? AND created <= ?' : '') . ' ORDER BY created, id');
+  $s->execute($from !== '' ? ["$from 00:00:00", "$to 23:59:59"] : []);
+  foreach ($s as $o) {
     [$key, $digits] = customer_key($o);
     if ($key === '') continue;
     $m = &$M[$key];
@@ -337,7 +401,7 @@ function reviews_db(): ?PDO {
   $db->exec('PRAGMA busy_timeout=4000;');
   return $db;
 }
-/* reviews with the mobile of the order they came from (verified purchasers). $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone */
+/* reviews with the mobile of the order they came from (verified purchasers). $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone, from and to (written in those days) */
 function reviews_list(array $f = []): array {
   $db = reviews_db(); if (!$db) return [];
   try {
@@ -350,6 +414,7 @@ function reviews_list(array $f = []): array {
     if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
     if (isset($f['product']) && $r['product'] !== $f['product']) continue;
+    if (isset($f['from'], $f['to']) && ((int)$r['created'] < strtotime($f['from']) || (int)$r['created'] >= strtotime($f['to'] . ' +1 day'))) continue;
     if ($q !== '' && !str_contains(mb_strtolower($r['body'] . ' ' . $r['name'] . ' ' . $r['customer']), $q) && !(strlen($qd) >= 4 && str_contains($r['phone'], $qd))) continue;
     $out[] = $r;
   }
@@ -373,14 +438,18 @@ function phone_fmt(string $digits): string { return $digits === '' ? '' : '+91 '
 
 /* ---------------- reports (profit & loss) ---------------- */
 function pay_fee_pct(): float { return max(0, min(10, (float)(shop_setting('pay_fee') ?? '2'))); }
-/* month by month: orders, sales, discounts given, payment fees, cost of goods, expenses, gross and net profit */
-function report_year(int $year): array {
-  $m = []; for ($i = 1; $i <= 12; $i++) $m[sprintf('%04d-%02d', $year, $i)] = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0];
+/* orders, sales, discounts given, payment fees, cost of goods, expenses, gross and net profit, from $from to $to (Y-m-d),
+   one row per day ('D', keys Y-m-d), month ('M', keys Y-m) or year ('Y', keys Y) */
+function report_rows(string $from, string $to, string $unit = 'M'): array {
+  $len = ['D' => 10, 'M' => 7, 'Y' => 4][$unit]; $m = [];
+  $zero = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0];
+  for ($t = strtotime($unit === 'D' ? $from : ($unit === 'M' ? substr($from, 0, 7) . '-01' : substr($from, 0, 4) . '-01-01')), $end = strtotime($to); $t <= $end; $t = strtotime(['D' => '+1 day', 'M' => '+1 month', 'Y' => '+1 year'][$unit], $t))
+    $m[substr(date('Y-m-d', $t), 0, $len)] = $zero;
   $costs = shop_costs(); $pct = pay_fee_pct();
-  $s = shop_db()->prepare("SELECT created, total, method, items FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created < ?");
-  $s->execute(["$year-01-01", ($year + 1) . '-01-01']);
+  $s = shop_db()->prepare("SELECT created, total, method, items FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
+  $s->execute(["$from 00:00:00", "$to 23:59:59"]);
   foreach ($s as $o) {
-    $k = substr($o['created'], 0, 7); if (!isset($m[$k])) continue;
+    $k = substr($o['created'], 0, $len); if (!isset($m[$k])) continue;
     $m[$k]['orders']++; $m[$k]['sales'] += (int)$o['total'];
     if ($o['method'] === 'online') $m[$k]['online'] += (int)$o['total'];
     foreach (json_decode((string)$o['items'], true) ?: [] as $it) {
@@ -390,10 +459,22 @@ function report_year(int $year): array {
       if ($c === null) $m[$k]['nocost'] += $q; else $m[$k]['cost'] += (int)$c * $q;
     }
   }
-  $e = shop_db()->prepare('SELECT day, amount FROM expenses WHERE day >= ? AND day < ?'); $e->execute(["$year-01-01", ($year + 1) . '-01-01']);
-  foreach ($e as $x) { $k = substr($x['day'], 0, 7); if (isset($m[$k])) $m[$k]['expenses'] += (int)$x['amount']; }
+  $e = shop_db()->prepare('SELECT day, amount FROM expenses WHERE day >= ? AND day <= ?'); $e->execute([$from, $to]);
+  foreach ($e as $x) { $k = substr($x['day'], 0, $len); if (isset($m[$k])) $m[$k]['expenses'] += (int)$x['amount']; }
   foreach ($m as &$r) { $r['fees'] = (int)round($r['online'] * $pct / 100); $r['gross'] = $r['sales'] - $r['fees'] - $r['cost']; $r['net'] = $r['gross'] - $r['expenses']; } unset($r);
   return $m;
+}
+/* month by month for one year */
+function report_year(int $year): array { return report_rows("$year-01-01", "$year-12-31", 'M'); }
+/* the Reports table for the dates picked: day by day up to 3 months, month by month for longer, by year for All */
+function report_view(array $D): array {
+  if ($D['r'] === 'all') {
+    $first = (string)shop_db()->query("SELECT MIN(d) FROM (SELECT MIN(substr(created, 1, 10)) d FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 UNION ALL SELECT MIN(day) FROM expenses) x")->fetchColumn();
+    $from = parse_day($first) ?: date('Y-01-01'); $to = max(date('Y-m-d'), $from);
+    return ['unit' => 'Y', 'from' => $from, 'to' => $to, 'rows' => report_rows($from, $to, 'Y')];
+  }
+  $unit = (strtotime($D['to']) - strtotime($D['from'])) / 86400 + 1 > 92 ? 'M' : 'D';
+  return ['unit' => $unit, 'from' => $D['from'], 'to' => $D['to'], 'rows' => report_rows($D['from'], $D['to'], $unit)];
 }
 function report_sum(array $rows): array {
   $t = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0, 'gross' => 0, 'net' => 0];
@@ -416,6 +497,9 @@ function analytics(string $from, string $to, array $CAT): array {
   $out = ['visitors' => (int)$q('SELECT COUNT(DISTINCT vid) FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ?', $a)->fetchColumn(),
     'visits' => (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ?', $a)->fetchColumn(),
     'now' => (int)$q('SELECT COUNT(*) FROM online WHERE last > ?', [time() - 300])->fetchColumn()];
+  /* the Gift page (#/gift): how many people opened it, and how many times */
+  $g = $q('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM events WHERE type = \'view\' AND (path = \'/gift\' OR path LIKE \'/gift/%\') AND ts >= ? AND ts <= ?', $a)->fetch();
+  $out['gift'] = ['visitors' => (int)($g['v'] ?? 0), 'views' => (int)($g['n'] ?? 0)];
   $out['funnel'] = [];
   foreach (FUNNEL as $t => $_) $out['funnel'][$t] = (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
   /* where visitors come from: visitors, visits and visits that bought, per source */
@@ -445,19 +529,13 @@ function analytics(string $from, string $to, array $CAT): array {
   $out['products'] = $pr;
   return $out;
 }
-/* top countries, and visitors by Indian state, for the dates picked at the top ('sel', when they are not one of the others), Today, 7 days, 30 days
-   and the last 12 months (distinct visitors, from api/track.php's lookup) */
-function geo_stats(?string $from = null, ?string $to = null): array {
-  $today = strtotime('today');
-  $R = ['today' => [$today, PHP_INT_MAX], 'd7' => [strtotime('-6 day', $today), PHP_INT_MAX], 'd30' => [strtotime('-29 day', $today), PHP_INT_MAX], 'year' => [strtotime(date('Y-m-01') . ' -11 month'), PHP_INT_MAX]];
-  if ($from !== null && $to !== null) $R = ['sel' => [strtotime($from), strtotime("$to +1 day")]] + $R;
-  $out = [];
-  foreach ($R as $r => [$a, $b]) {
-    $s = shop_db()->prepare("SELECT country, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND started < ? AND country <> '' GROUP BY country ORDER BY n DESC LIMIT 30"); $s->execute([$a, $b]);
-    $out['countries'][$r] = array_column($s->fetchAll(), 'n', 'country');
-    $s = shop_db()->prepare("SELECT region, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND started < ? AND country = 'IN' AND region <> '' GROUP BY region ORDER BY n DESC"); $s->execute([$a, $b]);
-    $out['states'][$r] = array_column($s->fetchAll(), 'n', 'region');
-  }
+/* top countries, and visitors by Indian state, for the dates picked at the top (distinct visitors, from api/track.php's lookup) */
+function geo_stats(string $from, string $to): array {
+  $a = [strtotime($from), strtotime("$to +1 day")];
+  $s = shop_db()->prepare("SELECT country, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND started < ? AND country <> '' GROUP BY country ORDER BY n DESC LIMIT 30"); $s->execute($a);
+  $out['countries'] = array_column($s->fetchAll(), 'n', 'country');
+  $s = shop_db()->prepare("SELECT region, COUNT(DISTINCT vid) n FROM visits WHERE started >= ? AND started < ? AND country = 'IN' AND region <> '' GROUP BY region ORDER BY n DESC"); $s->execute($a);
+  $out['states'] = array_column($s->fetchAll(), 'n', 'region');
   return $out;
 }
 /* "21–27 Sep", "28 Sep – 4 Oct", "21 Sep" (with the year when it is not this year) */
@@ -485,30 +563,22 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
 }
 function lead_items(array $l): string { return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: [])); }
 
-/* chart series for the dashboard: [labels, full labels, values] for Today (hours), 7 and 30 days, and the last 12 months */
-function series(): array {
-  $db = shop_db(); $now = time(); $today = date('Y-m-d');
-  $ranges = ['today' => ['H', 24, 13], 'd7' => ['D', 7, 10], 'd30' => ['D', 30, 10], 'year' => ['M', 12, 7]];
-  $out = ['sales' => [], 'visitors' => []];
-  foreach ($ranges as $r => [$unit, $n, $len]) {
-    $keys = []; $labels = []; $full = [];
-    for ($i = $n - 1; $i >= 0; $i--) {
-      if ($unit === 'H') { $t = strtotime("$today 00:00:00") + (23 - $i) * 3600; $keys[] = date('Y-m-d H', $t); $labels[] = date('ga', $t); $full[] = date('ga', $t) . '–' . date('ga', $t + 3600) . ' today'; }
-      elseif ($unit === 'D') { $t = strtotime("$today -$i day"); $keys[] = date('Y-m-d', $t); $labels[] = $n > 7 ? date('j M', $t) : date('D', $t); $full[] = date('D j M', $t); }
-      else { $t = strtotime(date('Y-m-01') . " -$i month"); $keys[] = date('Y-m', $t); $labels[] = date('M', $t); $full[] = date('F Y', $t); }
-    }
-    $from = $unit === 'H' ? "$today 00:00:00" : ($unit === 'D' ? $keys[0] . ' 00:00:00' : $keys[0] . '-01 00:00:00');
-    $sv = array_fill_keys($keys, 0); $vv = array_fill_keys($keys, 0);
-    $s = $db->prepare("SELECT substr(created, 1, $len) k, SUM(total) t FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? GROUP BY substr(created, 1, $len)");
-    $s->execute([$from]); foreach ($s as $x) if (isset($sv[$x['k']])) $sv[$x['k']] = (int)$x['t'];
-    $s = $db->prepare("SELECT substr(ts, 1, $len) k, COUNT(DISTINCT vid) n FROM events WHERE type = 'view' AND ts >= ? GROUP BY substr(ts, 1, $len)");
-    $s->execute([$from]); foreach ($s as $x) if (isset($vv[$x['k']])) $vv[$x['k']] = (int)$x['n'];
-    $s = $db->prepare("SELECT COUNT(DISTINCT vid) FROM events WHERE type = 'view' AND ts >= ?"); $s->execute([$from]);
-    $cap = ['today' => 'today', 'd7' => 'last 7 days', 'd30' => 'last 30 days', 'year' => 'last 12 months'][$r];
-    $out['sales'][$r] = ['labels' => $labels, 'full' => $full, 'values' => array_values($sv), 'caption' => $cap];
-    $out['visitors'][$r] = ['labels' => $labels, 'full' => $full, 'values' => array_values($vv), 'total' => (int)$s->fetchColumn(), 'caption' => 'visitors ' . $cap];
-  }
-  return $out;
+/* chart series for the dashboard, for the dates picked: by hour for one day, by day up to 3 months, by month for longer */
+function series(string $from, string $to): array {
+  $db = shop_db(); $days = (int)round((strtotime($to) - strtotime($from)) / 86400) + 1;
+  $unit = $days === 1 ? 'H' : ($days <= 92 ? 'D' : 'M'); $len = ['H' => 13, 'D' => 10, 'M' => 7][$unit];
+  $keys = []; $labels = []; $full = [];
+  if ($unit === 'H') for ($i = 0; $i < 24; $i++) { $t = strtotime("$from 00:00:00") + $i * 3600; $keys[] = date('Y-m-d H', $t); $labels[] = date('ga', $t); $full[] = date('ga', $t) . '–' . date('ga', $t + 3600) . ', ' . date('D j M', $t); }
+  elseif ($unit === 'D') for ($t = strtotime($from); $t <= strtotime($to); $t = strtotime('+1 day', $t)) { $keys[] = date('Y-m-d', $t); $labels[] = $days > 7 ? date('j M', $t) : date('D', $t); $full[] = date('D j M Y', $t); }
+  else for ($t = strtotime(substr($from, 0, 7) . '-01'); $t <= strtotime($to); $t = strtotime('+1 month', $t)) { $keys[] = date('Y-m', $t); $labels[] = date(substr($from, 0, 4) !== substr($to, 0, 4) ? "M 'y" : 'M', $t); $full[] = date('F Y', $t); }
+  $a = ["$from 00:00:00", "$to 23:59:59"];
+  $sv = array_fill_keys($keys, 0); $vv = array_fill_keys($keys, 0);
+  $s = $db->prepare("SELECT substr(created, 1, $len) k, SUM(total) t FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ? GROUP BY substr(created, 1, $len)");
+  $s->execute($a); foreach ($s as $x) if (isset($sv[$x['k']])) $sv[$x['k']] = (int)$x['t'];
+  $s = $db->prepare("SELECT substr(ts, 1, $len) k, COUNT(DISTINCT vid) n FROM events WHERE type = 'view' AND ts >= ? AND ts <= ? GROUP BY substr(ts, 1, $len)");
+  $s->execute($a); foreach ($s as $x) if (isset($vv[$x['k']])) $vv[$x['k']] = (int)$x['n'];
+  $s = $db->prepare("SELECT COUNT(DISTINCT vid) FROM events WHERE type = 'view' AND ts >= ? AND ts <= ?"); $s->execute($a);
+  return ['sales' => ['labels' => $labels, 'full' => $full, 'values' => array_values($sv)], 'visitors' => ['labels' => $labels, 'full' => $full, 'values' => array_values($vv), 'total' => (int)$s->fetchColumn()]];
 }
 
 /* ---------------- Excel ---------------- */

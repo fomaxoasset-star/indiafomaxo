@@ -9,19 +9,20 @@ $pct = fn($v) => $v === null ? '—' : round($v) . '%';
 /* ============ Dashboard ============ */
 if ($tab === 'home') {
   $todo = []; foreach (shop_db()->query("SELECT method, COUNT(*) n, SUM(total) t FROM orders WHERE status IN ('new', 'paid') AND test = 0 GROUP BY method") as $r) $todo[$r['method']] = [(int)$r['n'], (int)$r['t']];
-  [$tn, $tt] = sales_between(date('Y-m-d') . ' 00:00:00', date('Y-m-d') . ' 23:59:59');
+  /* the date bar: the sales box and both graphs follow it; the to-deliver and this-month boxes do not */
+  $D = pick_dates('home'); $PL = period_label($D);
+  [$tn, $tt] = sales_between($D['from'] . ' 00:00:00', $D['to'] . ' 23:59:59');
   $rep = report_year((int)date('Y')); $m = $rep[date('Y-m')];
-  $body .= '<div class="dash">'
+  $body .= date_bar($D) . '<div class="dash">'
     . '<div class="kpis n5" style="--n:5">'
     . '<a class="kpi k-new" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'cod'])) . '"><span>COD orders to deliver</span><b>' . ($todo['cod'][0] ?? 0) . '</b><small>' . rupees($todo['cod'][1] ?? 0) . ' to collect</small></a>'
     . '<a class="kpi k-paid" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'online'])) . '"><span>Online orders to deliver</span><b>' . ($todo['online'][0] ?? 0) . '</b><small>Paid online</small></a>'
-    . '<div class="kpi"><span>Sales today</span><b>' . rupees($tt) . '</b><small>' . $tn . ' order' . ($tn === 1 ? '' : 's') . '</small></div>'
+    . '<div class="kpi wrap"><span>Sales · ' . h($PL) . '</span><b>' . rupees($tt) . '</b><small>' . $tn . ' order' . ($tn === 1 ? '' : 's') . '</small></div>'
     . '<a class="kpi" href="' . h(self_url(['tab' => 'reports'])) . '"><span>Sales this month</span><b>' . rupees($m['sales']) . '</b><small>' . $m['orders'] . ' order' . ($m['orders'] === 1 ? '' : 's') . '</small></a>'
     . '<a class="kpi ' . ($m['net'] < 0 ? 'bad' : 'good') . '" href="' . h(self_url(['tab' => 'reports'])) . '"><span>' . ($m['net'] < 0 ? 'Loss' : 'Profit') . ' this month</span><b>' . money($m['net']) . '</b><small>' . ($m['nocost'] ? $m['nocost'] . ' items with no cost set' : 'after costs and expenses') . '</small></a></div>';
   $body .= $sw('#dashCharts', ['sales' => 'Sales', 'visitors' => 'Visitors']) . '<div id="dashCharts" class="panes" style="display:contents">';
   foreach (['sales' => 'Sales', 'visitors' => 'Visitors'] as $k => $label)
-    $body .= '<div class="box c-' . ($k === 'sales' ? 'sales on' : 'vis') . '" data-pane="' . $k . '" data-chart="' . $k . '" data-range="d7"><div class="bh"><span class="ctot"></span><span class="seg">'
-      . implode('', array_map(fn($r, $l) => '<button type="button" data-r="' . $r . '"' . ($r === 'd7' ? ' class="on"' : '') . ">$l</button>", ['today', 'd7', 'd30', 'year'], ['Today', '7 days', '30 days', 'Year'])) . '</span></div>'
+    $body .= '<div class="box c-' . ($k === 'sales' ? 'sales on' : 'vis') . '" data-pane="' . $k . '" data-chart="' . $k . '" data-caption="' . h(($k === 'sales' ? '' : 'visitors · ') . $PL) . '"><div class="bh"><h3>' . $label . '</h3><span class="ctot"></span></div>'
       . '<div class="chart" role="img" aria-label="' . $label . ' chart"><svg></svg><div class="tip" hidden></div></div></div>';
   $body .= '</div>';
   /* stock alerts and latest orders */
@@ -39,7 +40,7 @@ if ($tab === 'home') {
   $body .= '</div></div></div>';
   $body .= '<div class="quick"><a class="btn" href="' . h(self_url(['tab' => 'expenses'])) . '">+ Add an expense</a><a class="btn" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '">+ Add a product</a>'
     . '<a class="btn line" href="' . h(self_url(['do' => 'excel'])) . '">Download all orders (Excel)</a><a class="btn line" href="' . h(self_url(['do' => 'report_excel', 'year' => date('Y')])) . '">Download ' . date('Y') . ' profit &amp; loss (Excel)</a></div></div>';
-  $body .= '<script type="application/json" id="chartData">' . json_encode(series(), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script>';
+  $body .= '<script type="application/json" id="chartData">' . json_encode(series($D['from'], $D['to']), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script>';
 }
 
 /* ============ Orders ============ */
@@ -66,10 +67,14 @@ if ($tab === 'orders') {
     $body .= '</div>';
   }
   $nf = count(array_filter([$F['status'], $F['method'], $F['from'], $F['to']], 'strlen'));
+  /* Today / 7 days / 30 days / All fill in From and To (All empties them); the other filters stay */
+  $qd = array_diff_key($q, ['from' => 1, 'to' => 1, 'page' => 1]); $dseg = '';
+  foreach (['today', 'd7', 'd30', 'all'] as $k) { [$a, $b] = preset_span($k); $dseg .= '<a href="' . h(self_url(array_filter(['from' => $a, 'to' => $b] + $qd))) . '"' . ($F['from'] === $a && $F['to'] === $b ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>'; }
   $body .= '<form class="filters' . ($nf ? ' open' : '') . '" id="ordFilters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '')
     . '<label class="fx">Status' . $sel('status', ['' => 'All orders'] + TRACK_CHIPS + ['awaiting' => 'Unfinished online payments'] + (in_array($F['status'], ['todo', 'new', 'paid'], true) ? [$F['status'] => ['todo' => 'Pending', 'new' => 'New', 'paid' => 'Paid'][$F['status']]] : []), $F['status']) . '</label>'
     . '<label class="fx">Payment' . $sel('method', ['' => 'COD and online', 'cod' => 'Cash on delivery (COD)', 'online' => 'Online (card / UPI)'], $F['method']) . '</label>'
-    . '<label class="hide-m">From<input type="date" name="from" value="' . h($F['from']) . '"></label><label class="hide-m">To<input type="date" name="to" value="' . h($F['to']) . '"></label>'
+    . '<label class="dq"><span class="hide-m">Dates</span><span class="seg">' . $dseg . '</span></label>'
+    . '<label class="fx dfl">From' . date_box('from', $F['from'], 'From') . '</label><label class="fx dfl">To' . date_box('to', $F['to'], 'To') . '</label>'
     . '<label class="grow"><span class="hide-m">Search</span><input type="search" name="q" value="' . h($F['q']) . '" placeholder="Order no, name, mobile, email or note" aria-label="Search orders"></label>'
     . '<button type="button" class="btn line show-m-i" data-open="#ordFilters">Filters' . ($nf ? ' (' . $nf . ')' : '') . '</button><button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
   $back = h(json_encode($q + ['page' => $page]));
@@ -153,9 +158,10 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   foreach ($C['reviews'] as $r) $body .= '<div class="rv"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating']) . '<span class="sp"></span><span class="muted small">' . h(date('d M Y', (int)$r['created'])) . '</span>' . ($r['status'] !== 'live' ? '<span class="badge st-cancelled">Removed</span>' : '') . '</div><p>' . nl2br(h($r['body'])) . '</p></div>';
   $body .= '</div></div></div>';
 } elseif ($tab === 'members') {
-  $min = member_min(); $spend = member_spend(); $mq = trim((string)($_GET['q'] ?? '')); $list = members($min, $spend, $mq);
-  $rule = $min . ' or more orders' . ($spend ? ' or ₹' . number_format($spend) . ' or more spent' : '');
-  $body .= '<div class="row mtool">'
+  $min = member_min(); $spend = member_spend(); $mq = trim((string)($_GET['q'] ?? ''));
+  $D = pick_dates('members'); $list = members($min, $spend, $mq, $D['from'], $D['to']);
+  $rule = $min . ' or more orders' . ($spend ? ' or ₹' . number_format($spend) . ' or more spent' : '') . ($D['r'] === 'all' ? '' : ' in ' . ($D['r'] === 'custom' ? date_span($D['from'], $D['to']) : ($D['r'] === 'today' ? 'today' : 'the last ' . period_label($D))));
+  $body .= date_bar($D, ['q' => $mq]) . '<div class="row mtool">'
     . '<form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_min"><label class="mrule">Orders: at least<input type="number" name="member_min" min="1" max="999" value="' . $min . '"></label><button class="btn line sm">Save</button></form>'
     . '<form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="member_spend"><label class="mrule">Spent: at least ₹<input type="number" name="member_spend" min="0" max="10000000" value="' . ($spend ?: '') . '" placeholder="off"></label><button class="btn line sm">Save</button></form>'
     . '<form method="get" class="msearch"><input type="hidden" name="tab" value="members"><input type="search" name="q" value="' . h($mq) . '" placeholder="Name, mobile or email"><button class="btn line sm">Search</button></form>'
@@ -268,27 +274,25 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
 
 /* ============ Expenses ============ */
 if ($tab === 'expenses') {
-  $month = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['month'] ?? '')) ? $_GET['month'] : date('Y-m');
-  $prev = date('Y-m', strtotime("$month-01 -1 month")); $next = date('Y-m', strtotime("$month-01 +1 month"));
-  $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day DESC, id DESC'); $s->execute(["$month-01", "$next-01"]);
+  /* the date bar picks the expenses shown and their total */
+  $D = pick_dates('expenses'); $PL = period_label($D);
+  $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day <= ? ORDER BY day DESC, id DESC'); $s->execute([$D['from'], $D['to']]);
   $list = $s->fetchAll(); $total = array_sum(array_column($list, 'amount'));
   $byCat = []; foreach ($list as $x) $byCat[$x['category']] = ($byCat[$x['category']] ?? 0) + (int)$x['amount']; arsort($byCat);
-  $today = date('Y-m-d'); $defDay = substr($today, 0, 7) === $month ? $today : "$month-01";
-  $body .= $sw('#expPanes', ['list' => 'This month', 'add' => 'Add an expense']) . '<div class="exp panes" id="expPanes">'
+  $body .= date_bar($D) . $sw('#expPanes', ['list' => 'Expenses', 'add' => 'Add an expense']) . '<div class="exp panes" id="expPanes">'
     . '<form method="post" class="box" data-pane="add">' . $csrfField . '<input type="hidden" name="action" value="expense"><div class="bh"><h3>Add an expense</h3></div><div class="bb" style="padding-top:12px">'
-    . '<label>Date<input type="date" name="day" value="' . h($defDay) . '" required></label>'
+    . '<label>Date' . date_box('day', date('Y-m-d'), 'Date of the expense', true) . '</label>'
     . '<label>Category' . $sel('category', array_combine(EXPENSE_CATEGORIES, EXPENSE_CATEGORIES), '') . '</label>'
     . '<label>Details<input name="note" maxlength="200" placeholder="optional, e.g. Instagram ads"></label>'
     . '<label>Amount ₹<input type="number" name="amount" min="0.01" step="0.01" required inputmode="decimal"></label><button class="btn" style="width:100%">Add expense</button></div></form>'
-    . '<div class="box on" data-pane="list"><div class="bh"><div class="row"><a class="btn line sm" href="' . h(self_url(['tab' => 'expenses', 'month' => $prev])) . '">‹</a><h2>' . h(date('F Y', strtotime("$month-01"))) . '</h2><a class="btn line sm" href="' . h(self_url(['tab' => 'expenses', 'month' => $next])) . '">›</a></div>'
-    . '<a class="btn line sm" href="' . h(self_url(['do' => 'expenses_excel', 'year' => substr($month, 0, 4)])) . '">' . h(substr($month, 0, 4)) . ' Excel</a></div>'
-    . '<div class="bh" style="flex-wrap:wrap"><span><b style="font-size:18px">' . rupees($total) . '</b> <span class="muted small">spent · ' . count($list) . ' expense' . (count($list) === 1 ? '' : 's') . '</span></span><span class="cats">'
-    . implode('', array_map(fn($c, $v) => '<span>' . h($c) . ' <b>' . rupees($v) . '</b></span>', array_keys($byCat), $byCat)) . '</span></div><div class="bb np">';
-  if (!$list) $body .= '<p class="empty">No expenses this month.</p>';
+    . '<div class="box on" data-pane="list"><div class="bh" style="flex-wrap:wrap"><span class="etot"><span class="muted">' . h($PL) . '</span> <b>' . rupees($total) . '</b> <span class="muted">· ' . count($list) . ' expense' . (count($list) === 1 ? '' : 's') . '</span></span>'
+    . '<a class="btn line sm" href="' . h(self_url(['do' => 'expenses_excel'])) . '">Excel</a></div>'
+    . ($byCat ? '<div class="bh"><span class="cats">' . implode('', array_map(fn($c, $v) => '<span>' . h($c) . ' <b>' . rupees($v) . '</b></span>', array_keys($byCat), $byCat)) . '</span></div>' : '') . '<div class="bb np">';
+  if (!$list) $body .= '<p class="empty">No expenses ' . ($D['r'] === 'today' ? 'today' : 'in these dates') . '.</p>';
   else {
     $body .= '<table class="grid"><thead><tr><th>Date</th><th>Category</th><th class="hide-m">Details</th><th class="r">Amount</th><th></th></tr></thead><tbody>';
-    foreach ($list as $x) $body .= '<tr><td>' . h(date('d M', strtotime($x['day']))) . '</td><td>' . h($x['category']) . '<small class="show-m">' . h($x['note']) . '</small></td><td class="hide-m">' . h($x['note']) . '</td><td class="r">' . rupees((int)$x['amount']) . '</td>'
-      . '<td class="r"><form method="post" onsubmit="return confirm(\'Delete this expense?\')">' . $csrfField . '<input type="hidden" name="action" value="expense_delete"><input type="hidden" name="id" value="' . (int)$x['id'] . '"><input type="hidden" name="month" value="' . h($month) . '"><button class="linkbtn">Delete</button></form></td></tr>';
+    foreach ($list as $x) $body .= '<tr><td class="nw">' . h(date(substr($x['day'], 0, 4) === date('Y') ? 'd M' : 'd M Y', strtotime($x['day']))) . '</td><td>' . h($x['category']) . '<small class="show-m">' . h($x['note']) . '</small></td><td class="hide-m">' . h($x['note']) . '</td><td class="r">' . rupees((int)$x['amount']) . '</td>'
+      . '<td class="r"><form method="post" onsubmit="return confirm(\'Delete this expense?\')">' . $csrfField . '<input type="hidden" name="action" value="expense_delete"><input type="hidden" name="id" value="' . (int)$x['id'] . '"><button class="linkbtn">Delete</button></form></td></tr>';
     $body .= '</tbody></table>';
   }
   $body .= '</div></div></div>';
@@ -296,19 +300,13 @@ if ($tab === 'expenses') {
 
 /* ============ Analytics ============ */
 if ($tab === 'analytics') {
-  $r = (string)($_GET['r'] ?? '7'); $today = date('Y-m-d');
-  [$from, $to] = match ($r) { 'today' => [$today, $today], '30' => [date('Y-m-d', strtotime('-29 day')), $today], 'custom' => [
-    preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['from'] ?? '')) ? $_GET['from'] : date('Y-m-d', strtotime('-6 day')),
-    preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($_GET['to'] ?? '')) ? $_GET['to'] : $today], default => [date('Y-m-d', strtotime('-6 day')), $today] };
-  if ($from > $to) [$from, $to] = [$to, $from];
+  $D = pick_dates('analytics'); $from = $D['from']; $to = $D['to'];
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
-  $body .= '<form class="range' . ($r === 'custom' ? ' open' : '') . '" id="anRange" method="get"><input type="hidden" name="tab" value="analytics"><span class="seg">'
-    . implode('', array_map(fn($k, $l) => '<a href="' . h(self_url(['tab' => 'analytics', 'r' => $k])) . '"' . ($r === $k ? ' class="on"' : '') . ">$l</a>", ['today', '7', '30'], ['Today', '7 days', '30 days'])) . '<button type="button" class="show-m-i' . ($r === 'custom' ? ' on' : '') . '" data-open="#anRange">Dates</button></span>'
-    . '<input type="hidden" name="r" value="custom"><input class="fx" type="date" name="from" value="' . h($from) . '" aria-label="From"><input class="fx" type="date" name="to" value="' . h($to) . '" aria-label="To"><button class="btn line sm fx">Show</button>'
-    . '<span class="muted small hide-m">' . h(date('d M Y', strtotime($from))) . ($from !== $to ? ' – ' . h(date('d M Y', strtotime($to))) : '') . '. Your own visits and bots are not counted.</span></form>';
-  $body .= '<div class="kpis n7 strip" style="--n:7">'
+  $body .= date_bar($D, [], '. Your own visits and bots are not counted.');
+  $body .= '<div class="kpis n8 strip" style="--n:8">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
     . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
+    . '<div class="kpi"><span>Gift page</span><b>' . number_format($A['gift']['visitors']) . '</b><small>' . number_format($A['gift']['views']) . ' views</small></div>'
     . '<div class="kpi"><span>Conversion rate</span><b>' . ($A['conversion'] === null ? '—' : round($A['conversion'], 1) . '%') . '</b><small>visits that bought</small></div>'
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
@@ -332,7 +330,7 @@ if ($tab === 'analytics') {
   $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Add ?utm_source=instagram (or whatsapp) to links you share, so every visit from them is counted under that name.</p></div></div>';
   /* phone, tablet or desktop */
   $dv = array_sum(array_column($A['devices'], 'visitors'));
-  $body .= '<div class="box devs" data-pane="devices"><div class="bh"><h3>Phone, tablet or desktop</h3></div><div class="bb">';
+  $body .= '<div class="box devs" data-pane="devices"><div class="bh"><h3>Phone, tablet or desktop</h3><span class="muted small nw">' . h(period_label($D)) . '</span></div><div class="bb">';
   if (!$A['devices']) $body .= '<p class="empty">No visits yet in these dates.</p>';
   foreach (DEVICES as $k => $label) {
     if (!$A['devices']) break;
@@ -341,19 +339,13 @@ if ($tab === 'analytics') {
       . ($x['visits'] ? ' (' . round($x['bought'] / $x['visits'] * 100, 1) . '%)' : '') . '</small></div>';
   }
   $body .= '</div></div>';
-  /* top countries and Indian states: the dates picked at the top first, then their own Today / 7 days / 30 days / Year */
-  $G = geo_stats($from, $to); $RS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year'];
-  $rOn = ['today' => 'today', '7' => 'd7', '30' => 'd30'][$r] ?? 'sel';
-  if ($rOn === 'sel') $RS = ['sel' => date_span($from, $to)] + $RS;
+  /* top countries and Indian states, for the dates picked at the top */
+  $G = geo_stats($from, $to);
   foreach (['countries' => 'Top countries', 'states' => 'Visitors by Indian state'] as $gk => $gt) {
-    $body .= '<div class="box geo" data-pane="' . $gk . '"><div class="bh"><h3>' . $gt . '</h3><span class="seg rs">' . implode('', array_map(fn($k, $l) => '<button type="button" data-r="' . $k . '"' . ($k === $rOn ? ' class="on"' : '') . '>' . h($l) . '</button>', array_keys($RS), $RS)) . '</span></div><div class="bb">';
-    foreach ($RS as $rk => $_) {
-      $rows = $G[$gk][$rk]; $mx = max(1, ...array_values($rows ?: [1]));
-      $body .= '<div class="rl" data-r="' . $rk . '"' . ($rk === $rOn ? '' : ' hidden') . '>';
-      if (!$rows) $body .= '<p class="empty">No visits ' . ($rk === 'today' ? 'today' : 'in this time') . '.</p>';
-      foreach ($rows as $name => $n) $body .= '<div class="li"><span class="grow">' . ($gk === 'countries' ? '<span class="flag">' . fomaxo_flag((string)$name) . '</span> ' . h(fomaxo_country_name((string)$name)) : h((string)$name)) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
-      $body .= '</div>';
-    }
+    $rows = $G[$gk]; $mx = max(1, ...array_values($rows ?: [1]));
+    $body .= '<div class="box geo" data-pane="' . $gk . '"><div class="bh"><h3>' . $gt . '</h3><span class="muted small nw">' . h(period_label($D)) . '</span></div><div class="bb">';
+    if (!$rows) $body .= '<p class="empty">No visits ' . ($D['r'] === 'today' ? 'today' : 'in these dates') . '.</p>';
+    foreach ($rows as $name => $n) $body .= '<div class="li"><span class="grow">' . ($gk === 'countries' ? '<span class="flag">' . fomaxo_flag((string)$name) . '</span> ' . h(fomaxo_country_name((string)$name)) : h((string)$name)) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
     $body .= '<p class="muted small">' . ($gk === 'states' ? 'Approximate: phone networks often show the state of their nearest hub. ' : '') . 'Looked up from the visitor’s IP address on this server; only the country' . ($gk === 'states' ? ' and state are' : ' is') . ' kept. IP geolocation by <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>.</p></div></div>';
   }
   /* products */
@@ -390,48 +382,68 @@ if ($tab === 'analytics') {
 
 /* ============ Reports ============ */
 if ($tab === 'reports') {
-  $rows = report_year($pyear); $t = report_sum($rows); $cur = date('Y-m');
+  /* the date bar picks the table: day by day up to 3 months, month by month for longer, by year for All */
+  $D = pick_dates('reports'); $V = report_view($D); $rows = $V['rows']; $t = report_sum($rows); $cur = date($V['unit'] === 'D' ? 'Y-m-d' : ($V['unit'] === 'M' ? 'Y-m' : 'Y'));
   $m = fn($p) => '<span class="' . ($p < 0 ? 'neg' : '') . '">' . money($p) . '</span>';
-  /* phones: this month and this year at a glance, above the Year picker */
-  $cy = report_year((int)date('Y')); $cm = report_sum([$cy[$cur]]); $ct = report_sum($cy);
-  $body .= '<div class="kpis mq">'
-    . '<div class="kpi"><span>Sales this month</span><b>' . rupees($cm['sales']) . '</b><small>' . $cm['orders'] . ($cm['orders'] === 1 ? ' order' : ' orders') . '</small></div>'
-    . '<div class="kpi ' . ($cm['net'] < 0 ? 'bad' : 'good') . '"><span>Profit this month</span><b>' . money($cm['net']) . '</b><small>' . h(date('F')) . '</small></div>'
-    . '<div class="kpi"><span>Sales this year</span><b>' . rupees($ct['sales']) . '</b><small>' . $ct['orders'] . ($ct['orders'] === 1 ? ' order' : ' orders') . '</small></div>'
-    . '<div class="kpi ' . ($ct['net'] < 0 ? 'bad' : 'good') . '"><span>Profit this year</span><b>' . money($ct['net']) . '</b><small>' . date('Y') . '</small></div></div>';
-  $body .= '<div class="row"><h2>Profit &amp; loss</h2><form method="get"><input type="hidden" name="tab" value="reports">' . $sel('year', array_combine(report_years(), report_years()), $pyear) . '</form><span class="sp"></span>'
-    . '<a class="btn line" href="' . h(self_url(['do' => 'report_excel', 'year' => $pyear])) . '">Download ' . $pyear . ' (Excel)</a></div>'
-    . '<script>document.querySelector("select[name=year]").onchange=function(){this.form.submit()}</script>';
-  $body .= '<div class="kpis n5 hide-m" style="--n:5">'
-    . '<div class="kpi"><span>Sales ' . $pyear . '</span><b>' . rupees($t['sales']) . '</b><small>' . $t['orders'] . ' orders · ' . rupees($t['discounts']) . ' discounts</small></div>'
-    . '<div class="kpi"><span>Cost of goods</span><b>' . rupees($t['cost']) . '</b><small>' . ($t['nocost'] ? '<span class="warn">' . $t['nocost'] . ' items with no cost set</span>' : 'from My cost on each product') . '</small></div>'
-    . '<div class="kpi"><span>Payment fees</span><b>' . rupees($t['fees']) . '</b><small>' . pay_fee_pct() . '% of card / UPI sales</small></div>'
-    . '<a class="kpi" href="' . h(self_url(['tab' => 'expenses'])) . '"><span>Expenses</span><b>' . rupees($t['expenses']) . '</b><small>Add expenses</small></a>'
-    . '<div class="kpi ' . ($t['net'] < 0 ? 'bad' : 'good') . '"><span>Net ' . ($t['net'] < 0 ? 'loss' : 'profit') . '</span><b>' . money($t['net']) . '</b><small>' . ($t['sales'] ? round($t['net'] / $t['sales'] * 100) . '% of sales' : '&nbsp;') . '</small></div></div>';
-  $head = '<th>Month</th><th class="r">Orders</th><th class="r">Sales</th><th class="r">Discounts</th><th class="r">Fees</th><th class="r">Cost of goods</th><th class="r">Gross profit</th><th class="r">Expenses</th><th class="r">Net profit / loss</th>';
-  $body .= $sw('#repPanes', ['month' => 'Month by month', 'year' => 'By year']) . '<div class="rep panes" id="repPanes"><div class="box on" data-pane="month"><div class="bb np"><table class="grid"><thead><tr>' . $head . '</tr></thead><tbody>';
-  foreach ($rows as $k => $r) $body .= '<tr' . ($k > $cur ? ' class="dim"' : '') . '><td>' . h(date('F', strtotime("$k-01"))) . '</td><td class="r">' . $r['orders'] . '</td><td class="r">' . rupees($r['sales']) . '</td><td class="r">' . rupees($r['discounts']) . '</td><td class="r">' . rupees($r['fees']) . '</td>'
-    . '<td class="r">' . rupees($r['cost']) . ($r['nocost'] ? ' <small class="warn">+' . $r['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($r['gross']) . '</td><td class="r">' . rupees($r['expenses']) . '</td><td class="r"><b>' . $m($r['net']) . '</b></td></tr>';
-  $body .= '</tbody><tfoot><tr><td>Total ' . $pyear . '</td><td class="r">' . $t['orders'] . '</td><td class="r">' . rupees($t['sales']) . '</td><td class="r">' . rupees($t['discounts']) . '</td><td class="r">' . rupees($t['fees']) . '</td><td class="r">' . rupees($t['cost']) . '</td><td class="r">' . $m($t['gross']) . '</td><td class="r">' . rupees($t['expenses']) . '</td><td class="r"><b>' . $m($t['net']) . '</b></td></tr></tfoot></table></div></div>';
-  $body .= '<div class="box yr" data-pane="year"><div class="bb np"><table class="grid"><thead><tr>' . str_replace('Month', 'Year', $head) . '</tr></thead><tbody>';
-  foreach (report_years() as $y) { $yt = report_sum(report_year($y)); $body .= '<tr><td><a href="' . h(self_url(['tab' => 'reports', 'year' => $y])) . '">' . $y . '</a></td><td class="r">' . $yt['orders'] . '</td><td class="r">' . rupees($yt['sales']) . '</td><td class="r">' . rupees($yt['discounts']) . '</td><td class="r">' . rupees($yt['fees']) . '</td><td class="r">' . rupees($yt['cost']) . '</td><td class="r">' . $m($yt['gross']) . '</td><td class="r">' . rupees($yt['expenses']) . '</td><td class="r"><b>' . $m($yt['net']) . '</b></td></tr>'; }
-  $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Sales are orders marked New, Paid or Delivered, by order date, including the cash on delivery fee. Cancelled orders, unfinished payments and test payments are left out. Discounts are what customers saved against the “Was” price (already taken off sales). Fees are the card / UPI payment fee set in Settings. Gross profit = sales − fees − cost of goods. Net = gross profit − expenses.</p></div></div></div>';
+  $g = in_array($_GET['g'] ?? '', ['sales', 'profit', 'orders', 'expenses'], true) ? $_GET['g'] : '';
+  $kk = (string)($_GET['k'] ?? '');
+  /* the four boxes: tapping one sets the dates to that month or year and opens its graph */
+  $cy = report_year((int)date('Y')); $cm = $cy[date('Y-m')]; $ct = report_sum($cy);
+  $mon = [date('Y-m-01'), date('Y-m-t')]; $yr = [date('Y-01-01'), date('Y-12-31')];
+  $boxes = ['sm' => ['Sales this month', rupees($cm['sales']), $cm['orders'] . ($cm['orders'] === 1 ? ' order' : ' orders'), $mon, 'sales', ''],
+    'pm' => ['Profit this month', money($cm['net']), date('F'), $mon, 'profit', $cm['net'] < 0 ? 'bad' : 'good'],
+    'sy' => ['Sales of this year', rupees($ct['sales']), $ct['orders'] . ($ct['orders'] === 1 ? ' order' : ' orders'), $yr, 'sales', ''],
+    'py' => ['Profit of this year', money($ct['net']), date('Y'), $yr, 'profit', $ct['net'] < 0 ? 'bad' : 'good']];
+  $body .= date_bar($D) . '<div class="kpis n4 rk" style="--n:4">';
+  foreach ($boxes as $k => [$label, $big, $small, $span, $gg, $cls])
+    $body .= '<a class="kpi ' . $cls . ($kk === $k && $D['r'] === 'custom' && [$D['from'], $D['to']] === $span ? ' on' : '') . '" href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $span[0], 'to' => $span[1], 'g' => $gg, 'k' => $k])) . '"><span>' . $label . '</span><b>' . $big . '</b><small>' . h($small) . '</small></a>';
+  $body .= '</div>';
+  $lab = fn(string $k, bool $long) => match ($V['unit']) { 'D' => date($long ? 'D j M Y' : 'j M', strtotime($k)), 'M' => date($long ? 'F Y' : (substr($V['from'], 0, 4) === substr($V['to'], 0, 4) ? 'M' : "M 'y"), strtotime("$k-01")), default => (string)$k };
+  /* the graph: only after a box (or a row, while it is open) is tapped; Sales / Profit / Orders / Expenses switch it */
+  if ($g !== '') {
+    $close = self_url(['tab' => 'reports']);
+    $GD = ['labels' => [], 'full' => [], 'sales' => [], 'profit' => [], 'orders' => [], 'expenses' => []];
+    foreach ($rows as $k => $r) { $GD['labels'][] = $lab((string)$k, false); $GD['full'][] = $lab((string)$k, true); $GD['sales'][] = $r['sales']; $GD['profit'][] = $r['net']; $GD['orders'][] = $r['orders']; $GD['expenses'][] = $r['expenses']; }
+    $body .= '<div class="box rgraph" data-g="' . $g . '"><div class="bh"><span class="seg gm">' . implode('', array_map(fn($x, $l) => '<button type="button" data-g="' . $x . '"' . ($x === $g ? ' class="on"' : '') . ">$l</button>", ['sales', 'profit', 'orders', 'expenses'], ['Sales', 'Profit', 'Orders', 'Expenses'])) . '</span>'
+      . '<span class="muted small gdates">From ' . dmy($V['from']) . ' to ' . dmy($V['to']) . '</span><a class="zx" href="' . h($close) . '" aria-label="Close the graph" title="Close">✕</a></div>'
+      . '<div class="chart lchart" role="img" aria-label="Graph"><svg></svg><div class="tip" hidden></div></div><div class="gtot"><span class="muted">Total</span> <b></b></div>'
+      . '<script type="application/json" id="repGraph">' . json_encode($GD, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script></div>';
+  }
+  $what = ['D' => 'Day by day', 'M' => 'Month by month', 'Y' => 'By year'][$V['unit']];
+  $head = '<th>' . ['D' => 'Day', 'M' => 'Month', 'Y' => 'Year'][$V['unit']] . '</th><th class="r">Orders</th><th class="r">Sales</th><th class="r">Discounts</th><th class="r">Fees</th><th class="r">Cost of goods</th><th class="r">Gross profit</th><th class="r">Expenses</th><th class="r">Net profit / loss</th>';
+  $body .= '<div class="box fill rtab"><div class="bh"><span><h3 style="display:inline">' . $what . '</h3> <span class="muted small">' . h(date_span($V['from'], $V['to'])) . ($V['unit'] === 'D' ? '' : ' · tap a ' . ($V['unit'] === 'M' ? 'month' : 'year') . ' to open it') . '</span></span>'
+    . '<a class="btn line sm" href="' . h(self_url(['do' => 'report_excel'])) . '">Excel</a></div><div class="bb np"><table class="grid"><thead><tr>' . $head . '</tr></thead><tbody>';
+  foreach ($rows as $k => $r) {
+    $k = (string)$k;
+    $open = match ($V['unit']) { 'M' => ["$k-01", date('Y-m-t', strtotime("$k-01"))], 'Y' => ["$k-01-01", "$k-12-31"], default => null };
+    $name = h($lab($k, $V['unit'] === 'M' && substr($V['from'], 0, 4) !== substr($V['to'], 0, 4)));
+    if ($V['unit'] === 'D') $name = h(date('D', strtotime($k))) . ' <span class="muted">' . h(date('j M', strtotime($k))) . '</span>';
+    $body .= '<tr' . ($k > $cur ? ' class="dim"' : '') . ($open ? ' data-href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '"' : '') . '>'
+      . '<td>' . ($open ? '<a href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '">' . $name . '</a>' : $name) . '</td>'
+      . '<td class="r">' . $r['orders'] . '</td><td class="r">' . rupees($r['sales']) . '</td><td class="r">' . rupees($r['discounts']) . '</td><td class="r">' . rupees($r['fees']) . '</td>'
+      . '<td class="r">' . rupees($r['cost']) . ($r['nocost'] ? ' <small class="warn">+' . $r['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($r['gross']) . '</td><td class="r">' . rupees($r['expenses']) . '</td><td class="r"><b>' . $m($r['net']) . '</b></td></tr>';
+  }
+  $body .= '</tbody><tfoot><tr><td>Total</td><td class="r">' . $t['orders'] . '</td><td class="r">' . rupees($t['sales']) . '</td><td class="r">' . rupees($t['discounts']) . '</td><td class="r">' . rupees($t['fees']) . '</td><td class="r">' . rupees($t['cost']) . ($t['nocost'] ? ' <small class="warn">+' . $t['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($t['gross']) . '</td><td class="r">' . rupees($t['expenses']) . '</td><td class="r"><b>' . $m($t['net']) . '</b></td></tr></tfoot></table>'
+    . '<p class="muted small" style="padding:0 12px">Sales are orders marked New, Paid or Delivered, by order date, including the cash on delivery fee. Cancelled orders, unfinished payments and test payments are left out. Discounts are what customers saved against the “Was” price (already taken off sales). Fees are the card / UPI payment fee set in Settings (' . pay_fee_pct() . '%). Gross profit = sales − fees − cost of goods. Net = gross profit − expenses.</p></div></div>'
+    . '<script>document.querySelectorAll(".rtab tr[data-href]").forEach(function(r){r.onclick=function(e){if(!e.target.closest("a"))location.href=r.dataset.href}})</script>';
 }
 
 /* ============ Reviews ============ */
 if ($tab === 'reviews') {
   $rq = trim((string)($_GET['q'] ?? '')); $rv = (string)($_GET['v'] ?? ''); $rv = in_array($rv, ['1', '0'], true) ? $rv : '';
   $rp = (string)($_GET['p'] ?? ''); if (!preg_match('/^[\w-]{1,60}$/', $rp)) $rp = '';
-  $ALL = reviews_list(); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + ($rv !== '' ? ['verified' => (int)$rv] : []));
+  /* the date bar: picking dates shows only the reviews written in them (the counts, stars and top reviewers too) */
+  $D = pick_dates('reviews'); $dd = $D['r'] === 'all' ? [] : ['from' => $D['from'], 'to' => $D['to']];
+  $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []));
   $nv = count(array_filter($ALL, fn($r) => (int)$r['verified'] === 1)); $nu = count($ALL) - $nv;
   $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp], 'strlen'); $back = h(json_encode($keep));
-  $body .= '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '')
+  $body .= date_bar($D, ['q' => $rq, 'v' => $rv, 'p' => $rp]) . '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '')
     . '<input type="search" name="q" value="' . h($rq) . '" placeholder="Words, name or mobile"><button class="btn line sm">Search</button>'
     . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
     . '<a class="chip' . ($rv === '0' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '0' ? '' : '0'] + $keep)) . '">Unverified <b>' . $nu . '</b></a></form>';
   $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars By Product', 'top' => 'Top Reviewers']) . '<div class="revs panes" id="rvPanes">';
   /* every review */
-  $body .= '<div class="box on" data-pane="list"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . '. Removed reviews leave the website and the star rating; Put back shows them again.</span></div><div class="bb">';
+  $body .= '<div class="box on" data-pane="list"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . ($D['r'] === 'all' ? '' : ' · ' . h(period_label($D))) . '. Removed reviews leave the website and the star rating; Put back shows them again.</span></div><div class="bb">';
   if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
   elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' ? ' match this search.' : ' yet.') . '</p>';
   foreach ($list as $r) {
