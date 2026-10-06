@@ -415,6 +415,9 @@ function analytics(string $from, string $to, array $CAT): array {
   $out = ['visitors' => (int)$q('SELECT COUNT(DISTINCT vid) FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ?', $a)->fetchColumn(),
     'visits' => (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ?', $a)->fetchColumn(),
     'now' => (int)$q('SELECT COUNT(*) FROM online WHERE last > ?', [time() - 300])->fetchColumn()];
+  /* the Gift page (#/gift): how many people opened it, and how many times */
+  $g = $q('SELECT COUNT(DISTINCT vid) v, COUNT(*) n FROM events WHERE type = \'view\' AND (path = \'/gift\' OR path LIKE \'/gift/%\') AND ts >= ? AND ts <= ?', $a)->fetch();
+  $out['gift'] = ['visitors' => (int)($g['v'] ?? 0), 'views' => (int)($g['n'] ?? 0)];
   $out['funnel'] = [];
   foreach (FUNNEL as $t => $_) $out['funnel'][$t] = (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
   /* where visitors come from: visitors, visits and visits that bought, per source */
