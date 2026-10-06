@@ -1998,6 +1998,21 @@ html[data-mode="light"] .co-err{color:#a8322a}
 .co-total span{font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:var(--ivory)}
 .co-total b{font-family:var(--serif);font-weight:400;font-size:clamp(32px,3vw,42px);color:var(--gold-hi)}
 .co-save{margin-top:10px;text-align:right;font-size:13px;color:var(--gold)}
+.co-cpn{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.co-cpn-open{font-size:13.5px;color:var(--champagne);border-bottom:1px solid var(--line-2);padding-bottom:3px}
+.co-cpn-open:hover{color:var(--gold-hi);border-color:var(--gold-hi)}
+.co-cpn-form{display:flex;gap:10px;margin-top:12px}
+.co-cpn-form input{flex:1;min-width:0;background:transparent;border:1px solid var(--line-2);padding:0 14px;min-height:46px;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ivory);outline:none;border-radius:0}
+.co-cpn-form input:focus{border-color:var(--gold-hi)}
+.co-cpn-form input::placeholder{color:var(--dim);letter-spacing:.04em;text-transform:none;opacity:1}
+.co-cpn-form .btn{min-height:46px;flex:none}
+.co-cpn-msg{margin-top:10px;font-size:13.5px;color:#d0493e}
+html[data-mode="light"] .co-cpn-msg{color:#a8322a}
+.co-cpn-on{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--gold)}
+.co-cpn-on b{font-weight:500;letter-spacing:.1em;color:var(--gold-hi)}
+.co-cpn-on button{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line-2);padding-bottom:3px}
+.co-cpn-on button:hover{color:var(--gold-hi)}
+.co-rows .co-cpnrow b{color:var(--gold)}
 @media(max-width:980px){
   .co-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "sum" "form"}
   .co-sum{position:static;margin-bottom:36px}
@@ -3634,7 +3649,8 @@ function bindOwner(){
 /* ============================ CHECKOUT ============================
    #/checkout pays for the bag; #/checkout?buy=1 is a legacy single-item checkout; Buy Now now adds to the bag and opens #/checkout.
    Online payment opens Razorpay Checkout (UPI, cards, netbanking, wallets); api/razorpay.php prices the order on the
-   server and verifies the payment. Cash on delivery goes to api/cod.php. */
+   server and verifies the payment. Cash on delivery goes to api/cod.php. A coupon code (made on fomaxo.in/admin → Coupons)
+   is checked by api/coupon.php and taken off again on the server when the order is placed. */
 const IN_STATES = ['Andaman and Nicobar Islands','Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chandigarh','Chhattisgarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu and Kashmir','Jharkhand','Karnataka','Kerala','Ladakh','Lakshadweep','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'];
 const CO_ICON = {
   card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="1.5"/><path d="M2.5 9.5h19M6 15h4"/></svg>',
@@ -3671,9 +3687,15 @@ function checkoutPage(q){
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
-    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${cod ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
+    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${LIVE.coupons ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
-    ${was > t ? `<p class="co-save">You save ${inr(was - t)} on this order</p>` : ''}
+    <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
+    ${LIVE.coupons ? `<div class="co-cpn" id="coCpn">
+      <button type="button" class="co-cpn-open" id="coCpnOpen" aria-expanded="false" aria-controls="coCpnForm">Have a coupon code?</button>
+      <div class="co-cpn-form" id="coCpnForm" hidden><input id="coCpnIn" placeholder="Coupon code" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
+      <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied · <span id="coCpnOff"></span> off</span><button type="button" id="coCpnDel">Remove</button></div>
+      <p class="co-cpn-msg" id="coCpnMsg" role="status" aria-live="polite" hidden></p>
+    </div>` : ''}
   </aside>
   <form class="form co-form" id="coForm" novalidate>
     <div class="co-step"><span>1</span><h2>Delivery details</h2></div>
@@ -3729,7 +3751,8 @@ function bindCheckout(q){
   $$('.co-item[role=button]').forEach(it => { it.onclick = openBag; it.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBag(); } }; });
   if (S.checkout.razorpay) loadRazorpay().catch(() => {});
   const method = () => (f.querySelector('input[name=pay]:checked') || {}).value;
-  const total = () => t + (method() === 'cod' && cod ? cod.fee : 0);
+  let cpn = null;   // the coupon applied: {code, off} (off in rupees, worked out by api/coupon.php; cod.php and razorpay.php work it out again)
+  const total = () => t - (cpn ? cpn.off : 0) + (method() === 'cod' && cod ? cod.fee : 0);
   /* payment stays locked until every required delivery field is filled in correctly */
   const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', v => /^[6-9]\d{9}$/.test(v.replace(/\D/g, ''))],
     ['email', 'Email', v => (v === '' && coPhone()) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)], ['house', 'Flat / house no, building', v => v.length > 0],
@@ -3747,6 +3770,8 @@ function bindCheckout(q){
     if (locked) $('#coChips').innerHTML = miss.map(([k, l]) => `<button type="button" data-need="${k}">${l}</button>`).join('');
     if (fr) fr.hidden = !isCod;
     $('#coTotal').textContent = inr(total());
+    const sv = $('#coSave'), saved = Number(sv.dataset.was) + (cpn ? cpn.off : 0); sv.hidden = saved <= 0; sv.textContent = `You save ${inr(saved)} on this order`;
+    const cr2 = $('#coCpnRow'); if (cr2) { cr2.hidden = !cpn; if (cpn) { $('#coCpnRowCode').textContent = cpn.code; $('#coCpnRowOff').textContent = '−' + inr(cpn.off); } }
     btn.disabled = locked;
     $('#coPayTxt').textContent = locked ? 'Complete delivery details to pay' : isCod ? `Place order · ${inr(total())} on delivery` : `Pay ${inr(total())} securely`;
     $$('.co-opt', f).forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
@@ -3790,11 +3815,38 @@ function bindCheckout(q){
   const done = (no, pay, review) => {
     TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, '')});
     try { localStorage.setItem(LAST_KEY, JSON.stringify({at: Date.now(), lines: lines.map(l => l.picks ? {id: l.id, opt: l.opt, picks: l.picks} : {id: l.id, opt: l.opt})})); } catch(e) {}
+    try { sessionStorage.removeItem('fx_coupon'); } catch(e) {}
     if (coBuy(q)) { try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {} } else { cart = []; save(); }
     location.hash = `#/thank-you?order=${encodeURIComponent(no)}&pay=${pay}${review ? '&rv=' + encodeURIComponent(review) : ''}`;
   };
   const post = async (url, body) => { const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.'); return d; };
-  const payload = c => ({lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks})), customer: c});
+  const payload = c => ({lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks})), customer: c, coupon: cpn ? cpn.code : ''});
+
+  /* "Have a coupon code?": the code is checked on the server against this bag, and kept for this visit if the page redraws */
+  const CPN = 'fx_coupon', cIn = $('#coCpnIn');
+  const cpnShow = msg => {
+    const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || '';
+    $('#coCpnOn').hidden = !cpn; $('#coCpnOpen').hidden = !!cpn;
+    if (cpn) { $('#coCpnForm').hidden = true; $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.off); }
+    upd();
+  };
+  const cpnApply = async (code, quiet) => {
+    code = String(code || '').replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
+    if (!code) { cpnShow('Please type your coupon code.'); return; }
+    const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
+    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines}); cpn = {code: d.code, off: Number(d.discount)}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {} cpnShow(''); }
+    catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { $('#coCpnForm').hidden = false; $('#coCpnOpen').setAttribute('aria-expanded', 'true'); cIn.value = code; } cpnShow(x.message); }
+    finally { b.disabled = false; b.textContent = 'Apply'; }
+  };
+  if (cIn) {
+    $('#coCpnOpen').onclick = () => { const fm = $('#coCpnForm'), open = fm.hidden; fm.hidden = !open; $('#coCpnOpen').setAttribute('aria-expanded', open); if (open) cIn.focus(); };
+    $('#coCpnApply').onclick = () => cpnApply(cIn.value);
+    cIn.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); cpnApply(cIn.value); } };
+    cIn.oninput = () => { $('#coCpnMsg').hidden = true; };
+    $('#coCpnDel').onclick = () => { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} cIn.value = ''; cpnShow(''); };
+    let keep = ''; try { keep = sessionStorage.getItem(CPN) || ''; } catch(e) {}
+    if (keep) cpnApply(keep, true);
+  }
 
   f.onsubmit = async e => {
     e.preventDefault(); err.hidden = true;

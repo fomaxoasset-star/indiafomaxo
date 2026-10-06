@@ -225,6 +225,15 @@ function fomaxo_price_order(array $in): array {
   return ['items' => $items, 'rows' => $rows, 'subtotal' => $total];
 }
 
+/* The coupon code typed at checkout, checked against this bag (api/shop-db.php): [] when none was typed,
+   ['error' => …], or ['code', 'discount' (paise), 'label']. */
+function fomaxo_coupon(array $in, int $subtotal, ?PDO $db = null): array {
+  $code = is_string($in['coupon'] ?? null) ? trim($in['coupon']) : '';
+  if ($code === '') return [];
+  try { return shop_coupon_apply($code, $subtotal, $db); }
+  catch (Throwable $e) { error_log('FOMAXO coupon: ' . $e->getMessage()); return ['error' => 'Coupon codes cannot be checked right now. Please try again, or remove the code.']; }
+}
+
 /* Delivery details from the checkout page. Returns ['error'=>…] or clean details. */
 function fomaxo_customer(array $in): array {
   $c = is_array($in['customer'] ?? null) ? $in['customer'] : [];
@@ -307,7 +316,8 @@ function fomaxo_send_emails(array $rec, string $how): void {
   $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
   $from = "FOMAXO <orders@$host>";
   $subj = fn($s) => '=?UTF-8?B?' . base64_encode($s) . '?=';
-  $lines = implode("\n", $rec['rows']) . (!empty($rec['codFee']) ? "\n• Cash on delivery fee — " . rupees((int)$rec['codFee']) : '');
+  $lines = implode("\n", $rec['rows']) . (!empty($rec['discount']) ? "\n• Coupon {$rec['coupon']} — −" . rupees((int)$rec['discount']) : '')
+    . (!empty($rec['codFee']) ? "\n• Cash on delivery fee — " . rupees((int)$rec['codFee']) : '');
   $body = "NEW ORDER {$rec['no']} — $how\n" . date('d M Y, H:i') . " (IST)\n" . (!empty($rec['payment']) ? "Razorpay payment: {$rec['payment']}\n" : '') . "\n$lines\n\n"
         . ($how === 'Cash on delivery' ? "TO COLLECT ON DELIVERY: $total" : "TOTAL PAID: $total") . "\nDelivery: Free\n\n"
         . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\nAddress: {$c['address']}\n" . ($c['note'] ? "Note: {$c['note']}\n" : '');
