@@ -306,9 +306,10 @@ if ($tab === 'analytics') {
     . implode('', array_map(fn($k, $l) => '<a href="' . h(self_url(['tab' => 'analytics', 'r' => $k])) . '"' . ($r === $k ? ' class="on"' : '') . ">$l</a>", ['today', '7', '30'], ['Today', '7 days', '30 days'])) . '<button type="button" class="show-m-i' . ($r === 'custom' ? ' on' : '') . '" data-open="#anRange">Dates</button></span>'
     . '<input type="hidden" name="r" value="custom"><input class="fx" type="date" name="from" value="' . h($from) . '" aria-label="From"><input class="fx" type="date" name="to" value="' . h($to) . '" aria-label="To"><button class="btn line sm fx">Show</button>'
     . '<span class="muted small hide-m">' . h(date('d M Y', strtotime($from))) . ($from !== $to ? ' – ' . h(date('d M Y', strtotime($to))) : '') . '. Your own visits and bots are not counted.</span></form>';
-  $body .= '<div class="kpis n7 strip" style="--n:7">'
+  $body .= '<div class="kpis n8 strip" style="--n:8">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
     . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
+    . '<div class="kpi"><span>Gift page</span><b>' . number_format($A['gift']['visitors']) . '</b><small>' . number_format($A['gift']['views']) . ' views</small></div>'
     . '<div class="kpi"><span>Conversion rate</span><b>' . ($A['conversion'] === null ? '—' : round($A['conversion'], 1) . '%') . '</b><small>visits that bought</small></div>'
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
