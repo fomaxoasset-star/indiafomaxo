@@ -2012,6 +2012,10 @@ html[data-mode="light"] .co-cpn-msg{color:#a8322a}
 .co-cpn-end{display:block;margin-top:4px;font-size:12.5px;letter-spacing:.04em;color:var(--muted)}
 .co-cpn-on button{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line-2);padding-bottom:3px}
 .co-cpn-on button:hover{color:var(--gold-hi)}
+.co-cpn-saved{margin-top:12px;padding:12px 14px;border-radius:4px;text-align:center;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#2fa863;box-shadow:inset 0 0 0 1.5px #2fa863}
+.co-cpn-saved b{font-size:17px;letter-spacing:.04em}
+.co-cpn-saved[hidden]{display:none}
+html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
 .co-rows .co-cpnrow b{color:var(--gold)}
 @media(max-width:980px){
   .co-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "sum" "form"}
@@ -3693,7 +3697,8 @@ function checkoutPage(q){
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
     ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
       <div class="co-cpn-form" id="coCpnForm"><input id="coCpnIn" placeholder="Have a coupon?" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
-      <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied · <span id="coCpnOff"></span> off<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
+      <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
+      <p class="co-cpn-saved" id="coCpnSaved" hidden>You saved <b id="coCpnOff"></b> after coupon</p>
       <p class="co-cpn-msg" id="coCpnMsg" role="status" aria-live="polite" hidden></p>
     </div>` : ''}
   </aside>
@@ -3826,7 +3831,7 @@ function bindCheckout(q){
   const CPN = 'fx_coupon', cIn = $('#coCpnIn');
   const cpnShow = msg => {
     const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || '';
-    $('#coCpnOn').hidden = !cpn;
+    $('#coCpnOn').hidden = !cpn; $('#coCpnSaved').hidden = !cpn;
     $('#coCpnForm').hidden = !!cpn;
     if (cpn) { $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.off); }
     cpnEnd(); upd();
