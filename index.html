@@ -1743,7 +1743,8 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .pnow{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .pold{font-family:var(--sans);font-weight:500;font-size:22px;line-height:1.1;color:#e04a3f;text-decoration:line-through;text-decoration-thickness:2px}
 .prow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px}
-.psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#fff;background:#1f8a4c}
+.psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
+html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
 .psave i{font-style:normal;opacity:.7}
 .zoom-dot{position:absolute;right:24px;top:50%;z-index:2;width:68px;height:68px;margin-top:-34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:9px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:#1a140b;background:radial-gradient(circle at 35% 30%,#e9c98b,#b8883f);box-shadow:0 8px 24px -8px rgba(0,0,0,.6);pointer-events:none;transition:opacity .3s}
 .stage.zoom .zoom-dot{opacity:0}
@@ -2516,7 +2517,7 @@ const wasHTML = (p, size) => { const c = p.compareAt && p.compareAt[size]; retur
 const pctOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
 const offTag = (p, s) => { const n = pctOff(p, s); return n ? `<span class="off-tag">${n}% off</span>` : ''; };
 const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size);
-  if (m && cls === 'pprice') return `<span class="pnow">${n ? `<s class="pold">${money(p.compareAt[size], curOf(p))}</s>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">Save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
+  if (m && cls === 'pprice') return `<span class="pnow">${n ? `<s class="pold">${money(p.compareAt[size], curOf(p))}</s>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
   return m ? `<span class="${cls}">${wasHTML(p, size)}${m}</span>` : `<span class="${cls} na">Price on request</span>`; };
 const fromHTML = p => { const v = p.sizes.map(s => p.prices[s]).filter(hasPrice); const mn = Math.min(...v), ms = p.sizes.find(s => p.prices[s] == mn); return v.length ? `<span class="price">${p.sizes.length > 1 ? '<small>from</small> ' : ''}${wasHTML(p, ms)}${money(mn, curOf(p))}</span>` : `<span class="price na">Price on request</span>`; };
 const pRateHTML = (r, n) => n
