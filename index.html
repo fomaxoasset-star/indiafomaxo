@@ -1999,9 +1999,9 @@ html[data-mode="light"] .co-err{color:#a8322a}
 .co-total b{font-family:var(--serif);font-weight:400;font-size:clamp(32px,3vw,42px);color:var(--gold-hi)}
 .co-save{margin-top:10px;text-align:right;font-size:13px;color:var(--gold)}
 .co-cpn{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
-.co-cpn-open{font-size:13.5px;color:var(--champagne);border-bottom:1px solid var(--line-2);padding-bottom:3px}
-.co-cpn-open:hover{color:var(--gold-hi);border-color:var(--gold-hi)}
-.co-cpn-form{display:flex;gap:10px;margin-top:12px}
+.co-cpn-open{display:block;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ivory)}
+.co-cpn-form{display:flex;gap:10px;margin-top:10px}
+.co-cpn-form[hidden]{display:none}
 .co-cpn-form input{flex:1;min-width:0;background:transparent;border:1px solid var(--line-2);padding:0 14px;min-height:46px;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ivory);outline:none;border-radius:0}
 .co-cpn-form input:focus{border-color:var(--gold-hi)}
 .co-cpn-form input::placeholder{color:var(--dim);letter-spacing:.04em;text-transform:none;opacity:1}
@@ -2177,7 +2177,7 @@ window.STORE = {
     email: "fomaxoasset@gmail.com",
     checkoutUrl: "",
     razorpay: "api/razorpay.php",     // online payment (UPI, cards, netbanking, wallets) on the checkout page. Keys go in fomaxo-private/razorpay-config.php on Hostinger. Set to "" to turn off.
-    coupons: true,                    // "Have a coupon code?" at checkout, always shown. Codes are made in fomaxo.in/admin → Coupons. Set to false to hide the box.
+    coupons: true,                    // the coupon code box at checkout, always open. Codes are made in fomaxo.in/admin → Coupons. Set to false to hide the box.
     cod: { min: 1000, fee: 50, onlyName: "fake name" }   // cash on delivery for orders of ₹1,000 and above, with a ₹50 fee. While onlyName is set, COD shows "COD unactivated" and only works when the Full name is exactly that (for testing, no minimum). Remove onlyName to open COD to everyone; write cod: null to turn it off.
   },
 
@@ -3693,8 +3693,8 @@ function checkoutPage(q){
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
     ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
-      <button type="button" class="co-cpn-open" id="coCpnOpen" aria-expanded="false" aria-controls="coCpnForm">Have a coupon code?</button>
-      <div class="co-cpn-form" id="coCpnForm" hidden><input id="coCpnIn" placeholder="Coupon code" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
+      <label class="co-cpn-open" id="coCpnOpen" for="coCpnIn">Coupon code</label>
+      <div class="co-cpn-form" id="coCpnForm"><input id="coCpnIn" placeholder="Enter coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
       <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied · <span id="coCpnOff"></span> off<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
       <p class="co-cpn-msg" id="coCpnMsg" role="status" aria-live="polite" hidden></p>
     </div>` : ''}
@@ -3824,12 +3824,13 @@ function bindCheckout(q){
   const post = async (url, body) => { const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.'); return d; };
   const payload = c => ({lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks})), customer: c, coupon: cpn ? cpn.code : ''});
 
-  /* "Have a coupon code?": the code is checked on the server against this bag, and kept for this visit if the page redraws */
+  /* The coupon code box: the code is checked on the server against this bag, and kept for this visit if the page redraws */
   const CPN = 'fx_coupon', cIn = $('#coCpnIn');
   const cpnShow = msg => {
     const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || '';
     $('#coCpnOn').hidden = !cpn; $('#coCpnOpen').hidden = !!cpn;
-    if (cpn) { $('#coCpnForm').hidden = true; $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.off); }
+    $('#coCpnForm').hidden = !!cpn;
+    if (cpn) { $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.off); }
     cpnEnd(); upd();
   };
   /* a coupon with a time limit: "Ends in 2h 15m" in its last two days, else the day it ends */
@@ -3848,11 +3849,10 @@ function bindCheckout(q){
     if (!code) { cpnShow('Please type your coupon code.'); return; }
     const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
     try { const d = await post('api/coupon.php', {code, lines: payload({}).lines}); cpn = {code: d.code, off: Number(d.discount), ends: d.ends || ''}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {} cpnShow(''); }
-    catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { $('#coCpnForm').hidden = false; $('#coCpnOpen').setAttribute('aria-expanded', 'true'); cIn.value = code; } cpnShow(x.message); }
+    catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message); }
     finally { b.disabled = false; b.textContent = 'Apply'; }
   };
   if (cIn) {
-    $('#coCpnOpen').onclick = () => { const fm = $('#coCpnForm'), open = fm.hidden; fm.hidden = !open; $('#coCpnOpen').setAttribute('aria-expanded', open); if (open) cIn.focus(); };
     $('#coCpnApply').onclick = () => cpnApply(cIn.value);
     cIn.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); cpnApply(cIn.value); } };
     cIn.oninput = () => { $('#coCpnMsg').hidden = true; };
