@@ -123,7 +123,9 @@
     var openZoom = function (src) {
       shutZoom(true);
       var copy;
-      if (src.classList.contains('kpi')) {
+      var own = src.dataset.zoom && document.querySelector(src.dataset.zoom);
+      if (own) { copy = own.cloneNode(true); copy.hidden = false; copy.removeAttribute('id'); }   /* a tile with its own full view (Gift page) */
+      else if (src.classList.contains('kpi')) {
         /* a number tile opens all the tiles big, with the one tapped lit up */
         copy = document.createElement('div'); copy.className = 'box zkpis';
         var dates = document.querySelector('.range .muted.small');

@@ -443,6 +443,43 @@ function analytics(string $from, string $to, array $CAT): array {
   $out['products'] = $pr;
   return $out;
 }
+/* everything about the Gift page (#/gift) in the dates picked, for the big view the Gift page tile opens: people and views,
+   day by day, where they came from, phone or computer, country and state, and what those visits did next on the shop */
+function gift_stats(string $from, string $to, array $CAT): array {
+  $db = shop_db(); $a = ["$from 00:00:00", "$to 23:59:59"];
+  $q = function (string $sql, array $args = []) use ($db) { $s = $db->prepare($sql); $s->execute($args); return $s; };
+  $gv = "type = 'view' AND (path = '/gift' OR path LIKE '/gift/%') AND ts >= ? AND ts <= ?";
+  $in = "sid IN (SELECT sid FROM events WHERE $gv)";
+  $r = $q("SELECT COUNT(DISTINCT vid) p, COUNT(DISTINCT sid) s, COUNT(*) n FROM events WHERE $gv", $a)->fetch();
+  $out = ['people' => (int)$r['p'], 'visits' => (int)$r['s'], 'views' => (int)$r['n'],
+    'all' => (int)$q("SELECT COUNT(DISTINCT vid) FROM events WHERE type = 'view' AND ts >= ? AND ts <= ?", $a)->fetchColumn()];
+  /* day by day, every day in the dates (newest first), empty days too */
+  $days = [];
+  for ($t = strtotime($to); $t >= strtotime($from); $t = strtotime('-1 day', $t)) $days[date('Y-m-d', $t)] = ['people' => 0, 'views' => 0];
+  foreach ($q("SELECT substr(ts, 1, 10) d, COUNT(DISTINCT vid) p, COUNT(*) n FROM events WHERE $gv GROUP BY substr(ts, 1, 10)", $a) as $x)
+    if (isset($days[$x['d']])) $days[$x['d']] = ['people' => (int)$x['p'], 'views' => (int)$x['n']];
+  $out['days'] = $days;
+  $out['sources'] = [];
+  foreach ($q("SELECT source, COUNT(DISTINCT vid) p, COUNT(*) n FROM events WHERE $gv GROUP BY source ORDER BY p DESC, n DESC", $a) as $x) $out['sources'][$x['source']] = ['people' => (int)$x['p'], 'views' => (int)$x['n']];
+  $out['devices'] = [];
+  foreach ($q("SELECT device, COUNT(DISTINCT vid) p FROM events WHERE $gv GROUP BY device ORDER BY p DESC", $a) as $x) $out['devices'][$x['device']] = (int)$x['p'];
+  $out['countries'] = []; $out['states'] = [];
+  foreach ($q("SELECT country, COUNT(DISTINCT vid) p FROM visits WHERE $in AND country <> '' GROUP BY country ORDER BY p DESC LIMIT 15", $a) as $x) $out['countries'][$x['country']] = (int)$x['p'];
+  foreach ($q("SELECT region, COUNT(DISTINCT vid) p FROM visits WHERE $in AND country = 'IN' AND region <> '' GROUP BY region ORDER BY p DESC LIMIT 15", $a) as $x) $out['states'][$x['region']] = (int)$x['p'];
+  /* the visits that opened the Gift page: how far they went */
+  $out['next'] = [];
+  foreach (['product', 'add', 'checkout', 'buy'] as $t) $out['next'][$t] = (int)$q("SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND $in", [$t, ...$a])->fetchColumn();
+  /* products those visits looked at and added to the bag */
+  $pr = [];
+  foreach ($q("SELECT product, type, COUNT(*) n, SUM(qty) q FROM events WHERE type IN ('product', 'add') AND product <> '' AND $in GROUP BY product, type", $a) as $x) {
+    if (!isset($CAT[$x['product']])) continue;
+    $pr[$x['product']][$x['type'] === 'product' ? 'views' : 'adds'] = $x['type'] === 'product' ? (int)$x['n'] : (int)$x['q'];
+  }
+  foreach ($pr as &$p) $p += ['views' => 0, 'adds' => 0]; unset($p);
+  uasort($pr, fn($x, $y) => [$y['views'], $y['adds']] <=> [$x['views'], $x['adds']]);
+  $out['products'] = array_slice($pr, 0, 12, true);
+  return $out;
+}
 /* top countries, and visitors by Indian state, for the dates picked at the top ('sel', when they are not one of the others), Today, 7 days, 30 days
    and the last 12 months (distinct visitors, from api/track.php's lookup) */
 function geo_stats(?string $from = null, ?string $to = null): array {

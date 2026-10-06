@@ -309,7 +309,7 @@ if ($tab === 'analytics') {
   $body .= '<div class="kpis n8 strip" style="--n:8">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
     . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
-    . '<div class="kpi"><span>Gift page</span><b>' . number_format($A['gift']['visitors']) . '</b><small>' . number_format($A['gift']['views']) . ' views</small></div>'
+    . '<div class="kpi" data-zoom="#giftDetail"><span>Gift page</span><b>' . number_format($A['gift']['visitors']) . '</b><small>' . number_format($A['gift']['views']) . ' views</small></div>'
     . '<div class="kpi"><span>Conversion rate</span><b>' . ($A['conversion'] === null ? '—' : round($A['conversion'], 1) . '%') . '</b><small>visits that bought</small></div>'
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
@@ -376,6 +376,41 @@ if ($tab === 'analytics') {
       . '</div></details>';
   }
   $body .= '</div></div></div></div>';
+  /* the Gift page in full: opened by tapping the Gift page tile (admin.js), hidden on the page itself */
+  $GS = gift_stats($from, $to, $CAT); $gn = $GS['visits'];
+  $bars = function (array $rows, callable $label) {
+    if (!$rows) return '<p class="empty">Nothing yet in these dates.</p>';
+    $mx = max(1, ...array_values($rows)); $o = '';
+    foreach ($rows as $k => $n) $o .= '<div class="li"><span class="grow">' . $label((string)$k) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
+    return $o;
+  };
+  $part = fn($n) => $gn ? ' <small class="muted">' . round($n / $gn * 100) . '%</small>' : '';
+  $body .= '<div class="box gift-d" id="giftDetail" hidden><div class="bh"><h3>Gift page</h3><span class="muted small">' . h(date_span($from, $to)) . '. Your own visits and bots are not counted.</span></div><div class="bb">'
+    . '<div class="gd-k">'
+    . '<div class="kpi"><span>People</span><b>' . number_format($GS['people']) . '</b><small>' . ($GS['all'] ? round($GS['people'] / $GS['all'] * 100) . '% of all visitors' : '&nbsp;') . '</small></div>'
+    . '<div class="kpi"><span>Views</span><b>' . number_format($GS['views']) . '</b><small>times the page was opened</small></div>'
+    . '<div class="kpi"><span>Visits</span><b>' . number_format($gn) . '</b><small>' . ($GS['people'] ? round($GS['views'] / $GS['people'], 1) . ' views per person' : '&nbsp;') . '</small></div>'
+    . '<div class="kpi"><span>Bought</span><b>' . number_format($GS['next']['buy']) . '</b><small>' . ($gn ? round($GS['next']['buy'] / $gn * 100, 1) . '% of these visits' : '&nbsp;') . '</small></div></div>'
+    . '<div class="gd-g">'
+    /* day by day */
+    . '<section><h4>Day by day</h4><table class="grid"><thead><tr><th>Date</th><th class="r">People</th><th class="r">Views</th></tr></thead><tbody>'
+    . implode('', array_map(fn($d, $x) => '<tr' . ($x['views'] ? '' : ' class="dim"') . '><td>' . h(date('D j M', strtotime($d))) . '</td><td class="r">' . number_format($x['people']) . '</td><td class="r">' . number_format($x['views']) . '</td></tr>', array_keys($GS['days']), $GS['days']))
+    . '</tbody></table></section>'
+    /* what they did next */
+    . '<section><h4>After opening the Gift page</h4><p class="muted small">Of the ' . number_format($gn) . ' visits that opened it, how many went on to:</p><div class="fun">'
+    . implode('', array_map(fn($k, $l) => '<div class="st"><span>' . $l . '</span><b>' . number_format($GS['next'][$k]) . $part($GS['next'][$k]) . '</b><span class="bar"><i style="width:' . ($gn ? round($GS['next'][$k] / $gn * 100, 1) : 0) . '%"></i></span></div>',
+      ['product', 'add', 'checkout', 'buy'], ['Viewed a product', 'Added to bag', 'Opened checkout', 'Bought']))
+    . '</div><h4>Where they came from</h4><table class="grid"><thead><tr><th>Source</th><th class="r">People</th><th class="r">Views</th></tr></thead><tbody>'
+    . ($GS['sources'] ? implode('', array_map(fn($k, $x) => '<tr><td><b>' . h(SOURCES[$k] ?? ucfirst($k)) . '</b></td><td class="r">' . number_format($x['people']) . '</td><td class="r">' . number_format($x['views']) . '</td></tr>', array_keys($GS['sources']), $GS['sources'])) : '<tr><td colspan="3" class="empty">Nothing yet in these dates.</td></tr>')
+    . '</tbody></table>'
+    . '<h4>Phone or computer</h4>' . $bars($GS['devices'], fn($k) => h(['phone' => 'Phone', 'computer' => 'Computer'][$k] ?? ucfirst($k))) . '</section>'
+    /* where they are, and the products they looked at */
+    . '<section><h4>Indian states</h4>' . $bars($GS['states'], fn($k) => h($k))
+    . '<h4>Countries</h4>' . $bars($GS['countries'], fn($k) => '<span class="flag">' . fomaxo_flag($k) . '</span> ' . h(fomaxo_country_name($k)))
+    . '<h4>Products they looked at</h4><table class="grid"><thead><tr><th>Product</th><th class="r">Views</th><th class="r">Added</th></tr></thead><tbody>'
+    . ($GS['products'] ? implode('', array_map(fn($id, $p) => '<tr><td><div class="pc">' . $thumbOf($id, 'th sm') . '<b>' . h($CAT[$id]['name']) . '</b></div></td><td class="r">' . $p['views'] . '</td><td class="r">' . $p['adds'] . '</td></tr>', array_keys($GS['products']), $GS['products'])) : '<tr><td colspan="3" class="empty">No products viewed in these visits.</td></tr>')
+    . '</tbody></table><p class="muted small">In the same visits as the Gift page.</p></section>'
+    . '</div></div></div>';
 }
 
 /* ============ Reports ============ */
