@@ -3780,7 +3780,7 @@ function bindHome(){
     $('#hgCount').textContent = `${hp + 1} / ${n}`; $('#hgPager').hidden = n < 2;
     if (fade) { grid.classList.add('swap'); setTimeout(put, 280); } else put();
   };
-  const auto = () => { clearInterval(homeGridTimer); homeGridTimer = setInterval(() => { if (!grid.matches(':hover') && !document.hidden && pages() > 1) { hp++; draw(true); } }, 14000); };
+  const auto = () => { clearInterval(homeGridTimer); homeGridTimer = setInterval(() => { if (!grid.matches(':hover') && !document.hidden && pages() > 1) { hp++; draw(true); } }, 20000); };
   $$('#hgFilters [data-hf]').forEach(b => b.onclick = () => { hf = b.dataset.hf; hp = 0; const la = $('#hgAll'); if (la) { la.href = hf === 'care' ? '#/personal-care' : hf === 'car' ? '#/fragrances?f=car' : '#/fragrances'; la.textContent = hf === 'care' ? 'View all personal care →' : hf === 'car' ? 'View all car fragrance →' : 'View all fragrances →'; } $$('#hgFilters .chip').forEach(x => x.classList.toggle('on', x === b)); draw(true); auto(); });
   $$('#hgPager [data-hp]').forEach(b => b.onclick = () => { hp += +b.dataset.hp; draw(true); auto(); });
   draw(false); auto();
