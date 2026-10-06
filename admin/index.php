@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '27';
+const ASSET_V = '29';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -207,9 +207,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'edit') { $id = (string)($_POST['id'] ?? ''); $msg = edit_product($id, $CAT, $LIVE); go(['tab' => 'products'] + ($msg === '' ? [] : ['edit' => $id]), $msg === '' ? trim((string)($_POST['name'] ?? 'The product')) . ' is saved.' : '!' . $msg); }
   if ($a === 'add') { $msg = add_product($CAT); go(['tab' => 'products'] + ($msg === '' ? [] : ['add' => 1]), $msg === '' ? 'Product added.' : '!' . $msg); }
   if ($a === 'expense') {
-    $day = (string)($_POST['day'] ?? ''); $amt = (string)($_POST['amount'] ?? ''); $cat = (string)($_POST['category'] ?? '');
-    $back = ['tab' => 'expenses', 'month' => substr($day, 0, 7)];
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) || !strtotime($day)) go(['tab' => 'expenses'], '!Please choose the date of the expense.');
+    $day = parse_day($_POST['day'] ?? ''); $amt = (string)($_POST['amount'] ?? ''); $cat = (string)($_POST['category'] ?? '');
+    $back = ['tab' => 'expenses'];
+    if ($day === '') go($back, '!Please type the date of the expense as dd/mm/yyyy.');
     if (!in_array($cat, EXPENSE_CATEGORIES, true)) go($back, '!Please choose a category.');
     if (!is_numeric($amt) || $amt <= 0) go($back, '!Please write the amount in rupees.');
     shop_db()->prepare('INSERT INTO expenses(day, category, note, amount, created) VALUES(?,?,?,?,?)')
@@ -218,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
-    go(['tab' => 'expenses', 'month' => (string)($_POST['month'] ?? '')], 'Expense deleted.');
+    go(['tab' => 'expenses'], 'Expense deleted.');
   }
   if ($a === 'settings') {
     $email = trim((string)($_POST['notify_email'] ?? ''));
@@ -262,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /* ---------------- downloads ---------------- */
 $tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
-      'from' => (string)($_GET['from'] ?? ''), 'to' => (string)($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
+      'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
 $do = (string)($_GET['do'] ?? '');
 if ($do === 'excel') {
@@ -282,14 +282,16 @@ if ($do === 'excel') {
 }
 if ($do === 'report_excel') {
   $n = fn($p) => round($p / 100, 2); $rows = [];
-  $rep = report_year($pyear);
-  foreach ($rep as $k => $r) $rows[] = [date('M Y', strtotime("$k-01")), $r['orders'], $n($r['sales']), $n($r['discounts']), $n($r['fees']), $n($r['cost']), $n($r['gross']), $n($r['expenses']), $n($r['net']), $r['nocost'] ?: ''];
-  $t = report_sum($rep); $rows[] = ["Total $pyear", $t['orders'], $n($t['sales']), $n($t['discounts']), $n($t['fees']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
-  send_sheet("FOMAXO-profit-and-loss-$pyear", ['Month', 'Orders', 'Sales (₹)', 'Discounts given (₹)', 'Payment fees (₹)', 'Cost of goods (₹)', 'Gross profit (₹)', 'Expenses (₹)', 'Net profit / loss (₹)', 'Items sold with no cost set'], $rows, 'Profit and loss');
+  /* ?year= (the Home page link) gives that year month by month; otherwise the dates picked on Reports, as its table shows them */
+  $V = isset($_GET['year']) ? ['unit' => 'M', 'from' => "$pyear-01-01", 'to' => "$pyear-12-31", 'rows' => report_year($pyear)] : report_view(pick_dates('reports'));
+  $kl = fn($k) => ['D' => fn($k) => date('d/m/Y', strtotime($k)), 'M' => fn($k) => date('M Y', strtotime("$k-01")), 'Y' => fn($k) => (string)$k][$V['unit']]($k);
+  foreach ($V['rows'] as $k => $r) $rows[] = [$kl($k), $r['orders'], $n($r['sales']), $n($r['discounts']), $n($r['fees']), $n($r['cost']), $n($r['gross']), $n($r['expenses']), $n($r['net']), $r['nocost'] ?: ''];
+  $t = report_sum($V['rows']); $rows[] = ['Total', $t['orders'], $n($t['sales']), $n($t['discounts']), $n($t['fees']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
+  send_sheet('FOMAXO-profit-and-loss-' . $V['from'] . '-to-' . $V['to'], [['D' => 'Day', 'M' => 'Month', 'Y' => 'Year'][$V['unit']], 'Orders', 'Sales (₹)', 'Discounts given (₹)', 'Payment fees (₹)', 'Cost of goods (₹)', 'Gross profit (₹)', 'Expenses (₹)', 'Net profit / loss (₹)', 'Items sold with no cost set'], $rows, 'Profit and loss');
 }
 if ($do === 'members_excel') {
   $rows = array_map(fn($m) => [$m['name'], phone_fmt($m['phone']), $m['email'], $m['address'], $m['state'], $m['count'], round($m['spent'] / 100, 2), round($m['avg'] / 100, 2),
-    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), member_spend(), (string)($_GET['q'] ?? '')));
+    substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), member_spend(), (string)($_GET['q'] ?? ''), ...array_values(array_intersect_key(pick_dates('members'), ['from' => 1, 'to' => 1]))));
   send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
 }
 if ($do === 'leads_excel') {
@@ -300,8 +302,9 @@ if ($do === 'leads_excel') {
   send_sheet('FOMAXO-left-at-checkout-' . ($dd ? implode('-to-', $dd) : date('Y-m-d')), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later'], $rows, 'Left at checkout');
 }
 if ($do === 'expenses_excel') {
-  $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day < ? ORDER BY day, id'); $s->execute(["$pyear-01-01", ($pyear + 1) . '-01-01']);
-  send_sheet("FOMAXO-expenses-$pyear", ['Date', 'Category', 'Details', 'Amount (₹)'], array_map(fn($x) => [$x['day'], $x['category'], $x['note'], round($x['amount'] / 100, 2)], $s->fetchAll()), 'Expenses');
+  $D = pick_dates('expenses');
+  $s = shop_db()->prepare('SELECT * FROM expenses WHERE day >= ? AND day <= ? ORDER BY day, id'); $s->execute([$D['from'], $D['to']]);
+  send_sheet('FOMAXO-expenses-' . $D['from'] . '-to-' . $D['to'], ['Date', 'Category', 'Details', 'Amount (₹)'], array_map(fn($x) => [$x['day'], $x['category'], $x['note'], round($x['amount'] / 100, 2)], $s->fetchAll()), 'Expenses');
 }
 
 /* ---------------- pages ---------------- */

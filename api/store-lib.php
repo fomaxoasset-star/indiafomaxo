@@ -144,7 +144,7 @@ function fomaxo_catalog(): array {
       elseif (preg_match('/\bwas:\s*([\d.]+)/', $o, $x)) $was['one'] = (float)$x[1];
       $cat['products'][$id] = ['name' => $get('name') . ($kind === 'care' ? ' ' . explode(' — ', $get('type'))[0] : ''),
         'kind' => $kind, 'vol' => $get('vol'), 'prices' => $prices, 'was' => $was, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o),
-        'img' => preg_match('/\bimages?:\s*\[?\s*"([^"]+)"/', $o, $x) ? 'assets/img/' . $x[1] . '.webp' : '', 'hidden' => false, 'added' => false];
+        'img' => preg_match('/\bimages?:\s*\[?\s*"([^"]+)"/', $o, $x) ? 'assets/img/' . $x[1] . '.webp' : '', 'hidden' => false, 'added' => false, 'lockMain' => (bool)preg_match('/\blockMain:\s*true/', $o)];
     }
   }
   /* products added, hidden or re-priced on the admin page (fomaxo.in/admin) */
@@ -167,7 +167,7 @@ function fomaxo_catalog(): array {
       if (isset($e['vol'])) $p['vol'] = (string)$e['vol'];
       $p['prices'] = array_map('floatval', (array)($d['prices'] ?? $p['prices'])); $p['was'] = array_map('floatval', (array)($d['compareAt'] ?? []));
       $img = (string)($e['images'][0] ?? $e['image'] ?? '');
-      if ($img !== '') $p['img'] = str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : "assets/img/$img.webp";
+      if ($img !== '' && empty($p['lockMain'])) $p['img'] = str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : "assets/img/$img.webp";
       unset($p);
     }
     else foreach (['prices' => 'prices', 'compareAt' => 'was'] as $from => $to)
