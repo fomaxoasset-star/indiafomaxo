@@ -1999,8 +1999,7 @@ html[data-mode="light"] .co-err{color:#a8322a}
 .co-total b{font-family:var(--serif);font-weight:400;font-size:clamp(32px,3vw,42px);color:var(--gold-hi)}
 .co-save{margin-top:10px;text-align:right;font-size:13px;color:var(--gold)}
 .co-cpn{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
-.co-cpn-open{display:block;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ivory)}
-.co-cpn-form{display:flex;gap:10px;margin-top:10px}
+.co-cpn-form{display:flex;gap:10px}
 .co-cpn-form[hidden]{display:none}
 .co-cpn-form input{flex:1;min-width:0;background:transparent;border:1px solid var(--line-2);padding:0 14px;min-height:46px;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--ivory);outline:none;border-radius:0}
 .co-cpn-form input:focus{border-color:var(--gold-hi)}
@@ -3693,8 +3692,7 @@ function checkoutPage(q){
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
     ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
-      <label class="co-cpn-open" id="coCpnOpen" for="coCpnIn">Coupon code</label>
-      <div class="co-cpn-form" id="coCpnForm"><input id="coCpnIn" placeholder="Enter coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
+      <div class="co-cpn-form" id="coCpnForm"><input id="coCpnIn" placeholder="Have a coupon?" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
       <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied · <span id="coCpnOff"></span> off<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
       <p class="co-cpn-msg" id="coCpnMsg" role="status" aria-live="polite" hidden></p>
     </div>` : ''}
@@ -3828,7 +3826,7 @@ function bindCheckout(q){
   const CPN = 'fx_coupon', cIn = $('#coCpnIn');
   const cpnShow = msg => {
     const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || '';
-    $('#coCpnOn').hidden = !cpn; $('#coCpnOpen').hidden = !!cpn;
+    $('#coCpnOn').hidden = !cpn;
     $('#coCpnForm').hidden = !!cpn;
     if (cpn) { $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.off); }
     cpnEnd(); upd();
