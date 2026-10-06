@@ -188,7 +188,7 @@ function shop_take_stock(PDO $db, array $items, bool $strict): string {
     $have = $s->fetchColumn();
     if ($have === false) continue;                       // stock not counted for this product and size
     $have = (int)$have;
-    if ($strict && $have < $qty) return $have < 1 ? "$name is sold out. Please remove it from your bag." : "Only $have left of $name. Please lower the quantity in your bag.";
+    if ($strict && $have < $qty) return $have < 1 ? "$name is out of stock in this size. Please remove it from your bag." : "Only $have left of $name. Please lower the quantity in your bag.";
     $db->prepare('UPDATE stock SET qty = ? WHERE product = ? AND opt = ?')->execute([max(0, $have - $qty), $id, $opt]);
   }
   return '';

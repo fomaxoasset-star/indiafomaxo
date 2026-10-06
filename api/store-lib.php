@@ -218,7 +218,7 @@ function fomaxo_price_order(array $in): array {
     $want["$id|$opt"] = ($want["$id|$opt"] ?? 0) + $qty;
     $have = $STOCK[$id][$opt] ?? null;
     if ($have !== null && $have < $want["$id|$opt"])
-      return ['error' => $have < 1 ? "$name is sold out. Please remove it from your bag." : "Only $have left of $name. Please lower the quantity in your bag."];
+      return ['error' => $have < 1 ? "$name is out of stock in this size. Please remove it from your bag." : "Only $have left of $name. Please lower the quantity in your bag."];
   }
   if ($total < 100) return ['error' => 'This order cannot be paid online. Please order on WhatsApp.'];
   $rows = array_map(fn($it) => "• {$it['qty']} x {$it['name']}" . ($it['desc'] ? " ({$it['desc']})" : '') . ' — ' . rupees($it['unit'] * $it['qty']), $items);
