@@ -168,7 +168,7 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .card .media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.8s var(--ease),opacity 1s ease;filter:saturate(.88) contrast(1.04)}
 .card .media img.alt{opacity:0}
 .card:hover .media{border-color:var(--line-2)}
-.card:hover .media img{transform:scale(1.06)}
+.card:hover .media img{transform:scale(1.04)}
 .card .media:hover img.alt{opacity:1}
 .card .media::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.55));pointer-events:none}
 .tag{position:absolute;top:16px;left:16px;z-index:2;font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);border:1px solid var(--line-2);padding:6px 10px;background:rgba(var(--bg-rgb),.65);backdrop-filter:blur(6px)}
@@ -1516,6 +1516,19 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
 @keyframes hcin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:760px){.hero-cine .hc-slide .hc-bg{width:100%}}
 @media(prefers-reduced-motion:reduce){.hero-cine .hc-slide.on,.hero-cine .hc-slide.prev,.hero-cine .hc-slide.on .hc-bg{transition:none}.hero-cine .hc-slide.prev{visibility:hidden}.hero-cine .hc-slide .hc-bg{transform:none!important;width:100%}.hc-swap #hcName,.hc-swap #hcPrice{animation:none}}
+/* laptop: each banner softly fades into the next while the photo drifts slightly closer (phones keep the sideways slide and swipe) */
+@media(min-width:761px){
+  .hero-cine .hc-slides .hc-slide,.hero-cine .hc-slides.back .hc-slide{transform:none;opacity:0;transition:none}
+  .hero-cine .hc-slides .hc-slide.on,.hero-cine .hc-slides.back .hc-slide.on{opacity:1;transform:none;transition:opacity 1.6s ease}
+  .hero-cine .hc-slides .hc-slide.prev,.hero-cine .hc-slides.back .hc-slide.prev{opacity:1;transform:none;transition:visibility 0s 1.6s}
+  .hero-cine .hc-slides .hc-slide .hc-bg{transform:scale(1);transition:none}
+  .hero-cine .hc-slides .hc-slide.on .hc-bg{transform:scale(1.04);transition:transform 8s cubic-bezier(.25,.1,.25,1)}
+  .hero-cine .hc-slides .hc-slide.prev .hc-bg{transform:scale(1.04)}
+}
+@media(min-width:761px) and (prefers-reduced-motion:reduce){
+  .hero-cine .hc-slides .hc-slide.on,.hero-cine .hc-slides .hc-slide.on .hc-bg{transition:none}
+  .hero-cine .hc-slides .hc-slide .hc-bg,.hero-cine .hc-slides .hc-slide.on .hc-bg{transform:none}
+}
 /* desktop: each banner fills the full width at its own wide shape (16:9, the banners' own shape), so nothing important is cut;
    heading and buttons sit in a band right under it, then the product picker */
 @media(min-width:761px){
@@ -1834,7 +1847,7 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .gf-occ{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;background:var(--line)}
 .gf-occ a{position:relative;min-height:440px;overflow:hidden;background:#000;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:clamp(22px,2.4vw,36px);color:#f2ebdd}
 .gf-occ img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.6;transition:transform 2s var(--ease),opacity 1s}
-.gf-occ a:hover img{transform:scale(1.06);opacity:.78}
+.gf-occ a:hover img{transform:scale(1.04);opacity:.78}
 .gf-occ a::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.94));z-index:1}
 .gf-occ a>*:not(img){position:relative;z-index:2}
 .gf-occ .eyebrow{color:#d7aa69}
