@@ -2205,7 +2205,7 @@ window.STORE = {
       ],
       notes: { top: "Bergamot · Pepper", heart: "Agarwood · Rosemary", base: "Leather · Vetiver · Musk" },
       sizes: [100], prices: { 100: 1750 }, compareAt: { 100: 2200 },   // compareAt = original price shown crossed out
-      images: ["gold-1", "gold-2", "gold-3"], lockMain: true,   // lockMain: the first photo stays the main one even if photos are changed on the admin page
+      images: ["gold-1", "gold-2", "gold-3"], editorial: "gold-feature",   // editorial: the photo in the home Distinct Blends row
       url: "https://fomaxo.com/fomaxo-gold-eau-de-parfum"
     },
     {
@@ -2313,7 +2313,7 @@ window.STORE = {
       products: ["king"], image: "king-3" },
     { id: "signature", name: "Signature", kicker: "The icons", sizes: "100ml",
       text: "FOMAXO’s iconic signature fragrances — the scents that define the house, crafted for presence and lasting character.",
-      products: ["gold", "dollar"], image: "gold-1" },
+      products: ["gold", "dollar"], image: "gold-3" },
     { id: "prestige", name: "Prestige", kicker: "Everyday luxury", sizes: "50ml · 10ml",
       text: "Refined everyday luxury in two sizes — the 10ml pocket mini and the 50ml bottle, for every mood and every moment.",
       products: ["oldmoney", "royalcandy", "matchacoco", "passionsin"], image: "oldmoney-collection" },
@@ -2389,14 +2389,15 @@ const S = window.STORE;
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const app = $('#app');
-const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=6`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
+const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=7`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
 /* changes made on the admin page (fomaxo.in/admin): hidden products, new prices, added products, stock */
 const LIVE = window.STORE_LIVE || {};
 (function(){
   const hid = new Set(LIVE.hidden || []), pr = LIVE.prices || {}, ca = LIVE.compareAt || {}, ed = LIVE.edits || {};
   /* details and photos edited on the admin page */
   S.products.forEach(p => { const e = ed[p.id]; if (!e) return; const main = p.lockMain && p.images[0];
-    if (e.images && p.editorial && !e.images.includes(p.editorial)) p.editorial = e.images[Math.min(2, e.images.length - 1)];
+    /* an editorial photo that is one of the product photos follows the admin edit; a separate one (not in images) stays */
+    if (e.images && p.editorial && p.images.includes(p.editorial) && !e.images.includes(p.editorial)) p.editorial = e.images[Math.min(2, e.images.length - 1)];
     if ('tier' in e && !p.kind && (e.tier || '') !== (p.tier || '')) { (S.tiers || []).forEach(t => { if (t.id !== 'car') t.products = t.products.filter(x => x !== p.id); }); const t = e.tier && (S.tiers || []).find(x => x.id === e.tier); if (t) t.products.push(p.id); }
     Object.assign(p, e, {prices: {...e.prices}, compareAt: {...e.compareAt}});
     if (e.sizes) p.sizes = e.sizes.map(x => x === 'one' ? x : +x);
