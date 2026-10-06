@@ -2357,7 +2357,7 @@ const S = window.STORE;
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const app = $('#app');
-const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=3`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
+const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=4`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
 /* changes made on the admin page (fomaxo.in/admin): hidden products, new prices, added products, stock */
 const LIVE = window.STORE_LIVE || {};
 (function(){
