@@ -2062,6 +2062,14 @@ html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px
   .co-opt>svg{width:30px;height:30px}
   .co-opt.na{min-height:0;padding:11px 20px}
   .co-opt.na .co-codoff{font-size:clamp(20px,1.8vw,26px)}
+  /* the payment choices: wording centred in the box, a big round tick that fills gold when chosen, and the whole box lights up */
+  .co-ot{text-align:center;justify-items:center}
+  .co-opt input{width:26px!important;height:26px;border-width:1.5px!important}
+  .co-opt input:checked{background:var(--gold)!important;border-color:var(--gold)!important;box-shadow:inset 0 0 0 4px var(--panel)}
+  .co-opt:not(.off):hover{border-color:var(--gold)}
+  .co-opt.on{background:rgba(215,170,105,.10);box-shadow:inset 0 0 0 1.5px var(--gold)}
+  .co-opt.on .co-ot b{color:var(--gold-hi)}
+  .co-opt>svg{opacity:.85}
   .co-btn{min-height:52px;margin-top:2px;font-size:12px}
   .co-trust{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:0;padding-top:0;border-top:0;font-size:13px}
   .co-trust li{gap:8px}
