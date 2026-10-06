@@ -545,6 +545,7 @@ html[data-mode="light"] .store-map .map iframe{filter:grayscale(.55) sepia(.25) 
 .toast{position:fixed;left:50%;bottom:28px;z-index:80;transform:translate(-50%,40px);opacity:0;visibility:hidden;background:var(--panel);border:1px solid var(--gold);padding:14px 22px;display:flex;gap:16px;align-items:center;font-size:13px;transition:transform .6s var(--ease);max-width:calc(100vw - 32px)}
 .toast{transition:transform .6s var(--ease),opacity .4s,visibility .4s}.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
 @media(max-width:600px){.toast{left:16px;right:16px;transform:translateY(40px);justify-content:space-between}.toast.show{transform:none}}
+.toast #toastGo{background:var(--gold);color:var(--black);padding:8px 12px;margin:-4px -8px -4px 0}
 .toast a{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);white-space:nowrap}
 
 /* ---------- footer ---------- */
@@ -1369,6 +1370,8 @@ html:not([data-mode="light"]){color-scheme:only dark}
 @media (prefers-color-scheme: light){:root{--sys-scheme:light}}
 html[data-mode="light"] .hero-cine .btn:not(.line){background:linear-gradient(100deg,#5e3f12 0%,#7d561c 30%,#9a6c2a 50%,#7d561c 70%,#5e3f12 100%);background-size:200% 100%;color:#fff8ea;box-shadow:inset 0 0 0 1px rgba(240,211,160,.45)}
 html[data-mode="light"] .hero-cine .ctas .btn:not(.line) .sub{color:#f0d3a0;opacity:1}
+.pshare{display:flex;align-items:center;justify-content:center;gap:9px;font-size:12.5px;letter-spacing:.04em;color:var(--champagne);margin:-8px 0 0}
+.pshare svg{width:16px;height:16px;color:var(--gold)}.pshare:hover{color:var(--gold-hi)}
 .buy-trust{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:12.5px;color:var(--muted);letter-spacing:.02em;text-align:center}
 .buy-trust .lk{width:14px;height:14px;flex:none;color:var(--gold)}
 .sizes button .sz-p{font-family:var(--sans);font-style:normal;font-size:14px;letter-spacing:.02em;color:var(--gold);margin-top:2px}
@@ -1938,7 +1941,13 @@ html[data-mode="light"] .co-err{color:#a8322a}
 @media(max-width:980px){
   .co-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "sum" "form"}
   .co-sum{position:static;margin-bottom:36px}
+  .co-sum.fold .co-items,.co-sum.fold .co-rows,.co-sum.fold .co-edit{display:none}
+  .co-sum.fold .co-sum-head{margin-bottom:4px}
+  .co-sum.fold .co-total{padding-top:8px}
+  .co-sum.fold{margin-bottom:28px}
 }
+.co-fold{display:none;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--gold-lo);padding-bottom:3px;white-space:nowrap}
+@media(max-width:980px){.co-fold{display:inline-block}.co-sum-head{align-items:center}}
 @media(max-width:620px){
   .co-form .row2,.co-form .row3{grid-template-columns:minmax(0,1fr)}
   .co-form .row3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
@@ -2032,7 +2041,7 @@ html[data-mode="light"] .co-err{color:#a8322a}
   <div class="sres" id="sres"></div>
 </div>
 
-<div class="toast" id="toast" role="status"><span id="toastMsg"></span><a href="#" id="toastView">View bag</a></div>
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><a href="#" id="toastView">View bag</a><a href="#/checkout" id="toastGo" hidden>Checkout</a></div>
 <div class="mbuy" id="mbuy"></div>
 
 <script>/* =====================================================================
@@ -2445,7 +2454,7 @@ function addToCart(id, opt, qty=1, silent, picks){
   const l = cart.find(x => x.id === id && String(x.opt) === String(opt) && (x.picks || []).join('|') === key);
   if (l) l.qty = Math.min(99, l.qty + qty); else cart.push(picks ? {id, opt, qty, picks} : {id, opt, qty});
   save(); TRK.send('add', {id, opt, q: qty});
-  if (!silent) toast(`${P[id].name} · ${optLabel(P[id], opt)} added to your bag`);
+  if (!silent) toast(`${P[id].name} · ${optLabel(P[id], opt)} added to your bag`, true);
 }
 function lineImg(l){ const p = P[l.id]; return imgFor(p, l.opt); }
 function orderText(lines){
@@ -2551,8 +2560,13 @@ $('#openSearch').onclick = () => { openPanel($('#search')); runSearch(''); setTi
 scrim.onclick = closePanels;
 document.addEventListener('click', e => { if (e.target.closest('[data-close]')) closePanels(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanels(); });
+$('#toastGo').onclick = e => { e.preventDefault(); $('#toast').classList.remove('show'); goCheckout('#/checkout'); };
+/* (c) back on the site with something still in the bag: a reminder once per visit, with Checkout */
+setTimeout(() => { try { if (!cart.length || sessionStorage.getItem('fx_bagnote') || /^#\/(checkout|thank-you)/.test(location.hash)) return; sessionStorage.setItem('fx_bagnote', '1'); } catch(e) { return; }
+  const n = cart.reduce((a, l) => a + l.qty, 0); toast(`Welcome back. Your bag is waiting with ${n} item${n > 1 ? 's' : ''}`, true); }, 2500);
 $('#toastView').onclick = e => { e.preventDefault(); $('#toast').classList.remove('show'); renderCart(); openPanel($('#cart')); };
-let tt; function toast(msg){ $('#toastMsg').textContent = msg; const t = $('#toast'); t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3600); }
+/* go: also offer Checkout (after something is added, and the bag can be paid on the checkout page) */
+let tt; function toast(msg, go){ $('#toastMsg').textContent = msg; $('#toastGo').hidden = !(go && !/^#\/checkout/.test(location.hash) && cart.length && subtotal(cart) !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod)); const t = $('#toast'); t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3600); }
 
 /* search */
 function runSearch(q){
@@ -2797,6 +2811,7 @@ function product(id, q){
           ${isOut(p) ? OUT_BTN('btn') : '<button class="btn line tc" id="addBtn">Add To Cart</button>'}
         </div>
         ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block tc" id="buyBtn">Buy Now</button>' + (S.checkout.razorpay ? `<p class="buy-trust">${LOCK_SVG}Secure checkout · UPI · Cards · Netbanking · Wallets</p>` : '')}
+        <a class="pshare" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}Share with a friend on WhatsApp</a>
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
           <details open><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
@@ -3534,8 +3549,8 @@ function checkoutPage(q){
   const phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
   return `<section class="co"><div class="wrap co-grid">
   <h1 class="co-title">Checkout</h1>
-  <aside class="co-sum" aria-label="Order summary">
-    <div class="co-sum-head"><h2>Order summary</h2>${coBuy(q) ? `<a class="co-edit" href="#/product/${lines[0].id}">Edit</a>` : `<button type="button" class="co-edit" id="coEdit">Edit bag</button>`}</div>
+  <aside class="co-sum fold" id="coSum" aria-label="Order summary">
+    <div class="co-sum-head"><h2>Order summary</h2><button type="button" class="co-fold" id="coFold" aria-expanded="false">Show items (${lines.reduce((a, l) => a + l.qty, 0)})</button>${coBuy(q) ? `<a class="co-edit" href="#/product/${lines[0].id}">Edit</a>` : `<button type="button" class="co-edit" id="coEdit">Edit bag</button>`}</div>
     <div class="co-items">${lines.map(l => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
@@ -3592,6 +3607,7 @@ function bindCheckout(q){
   const wa = $('#coWa'); if (wa) wa.onclick = () => checkout(coLines(q));
   const f = $('#coForm'); if (!f) return;
   const lines = coLines(q), t = subtotal(lines), cod = coCod(), E = f.elements, btn = $('#coPay'), err = $('#coErr');
+  const fd = $('#coFold'); if (fd) fd.onclick = () => { const on = $('#coSum').classList.toggle('fold'); fd.setAttribute('aria-expanded', !on); fd.textContent = on ? `Show items (${lines.reduce((a, l) => a + l.qty, 0)})` : 'Hide items'; };
   const ed = $('#coEdit'), openBag = () => { renderCart(); openPanel($('#cart')); }; if (ed) ed.onclick = openBag;
   /* clicking any item in the order summary opens Your Bag, same as Edit bag */
   $$('.co-item[role=button]').forEach(it => { it.onclick = openBag; it.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBag(); } }; });
@@ -3737,6 +3753,7 @@ function route(){
   if (html === '') return;
   TRK.view(path, seg);
   if (seg[0] === 'checkout' && coLines(q).length) TRK.send('checkout');
+  if (seg[0] === 'checkout') $('#toast').classList.remove('show');
   document.body.classList.toggle('home', !seg[0]);
   app.innerHTML = `<div class="page-fade">${html}</div>`;
   const navKey = seg[0] === 'collections' && seg[1] === 'name' ? 'gift' : seg[0];
