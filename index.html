@@ -1969,7 +1969,7 @@ html[data-mode="light"] .co-err{color:#a8322a}
 .co-trust{list-style:none;display:grid;gap:12px;margin-top:10px;padding-top:22px;border-top:1px solid var(--line);font-size:15px;color:var(--ivory)}
 .co-trust li{display:flex;align-items:center;gap:14px}
 .co-trust svg{flex:none;width:21px;height:21px;color:var(--muted)}
-.co-trust a{border-bottom:1px solid var(--line-2);margin-left:.3em}
+.co-trust a{border-bottom:1px solid var(--line-2);margin-left:.3em;white-space:nowrap}
 .co-trust a:hover{color:var(--gold-hi)}
 .co-sum-head h2{font-size:clamp(24px,2vw,30px)}
 .co-sum-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:18px}
@@ -3801,7 +3801,7 @@ function checkoutPage(q){
     <ul class="co-trust">
       <li>${ICON.truck}Free delivery anywhere in India</li>
       <li>${LOCK_SVG}Secure payments by Razorpay</li>
-      <li>${CO_ICON.wa}Questions? WhatsApp us on <a href="https://wa.me/${S.checkout.whatsapp}" target="_blank" rel="noopener">${esc((S.contact.phones[0] || {}).number || '+' + S.checkout.whatsapp)}</a></li>
+      <li>${CO_ICON.wa}<span>Questions? WhatsApp us on <a href="https://wa.me/${S.checkout.whatsapp}" target="_blank" rel="noopener">${esc((S.contact.phones[0] || {}).number || '+' + S.checkout.whatsapp)}</a></span></li>
     </ul>
   </form>
 </div></section>`;
