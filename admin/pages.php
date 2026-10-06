@@ -402,19 +402,20 @@ if ($tab === 'reviews') {
     $live = $r['status'] === 'live';
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
-      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '<span class="sp"></span>'
-      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form></div>'
+      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '</div>'
       . '<p>' . nl2br(h($r['body'])) . '</p>'
       . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
       . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
       . (($r['reply'] ?? '') !== '' ? '<div class="rvr"><b>Reply from FOMAXO</b><p>' . nl2br(h($r['reply'])) . '</p></div>' : '')
-      . '<details class="rvr-edit"><summary class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</summary>'
-      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
-      . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Thank you for your review…" required>' . h($r['reply'] ?? '') . '</textarea>'
-      . '<div class="row"><button class="btn sm">' . (($r['reply'] ?? '') === '' ? 'Post reply' : 'Save reply') . '</button>'
-      . (($r['reply'] ?? '') !== '' ? '<button class="btn line sm danger" name="delete" value="1" formnovalidate data-confirm="Remove your reply from the website?">Delete reply</button>' : '') . '</div></form></details></div>';
+      . '<input type="checkbox" class="rvr-tg" id="rvr' . (int)$r['id'] . '" hidden>'
+      . '<div class="rvr-acts"><label for="rvr' . (int)$r['id'] . '" class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</label>'
+      . (($r['reply'] ?? '') !== '' ? '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '"><button class="btn line sm danger" name="delete" value="1" data-confirm="Remove your reply from the website?">Delete reply</button></form>' : '')
+      . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+      . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form>' . '</div>'
+      . '<form method="post" class="rvr-form">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+      . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…" required>' . h($r['reply'] ?? '') . '</textarea>'
+      . '<div class="row"><button class="btn sm">Save reply</button></div></form></div>';
   }
   $body .= '</div></div>';
   /* stars by product (live reviews only, as on the website) */

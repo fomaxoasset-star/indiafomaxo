@@ -377,6 +377,11 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-ctas{display:flex;flex-wrap:wrap;gap:12px;padding-top:40px;border-top:1px solid var(--line)}.rv-ctas .btn{flex:0 0 250px;justify-content:center;text-align:center}
 @media(max-width:620px){.rv-ctas .btn{flex:1 1 0;min-width:0;padding-left:10px;padding-right:10px}}
 .rv-none{padding:30px 0;color:var(--muted)}
+.rv-pager{display:flex;align-items:center;justify-content:center;gap:22px;padding:26px 0 4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rv-pager[hidden]{display:none}
+.rv-arrow{width:46px;height:46px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--gold);background:transparent;color:var(--gold-hi);font-family:inherit;font-weight:300;font-size:26px;line-height:1;padding:0 0 3px;cursor:pointer;transition:background .2s,color .2s}
+.rv-arrow:hover:not(:disabled){background:var(--gold);color:#0a0805}
+.rv-arrow:disabled{border-color:var(--line-2);color:var(--dim);cursor:default}
 .rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px}
 .rv-pick{display:flex;gap:4px}
 .rv-emoji{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
@@ -2776,7 +2781,7 @@ function product(id, q){
         <p class="rv-note"><span class="rv-ver">✓ Verified Purchaser</span> badge appears only on reviews written from the review link after a paid order.</p></div>
       <div class="rv-main rv-up d1"><div id="rvFormBox"></div>
         <div class="rv-tools"><span id="rvCount">Reviews</span><label>Sort <select id="rvSort"><option value="recent">Most recent</option><option value="helpful">Most helpful</option></select></label></div>
-        <div id="rvList"><p class="rv-none">Loading reviews…</p></div></div>
+        <div id="rvList"><p class="rv-none">Loading reviews…</p></div><div class="rv-pager" id="rvPager" hidden><button type="button" class="rv-arrow" data-pg="-1" aria-label="Previous reviews">&#8249;</button><span id="rvPgInfo"></span><button type="button" class="rv-arrow" data-pg="1" aria-label="Next reviews">&#8250;</button></div></div>
     </div>
 
     <section style="padding:80px 0 120px;border-top:1px solid var(--line)">
@@ -3369,9 +3374,30 @@ function bindReviews(p){
       $('#rvSum').innerHTML = rvSummaryHTML(d.rating, d.count, d.distribution);
       const pr = $('#pRate'); if (pr) pr.innerHTML = pRateHTML(d.rating, d.count);
       $('#rvCount').textContent = d.count ? `${d.count} review${d.count > 1 ? 's' : ''}` : 'Reviews';
-      list.innerHTML = d.count ? d.reviews.map(rvItem).join('') : `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`;
-    } catch(e) { if (list.isConnected) list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; }
+      all = d.reviews || []; page = 0;
+      if (d.count) show(); else { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; }
+    } catch(e) { if (list.isConnected) { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; } }
   };
+  /* reviews 4 at a time: ‹ › arrows below the list, or swipe left / right on a phone */
+  const PER = 4, pager = $('#rvPager'); let all = [], page = 0;
+  const pages = () => Math.max(1, Math.ceil(all.length / PER));
+  function show(){
+    list.innerHTML = all.slice(page * PER, page * PER + PER).map(rvItem).join('');
+    pager.hidden = all.length <= PER;
+    $('#rvPgInfo').textContent = `${page * PER + 1}–${Math.min(all.length, page * PER + PER)} of ${all.length}`;
+    $('[data-pg="-1"]', pager).disabled = page === 0; $('[data-pg="1"]', pager).disabled = page >= pages() - 1;
+  }
+  const go = n => {
+    const to = Math.max(0, Math.min(pages() - 1, page + n)); if (to === page) return; page = to; show();
+    const t = $('#rvCount').getBoundingClientRect().top; if (t < 0) $('#rvCount').scrollIntoView({behavior: 'smooth', block: 'start'});
+  };
+  pager.onclick = e => { const b = e.target.closest('[data-pg]'); if (b && !b.disabled) go(+b.dataset.pg); };
+  let tx = null, ty = 0;
+  list.addEventListener('touchstart', e => { if (all.length > PER) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, {passive: true});
+  list.addEventListener('touchend', e => {
+    if (tx === null) return; const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+  }, {passive: true});
   sort.onchange = load;
   $('#rvWrite').onclick = () => {
     if (box.firstElementChild) { box.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
