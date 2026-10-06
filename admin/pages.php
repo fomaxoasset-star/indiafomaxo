@@ -114,7 +114,13 @@ if ($tab === 'orders') {
 /* ============ Coupons ============ */
 if ($tab === 'coupons') {
   $CP = shop_coupons(); $ed = coupon_clean((string)($_GET['edit'] ?? '')); $E = $CP[$ed] ?? null; $today = date('Y-m-d');
-  $state = fn(array $c) => !(int)$c['active'] ? ['off', 'Off'] : ($c['ends'] !== '' && $c['ends'] < $today ? ['end', 'Expired'] : ((int)$c['max_uses'] && $c['uses'] >= (int)$c['max_uses'] ? ['end', 'Used up'] : ['on', 'On']));
+  $state = fn(array $c) => !(int)$c['active'] ? ['off', 'Off'] : (coupon_time($c) === 'over' ? ['end', 'Expired'] : ((int)$c['max_uses'] && $c['uses'] >= (int)$c['max_uses'] ? ['end', 'Used up'] : (coupon_time($c) === 'soon' ? ['soon', 'Starts later'] : ['on', 'On'])));
+  /* a time limit in the list: "6 Oct, 6:00 pm" (the year only when it is not this year; no hour for a whole day) */
+  $at = fn(string $v, string $whole) => $v === '' ? '' : date(substr($v, 0, 4) === date('Y') ? 'j M' : 'j M Y', strtotime($v)) . (substr($v, 11) === $whole ? '' : ', ' . date('g:i a', strtotime($v)));
+  $limit = function (array $c) use ($at) { $s = $at(coupon_starts($c), '00:00'); $e = $at(coupon_ends($c), '23:59');
+    return $s && $e ? "$s → $e" : ($s ? "From $s" : ($e ? "Until $e" : '')); };
+  $tbox = fn(string $name, string $v, string $whole) => '<div class="cpt2">' . date_box($name, substr($v, 0, 10), $name === 'starts' ? 'Starts on' : 'Ends on')
+    . '<input type="time" name="' . $name . '_time" value="' . h(strlen($v) > 10 && substr($v, 11) !== $whole ? substr($v, 11, 5) : '') . '" aria-label="' . ($name === 'starts' ? 'Start time' : 'End time') . '"></div>';
   $num = fn($p) => $p % 100 ? number_format($p / 100, 2, '.', '') : (string)intdiv($p, 100);
   $panes = ['list' => 'Your coupons', 'add' => $E ? 'Edit ' . h($E['code']) : 'Add a coupon'];
   $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
@@ -126,7 +132,9 @@ if ($tab === 'coupons') {
     . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label></span></label>'
     . '<label>Amount<input type="number" name="value" min="1" step="any" required inputmode="decimal" value="' . h($E ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label></div>'
     . '<label>Minimum order ₹ <small>(optional)</small><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="No minimum"></label>'
-    . '<label>Ends on <small>(optional, last day it works)</small>' . date_box('ends', (string)($E['ends'] ?? ''), 'Ends on') . '</label>'
+    . '<div class="cptl"><b>Time limit</b> <small class="muted">(optional)</small></div>'
+    . '<label>Starts <small>(date, and a time if you want one)</small>' . $tbox('starts', $E ? coupon_starts($E) : '', '00:00') . '</label>'
+    . '<label>Ends <small>(no time = till the end of that day)</small>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
     . '<label>Usage limit <small>(optional, total orders)</small><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit"></label>'
     . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label>'
     . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'
@@ -134,13 +142,13 @@ if ($tab === 'coupons') {
     . '<div class="box' . ($E ? '' : ' on') . '" data-pane="list"><div class="bh"><h3>Your coupons · ' . count($CP) . '</h3></div><div class="bb np">';
   if (!$CP) $body .= '<p class="empty">No coupons yet. Add one, like WELCOME10 for 10% off.</p>';
   else {
-    $body .= '<table class="grid cpt"><thead><tr><th>Code</th><th>Discount</th><th class="hide-m">Minimum</th><th class="hide-m">Ends</th><th class="r">Used</th><th class="r hide-m">Sales</th><th class="r hide-m">Given off</th><th></th></tr></thead><tbody>';
+    $body .= '<table class="grid cpt"><thead><tr><th>Code</th><th>Discount</th><th class="hide-m">Minimum</th><th class="hide-m">Time limit</th><th class="r">Used</th><th class="r hide-m">Sales</th><th class="r hide-m">Given off</th><th></th></tr></thead><tbody>';
     foreach ($CP as $c) {
       [$sk, $sl] = $state($c); $used = $c['uses'] . ((int)$c['max_uses'] ? ' / ' . (int)$c['max_uses'] : '');
       $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
-        . '<td>' . h(coupon_label($c)) . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $c['ends'] !== '' ? 'Ends ' . dmy($c['ends']) : '']))) . '</small></td>'
+        . '<td>' . h(coupon_label($c)) . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
         . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
-        . '<td class="hide-m nw">' . ($c['ends'] !== '' ? h(dmy($c['ends'])) : '<span class="muted">No end</span>') . '</td>'
+        . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>'
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'q' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
         . '<td class="r nw"><form method="post" class="cpa">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'

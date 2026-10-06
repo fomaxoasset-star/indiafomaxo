@@ -351,3 +351,5 @@ body.zooming{overflow:hidden}
 .cpa{display:inline-flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 @media (max-width:820px){.cpa{gap:6px}.cpt td{font-size:13px}.cpv{grid-template-columns:1fr}}
 @media (min-width:821px){.cpt td small.show-m{display:none}}
+.cptl{margin:2px 0 -6px;font-size:13px}.cpt2{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:8px}.cpt2 input[type=time]{min-width:0;color-scheme:dark}
+.cb-soon{color:var(--blue)}

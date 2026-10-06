@@ -326,13 +326,22 @@ function save_coupon(): string {
   if ($kind === 'pct' && ($v > 99 || (float)$v != (int)$v)) return '!A % coupon can take off 1 to 99%, in whole numbers.';
   $value = $kind === 'pct' ? (int)$v : (int)round((float)$v * 100);
   $min = trim((string)($_POST['min_order'] ?? '')); if ($min !== '' && (!is_numeric($min) || $min < 0)) return '!Please write the minimum order in rupees, or leave it empty.';
-  $endsIn = trim((string)($_POST['ends'] ?? '')); $ends = parse_day($endsIn); if ($endsIn !== '' && $ends === '') return '!Please type the end date as dd/mm/yyyy, or leave it empty.';
+  /* the time limit: a date (dd/mm/yyyy) and an hour for each end; no hour = from the start of the day / to the end of it */
+  $when = function (string $k, string $whole) {
+    $d = trim((string)($_POST[$k] ?? '')); $t = trim((string)($_POST[$k . '_time'] ?? ''));
+    if ($d === '') return $t === '' ? '' : null;
+    $day = parse_day($d); if ($day === '' || ($t !== '' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t))) return null;
+    return $day . ' ' . ($t ?: $whole);
+  };
+  $starts = $when('starts', '00:00'); if ($starts === null) return '!Please type the start date as dd/mm/yyyy (and a time if you want one), or leave it empty.';
+  $ends = $when('ends', '23:59'); if ($ends === null) return '!Please type the end date as dd/mm/yyyy (and a time if you want one), or leave it empty.';
+  if ($starts !== '' && $ends !== '' && $ends <= $starts) return '!The coupon has to end after it starts.';
   $uses = trim((string)($_POST['max_uses'] ?? '')); if ($uses !== '' && (!ctype_digit($uses))) return '!Please write the usage limit as a number, or leave it empty.';
   $s = shop_db()->prepare('SELECT created FROM coupons WHERE code = ?'); $s->execute([$code]); $was = $s->fetchColumn();
   if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
   shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
-    'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses), 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
-  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (!empty($_POST['active']) ? ' Shoppers can use it at checkout.' : ' It is off until you switch it on.');
+    'starts' => $starts, 'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses), 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
+  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (empty($_POST['active']) ? ' It is off until you switch it on.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
 }
 
 /* ---------------- members (repeat customers) ---------------- */
