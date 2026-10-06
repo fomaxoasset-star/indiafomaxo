@@ -28,8 +28,6 @@ try {
     if (!empty($d['prices'])) $live['prices'][$id] = $d['prices'];
     if (!empty($d['compareAt'])) $live['compareAt'][$id] = $d['compareAt'];
   }
-  /* the checkout page shows "Have a coupon code?" only while a code is switched on and inside its time limit */
-  $live['coupons'] = (bool)array_filter(shop_db()->query('SELECT * FROM coupons WHERE active = 1')->fetchAll(), fn($c) => coupon_time($c) === '');
   if (($loc = shop_store_location()) !== null)
     $live['stores'] = $loc['show'] ? array_map(fn($st) => $st + ['mapQuery' => shop_map_query_from_link((string)($st['link'] ?? ''))], $loc['stores']) : false;
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";

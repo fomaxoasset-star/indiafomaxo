@@ -2177,6 +2177,7 @@ window.STORE = {
     email: "fomaxoasset@gmail.com",
     checkoutUrl: "",
     razorpay: "api/razorpay.php",     // online payment (UPI, cards, netbanking, wallets) on the checkout page. Keys go in fomaxo-private/razorpay-config.php on Hostinger. Set to "" to turn off.
+    coupons: true,                    // "Have a coupon code?" at checkout, always shown. Codes are made in fomaxo.in/admin → Coupons. Set to false to hide the box.
     cod: { min: 1000, fee: 50, onlyName: "fake name" }   // cash on delivery for orders of ₹1,000 and above, with a ₹50 fee. While onlyName is set, COD shows "COD unactivated" and only works when the Full name is exactly that (for testing, no minimum). Remove onlyName to open COD to everyone; write cod: null to turn it off.
   },
 
@@ -3688,10 +3689,10 @@ function checkoutPage(q){
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
-    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${LIVE.coupons ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
+    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
-    ${LIVE.coupons ? `<div class="co-cpn" id="coCpn">
+    ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
       <button type="button" class="co-cpn-open" id="coCpnOpen" aria-expanded="false" aria-controls="coCpnForm">Have a coupon code?</button>
       <div class="co-cpn-form" id="coCpnForm" hidden><input id="coCpnIn" placeholder="Coupon code" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
       <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied · <span id="coCpnOff"></span> off<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
