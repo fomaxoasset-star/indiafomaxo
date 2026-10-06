@@ -237,7 +237,8 @@ function fomaxo_customer(array $in): array {
   if (strlen($d) === 11 && $d[0] === '0') $d = substr($d, 1);
   if (!preg_match('/^[6-9]\d{9}$/', $d)) return ['error' => 'Please enter a valid 10-digit Indian mobile number.'];
   $o['phone'] = '+91 ' . substr($d, 0, 5) . ' ' . substr($d, 5);
-  if (!filter_var($o['email'], FILTER_VALIDATE_EMAIL)) return ['error' => 'Please enter a valid email address.'];
+  /* email is optional (the phone checkout doesn't ask for it), but when given it must be valid */
+  if ($o['email'] !== '' && !filter_var($o['email'], FILTER_VALIDATE_EMAIL)) return ['error' => 'Please enter a valid email address.'];
   if ($o['house'] === '' || mb_strlen($o['street']) < 2 || mb_strlen($o['city']) < 2) return ['error' => 'Please enter your full delivery address.'];
   if (!in_array($o['state'], FOMAXO_STATES, true)) return ['error' => 'Please choose your state.'];
   if (!preg_match('/^[1-9]\d{5}$/', $o['pin'])) return ['error' => 'Please enter a valid 6-digit PIN code.'];
@@ -310,7 +311,8 @@ function fomaxo_send_emails(array $rec, string $how): void {
   $body = "NEW ORDER {$rec['no']} — $how\n" . date('d M Y, H:i') . " (IST)\n" . (!empty($rec['payment']) ? "Razorpay payment: {$rec['payment']}\n" : '') . "\n$lines\n\n"
         . ($how === 'Cash on delivery' ? "TO COLLECT ON DELIVERY: $total" : "TOTAL PAID: $total") . "\nDelivery: Free\n\n"
         . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\nAddress: {$c['address']}\n" . ($c['note'] ? "Note: {$c['note']}\n" : '');
-  fomaxo_mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\nReply-To: {$c['email']}\r\nContent-Type: text/plain; charset=UTF-8");
+  fomaxo_mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\n" . ($c['email'] !== '' ? "Reply-To: {$c['email']}\r\n" : '') . "Content-Type: text/plain; charset=UTF-8");
+  if ($c['email'] === '') return;   // no email given: the store copy only
   $cb = "Thank you for your order, {$c['name']}.\n\nOrder number: {$rec['no']}\n\n$lines\n\n"
       . ($how === 'Cash on delivery' ? "Total to pay on delivery: $total" : "Total paid: $total") . "\nDelivery: Free, to {$c['address']}\n\n"
       . "We will WhatsApp you on {$c['phone']} about your delivery.\n\n"

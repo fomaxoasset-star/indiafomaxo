@@ -512,6 +512,24 @@ html[data-mode="light"] .store-map .map iframe{filter:grayscale(.55) sepia(.25) 
 .line-item .rm:hover{color:var(--gold-hi)}
 .sub-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
 .sub-row .price{font-size:28px}
+.sub-free{display:none}
+/* phone bag: the items get the room and scroll freely; the bottom is one compact block */
+@media(max-width:600px){
+  .dr-head{padding:14px 16px}
+  .dr-body{padding:0 16px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0}
+  .dr-foot{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -10px 24px rgba(0,0,0,.18)}
+  .dr-foot>*{grid-column:1/-1}
+  .dr-foot>.sub-row:first-child{display:none}
+  .dr-foot .sub-free{display:inline;font-size:10px;letter-spacing:.14em;color:var(--gold)}
+  .dr-foot .sub-row .price{font-size:22px}
+  .dr-foot .btn{min-height:46px;padding-top:0;padding-bottom:0}
+  .dr-foot .pay-note{margin:-2px 0 0;font-size:11px}
+  .dr-foot #doCheckout:not(.line)~.bag-more{grid-column:1/-1}
+  .dr-foot #doCheckout.line,.dr-foot .bag-more{grid-column:auto;min-height:40px;font-size:10px;letter-spacing:.14em;padding:0 6px}
+  .bag-like{margin:18px -16px 4px}.bag-like h5{margin:0 16px 10px}.bl-row{padding:0 16px 10px;scroll-padding:0 16px}
+  .bl-card{flex-basis:118px}
+  .line-item{grid-template-columns:64px 1fr;gap:12px;padding:14px 0}.line-item img{width:64px}
+}
 .empty{padding:60px 0;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;color:var(--muted)}
 .empty svg{width:54px;height:54px;opacity:.7}
 .bag-like{margin:26px -28px 6px;padding-top:4px}
@@ -2529,9 +2547,9 @@ function renderCart(){
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
   const r = $('.bl-row', body); if (r) r.scrollLeft = rowX;
   const t = subtotal(cart);
-  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div><div class="sub-row"><span>Subtotal</span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
+  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div><div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
     ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p><button class="btn line block" id="doCheckout">Order via WhatsApp</button>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
-    <a class="btn line block" href="#/fragrances" data-close>Continue shopping</a>`;
+    <a class="btn line block bag-more" href="#/fragrances" data-close>Continue shopping</a>`;
   $('#doCheckout').onclick = () => checkout(cart);
   const gc = $('#goCheckout'); if (gc) gc.onclick = () => goCheckout('#/checkout');
 }
@@ -3541,6 +3559,8 @@ const coCod = () => S.checkout.cod && typeof S.checkout.cod === 'object' ? S.che
 const coCodOn = (cod, t, name) => !!cod && (cod.onlyName ? String(name || '').replace(/\s+/g, ' ').trim().toLowerCase() === cod.onlyName.toLowerCase() : t >= cod.min);
 const inr = v => money(v, '₹');
 
+/* on phones, email is optional at checkout and payment opens without it */
+const coPhone = () => matchMedia('(max-width: 820px)').matches;
 function checkoutPage(q){
   document.title = 'Checkout — FOMAXO';
   const lines = coLines(q), t = subtotal(lines);
@@ -3567,7 +3587,7 @@ function checkoutPage(q){
     <label>Full name<input name="name" value="${v('name')}" autocomplete="name" required maxlength="80"></label>
     <div class="row2">
       <label>Mobile<span class="co-tel"><em>+91</em><input name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="98765 43210" value="${phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : ''}" required maxlength="12"></span></label>
-      <label>Email<input name="email" type="email" value="${v('email')}" autocomplete="email" required maxlength="120"></label>
+      <label><span>Email${coPhone() ? ' <small>(optional)</small>' : ''}</span><input name="email" type="email" value="${v('email')}" autocomplete="email"${coPhone() ? '' : ' required'} maxlength="120"></label>
     </div>
     <label>Flat / house no, building<input name="house" value="${v('house')}" autocomplete="address-line1" required maxlength="80"></label>
     <div class="row2">
@@ -3618,7 +3638,7 @@ function bindCheckout(q){
   const total = () => t + (method() === 'cod' && cod ? cod.fee : 0);
   /* payment stays locked until every required delivery field is filled in correctly */
   const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', v => /^[6-9]\d{9}$/.test(v.replace(/\D/g, ''))],
-    ['email', 'Email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)], ['house', 'Flat / house no, building', v => v.length > 0],
+    ['email', 'Email', v => (v === '' && coPhone()) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)], ['house', 'Flat / house no, building', v => v.length > 0],
     ['street', 'Street, area, locality', v => v.length >= 2], ['city', 'City', v => v.length >= 2], ['state', 'State', v => v !== ''],
     ['pin', 'PIN code', v => /^[1-9]\d{5}$/.test(v)]];
   const missing = () => NEED.filter(([k, , ok]) => !ok(E[k].value.replace(/\s+/g, ' ').trim()));
@@ -3662,7 +3682,7 @@ function bindCheckout(q){
     const c = {name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin'), note: val('note')};
     if (c.name.length < 2) return showErr('Please enter your full name.', E.name);
     if (!/^[6-9]\d{9}$/.test(c.phone)) return showErr('Please enter a valid 10-digit mobile number.', E.phone);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return showErr('Please enter a valid email address.', E.email);
+    if (!(c.email === '' && coPhone()) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return showErr('Please enter a valid email address.', E.email);
     if (!c.house) return showErr('Please enter your flat or house number and building.', E.house);
     if (c.street.length < 2) return showErr('Please enter your street, area or locality.', E.street);
     if (c.city.length < 2) return showErr('Please enter your city.', E.city);
