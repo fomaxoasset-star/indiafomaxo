@@ -1738,8 +1738,13 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .buy .pprice,.buy .pprice:has(.was){font-weight:300;font-size:40px;letter-spacing:.02em;color:var(--gold-hi)}
 .buy .pprice:has(.was){flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:4px 14px}
 .buy .pprice .was{order:0;font-size:.42em;margin:0;color:var(--muted);text-decoration-color:currentColor;text-decoration-thickness:1px}
-.buy .pprice:has(.save)::after{content:'';order:3;flex-basis:100%;height:0}
-.buy .pprice:has(.save){row-gap:12px}
+.buy #pprice{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.buy .pprice{line-height:1}
+.psave{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-family:var(--sans);font-size:14px;letter-spacing:.02em;color:var(--muted)}
+.psave s{text-decoration-thickness:1px}
+.psave i{font-style:normal;opacity:.6}
+.psave b{font-weight:500;color:#7fcf95}
+html[data-mode="light"] .psave b{color:#2f7d47}
 .buy .save{order:4;align-self:flex-start;margin:0;font-size:10.5px;letter-spacing:.24em;padding:6px 10px;background:transparent;color:var(--gold);box-shadow:inset 0 0 0 1px var(--line-2)}
 .buy .p-rate-stars{font-size:15px;letter-spacing:.22em}
 .buy .p-rate-num{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
@@ -2014,12 +2019,10 @@ html[data-mode="light"] .co-err{color:#a8322a}
   .buy h1{font-size:clamp(34px,2.8vw,42px);line-height:1}
   .buy .ptype{font-size:11px}
   .buy .price-rate{flex-direction:column;align-items:flex-start;gap:7px;margin-top:0}
-  .buy .pprice:has(.save){row-gap:6px}
-  .buy .save{padding:5px 9px;font-size:10px}
   .buy .p-rate-stars{font-size:13px;letter-spacing:.12em}
   .buy .p-rate-num{font-size:11px;letter-spacing:.12em}
   .buy .pprice,.buy .pprice:has(.was){font-size:36px}
-  .buy .pprice .was{font-size:.46em}
+  .psave{font-size:13px}
   .buy .lead{font-size:18px;line-height:1.4;margin-top:0}
   .buy .opt-label{margin-bottom:8px}
   .sizes{gap:10px}
@@ -2500,7 +2503,9 @@ const curOf = p => (p && p.currency) || S.currency;
 const wasHTML = (p, size) => { const c = p.compareAt && p.compareAt[size]; return hasPrice(c) && c > p.prices[size] ? `<s class="was">${money(c, curOf(p))}</s> ` : ''; };
 const pctOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
 const offTag = (p, s) => { const n = pctOff(p, s); return n ? `<span class="off-tag">${n}% off</span>` : ''; };
-const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size); return m ? `<span class="${cls}">${wasHTML(p, size)}${m}${cls === 'pprice' && n ? `<span class="save">Save ${n}%</span>` : ''}</span>` : `<span class="${cls} na">Price on request</span>`; };
+const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size);
+  if (m && cls === 'pprice') return `<span class="pprice">${m}</span>${n ? `<span class="psave">MRP <s>${money(p.compareAt[size], curOf(p))}</s><i>·</i><b>You save ${money(p.compareAt[size] - p.prices[size], curOf(p))} (${n}%)</b></span>` : ''}`; /* product page: new price as the headline, then one plain saving line */
+  return m ? `<span class="${cls}">${wasHTML(p, size)}${m}</span>` : `<span class="${cls} na">Price on request</span>`; };
 const fromHTML = p => { const v = p.sizes.map(s => p.prices[s]).filter(hasPrice); const mn = Math.min(...v), ms = p.sizes.find(s => p.prices[s] == mn); return v.length ? `<span class="price">${p.sizes.length > 1 ? '<small>from</small> ' : ''}${wasHTML(p, ms)}${money(mn, curOf(p))}</span>` : `<span class="price na">Price on request</span>`; };
 const pRateHTML = (r, n) => n
   ? `<span class="p-rate-stars" aria-hidden="true">${'★'.repeat(Math.round(r))}<i>${'★'.repeat(5 - Math.round(r))}</i></span><span class="p-rate-num"><b>${(+r).toFixed(1)}</b> · ${n} review${n > 1 ? 's' : ''}</span>`
