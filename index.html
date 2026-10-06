@@ -2196,7 +2196,7 @@ window.STORE = {
       ],
       notes: { top: "Bergamot · Pepper", heart: "Agarwood · Rosemary", base: "Leather · Vetiver · Musk" },
       sizes: [100], prices: { 100: 1750 }, compareAt: { 100: 2200 },   // compareAt = original price shown crossed out
-      images: ["gold-1", "gold-2", "gold-3"], editorial: "gold-3",
+      images: ["gold-1", "gold-2", "gold-3"], editorial: "gold-1",
       url: "https://fomaxo.com/fomaxo-gold-eau-de-parfum"
     },
     {
@@ -2304,7 +2304,7 @@ window.STORE = {
       products: ["king"], image: "king-3" },
     { id: "signature", name: "Signature", kicker: "The icons", sizes: "100ml",
       text: "FOMAXO’s iconic signature fragrances — the scents that define the house, crafted for presence and lasting character.",
-      products: ["gold", "dollar"], image: "gold-3" },
+      products: ["gold", "dollar"], image: "gold-1" },
     { id: "prestige", name: "Prestige", kicker: "Everyday luxury", sizes: "50ml · 10ml",
       text: "Refined everyday luxury in two sizes — the 10ml pocket mini and the 50ml bottle, for every mood and every moment.",
       products: ["oldmoney", "royalcandy", "matchacoco", "passionsin"], image: "oldmoney-collection" },
@@ -2705,7 +2705,7 @@ const HERO_SLIDES = [
   {id:'pc-kissberry', img:'banner-kissberry-4', pos:'50% 50%', mpos:'8% 50%'},
   {id:'pc-passionsin-gel', img:'banner-passionsin-3', pos:'50% 50%', mpos:'82% 50%'},
   {id:'pc-melondrip', img:'banner-melondrip-3', pos:'50% 30%', mpos:'50% 50%'},
-  {id:'gold', img:'banner-gold-3', pos:'50% 50%', mpos:'36% 50%'}
+  {id:'gold', img:'banner-gold-4', pos:'50% 50%', mpos:'50% 50%'}
 ].filter((s, i, all) => P[s.id] || !all.some(x => P[x.id]));
 function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
