@@ -316,6 +316,55 @@ function order_tracker(array $o): string {
   return $out . '</ol>';
 }
 
+/* ---------------- limited-time offer ---------------- */
+/* Saves the Offer page form. The quick buttons (24 hours … 7 days) count from now; otherwise the typed date and time (India time).
+   Returns the message to show ('!' first when nothing was saved). */
+function save_offer(): string {
+  $mode = in_array($_POST['mode'] ?? '', ['end', 'always', 'off'], true) ? $_POST['mode'] : 'off';
+  $o = ['mode' => $mode, 'end' => shop_offer()['end'], 'popup' => !empty($_POST['popup']), 'line' => !empty($_POST['line']), 'pct' => 0];
+  /* the % in the popup: empty = the biggest real saving; never more than that */
+  $pct = trim((string)($_POST['pct'] ?? '')); $note = '';
+  if ($pct !== '') {
+    if (!ctype_digit($pct) || (int)$pct < 1 || (int)$pct > 99) return '!Please type the % as a whole number from 1 to 99, or leave it empty for the biggest real saving.';
+    [$best] = fomaxo_best_pct();
+    if ($best < 1) return '!No product has an old price on Products yet, so there is no real saving to show. Leave the % empty, or add old prices first.';
+    if ((int)$pct > $best) { $note = " You typed {$pct}%, but the biggest real saving is {$best}%, so the popup shows {$best}% OFF."; $pct = (string)$best; }
+    $o['pct'] = (int)$pct;
+  }
+  $quick = (int)($_POST['quick'] ?? 0);
+  if ($quick > 0) { $o['mode'] = 'end'; $o['end'] = date('Y-m-d H:i', time() + min($quick, 24 * 7) * 3600); }
+  elseif ($mode === 'end') {
+    $day = parse_day($_POST['end'] ?? ''); $t = trim((string)($_POST['end_time'] ?? ''));
+    if ($day === '') return '!Please type the end date as dd/mm/yyyy, or tap 24 hours, 48 hours, 3 days or 7 days.';
+    if ($t !== '' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t)) return '!Please pick the end time, or leave it empty for the end of that day.';
+    $o['end'] = $day . ' ' . ($t ?: '23:59');
+    if ($o['end'] <= date('Y-m-d H:i')) return '!That end date and time has already passed. Please pick a later one.';
+  }
+  shop_set('offer', json_encode($o));
+  if ($o['mode'] === 'off') return 'Saved. The offer is off, so nothing shows on the website.' . $note;
+  if (!$o['popup'] && !$o['line']) return 'Saved, but nothing is ticked under “What shows”, so nothing shows on the website.' . $note;
+  return ($o['mode'] === 'end' ? 'Saved. The offer is on and ends ' . offer_when($o['end']) . '.' : 'Saved. The offer is on with no timer until you turn it off.') . $note;
+}
+/* Saves the New product popup box on the Offer page. $cat = the product list (hidden products can be picked too). */
+function save_newprod(array $cat): string {
+  $clean = fn(string $k) => trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? '')));
+  $n = ['on' => !empty($_POST['np_on']), 'kind' => ($_POST['np_kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => $clean('np_name'), 'line' => $clean('np_line'), 'id' => (string)($_POST['np_id'] ?? '')];
+  if ($n['id'] !== '' && !isset($cat[$n['id']])) $n['id'] = '';
+  if ($n['name'] === '' && $n['id'] !== '') $n['name'] = mb_substr($cat[$n['id']]['name'], 0, 40);
+  if (mb_strlen($n['name']) > 40) return '!The product name can have up to 40 characters.';
+  if (mb_strlen($n['line']) > 90) return '!The short line can have up to 90 characters.';
+  if ($n['on'] && $n['name'] === '') return '!Please write the product name, or pick the product.';
+  shop_set('newprod', json_encode($n, JSON_UNESCAPED_UNICODE));
+  return !$n['on'] ? 'Saved. The new product popup is off.' : 'Saved. The “' . ($n['kind'] === 'new' ? 'Just arrived' : 'Coming soon') . '” popup for ' . $n['name'] . ' is on. Each visitor sees it once.';
+}
+/* "09/10/2026, 11:59 pm" */
+function offer_when(string $ymdhi): string { return date('d/m/Y, g:i a', strtotime($ymdhi)); }
+/* time left as "2d 14h left" / "3h 5m left" / "12m left" */
+function offer_left(int $secs): string {
+  $d = intdiv($secs, 86400); $h = intdiv($secs % 86400, 3600); $m = intdiv($secs % 3600, 60);
+  return ($d ? "{$d}d {$h}h" : ($h ? "{$h}h {$m}m" : max(1, $m) . 'm')) . ' left';
+}
+
 /* ---------------- coupons ---------------- */
 /* Adds or changes a coupon from the Coupons page form. Returns the message to show ('!' first when nothing was saved). */
 function save_coupon(): string {
