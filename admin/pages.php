@@ -339,19 +339,27 @@ if ($tab === 'analytics') {
   $body .= '</tbody></table></div></div>';
   /* left at checkout: everyone who typed their details in these dates (all of them are kept for good) */
   $L = checkout_leads($from, $to);
-  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><table class="grid ltab"><thead><tr><th>Date</th><th>Name</th><th>State · address</th><th>Products</th><th class="r">Bag</th><th>Left at</th><th>Ordered later</th><th></th></tr></thead><tbody>';
-  if (!$L) $body .= '<tr><td colspan="8" class="empty">Nobody typed their details at checkout in these dates.</td></tr>';
+  $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts"><div class="lt-hd"><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span></div>';
+  if (!$L) $body .= '<p class="empty">Nobody typed their details at checkout in these dates.</p>';
+  /* one line per person (date, name, state, bag, where they stopped, ordered later); tap it to open mobile, email, address, products and WhatsApp */
   foreach ($L as $l) {
     $names = lead_items($l);
     $msg = 'Hi ' . ($l['name'] ?: 'there') . ', this is FOMAXO. We saw you were about to order ' . ($names ?: 'from our shop') . '. Can we help you finish your order?';
-    $body .= '<tr' . ($l['later'] !== '' ? ' class="dim"' : '') . '><td class="nw lt-date">' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</td><td class="lt-name"><b>' . h($l['name'] ?: '—') . '</b><small>' . h($l['phone'] ? phone_fmt($l['phone']) : 'no mobile') . '</small>' . ($l['email'] ? '<small>' . h($l['email']) . '</small>' : '') . '</td>'
-      . '<td class="lt-addr"><b>' . h($l['state'] ?: '—') . '</b><small class="clip">' . h($l['address']) . '</small></td>'
-      . '<td class="lt-items"><small class="clip2">' . h($names) . '</small></td><td class="r nw lt-bag">' . rupees((int)$l['total']) . '</td>'
-      . '<td class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</td>'
-      . '<td class="lt-later">' . ($l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '"><span class="badge st-paid">' . h($l['later']) . '</span></a>')) . '</td>'
-      . '<td class="r lt-wa">' . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</td></tr>';
+    $later = $l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<span class="badge st-paid">' . h($l['later']) . '</span>');
+    $body .= '<details class="lt' . ($l['later'] !== '' ? ' dim' : '') . '"><summary>'
+      . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
+      . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
+      . '<span class="lt-later">' . $later . '</span><span class="lt-chev" aria-hidden="true"></span></summary>'
+      . '<div class="lt-more"><dl>'
+      . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
+      . '<dt>Mobile</dt><dd>' . h($l['phone'] ? phone_fmt($l['phone']) : 'No mobile') . '</dd>'
+      . ($l['email'] ? '<dt>Email</dt><dd>' . h($l['email']) . '</dd>' : '')
+      . '<dt>Address</dt><dd>' . h(trim($l['address'] . ($l['state'] ? ', ' . $l['state'] : ''), ', ') ?: '—') . '</dd>'
+      . '<dt>Products</dt><dd>' . h($names ?: '—') . '</dd>'
+      . '<dt>Ordered later</dt><dd>' . ($l['later'] !== '' && $l['later'] !== 'yes' ? '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '">Order ' . h($l['later']) . '</a>' : ($l['later'] === 'yes' ? 'Yes' : 'Not ordered')) . '</dd></dl>'
+      . ($l['phone'] ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener">WhatsApp</a>' : '') . '</div></details>';
   }
-  $body .= '</tbody></table></div></div></div>';
+  $body .= '</div></div></div></div>';
 }
 
 /* ============ Reports ============ */
