@@ -1537,6 +1537,20 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .hc-copy{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"em h1" "em lead" "ctas ctas"}
   .hero-cine .ctas{margin-top:14px}
 }
+/* number and name on each home banner, matching the list under it */
+.hero-cine .hc-tag{position:absolute;z-index:4;top:clamp(12px,1.6vw,24px);left:clamp(12px,1.6vw,24px);display:flex;align-items:center;gap:10px;padding:10px 20px 10px 16px;background:rgba(5,5,5,.74);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(215,170,105,.55);border-radius:999px;color:#f6efe2;font-size:12.5px;letter-spacing:.28em;text-transform:uppercase;line-height:1;white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(-6px);transition:opacity .6s ease .5s,transform .6s ease .5s}
+.hero-cine .hc-tag b{font-family:var(--serif);font-weight:400;font-size:17px;letter-spacing:.04em;color:#f0d3a0}
+.hero-cine .hc-slide.on .hc-tag{opacity:1;transform:none}
+@media(max-width:760px){.hero-cine .hc-tag{top:12px;left:12px;padding:6px 12px 6px 10px;font-size:9.5px;letter-spacing:.22em;gap:8px}.hero-cine .hc-tag b{font-size:13px}}
+/* laptop: the 01–06 list, price and Buy Now sit on the banner's bottom edge over a black fade */
+@media(min-width:761px){
+  .hero-cine{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto}
+  .hero-cine .hc-slides{grid-row:1;grid-column:1}
+  .hero-cine .hc-bar{grid-row:1;grid-column:1;align-self:end;z-index:5;padding-top:clamp(70px,9vw,130px);background:linear-gradient(180deg,rgba(5,5,5,0) 0%,rgba(5,5,5,.8) 38%,rgba(5,5,5,.96) 62%,#050505 100%)}
+  .hero-cine .hc-copy{grid-row:2;grid-column:1}
+  .hero-cine .hc-nav button{color:rgba(246,239,226,.78)}
+  .hero-cine .hc-nav button.on{color:#f0d3a0}
+}
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .pc-buy .pc-add{margin-top:0}
@@ -2688,7 +2702,7 @@ function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
   return `
   <section class="hero-cine${slides[0].banner ? ' is-banner' : ''}${slides.every(s => s.banner) ? ' bn' : ''}" id="heroCine">
-    <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}</figure>`).join('')}</div>
+    <div class="hc-slides">${slides.map((s,i) => `<figure class="hc-slide${i?'':' on'}${s.lo?' lo':''}${s.banner?' ban':''}"><img class="hc-bg" src="${IMG(s.img)}" alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>${s.lo ? `<img class="hc-fg" src="${IMG(s.img)}" alt="" aria-hidden="true" loading="lazy">` : ''}${s.banner ? `<a class="hc-ban" href="#/product/${s.id}" tabindex="-1"><img src="${IMG(s.img)}" alt="" aria-hidden="true" ${i ? 'loading="lazy"' : ''}></a>` : ''}<span class="hc-tag" aria-hidden="true"><b>0${i+1}</b>${esc(s.p.title || s.p.name)}</span></figure>`).join('')}</div>
     <div class="hc-veil" aria-hidden="true"></div>
     <div class="hc-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="hc-copy">
