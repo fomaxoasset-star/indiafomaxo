@@ -87,12 +87,13 @@ if ($tab === 'orders') {
     $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary>' . $orderThumb($o)
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . '</small></span>'
-      . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
+      . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . ($o['coupon'] !== '' ? ' · <span class="cpn">' . h($o['coupon']) . '</span>' : '') . '</small></span>'
       . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . '</span></summary>'
       . '<div class="otop">' . order_tracker($o) . '</div>'
       . '<div class="od"><div class="items"><h4>Items</h4>';
     foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . rupees((int)($it['unit'] ?? 0)) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
-    $body .= ($o['cod_fee'] ? '<p class="small muted">Cash on delivery fee ' . rupees((int)$o['cod_fee']) . '</p>' : '') . '<p><b>Total ' . rupees((int)$o['total']) . '</b></p></div>'
+    $body .= ($o['coupon'] !== '' ? '<p class="small muted">Coupon <b class="cpn">' . h($o['coupon']) . '</b> −' . rupees((int)$o['discount']) . '</p>' : '')
+      . ($o['cod_fee'] ? '<p class="small muted">Cash on delivery fee ' . rupees((int)$o['cod_fee']) . '</p>' : '') . '<p><b>Total ' . rupees((int)$o['total']) . '</b></p></div>'
       . '<div><h4>Delivery</h4><p>' . h($o['name']) . '<br>' . h($o['address']) . '</p><p><a href="tel:' . h(preg_replace('/[^0-9+]/', '', $o['phone'])) . '">' . h($o['phone']) . '</a> · <a href="https://wa.me/' . h(preg_replace('/\D/', '', $o['phone'])) . '" target="_blank" rel="noopener">WhatsApp</a><br><a href="mailto:' . h($o['email']) . '">' . h($o['email']) . '</a></p>'
       . ($o['note'] ? '<p class="muted">Customer note: ' . h($o['note']) . '</p>' : '') . '</div>'
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
@@ -108,6 +109,48 @@ if ($tab === 'orders') {
     $body .= '</div>';
   }
   $body .= '</div></div>';
+}
+
+/* ============ Coupons ============ */
+if ($tab === 'coupons') {
+  $CP = shop_coupons(); $ed = coupon_clean((string)($_GET['edit'] ?? '')); $E = $CP[$ed] ?? null; $today = date('Y-m-d');
+  $state = fn(array $c) => !(int)$c['active'] ? ['off', 'Off'] : ($c['ends'] !== '' && $c['ends'] < $today ? ['end', 'Expired'] : ((int)$c['max_uses'] && $c['uses'] >= (int)$c['max_uses'] ? ['end', 'Used up'] : ['on', 'On']));
+  $num = fn($p) => $p % 100 ? number_format($p / 100, 2, '.', '') : (string)intdiv($p, 100);
+  $panes = ['list' => 'Your coupons', 'add' => $E ? 'Edit ' . h($E['code']) : 'Add a coupon'];
+  $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
+    . '<form method="post" class="box' . ($E ? ' on' : '') . '" data-pane="add">' . $csrfField . '<input type="hidden" name="action" value="coupon_save">' . ($E ? '<input type="hidden" name="editing" value="1">' : '')
+    . '<div class="bh"><h3>' . ($E ? 'Edit ' . h($E['code']) : 'Add a coupon') . '</h3>' . ($E ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons'])) . '">New coupon</a>' : '') . '</div><div class="bb cpf" style="padding-top:12px">'
+    . '<label>Code<input name="code" maxlength="20" required value="' . h($E['code'] ?? '') . '" placeholder="WELCOME10" autocapitalize="characters" autocomplete="off" spellcheck="false"' . ($E ? ' readonly' : '') . '></label>'
+    . '<div class="cpv"><label>Takes off<span class="seg ck">'
+    . '<label class="' . (($E['kind'] ?? 'pct') === 'pct' ? 'on' : '') . '"><input type="radio" name="kind" value="pct"' . (($E['kind'] ?? 'pct') === 'pct' ? ' checked' : '') . '>% off</label>'
+    . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label></span></label>'
+    . '<label>Amount<input type="number" name="value" min="1" step="any" required inputmode="decimal" value="' . h($E ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label></div>'
+    . '<label>Minimum order ₹ <small>(optional)</small><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="No minimum"></label>'
+    . '<label>Ends on <small>(optional, last day it works)</small>' . date_box('ends', (string)($E['ends'] ?? ''), 'Ends on') . '</label>'
+    . '<label>Usage limit <small>(optional, total orders)</small><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit"></label>'
+    . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label>'
+    . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'
+    . '<p class="muted small" style="margin:0">Shoppers type the code in “Have a coupon code?” at checkout. It works for cash on delivery and online payment, and the discount is worked out on the server.</p></div></form>'
+    . '<div class="box' . ($E ? '' : ' on') . '" data-pane="list"><div class="bh"><h3>Your coupons · ' . count($CP) . '</h3></div><div class="bb np">';
+  if (!$CP) $body .= '<p class="empty">No coupons yet. Add one, like WELCOME10 for 10% off.</p>';
+  else {
+    $body .= '<table class="grid cpt"><thead><tr><th>Code</th><th>Discount</th><th class="hide-m">Minimum</th><th class="hide-m">Ends</th><th class="r">Used</th><th class="r hide-m">Sales</th><th class="r hide-m">Given off</th><th></th></tr></thead><tbody>';
+    foreach ($CP as $c) {
+      [$sk, $sl] = $state($c); $used = $c['uses'] . ((int)$c['max_uses'] ? ' / ' . (int)$c['max_uses'] : '');
+      $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
+        . '<td>' . h(coupon_label($c)) . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $c['ends'] !== '' ? 'Ends ' . dmy($c['ends']) : '']))) . '</small></td>'
+        . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
+        . '<td class="hide-m nw">' . ($c['ends'] !== '' ? h(dmy($c['ends'])) : '<span class="muted">No end</span>') . '</td>'
+        . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'q' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
+        . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
+        . '<td class="r nw"><form method="post" class="cpa">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
+        . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'
+        . '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons', 'edit' => $c['code']])) . '">Edit</a>'
+        . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';
+    }
+    $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Used counts orders placed or paid with the code (cancelled and refunded orders give the use back). Tap the number to see those orders.</p>';
+  }
+  $body .= '</div></div></div>';
 }
 
 /* ============ Members ============ */
@@ -399,7 +442,7 @@ if ($tab === 'reports') {
       . '<script type="application/json" id="repGraph">' . json_encode($GD, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script></div>';
   }
   $what = ['D' => 'Day by day', 'M' => 'Month by month', 'Y' => 'By year'][$V['unit']];
-  $head = '<th>' . ['D' => 'Day', 'M' => 'Month', 'Y' => 'Year'][$V['unit']] . '</th><th class="r">Orders</th><th class="r">Sales</th><th class="r">Discounts</th><th class="r">Fees</th><th class="r">Cost of goods</th><th class="r">Gross profit</th><th class="r">Expenses</th><th class="r">Net profit / loss</th>';
+  $head = '<th>' . ['D' => 'Day', 'M' => 'Month', 'Y' => 'Year'][$V['unit']] . '</th><th class="r">Orders</th><th class="r">Sales</th><th class="r">Discounts</th><th class="r">Coupons</th><th class="r">Fees</th><th class="r">Cost of goods</th><th class="r">Gross profit</th><th class="r">Expenses</th><th class="r">Net profit / loss</th>';
   $body .= '<div class="box fill rtab"><div class="bh"><span><h3 style="display:inline">' . $what . '</h3> <span class="muted small">' . h(date_span($V['from'], $V['to'])) . ($V['unit'] === 'D' ? '' : ' · tap a ' . ($V['unit'] === 'M' ? 'month' : 'year') . ' to open it') . '</span></span>'
     . '<a class="btn line sm" href="' . h(self_url(['do' => 'report_excel'])) . '">Excel</a></div><div class="bb np"><table class="grid"><thead><tr>' . $head . '</tr></thead><tbody>';
   foreach ($rows as $k => $r) {
@@ -409,11 +452,11 @@ if ($tab === 'reports') {
     if ($V['unit'] === 'D') $name = h(date('D', strtotime($k))) . ' <span class="muted">' . h(date('j M', strtotime($k))) . '</span>';
     $body .= '<tr' . ($k > $cur ? ' class="dim"' : '') . ($open ? ' data-href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '"' : '') . '>'
       . '<td>' . ($open ? '<a href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '">' . $name . '</a>' : $name) . '</td>'
-      . '<td class="r">' . $r['orders'] . '</td><td class="r">' . rupees($r['sales']) . '</td><td class="r">' . rupees($r['discounts']) . '</td><td class="r">' . rupees($r['fees']) . '</td>'
+      . '<td class="r">' . $r['orders'] . '</td><td class="r">' . rupees($r['sales']) . '</td><td class="r">' . rupees($r['discounts']) . '</td><td class="r">' . rupees($r['coupons']) . '</td><td class="r">' . rupees($r['fees']) . '</td>'
       . '<td class="r">' . rupees($r['cost']) . ($r['nocost'] ? ' <small class="warn">+' . $r['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($r['gross']) . '</td><td class="r">' . rupees($r['expenses']) . '</td><td class="r"><b>' . $m($r['net']) . '</b></td></tr>';
   }
-  $body .= '</tbody><tfoot><tr><td>Total</td><td class="r">' . $t['orders'] . '</td><td class="r">' . rupees($t['sales']) . '</td><td class="r">' . rupees($t['discounts']) . '</td><td class="r">' . rupees($t['fees']) . '</td><td class="r">' . rupees($t['cost']) . ($t['nocost'] ? ' <small class="warn">+' . $t['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($t['gross']) . '</td><td class="r">' . rupees($t['expenses']) . '</td><td class="r"><b>' . $m($t['net']) . '</b></td></tr></tfoot></table>'
-    . '<p class="muted small" style="padding:0 12px">Sales are orders marked New, Paid or Delivered, by order date, including the cash on delivery fee. Cancelled orders, unfinished payments and test payments are left out. Discounts are what customers saved against the “Was” price (already taken off sales). Fees are the card / UPI payment fee set in Settings (' . pay_fee_pct() . '%). Gross profit = sales − fees − cost of goods. Net = gross profit − expenses.</p></div></div>'
+  $body .= '</tbody><tfoot><tr><td>Total</td><td class="r">' . $t['orders'] . '</td><td class="r">' . rupees($t['sales']) . '</td><td class="r">' . rupees($t['discounts']) . '</td><td class="r">' . rupees($t['coupons']) . '</td><td class="r">' . rupees($t['fees']) . '</td><td class="r">' . rupees($t['cost']) . ($t['nocost'] ? ' <small class="warn">+' . $t['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($t['gross']) . '</td><td class="r">' . rupees($t['expenses']) . '</td><td class="r"><b>' . $m($t['net']) . '</b></td></tr></tfoot></table>'
+    . '<p class="muted small" style="padding:0 12px">Sales are orders marked New, Paid or Delivered, by order date, including the cash on delivery fee. Cancelled orders, unfinished payments and test payments are left out. Discounts are what customers saved against the “Was” price, and Coupons what coupon codes took off (both already taken off sales). Fees are the card / UPI payment fee set in Settings (' . pay_fee_pct() . '%). Gross profit = sales − fees − cost of goods. Net = gross profit − expenses.</p></div></div>'
     . '<script>document.querySelectorAll(".rtab tr[data-href]").forEach(function(r){r.onclick=function(e){if(!e.target.closest("a"))location.href=r.dataset.href}})</script>';
 }
 

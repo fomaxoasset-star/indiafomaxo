@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '29';
+const ASSET_V = '30';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -216,6 +216,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ->execute([$day, $cat, mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['note'] ?? ''))), 0, 200), (int)round((float)$amt * 100), shop_now()]);
     go($back, 'Expense added: ' . rupees((int)round((float)$amt * 100)) . ' on ' . date('d M Y', strtotime($day)) . '.');
   }
+  if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' && !empty($_POST['editing']) ? ['edit' => $code] : []), $msg); }
+  if ($a === 'coupon_on') {
+    $code = coupon_clean((string)($_POST['code'] ?? '')); $on = ($_POST['on'] ?? '') === '1';
+    shop_db()->prepare('UPDATE coupons SET active = ? WHERE code = ?')->execute([$on ? 1 : 0, $code]);
+    go(['tab' => 'coupons'], $on ? "$code is on. Shoppers can use it at checkout." : "$code is off. It no longer works at checkout.");
+  }
+  if ($a === 'coupon_delete') {
+    $code = coupon_clean((string)($_POST['code'] ?? ''));
+    shop_db()->prepare('DELETE FROM coupons WHERE code = ?')->execute([$code]);
+    go(['tab' => 'coupons'], "$code is deleted. Orders that used it still show the code.");
+  }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
     go(['tab' => 'expenses'], 'Expense deleted.');
@@ -260,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------------- downloads ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
@@ -268,14 +279,14 @@ $do = (string)($_GET['do'] ?? '');
 if ($do === 'excel') {
   [$where, $args] = order_where($F);
   $s = shop_db()->prepare("SELECT * FROM orders$where ORDER BY id"); $s->execute($args);
-  $head = ['Order no', 'Date', 'Status', 'Payment type', 'Razorpay payment ID', 'Items', 'Units', 'Subtotal (₹)', 'COD fee (₹)', 'Total (₹)',
+  $head = ['Order no', 'Date', 'Status', 'Payment type', 'Razorpay payment ID', 'Items', 'Units', 'Subtotal (₹)', 'Coupon', 'Coupon discount (₹)', 'COD fee (₹)', 'Total (₹)',
     'Customer', 'Mobile', 'Email', 'Address', 'City', 'State', 'PIN code', 'Customer note', 'Your note', 'Paid at'];
   $rows = [];
   foreach ($s as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $rows[] = [$o['no'] ?: '(not paid)', substr($o['created'], 0, 16), FOMAXO_STATUSES[$o['status']] ?? $o['status'], pay_label($o), $o['payment_id'],
       implode("\n", array_map(fn($r) => ltrim($r, '• '), explode("\n", (string)$o['rows_text']))), array_sum(array_map(fn($i) => (int)($i['qty'] ?? 0), $items)),
-      ($o['total'] - $o['cod_fee']) / 100, $o['cod_fee'] / 100, $o['total'] / 100, $o['name'], $o['phone'], $o['email'], $o['address'], $o['city'], $o['state'], $o['pin'],
+      ($o['total'] - $o['cod_fee'] + $o['discount']) / 100, $o['coupon'], $o['discount'] / 100, $o['cod_fee'] / 100, $o['total'] / 100, $o['name'], $o['phone'], $o['email'], $o['address'], $o['city'], $o['state'], $o['pin'],
       $o['note'], $o['admin_note'], $o['paid_at'] ? substr($o['paid_at'], 0, 16) : ''];
   }
   send_sheet('FOMAXO-orders-' . date('Y-m-d'), $head, $rows);
@@ -285,9 +296,9 @@ if ($do === 'report_excel') {
   /* ?year= (the Home page link) gives that year month by month; otherwise the dates picked on Reports, as its table shows them */
   $V = isset($_GET['year']) ? ['unit' => 'M', 'from' => "$pyear-01-01", 'to' => "$pyear-12-31", 'rows' => report_year($pyear)] : report_view(pick_dates('reports'));
   $kl = fn($k) => ['D' => fn($k) => date('d/m/Y', strtotime($k)), 'M' => fn($k) => date('M Y', strtotime("$k-01")), 'Y' => fn($k) => (string)$k][$V['unit']]($k);
-  foreach ($V['rows'] as $k => $r) $rows[] = [$kl($k), $r['orders'], $n($r['sales']), $n($r['discounts']), $n($r['fees']), $n($r['cost']), $n($r['gross']), $n($r['expenses']), $n($r['net']), $r['nocost'] ?: ''];
-  $t = report_sum($V['rows']); $rows[] = ['Total', $t['orders'], $n($t['sales']), $n($t['discounts']), $n($t['fees']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
-  send_sheet('FOMAXO-profit-and-loss-' . $V['from'] . '-to-' . $V['to'], [['D' => 'Day', 'M' => 'Month', 'Y' => 'Year'][$V['unit']], 'Orders', 'Sales (₹)', 'Discounts given (₹)', 'Payment fees (₹)', 'Cost of goods (₹)', 'Gross profit (₹)', 'Expenses (₹)', 'Net profit / loss (₹)', 'Items sold with no cost set'], $rows, 'Profit and loss');
+  foreach ($V['rows'] as $k => $r) $rows[] = [$kl($k), $r['orders'], $n($r['sales']), $n($r['discounts']), $n($r['coupons']), $n($r['fees']), $n($r['cost']), $n($r['gross']), $n($r['expenses']), $n($r['net']), $r['nocost'] ?: ''];
+  $t = report_sum($V['rows']); $rows[] = ['Total', $t['orders'], $n($t['sales']), $n($t['discounts']), $n($t['coupons']), $n($t['fees']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
+  send_sheet('FOMAXO-profit-and-loss-' . $V['from'] . '-to-' . $V['to'], [['D' => 'Day', 'M' => 'Month', 'Y' => 'Year'][$V['unit']], 'Orders', 'Sales (₹)', 'Discounts given (₹)', 'Coupon discounts (₹)', 'Payment fees (₹)', 'Cost of goods (₹)', 'Gross profit (₹)', 'Expenses (₹)', 'Net profit / loss (₹)', 'Items sold with no cost set'], $rows, 'Profit and loss');
 }
 if ($do === 'members_excel') {
   $rows = array_map(fn($m) => [$m['name'], phone_fmt($m['phone']), $m['email'], $m['address'], $m['state'], $m['count'], round($m['spent'] / 100, 2), round($m['avg'] / 100, 2),
@@ -308,7 +319,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'coupons' => 'Coupons', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';

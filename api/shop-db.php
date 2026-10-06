@@ -32,6 +32,11 @@ function shop_db(): PDO {
     $SHOP_DB->exec("UPDATE orders SET closed_at = updated WHERE status = 'cancelled' AND closed_at IS NULL AND updated <> ''");
     shop_set('schema', '3');
   }
+  if (shop_setting('schema') === '3') {   // coupon codes: the code used on an order and the money it took off
+    foreach (["orders ADD coupon VARCHAR(24) NOT NULL DEFAULT ''", "orders ADD discount INT NOT NULL DEFAULT 0"] as $alter)
+      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    shop_set('schema', '4');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -65,7 +70,8 @@ function shop_schema(PDO $db): void {
       city VARCHAR(60) NOT NULL DEFAULT '', state VARCHAR(60) NOT NULL DEFAULT '', pin VARCHAR(10) NOT NULL DEFAULT '',
       note VARCHAR(300) NOT NULL DEFAULT '', payment_id VARCHAR(64) NOT NULL DEFAULT '', test INT NOT NULL DEFAULT 0,
       review VARCHAR(40) NOT NULL DEFAULT '', stock_taken INT NOT NULL DEFAULT 0, admin_note VARCHAR(500) NOT NULL DEFAULT '',
-      updated VARCHAR(19) NOT NULL DEFAULT '', delivered_at VARCHAR(19) NULL, closed_at VARCHAR(19) NULL)$tail",
+      updated VARCHAR(19) NOT NULL DEFAULT '', delivered_at VARCHAR(19) NULL, closed_at VARCHAR(19) NULL,
+      coupon VARCHAR(24) NOT NULL DEFAULT '', discount INT NOT NULL DEFAULT 0)$tail",
     "CREATE TABLE IF NOT EXISTS stock(product VARCHAR(48) NOT NULL, opt VARCHAR(16) NOT NULL, qty INT NOT NULL, PRIMARY KEY(product, opt))$tail",
     "CREATE TABLE IF NOT EXISTS products(id VARCHAR(48) NOT NULL PRIMARY KEY, added INT NOT NULL DEFAULT 0, hidden INT NOT NULL DEFAULT 0,
       data $text NOT NULL, sort INT NOT NULL DEFAULT 0, updated VARCHAR(19) NOT NULL DEFAULT '')$tail",
@@ -85,6 +91,10 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS visits(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, started INT NOT NULL, last INT NOT NULL,
       source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0,
       country VARCHAR(2) NOT NULL DEFAULT '', region VARCHAR(60) NOT NULL DEFAULT '')$tail",
+    /* coupon codes made on the admin page: kind 'pct' (value = % off) or 'amt' (value = paise off); min_order in paise, ends Y-m-d ('' = no end),
+       max_uses 0 = no limit. Uses are counted from the orders that carry the code. */
+    "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
+      ends VARCHAR(10) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL)$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
@@ -103,7 +113,7 @@ function shop_move_to_mysql(string $name, string $user, string $pass): string {
     $src = shop_db();
     if ($src->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && !(int)$dst->query('SELECT COUNT(*) FROM orders')->fetchColumn()) {
       $dst->beginTransaction();
-      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads', 'visits'] as $t) {
+      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads', 'visits', 'coupons'] as $t) {
         $dst->exec("DELETE FROM $t");
         foreach ($src->query("SELECT * FROM $t") as $r) {
           $cols = array_keys($r);
@@ -233,7 +243,8 @@ function shop_order_row(array $rec): array {
     'items' => json_encode($rec['items'] ?? [], JSON_UNESCAPED_UNICODE), 'rows_text' => implode("\n", $rec['rows'] ?? []),
     'name' => $c['name'], 'phone' => $c['phone'], 'email' => $c['email'], 'address' => $c['address'], 'city' => $c['city'] ?? '',
     'state' => $c['state'] ?? '', 'pin' => $c['pin'] ?? '', 'note' => $c['note'] ?? '', 'payment_id' => $rec['payment'] ?? '',
-    'test' => !empty($rec['test']) ? 1 : 0, 'review' => $rec['review'] ?? '', 'stock_taken' => !empty($rec['stock_taken']) ? 1 : 0, 'updated' => shop_now()];
+    'test' => !empty($rec['test']) ? 1 : 0, 'review' => $rec['review'] ?? '', 'stock_taken' => !empty($rec['stock_taken']) ? 1 : 0, 'updated' => shop_now(),
+    'coupon' => (string)($rec['coupon'] ?? ''), 'discount' => (int)($rec['discount'] ?? 0)];
 }
 function shop_insert_order(PDO $db, array $rec): void {
   $row = shop_order_row($rec); $cols = array_keys($row);
@@ -248,7 +259,8 @@ function shop_rec(array $r): array {
     'cust' => ['name' => $r['name'], 'phone' => $r['phone'], 'email' => $r['email'], 'address' => $r['address'], 'city' => $r['city'],
       'state' => $r['state'], 'pin' => $r['pin'], 'note' => $r['note']],
     'payment' => $r['payment_id'], 'test' => (bool)$r['test'], 'review' => $r['review'], 'stock_taken' => (bool)$r['stock_taken'],
-    'paid' => $r['paid_at'], 'cod' => $r['method'] === 'cod', 'admin_note' => $r['admin_note'], 'id' => (int)$r['id']];
+    'paid' => $r['paid_at'], 'cod' => $r['method'] === 'cod', 'admin_note' => $r['admin_note'], 'id' => (int)$r['id'],
+    'coupon' => (string)($r['coupon'] ?? ''), 'discount' => (int)($r['discount'] ?? 0)];
 }
 function shop_find_order(string $ref, bool $lock = false, ?PDO $db = null): ?array {
   $s = ($db ?: shop_db())->prepare('SELECT * FROM orders WHERE ref = ?' . ($lock && shop_is_mysql() ? ' FOR UPDATE' : '')); $s->execute([$ref]);
@@ -299,6 +311,34 @@ function shop_order_action(int $id, string $act): string {
   if (!in_array($act, shop_order_actions($o), true)) return "!$no has changed since the page opened, so nothing was done. Please check it and try again.";
   shop_set_status($id, ['paid' => 'paid', 'deliver' => 'delivered', 'cancel' => 'cancelled', 'refund' => 'refunded'][$act]);
   return $no . ['paid' => ' is now paid.', 'deliver' => ' is now delivered.', 'cancel' => ' is cancelled. Its items are back in stock.', 'refund' => ' is refunded. Its items are back in stock.'][$act];
+}
+
+/* ---------------- coupon codes ---------------- */
+const COUPON_USED = "status NOT IN ('awaiting', 'cancelled', 'refunded')";   // an order counts as a use once placed or paid; cancelling gives the use back
+function coupon_clean(string $code): string { return strtoupper(preg_replace('/[^A-Za-z0-9-]/', '', $code) ?? ''); }
+function shop_coupons(): array {
+  $used = [];
+  foreach (shop_db()->query('SELECT coupon, COUNT(*) n, COALESCE(SUM(discount), 0) d, COALESCE(SUM(total), 0) t FROM orders WHERE coupon <> \'\' AND ' . COUPON_USED . ' AND test = 0 GROUP BY coupon') as $r)
+    $used[$r['coupon']] = ['uses' => (int)$r['n'], 'given' => (int)$r['d'], 'sales' => (int)$r['t']];
+  $out = [];
+  foreach (shop_db()->query('SELECT * FROM coupons ORDER BY created DESC, code') as $c) $out[$c['code']] = $c + ($used[$c['code']] ?? ['uses' => 0, 'given' => 0, 'sales' => 0]);
+  return $out;
+}
+function shop_coupon_uses(PDO $db, string $code): int { $s = $db->prepare('SELECT COUNT(*) FROM orders WHERE coupon = ? AND ' . COUPON_USED); $s->execute([$code]); return (int)$s->fetchColumn(); }
+function coupon_label(array $c): string { return $c['kind'] === 'pct' ? (int)$c['value'] . '% off' : rupees((int)$c['value']) . ' off'; }
+/* Checks a code for a bag of $subtotal paise. Returns ['error' => …] or ['code', 'discount' (paise), 'label'].
+   The bag always keeps at least ₹1 to pay, so online payment still works. */
+function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null): array {
+  $db = $db ?: shop_db(); $code = coupon_clean($code);
+  if ($code === '') return ['error' => 'Please type your coupon code.'];
+  $s = $db->prepare('SELECT * FROM coupons WHERE code = ?'); $s->execute([$code]); $c = $s->fetch();
+  if (!$c || !(int)$c['active']) return ['error' => "$code is not a valid coupon code."];
+  if ($c['ends'] !== '' && $c['ends'] < date('Y-m-d')) return ['error' => "Coupon $code has expired."];
+  if ((int)$c['max_uses'] > 0 && shop_coupon_uses($db, $code) >= (int)$c['max_uses']) return ['error' => "Coupon $code has been fully used."];
+  if ($subtotal < (int)$c['min_order']) return ['error' => "Coupon $code is for orders of " . rupees((int)$c['min_order']) . ' and above. Add ' . rupees((int)$c['min_order'] - $subtotal) . ' more to use it.'];
+  $off = $c['kind'] === 'pct' ? (int)round($subtotal * min(100, max(0, (int)$c['value'])) / 100) : (int)$c['value'];
+  $off = max(0, min($off, $subtotal - 100));
+  return ['code' => $code, 'discount' => $off, 'label' => coupon_label($c)];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */

@@ -227,8 +227,8 @@ function order_where(array $F): array {
   if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $F['to'])) { $w[] = 'created <= ?'; $a[] = $F['to'] . ' 23:59:59'; }
   if ($F['q'] !== '') {
     $like = '%' . str_replace(['%', '_'], '', $F['q']) . '%'; $digits = preg_replace('/\D/', '', $F['q']);
-    $w[] = '(no LIKE ? OR name LIKE ? OR email LIKE ? OR payment_id LIKE ? OR admin_note LIKE ?' . (strlen($digits) >= 4 ? ' OR REPLACE(phone, \' \', \'\') LIKE ?' : '') . ')';
-    array_push($a, $like, $like, $like, $like, $like); if (strlen($digits) >= 4) $a[] = "%$digits%";
+    $w[] = '(no LIKE ? OR name LIKE ? OR email LIKE ? OR payment_id LIKE ? OR admin_note LIKE ? OR coupon LIKE ?' . (strlen($digits) >= 4 ? ' OR REPLACE(phone, \' \', \'\') LIKE ?' : '') . ')';
+    array_push($a, $like, $like, $like, $like, $like, $like); if (strlen($digits) >= 4) $a[] = "%$digits%";
   }
   return [' WHERE ' . implode(' AND ', $w), $a];
 }
@@ -314,6 +314,25 @@ function order_tracker(array $o): string {
   $out = '<ol class="track">';
   foreach ($steps as $x) $out .= '<li class="' . (($x[3] ?? '') === 'end' ? 'end' : ($x[2] ? 'done' : 'todo')) . '"><i>' . (($x[3] ?? '') === 'end' ? '✕' : ($x[2] ? '✓' : '')) . '</i><b>' . h($x[0]) . '</b><small>' . ($x[2] ? $t($x[1]) : 'Not yet') . '</small></li>';
   return $out . '</ol>';
+}
+
+/* ---------------- coupons ---------------- */
+/* Adds or changes a coupon from the Coupons page form. Returns the message to show ('!' first when nothing was saved). */
+function save_coupon(): string {
+  $code = coupon_clean((string)($_POST['code'] ?? '')); $editing = !empty($_POST['editing']);
+  if (strlen($code) < 3 || strlen($code) > 20) return '!Please write a code of 3 to 20 letters or numbers, like WELCOME10.';
+  $kind = ($_POST['kind'] ?? '') === 'amt' ? 'amt' : 'pct'; $v = trim((string)($_POST['value'] ?? ''));
+  if (!is_numeric($v) || $v <= 0) return '!Please write how much the coupon takes off.';
+  if ($kind === 'pct' && ($v > 99 || (float)$v != (int)$v)) return '!A % coupon can take off 1 to 99%, in whole numbers.';
+  $value = $kind === 'pct' ? (int)$v : (int)round((float)$v * 100);
+  $min = trim((string)($_POST['min_order'] ?? '')); if ($min !== '' && (!is_numeric($min) || $min < 0)) return '!Please write the minimum order in rupees, or leave it empty.';
+  $endsIn = trim((string)($_POST['ends'] ?? '')); $ends = parse_day($endsIn); if ($endsIn !== '' && $ends === '') return '!Please type the end date as dd/mm/yyyy, or leave it empty.';
+  $uses = trim((string)($_POST['max_uses'] ?? '')); if ($uses !== '' && (!ctype_digit($uses))) return '!Please write the usage limit as a number, or leave it empty.';
+  $s = shop_db()->prepare('SELECT created FROM coupons WHERE code = ?'); $s->execute([$code]); $was = $s->fetchColumn();
+  if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
+  shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
+    'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses), 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
+  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (!empty($_POST['active']) ? ' Shoppers can use it at checkout.' : ' It is off until you switch it on.');
 }
 
 /* ---------------- members (repeat customers) ---------------- */
@@ -444,15 +463,15 @@ function pay_fee_pct(): float { return max(0, min(10, (float)(shop_setting('pay_
    one row per day ('D', keys Y-m-d), month ('M', keys Y-m) or year ('Y', keys Y) */
 function report_rows(string $from, string $to, string $unit = 'M'): array {
   $len = ['D' => 10, 'M' => 7, 'Y' => 4][$unit]; $m = [];
-  $zero = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0];
+  $zero = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'coupons' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0];
   for ($t = strtotime($unit === 'D' ? $from : ($unit === 'M' ? substr($from, 0, 7) . '-01' : substr($from, 0, 4) . '-01-01')), $end = strtotime($to); $t <= $end; $t = strtotime(['D' => '+1 day', 'M' => '+1 month', 'Y' => '+1 year'][$unit], $t))
     $m[substr(date('Y-m-d', $t), 0, $len)] = $zero;
   $costs = shop_costs(); $pct = pay_fee_pct();
-  $s = shop_db()->prepare("SELECT created, total, method, items FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
+  $s = shop_db()->prepare("SELECT created, total, method, items, discount FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
   $s->execute(["$from 00:00:00", "$to 23:59:59"]);
   foreach ($s as $o) {
     $k = substr($o['created'], 0, $len); if (!isset($m[$k])) continue;
-    $m[$k]['orders']++; $m[$k]['sales'] += (int)$o['total'];
+    $m[$k]['orders']++; $m[$k]['sales'] += (int)$o['total']; $m[$k]['coupons'] += (int)$o['discount'];
     if ($o['method'] === 'online') $m[$k]['online'] += (int)$o['total'];
     foreach (json_decode((string)$o['items'], true) ?: [] as $it) {
       $q = (int)($it['qty'] ?? 0);
@@ -479,7 +498,7 @@ function report_view(array $D): array {
   return ['unit' => $unit, 'from' => $D['from'], 'to' => $D['to'], 'rows' => report_rows($D['from'], $D['to'], $unit)];
 }
 function report_sum(array $rows): array {
-  $t = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0, 'gross' => 0, 'net' => 0];
+  $t = ['orders' => 0, 'sales' => 0, 'discounts' => 0, 'coupons' => 0, 'online' => 0, 'fees' => 0, 'cost' => 0, 'nocost' => 0, 'expenses' => 0, 'gross' => 0, 'net' => 0];
   foreach ($rows as $r) foreach ($t as $k => $_) $t[$k] += $r[$k];
   return $t;
 }
