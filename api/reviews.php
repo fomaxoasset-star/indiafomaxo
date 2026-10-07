@@ -174,7 +174,7 @@ try {
       $product = validProduct($in['product'] ?? '');
       $rating = (int)($in['rating'] ?? 0); if ($rating < 1 || $rating > 5) fail('Please choose a star rating from 1 to 5.');
       $text = trim(mb_substr(str_replace("\r", '', (string)($in['text'] ?? '')), 0, MAX_TEXT));
-      if (mb_strlen($text) < 4) fail('Please write a few words about the product.');
+      // the words are up to the customer: stars alone, a single emoji or a short line are all fine
       $anon = !empty($in['anonymous']) && $in['anonymous'] !== 'false';
       $rawName = cap(str($in['name'] ?? '', 60));
       if (!$anon && $rawName === '') fail('Please enter your name, or choose to post anonymously.');

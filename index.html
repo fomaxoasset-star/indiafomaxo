@@ -3750,7 +3750,6 @@ function bindRvForm(form, p, token, done){
     e.preventDefault(); err.textContent = '';
     const files = [...form.elements.photos.files];
     if (!rating) return err.textContent = 'Please choose a star rating.';
-    if (form.elements.text.value.trim().length < 4) return err.textContent = 'Please write a few words about the product.';
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';
@@ -3779,7 +3778,7 @@ function rvItem(r){
   return `<article class="rv">
     <div class="rv-head"><b>${esc(rvCap(r.name))}${rvPlace(r)}</b>${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}<time>${rvDate(r.date)}</time></div>
     ${rvStars(r.rating)}
-    <p class="rv-text">“${esc(r.text)}”</p>
+    ${r.text ? `<p class="rv-text">“${esc(r.text)}”</p>` : ''}
     ${r.reply ? `<div class="rv-reply"><b>Reply from FOMAXO</b><p>${esc(r.reply).replace(/\n/g, '<br>')}</p></div>` : ''}
     ${r.photos.length ? `<div class="rv-photos">${r.photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}
     <button class="rv-help${voted ? ' on' : ''}" type="button" data-help="${r.id}"${voted ? ' disabled' : ''}>Helpful${r.helpful ? ` (${r.helpful})` : ''}</button>
