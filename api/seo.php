@@ -160,6 +160,8 @@ $swap = [
   '/<meta property="og:title" content="[^"]*">/' => "<meta property=\"og:title\" content=\"$title\">",
   '/<meta property="og:description" content="[^"]*">/' => "<meta property=\"og:description\" content=\"$desc\">",
   '/<meta property="og:image" content="[^"]*">/' => "<meta property=\"og:image\" content=\"$img\">",
+  '/<meta name="twitter:image" content="[^"]*">/' => "<meta name=\"twitter:image\" content=\"$img\">",
+  '/<meta property="og:image:width" content="[^"]*">\s*<meta property="og:image:height" content="[^"]*">\s*/' => '',   // sizes of the home link picture, not this product photo
 ];
 foreach ($swap as $re => $to) $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
 $html = preg_replace('/<link rel="preload" as="image"[^>]*>/', '', $html, 2);   // the home banner (phone and laptop): not shown on a product page
