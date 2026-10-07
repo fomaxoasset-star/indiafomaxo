@@ -4024,7 +4024,8 @@ function bindCheckout(q){
   /* "Left at checkout" in the admin: the details and bag, sent a moment after they are typed */
   let leadT; const leadOf = () => ({name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin')});
   f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin'].includes(e.target.name)) return; clearTimeout(leadT);
-    leadT = setTimeout(() => TRK.lead('details', leadOf(), lines), 1500); });
+    leadT = setTimeout(() => { const c = leadOf(); TRK.lead('details', c, lines);
+      try { localStorage.setItem(CO_KEY, JSON.stringify({...coSaved(), ...c})); } catch(e) {} }, 1500); });   // kept on this device as typed, so going back to the bag or a product and returning finds the form filled in
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
@@ -4150,7 +4151,15 @@ function tyMore(){
 
 /* ============================ ROUTER ============================ */
 let heroTimer, homeGridTimer;
+/* back and forward return to the spot the shopper left on that page (each history step gets a key; its scroll is kept for the visit) */
+try { history.scrollRestoration = 'manual'; } catch(e) {}
+const SCROLLS = (() => { try { return JSON.parse(sessionStorage.getItem('fx_scroll') || '{}'); } catch(e) { return {}; } })();
+let shownKey = null;
+function stepKey(){ const st = history.state; if (st && st.fk) return [st.fk, true];
+  const fk = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); try { history.replaceState({...(st || {}), fk}, ''); } catch(e) {} return [fk, false]; }
 function route(){
+  if (shownKey) { SCROLLS[shownKey] = Math.round(scrollY); try { sessionStorage.setItem('fx_scroll', JSON.stringify(SCROLLS)); } catch(e) {} }   // still the page being left
+  const [key, known] = stepKey(), backTo = known && key !== shownKey && SCROLLS[key] > 0 ? SCROLLS[key] : 0; shownKey = key;
   const raw = location.hash.replace(/^#/, '') || '/';
   const [path, qs] = raw.split('?'); const q = new URLSearchParams(qs || '');
   const seg = path.split('/').filter(Boolean);
@@ -4185,6 +4194,7 @@ function route(){
   window.scrollTo({top: 0, left: 0, behavior: 'instant'});
   after && after();
   bindCommon();
+  if (backTo) { const go = () => window.scrollTo({top: backTo, left: 0, behavior: 'instant'}); go(); requestAnimationFrame(go); }
 }
 function bindHome(){
   const figs = $$('#heroCine .hc-slide'), btns = $$('#hcNav button'); let i = 0;
@@ -4332,6 +4342,8 @@ const warmed = new Set();
 const warmProduct = e => { const a = e.target.closest && e.target.closest('a[href^="#/product/"]'); if (!a) return; const p = P[a.getAttribute('href').slice(10).split('?')[0]];
   if (!p || !p.images || warmed.has(p.id)) return; warmed.add(p.id); new Image().src = IMG(imgFor(p, defaultSize(p))); };
 document.addEventListener('pointerover', warmProduct, {passive: true}); document.addEventListener('pointerdown', warmProduct, {passive: true});
+/* pressing a Buy now button starts fetching the payment script while checkout opens */
+document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#buyBtn,#hcBuyNow,[data-quickbuy],#mbuy button')) warmPay(); }, {passive: true});
 /* clicking a link to the page you are already on scrolls back to the top */
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="#/"]'); if (!a || e.defaultPrevented) return; const h = a.getAttribute('href'); if (h === (location.hash || '#/')){ e.preventDefault(); closePanels(); window.scrollTo({top: 0, behavior: 'smooth'}); } });
 
