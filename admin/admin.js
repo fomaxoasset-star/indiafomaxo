@@ -136,35 +136,45 @@
 
   /* Reviews: Reply fills the box with a reply that fits the review (name, product, stars, what they wrote
      about); "Another reply" swaps the wording. Only a draft: nothing is saved until Save reply. */
+  /* good: one short line on what they praised; bad: a clause on what FOMAXO is doing about it */
   var SG_TOPICS = [
-    {k: /\b(damag|broken|leak|crack|missing|wrong (item|product)|fake|empty)/i, nk: /./, good: [], bad: ['Your order should never reach you like this, and we will replace it for you.']},
-    {k: /long ?last|lasting|\blasts?\b|stays|all day|whole day|hours|longevity|fades?\b/i, nk: /not|n't|only|fades?\b|gone|less|short|weak/i, good: ['So happy it lasts all day for you.', 'Glad it stays with you for hours.', 'We work hard on long wear, so this means a lot.'], bad: ['We are working to make it last longer for you.']},
-    {k: /deliver|shipping|courier|arrived|on time|dispatch|late\b|delay/i, nk: /late\b|delay|slow|took|not (yet )?(arrived|delivered|received)|never/i, good: ['Happy it reached you quickly.', 'Glad the delivery was smooth.'], bad: ['We have taken up the delivery delay with our courier.']},
-    {k: /smell|scent|fragrance|aroma|perfume|notes?\b|fresh/i, nk: /(not|n't|no)\s+(like|nice|good|great|pleasant)|bad|harsh|too strong|weird|chemical|headache|alcohol/i, good: ['We are delighted you love the scent.', 'So glad the fragrance won you over.', 'Happy to hear the scent is a favourite.'], bad: ['Your words on the scent go straight to our perfumers.']},
-    {k: /pack(ing|aging|aged)?\b|\bbox|bottle|wrap/i, nk: /broken|damag|poor|bad|torn|loose|cheap/i, good: ['Glad the packaging made it feel special.', 'We put a lot of care into the box, so thank you for noticing.'], bad: ['We are improving our packing so this does not happen again.']},
-    {k: /skin|lips?\b|moistur|glow|soft|smooth/i, nk: /rash|itch|irritat|burn|dry|sticky|allerg/i, good: ['So glad it feels lovely on your skin.'], bad: ['Your comfort matters most to us, and we are looking into this right away.']},
-    {k: /compliment|praise|everyone (asked|loved|likes)|asked me/i, nk: /^$/, good: ['Enjoy all the compliments!', 'The compliments are well deserved.'], bad: []},
-    {k: /gift|birthday|anniversary|wife|husband|girlfriend|boyfriend|mom\b|mother|dad\b|father|sister|brother/i, nk: /^$/, good: ['So lovely that it made a special gift.', 'We are glad it made the gift memorable.'], bad: []},
-    {k: /price|value|worth|afford|money|expensive|costly|overpriced/i, nk: /expensive|costly|overpriced|too much|not worth/i, good: ['Glad you feel it is great value.', 'Happy it feels worth every rupee.'], bad: ['We value your feedback on price and are taking it to heart.']}
+    {k: /\b(damag|broken|leak|crack|missing|wrong (item|product)|fake|empty|fault|defect|not working|stopped working|nozzle)/i, nk: /./, good: [], bad: ['we will replace it for you right away'],
+      chk: ['{h} we checked and found your product was indeed faulty.', '{h} we looked into your order and found the product was indeed faulty.'],
+      fix: ['We apologize, and FOMAXO will replace it and send you a special coupon for your next order 🙏', 'We sincerely apologize, so FOMAXO will send you a replacement and a special coupon for your next order 🙏']},
+    {k: /long ?last|lasting|\blasts?\b|stays|all day|whole day|hours|longevity|fades?\b/i, nk: /not|n't|only|fades?\b|gone|less|short|weak/i, good: ['So happy it lasts all day for you', 'Glad it stays with you for hours'], bad: ['we are working to make it last longer']},
+    {k: /deliver|shipping|courier|arrived|on time|dispatch|late\b|delay/i, nk: /late\b|delay|slow|took|not (yet )?(arrived|delivered|received)|never/i, good: ['Happy it reached you so quickly', 'Glad the delivery was smooth'], bad: ['we are making our deliveries faster'],
+      chk: ['{h} we checked and found your delivery was indeed late.', '{h} we looked into your order and found the delivery was indeed late.'],
+      fix: ['We apologize, and FOMAXO will send you a special coupon for your next order 🙏', 'We sincerely apologize, so FOMAXO will send you an exclusive coupon for your next order 🙏']},
+    {k: /smell|scent|fragrance|aroma|perfume|notes?\b|fresh/i, nk: /(not|n't|no)\s+(like|nice|good|great|pleasant)|bad|harsh|too strong|weird|chemical|headache|alcohol/i, good: ['So glad you love the scent', 'Happy the fragrance won you over'], bad: ['your words on the scent go straight to our perfumers']},
+    {k: /pack(ing|aging|aged)?\b|\bbox|bottle|wrap/i, nk: /broken|damag|poor|bad|torn|loose|cheap/i, good: ['Glad the packaging made it feel special', 'So happy you loved the box'], bad: ['we are improving our packing']},
+    {k: /skin|lips?\b|moistur|glow|soft|smooth/i, nk: /rash|itch|irritat|burn|dry|sticky|allerg/i, good: ['So glad it feels lovely on your skin'], bad: ['we are looking into this right away']},
+    {k: /compliment|praise|everyone (asked|loved|likes)|asked me/i, nk: /^$/, good: ['Enjoy all the compliments', 'The compliments are well deserved'], bad: []},
+    {k: /gift|birthday|anniversary|wife|husband|girlfriend|boyfriend|mom\b|mother|dad\b|father|sister|brother/i, nk: /^$/, good: ['So lovely that it made a special gift', 'Glad it made the gift memorable'], bad: []},
+    {k: /price|value|worth|afford|money|expensive|costly|overpriced/i, nk: /expensive|costly|overpriced|too much|not worth/i, good: ['Glad it feels worth every rupee'], bad: ['we are taking your feedback on price to heart']}
   ];
-  var SG_GOOD_OPEN = ['Thank you so much{n}!', 'Thank you{n}! This made our day.', '{h} thank you for the lovely review!', 'Thank you for choosing FOMAXO{n}!'];
-  var SG_GOOD_MID = ['We are so happy you love {p}.', 'It is wonderful to hear {p} is a hit with you.', 'We are thrilled {p} is working for you.', 'Glad {p} found a place in your collection.'];
-  var SG_GOOD_END = ['Enjoy it, and see you again soon 🙏', 'Hope to see you again soon ✨', 'Thank you for being part of the FOMAXO family ❤️', 'Your support means the world to us 🙏'];
-  var SG_OK_OPEN = ['Thank you for your honest review{n}.', '{h} thank you for sharing your thoughts.'];
-  var SG_BAD_OPEN = ['{h} we apologize that {p} did not meet your expectations.', 'We sincerely apologize{n}.', 'We apologize for this experience{n}, and thank you for your honest review.'];
-  var SG_BAD_END = ['As our apology, our team will reach out to you with a special coupon for your next order 🙏', 'As a small token of our apology, we will be sending you a special gift 🎁', 'To make it up to you, our team will contact you with an exclusive discount on your next order 🙏'];
+  var SG_GOOD_OPEN = ['We are thrilled you love {p}{n}!', 'Thank you{n}, so happy {p} is a hit with you!', '{h} thank you for the lovely words about {p}!', 'Thank you for choosing {p}{n}!'];
+  var SG_GOOD_END = ['See you again soon 🙏', 'Your support means the world to FOMAXO ❤️', 'Enjoy it ✨'];
+  var SG_EMO = [' 🙏', ' ✨', ' ❤️'];
+  var SG_BAD_OPEN = ['We sincerely apologize{n}', 'We apologize{n}', '{h} we apologize'];
+  var SG_BAD_NOHIT = ['We sincerely apologize that {p} did not meet your expectations{n}.', '{h} we apologize, and we are working to make {p} better for you.'];
+  var SG_BAD_END = ['As our apology, FOMAXO will send you a special coupon for your next order 🙏', 'As a small token of our apology, we will send you a special gift 🎁', 'To make it up to you, we will send you an exclusive discount on your next order 🙏'];
+  var SG_OK_OPEN = ['Thank you for your honest review{n}', '{h} thank you for your feedback'];
   function sgPick(a, i) { return a.length ? a[i % a.length] : ''; }
+  /* always one or two sentences */
   function sgReply(f, i) {
     var name = (f.dataset.sgName || '').trim().split(/\s+/)[0] || '', stars = +f.dataset.sgStars || 5, body = f.dataset.sgBody || '';
     if (name) name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
     var p = f.dataset.sgProduct ? 'FOMAXO ' + f.dataset.sgProduct : 'FOMAXO', good = stars >= 4;
     var fill = function (s) { return s.replace('{n}', name ? ', ' + name : '').replace('{h}', name ? 'Hi ' + name + ',' : 'Hi,').replace('{p}', p); };
-    /* a good review uses only the topics it praises, a poor one only the topics it complains about */
-    var hits = SG_TOPICS.filter(function (t) { return t.k.test(body) && (good ? t.good : t.bad).length && (good ? !t.nk.test(body) : t.nk.test(body)); }).slice(0, 2);
-    var bits = hits.map(function (t, j) { return sgPick(good ? t.good : t.bad, i + j); });
-    if (good) return [fill(sgPick(SG_GOOD_OPEN, i)), fill(sgPick(SG_GOOD_MID, i + 1))].concat(bits, sgPick(SG_GOOD_END, i + 2)).join(' ');
-    var open = stars === 3 ? fill(sgPick(SG_OK_OPEN, i)) + (bits.length ? '' : ' We are always working to make ' + p + ' better.') : fill(sgPick(SG_BAD_OPEN, i));
-    return [open].concat(bits, stars === 3 && !bits.length ? 'As a thank you, our team will reach out with a special coupon for your next order 🙏' : sgPick(SG_BAD_END, i)).join(' ');
+    /* a good review uses only a topic it praises, a poor one only a topic it complains about */
+    var hits = SG_TOPICS.filter(function (t) { return t.k.test(body) && (good ? t.good : t.bad).length && (good ? !t.nk.test(body) : t.nk.test(body)); });
+    var hit = (!good && hits.filter(function (t) { return t.chk; })[0]) || hits[0];
+    var bit = hit ? sgPick(good ? hit.good : hit.bad, i) : '';
+    if (good) return fill(sgPick(SG_GOOD_OPEN, i)) + ' ' + (bit ? bit + sgPick(SG_EMO, i) : sgPick(SG_GOOD_END, i));
+    /* late delivery or a faulty product: tell them we checked and they are right, then a coupon */
+    if (hit && hit.chk) return fill(sgPick(hit.chk, i)) + ' ' + sgPick(hit.fix, i);
+    if (stars === 3) return fill(sgPick(SG_OK_OPEN, i)) + ', and ' + (bit || 'we are always working to make ' + p + ' better') + '. As a thank you, FOMAXO will send you a special coupon for your next order 🙏';
+    return (bit ? fill(sgPick(SG_BAD_OPEN, i)) + ', and ' + bit + '.' : fill(sgPick(SG_BAD_NOHIT, i))) + ' ' + sgPick(SG_BAD_END, i);
   }
   function sgFill(f, next) {
     var t = f.querySelector('textarea');
