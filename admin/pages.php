@@ -217,8 +217,10 @@ if ($tab === 'offer') {
     . $word('sub', 'Under the %', 40, 'on selected fragrances', ['on selected fragrances', 'on all fragrances', 'on perfumes', 'on car perfumes', 'on personal care', 'on gift sets', 'on everything', 'on your first order'])
     . $word('btn', 'Button', 24, 'Shop the offer', ['Shop the offer', 'Shop now', 'Grab the deal', 'Shop fragrances', 'See the offer'])
     . '</div></div>'
-    . '<div class="ofrow"><b>Products <small class="muted">' . ($O['items'] ? count($O['items']) . ' ticked' : 'none ticked = all on sale') . '</small></b>'
-    . ($sale ? '<div class="ofits">' . $picks . '</div>' : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div>'
+    . '<div class="ofrow"><b>Products</b>'
+    . ($sale ? '<div class="ofpick"><input class="ofadd" list="ofw-items" placeholder="Type or pick a product to add" autocomplete="off" aria-label="Add a product to the offer">'
+      . '<datalist id="ofw-items">' . implode('', array_map(fn($id, $n) => '<option value="' . h($CAT[$id]['name']) . '" label="' . $n . '% off">', array_keys($sale), $sale)) . '</datalist>'
+      . '<div class="ofits">' . $picks . '<span class="ofnone muted small">None picked: every product with an old price is in the offer.</span></div></div>' : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div>'
     . '<div class="row ofbtns"><span class="oftk"><b>Show</b>' . $tick('popup', 'Popup') . $tick('line', 'Line by prices') . '</span><button class="btn">Save</button><button type="button" class="btn line" data-preview="sale">Preview</button><button class="btn danger sm" name="action" value="offer_off" formnovalidate data-confirm="Turn the sale offer off? The popup and lines leave the website.">Turn off</button></div>'
     . '<p class="muted small" style="margin:0">Prices never change here. Old prices are set on Products.</p>'
     . '</form></div></div>'

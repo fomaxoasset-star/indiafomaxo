@@ -339,6 +339,12 @@
     var ofShow = function () { var m = (ofr.querySelector('input[name=mode]:checked') || {}).value;
       ofr.querySelector('.ofend').hidden = m !== 'end'; };
     ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
+    /* Products: type or pick a name to add it; untick a picked one to take it out */
+    var add = ofr.querySelector('.ofadd');
+    if (add) add.addEventListener('input', function () {
+      var v = add.value.trim().toLowerCase(), hit = [].slice.call(ofr.querySelectorAll('input[name="items[]"]')).filter(function (i) { return i.dataset.name.toLowerCase() === v; })[0];
+      if (hit) { hit.checked = true; add.value = ''; hit.dispatchEvent(new Event('change', {bubbles: true})); }
+    });
   }
 })();
 
