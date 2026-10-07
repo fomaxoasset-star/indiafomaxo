@@ -587,7 +587,7 @@ if ($tab === 'reviews') {
       . '<form method="post" class="rvr-form" data-sg-name="' . h($r['anonymous'] ? '' : $r['name']) . '" data-sg-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-sg-stars="' . (int)round((float)$r['rating']) . '" data-sg-body="' . h($r['body']) . '">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…" required>' . h($r['reply'] ?? '') . '</textarea>'
       . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
-      . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button></div></form></div>';
+      . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button><button type="button" class="btn line sm" data-sg-clear title="Empty the box to write your own reply">✕ Clear</button></div></form></div>';
   }
   $body .= '</div></div>';
   /* stars by product (live reviews only, as on the website) */
