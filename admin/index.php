@@ -241,6 +241,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fee = trim((string)($_POST['pay_fee'] ?? '2')); if (is_numeric($fee)) shop_set('pay_fee', (string)max(0, min(10, round((float)$fee, 2))));
     go(['tab' => 'settings'], 'Settings saved.');
   }
+  if ($a === 'ads') {
+    $ads = []; $names = ['meta' => 'Meta Pixel ID', 'tiktok' => 'TikTok Pixel ID', 'ga4' => 'Google Analytics ID', 'gads' => 'Google Ads ID', 'gadsLabel' => 'Purchase conversion label'];
+    foreach (SHOP_ADS as $k => $re) {
+      $v = preg_replace('/\s+/', '', (string)($_POST[$k] ?? '')) ?? '';
+      if ($k !== 'gadsLabel') $v = strtoupper($v);
+      if ($v !== '' && !preg_match($re, $v)) go(['tab' => 'settings', 'pane' => 'ads'], '!The ' . $names[$k] . ' doesn’t look right. Please copy it again, or leave the box empty.');
+      $ads[$k] = $v;
+    }
+    shop_set('ads', json_encode($ads));
+    $on = array_keys(array_filter(['Meta' => $ads['meta'], 'TikTok' => $ads['tiktok'], 'Google' => $ads['ga4'] . $ads['gads']]));
+    go(['tab' => 'settings', 'pane' => 'ads'], $on ? 'Saved. ' . implode(', ', $on) . ' tracking is now on the website.' : 'Saved. No ad tracking is on the website.');
+  }
   if (in_array($a, ['store_add', 'store_save', 'store_remove', 'stores_show'], true)) {
     $loc = stores_all(); $i = (int)($_POST['i'] ?? -1);
     if ($a === 'stores_show') $loc['show'] = ($_POST['show'] ?? '') === '1';
