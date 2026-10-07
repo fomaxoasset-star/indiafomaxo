@@ -140,7 +140,7 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .rep{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px;flex:1;min-height:0}.rep .yr{max-height:180px}
 .exp{display:grid;grid-template-columns:320px 1fr;gap:12px;flex:1;min-height:0}.exp form label{margin-bottom:10px}
 .cats{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}.cats b{color:var(--text);font-weight:500}
-.set{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;flex:1;min-height:0;align-items:start}.set .box{max-height:100%;overflow:auto}.set form{display:flex;flex-direction:column;gap:10px}
+.set{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;flex:1;min-height:0;align-items:start}.set .box{max-height:100%;overflow:auto}.set form{display:flex;flex-direction:column;gap:10px}
 .steps{padding-left:18px;line-height:1.8;margin:6px 0}
 .login label{margin:12px 0 14px}.login .btn{width:100%}.login h2{margin-bottom:6px}
 

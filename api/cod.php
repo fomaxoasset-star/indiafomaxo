@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — cash on delivery orders.
-   POST {lines, customer, coupon} → prices the bag here, takes off the coupon (if any), checks the COD minimum and fee set in index.html (STORE.checkout.cod),
+   POST {lines, customer, coupon} → prices the bag here, takes off the coupon (if any), checks the COD minimum, maximum and fee set on Admin → Settings
+   (index.html's STORE.checkout.cod until saved there),
    records the order and emails the store and the customer. */
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -22,6 +23,10 @@ if ($cod['onlyName'] !== '') { if (strtolower($cust['name']) !== strtolower(trim
 elseif ($order['subtotal'] < $cod['min']) fail('Cash on delivery is for orders of ' . rupees($cod['min']) . ' and above. Please pay online.');
 $cp = fomaxo_coupon($in, $order['subtotal']);   // a coupon typed at checkout: checked again inside the order below, so its usage limit holds
 if (isset($cp['error'])) fail($cp['error']);
+/* the hidden maximum: COD only for orders under it, counted after the coupon and before the COD fee */
+$codMax = fn(array $cp) => $cod['max'] > 0 && $order['subtotal'] - ($cp['discount'] ?? 0) >= $cod['max'];
+$maxMsg = 'COD for orders under ' . rupees($cod['max']) . '. Please pay by card.';
+if ($codMax($cp)) fail($maxMsg);
 
 /* simple guard against repeated fake COD orders: at most 5 an hour from one connection */
 $rl = fomaxo_orders_dir() . '/cod-' . substr(hash('sha256', $_SERVER['REMOTE_ADDR'] ?? ''), 0, 16) . '.txt';
@@ -31,9 +36,10 @@ $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
 /* one transaction: check and take the stock, then give the order the next number (FMX-IN-1001, FMX-IN-1002 …) */
 try {
-  $rec = shop_tx(function (PDO $db) use ($order, $cust, $cod, $in) {
+  $rec = shop_tx(function (PDO $db) use ($order, $cust, $cod, $in, $codMax, $maxMsg) {
     $cp = fomaxo_coupon($in, $order['subtotal'], $db);
     if (isset($cp['error'])) return $cp;
+    if ($codMax($cp)) return ['error' => $maxMsg];
     $short = shop_take_stock($db, $order['items'], true);
     if ($short !== '') return ['error' => $short];
     $total = $order['subtotal'] - ($cp['discount'] ?? 0) + $cod['fee'];

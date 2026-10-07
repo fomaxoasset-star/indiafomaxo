@@ -428,6 +428,15 @@ function shop_ads(): array {
   return $out;
 }
 
+/* Cash on delivery limits set on Admin → Settings → Cash on delivery, in rupees: min = COD from this order amount,
+   max = COD only for orders under this amount after any coupon (0 = no limit), fee = added to every COD order (0 = none).
+   Until they are saved there, the values in index.html (STORE.checkout.cod) are used. */
+function shop_cod(array $def): array {
+  $c = json_decode((string)shop_setting('cod'), true);
+  if (!is_array($c)) return $def + ['max' => 0];
+  return ['min' => max(0, (int)($c['min'] ?? 0)), 'max' => max(0, (int)($c['max'] ?? 0)), 'fee' => max(0, (int)($c['fee'] ?? 0))];
+}
+
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
 function shop_import_json_orders(): void {
   $dir = fomaxo_orders_dir();

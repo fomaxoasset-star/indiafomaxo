@@ -194,8 +194,11 @@ function fomaxo_catalog(): array {
   if (preg_match('/\bcod:\s*\{([^}]*)\}/', $src, $x)) {
     $min = preg_match('/\bmin:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
     $fee = preg_match('/\bfee:\s*([\d.]+)/', $x[1], $y) ? (float)$y[1] : 0;
-    $cat['cod'] = ['min' => (int)round($min * 100), 'fee' => (int)round($fee * 100),
+    $cat['cod'] = ['min' => (int)round($min * 100), 'max' => 0, 'fee' => (int)round($fee * 100),
       'onlyName' => preg_match('/\bonlyName:\s*"([^"]*)"/', $x[1], $y) ? $y[1] : ''];
+    /* the minimum, maximum and fee saved on Admin → Settings win over index.html */
+    try { $c = shop_cod(['min' => (int)round($min), 'fee' => (int)round($fee)]); foreach ($c as $k => $v) $cat['cod'][$k] = $v * 100; }
+    catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); }
   }
   if (preg_match('/\bcheckout:\s*\{[^}]*?\bemail:\s*"([^"]+)"/s', $src, $x)) $cat['email'] = $x[1];
   return $cat;
