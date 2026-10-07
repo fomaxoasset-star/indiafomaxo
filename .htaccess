@@ -34,9 +34,21 @@
 # Real addresses for Google: /fomaxo-<name> (e.g. /fomaxo-gold, as on fomaxo.com), /product/<id> and /sitemap.xml are answered by api/seo.php (the shop still runs on #/… inside).
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  # Link preview picture: Instagram / Facebook show a square, so their link reader gets the square version
+  # (WhatsApp and everyone else get the wide 1200x630 one at the same address), as on fomaxo.com.
+  RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Instagram|meta-externalagent|Facebot) [NC]
+  RewriteRule ^assets/img/link-preview\.jpg$ assets/img/link-preview-square.jpg [L]
   RewriteRule ^product/([a-z0-9-]{1,48})/?$ api/seo.php?p=product&id=$1 [L,QSA]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^fomaxo-([a-z0-9-]{1,80})/?$ api/seo.php?p=name&id=$1 [L,QSA]
   RewriteRule ^sitemap\.xml$ api/seo.php?p=sitemap [L]
 </IfModule>
+
+# The link preview picture changes with the reader (see above), so caches keep one copy per reader, for an hour.
+<FilesMatch "^link-preview(-square)?\.jpg$">
+  <IfModule mod_headers.c>
+    Header set Vary "User-Agent"
+    Header set Cache-Control "public, max-age=3600"
+  </IfModule>
+</FilesMatch>
