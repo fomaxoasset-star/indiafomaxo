@@ -2662,7 +2662,7 @@ const OFFER = (() => { const o = LIVE.offer; if (!o || (o.end && o.end <= Date.n
   /* the line by prices goes on the products picked for it (saved before that: the popup's products, or all with an old price) */
   const lines = o.lines ? o.lines.filter(id => P[id]) : !o.line ? [] : items.length ? items : pool.map(p => p.id);
   return {end: +o.end || 0, popup: !!o.popup && pct > 0, line: lines.length > 0, lines, pct, items,
-    title: o.title || 'Limited time offer', sub: o.sub || 'on selected fragrances', btn: o.btn || 'Shop the offer'}; })();
+    title: o.title || 'Limited time offer', sub: (o.sub || 'on selected fragrances').toUpperCase(), btn: o.btn || 'Shop the offer'}; })();
 /* a product's size with the biggest saving, for its price in the popup */
 const bestSize = p => p.sizes.reduce((a, s) => pctOff(p, s) > pctOff(p, a) ? s : a, p.sizes[0]);
 const offerLeft = () => { const t = Math.max(0, Math.floor((OFFER.end - Date.now()) / 1000)); return [Math.floor(t / 86400), Math.floor(t % 86400 / 3600), Math.floor(t % 3600 / 60), t % 60]; };
