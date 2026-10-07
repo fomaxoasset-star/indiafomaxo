@@ -346,6 +346,7 @@ body.zooming{overflow:hidden}
 .seg.ck{display:flex;margin-top:4px}.seg.ck label{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;margin:0;white-space:nowrap}.seg.ck label+label{border-left:1px solid var(--line)}
 .seg.ck input{position:absolute;opacity:0;pointer-events:none}.seg.ck label:has(input:checked){background:#2a2416;color:var(--gold2)}
 .cpon{flex-direction:row!important;align-items:center;gap:8px!important;font-size:14px}.cpon input{width:18px;height:18px}
+.wa-in{color:var(--green)}
 .cpn{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;color:var(--gold2)}
 .cpt td small .badge{margin-top:4px}.cb-on{color:var(--green)}.cb-off{color:var(--muted)}.cb-end{color:var(--red)}.cpt tr.cs-off td,.cpt tr.cs-end td{opacity:.75}
 .cpa{display:inline-flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}

@@ -268,6 +268,7 @@ function fomaxo_customer(array $in): array {
   if ($o['house'] === '' || mb_strlen($o['street']) < 2 || mb_strlen($o['city']) < 2) return ['error' => 'Please enter your full delivery address.'];
   if (!in_array($o['state'], FOMAXO_STATES, true)) return ['error' => 'Please choose your state.'];
   if (!preg_match('/^[1-9]\d{5}$/', $o['pin'])) return ['error' => 'Please enter a valid 6-digit PIN code.'];
+  $o['wa'] = !empty($c['wa']) ? 1 : 0;   // ticked "Send me order updates and offers on WhatsApp" (unticked unless they chose it)
   $o['address'] = implode(', ', array_filter([$o['house'], $o['street'], $o['landmark'] !== '' ? 'Near ' . $o['landmark'] : '', $o['city'], $o['state'] . ' ' . $o['pin']]));
   return $o;
 }
@@ -337,7 +338,8 @@ function fomaxo_send_emails(array $rec, string $how): void {
     . (!empty($rec['codFee']) ? "\n• Cash on delivery fee — " . rupees((int)$rec['codFee']) : '');
   $body = "NEW ORDER {$rec['no']} — $how\n" . date('d M Y, H:i') . " (IST)\n" . (!empty($rec['payment']) ? "Razorpay payment: {$rec['payment']}\n" : '') . "\n$lines\n\n"
         . ($how === 'Cash on delivery' ? "TO COLLECT ON DELIVERY: $total" : "TOTAL PAID: $total") . "\nDelivery: Free\n\n"
-        . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\nAddress: {$c['address']}\n" . ($c['note'] ? "Note: {$c['note']}\n" : '');
+        . "Name: {$c['name']}\nMobile: {$c['phone']}\nEmail: {$c['email']}\nAddress: {$c['address']}\n" . ($c['note'] ? "Note: {$c['note']}\n" : '')
+        . 'WhatsApp offers: ' . (!empty($c['wa']) ? 'Yes, ticked at checkout' : 'No') . "\n";
   fomaxo_mail($store, $subj("New order {$rec['no']} — $total ($how)"), $body, "From: $from\r\n" . ($c['email'] !== '' ? "Reply-To: {$c['email']}\r\n" : '') . "Content-Type: text/plain; charset=UTF-8");
   if ($c['email'] === '') return;   // no email given: the store copy only
   $cb = "Thank you for your order, {$c['name']}.\n\nOrder number: {$rec['no']}\n\n$lines\n\n"
