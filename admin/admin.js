@@ -192,6 +192,8 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-sg-next]');
     if (b) sgFill(b.closest('form'), true);
+    var c = e.target.closest && e.target.closest('[data-sg-clear]');
+    if (c) { var t = c.closest('form').querySelector('textarea'); t.value = ''; t.style.height = ''; t.focus(); t.dispatchEvent(new Event('input', {bubbles: true})); }
   });
 
   /* Stock and product forms: changed boxes light up, and leaving with unsaved changes asks first */
