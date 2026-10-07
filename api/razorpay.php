@@ -38,18 +38,18 @@ function rzp(string $method, string $path, ?array $body = null): array {
   return [$code, is_string($res) ? json_decode($res, true) : null, $err ?: (string)$res];
 }
 
-/* First time an order is seen as paid: give it the next order number, take its items off the stock, log it,
-   email the store and the customer. One transaction, so the checkout page and the webhook can't both do it. */
+/* First time an order is seen as paid: it becomes an order now, so it gets the next order number and today's date, takes its items off the stock, is logged,
+   and the store and the customer are emailed. Until then it is only a card try: no number, not in Orders, not a sale. One transaction, so the checkout page and the webhook can't both do it. */
 function mark_paid(string $orderId, string $paymentId, string $via): ?array {
   try {
     [$rec, $first] = shop_tx(function (PDO $db) use ($orderId, $paymentId) {
       $rec = shop_find_order($orderId, true, $db);
       if (!$rec || !empty($rec['paid'])) return [$rec, false];
       $rec['no'] = $rec['no'] ?: shop_next_no($db);
-      $rec['paid'] = $rec['paid_at'] = shop_now(); $rec['payment'] = $paymentId;
+      $rec['paid'] = $rec['paid_at'] = $rec['created'] = shop_now(); $rec['payment'] = $paymentId;
       shop_take_stock($db, $rec['items'], false);   // the money is taken, so stock goes down even if it was short
-      $db->prepare("UPDATE orders SET no = ?, paid_at = ?, payment_id = ?, status = 'paid', stock_taken = 1, updated = ? WHERE ref = ?")
-        ->execute([$rec['no'], $rec['paid'], $paymentId, shop_now(), $orderId]);
+      $db->prepare("UPDATE orders SET no = ?, created = ?, paid_at = ?, payment_id = ?, status = 'paid', stock_taken = 1, closed_at = NULL, updated = ? WHERE ref = ?")
+        ->execute([$rec['no'], $rec['created'], $rec['paid'], $paymentId, shop_now(), $orderId]);
       return [$rec, true];
     });
   } catch (Throwable $e) { error_log('FOMAXO Razorpay mark paid: ' . $e->getMessage()); return null; }
