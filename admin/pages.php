@@ -286,7 +286,7 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   /* reviews */
   $body .= '<div class="box" data-pane="reviews"><div class="bh"><h3>Reviews</h3></div><div class="bb">';
   if (!$C['reviews']) $body .= '<p class="empty">No reviews from this customer yet.</p>';
-  foreach ($C['reviews'] as $r) $body .= '<div class="rv"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating']) . '<span class="sp"></span><span class="muted small">' . h(date('d M Y', (int)$r['created'])) . '</span>' . ($r['status'] !== 'live' ? '<span class="badge st-cancelled">Removed</span>' : '') . '</div><p>' . nl2br(h($r['body'])) . '</p></div>';
+  foreach ($C['reviews'] as $r) $body .= '<div class="rv"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating']) . '<span class="sp"></span><span class="muted small">' . h(date('d M Y', (int)$r['created'])) . '</span>' . ($r['status'] !== 'live' ? '<span class="badge st-cancelled">Removed</span>' : '') . '</div>' . ($r['body'] !== '' ? '<p>' . nl2br(h($r['body'])) . '</p>' : '') . '</div>';
   $body .= '</div></div></div>';
 } elseif ($tab === 'members') {
   $min = member_min(); $spend = member_spend(); $mq = trim((string)($_GET['q'] ?? ''));
@@ -574,7 +574,7 @@ if ($tab === 'reviews') {
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
       . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Removed</span>' : '')) . '</div>'
-      . '<p>' . nl2br(h($r['body'])) . '</p>'
+      . ($r['body'] !== '' ? '<p>' . nl2br(h($r['body'])) . '</p>' : '')
       . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
       . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
