@@ -2738,8 +2738,11 @@ const hasPrice = v => v !== null && v !== undefined && v !== '';
 const money = (v, cur) => { if (!hasPrice(v)) return null; cur = cur || S.currency;
   return cur === '₹' ? '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits: Number.isInteger(+v) ? 0 : 2, maximumFractionDigits: 2}) : `${cur} ${Number(v).toLocaleString('en-US')}`; };
 const curOf = p => (p && p.currency) || S.currency;
-const wasHTML = (p, size) => { const c = p.compareAt && p.compareAt[size]; return hasPrice(c) && c > p.prices[size] ? `<s class="was">${money(c, curOf(p))}</s> ` : ''; };
-const pctOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
+/* the old (crossed-out) price shows only while a dated offer runs (Admin → Offer with an end time) and the product is in it; otherwise just the price */
+const wasOf = (p, s) => OFFER && OFFER.end && (!OFFER.items.length || OFFER.items.includes(p.id)) && p.compareAt ? p.compareAt[s] : undefined;
+const wasHTML = (p, size) => { const c = wasOf(p, size); return hasPrice(c) && c > p.prices[size] ? `<s class="was">${money(c, curOf(p))}</s> ` : ''; };
+const rawOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };   // saved old price, offer or not (sets the offer's %)
+const pctOff = (p, s) => { const c = wasOf(p, s), v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
 const offTag = (p, s) => { const n = pctOff(p, s); return n ? `<span class="off-tag">${n}% off</span>` : ''; };
 const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size);
   if (m && cls === 'pprice') return `<span class="pnow">${n ? `<s class="pold">${money(p.compareAt[size], curOf(p))}</s>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
@@ -2750,10 +2753,10 @@ const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], cu
    Products picked for the popup (items) set its % and tiles; none picked = every product with an old price. The line by prices shows only on the products picked for it (lines). */
 const OFFER = (() => { const o = LIVE.offer; if (!o || (o.end && o.end <= Date.now())) return null;
   const items = (o.items || []).filter(id => P[id]), pool = items.length ? items.map(id => P[id]) : [...S.products, ...PC];
-  const best = Math.max(0, ...pool.flatMap(p => p.sizes.map(s => pctOff(p, s)))), pct = +o.pct > 0 ? Math.min(+o.pct, best) : best;
+  const best = Math.max(0, ...pool.flatMap(p => p.sizes.map(s => rawOff(p, s)))), pct = +o.pct > 0 ? Math.min(+o.pct, best) : best;
   /* the line by prices goes on the products picked for it (saved before that: the popup's products, or all with an old price) */
   const lines = o.lines ? o.lines.filter(id => P[id]) : !o.line ? [] : items.length ? items : pool.map(p => p.id);
-  return {end: +o.end || 0, popup: !!o.popup && pct > 0, line: lines.length > 0, lines, pct, items,
+  return {end: +o.end || 0, popup: !!o.popup && pct > 0 && +o.end > 0, line: lines.length > 0, lines, pct, items,
     title: o.title || 'Limited time offer', sub: (o.sub || 'on selected fragrances').toUpperCase(), btn: o.btn || 'Shop the offer'}; })();
 /* a product's size with the biggest saving, for its price in the popup */
 const bestSize = p => p.sizes.reduce((a, s) => pctOff(p, s) > pctOff(p, a) ? s : a, p.sizes[0]);
@@ -3914,13 +3917,13 @@ function checkoutPage(q){
   if (!lines.length) return pageHead('Checkout', 'Your bag is <em class="metal">empty</em>', 'Add a fragrance or a personal care favourite, then come back here to check out.') + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Shop fragrances</a><a class="btn line" href="#/personal-care">Personal care</a></div></section>`;
   if (t === null || cartCur(lines) !== '₹' || !(S.checkout.razorpay || coCod())) return pageHead('Checkout', 'Order on <em class="metal">WhatsApp</em>', 'An item in your bag is priced on request, so we will confirm your order with you on WhatsApp.') + `<section class="sec" style="padding-top:40px"><div class="wrap"><button class="btn" id="coWa">Order via WhatsApp</button></div></section>`;
   const d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codOk = coCodOn(cod, t, d.name);
-  const was = lines.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
+  const was = lines.reduce((a, l) => { const p = P[l.id], c = wasOf(p, l.opt); return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
   const phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
   return `<section class="co"><div class="wrap co-grid">
   <h1 class="co-title">Checkout</h1>
   <aside class="co-sum fold" id="coSum" aria-label="Order summary">
     <div class="co-sum-head"><h2>Order summary</h2><button type="button" class="co-fold" id="coFold" aria-expanded="false">Show items (${lines.reduce((a, l) => a + l.qty, 0)})</button>${coBuy(q) ? `<a class="co-edit" href="#/product/${lines[0].id}">Edit</a>` : `<button type="button" class="co-edit" id="coEdit">Edit bag</button>`}</div>
-    <div class="co-items">${lines.map(l => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
+    <div class="co-items">${lines.map(l => { const p = P[l.id], c = wasOf(p, l.opt); return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
