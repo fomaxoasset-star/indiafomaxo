@@ -1,5 +1,12 @@
 # FOMAXO: speed settings for the web server (Hostinger LiteSpeed / Apache).
 
+# Keep the shop's own working files private: setup notes (.md, .txt except robots.txt), example settings,
+# data and backup files, old homepage copies (index-2.html …) and hidden dot-files such as .gitignore.
+# The site and admin read these on the server, never through the browser, so nothing visible changes.
+<FilesMatch "(?i)(^\.|\.(md|bak|old|orig|sql|sqlite|db|log|zip|sh|ini|json|csv)$|^(?!robots\.txt$).*\.txt$|^index-\d+\.html?$|\.example\.php$|-lib\.php$)">
+  Require all denied
+</FilesMatch>
+
 # Send text files compressed.
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/javascript application/json image/svg+xml
@@ -22,4 +29,14 @@
   <FilesMatch "\.html$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
+</IfModule>
+
+# Real addresses for Google: /fomaxo-<name> (e.g. /fomaxo-gold, as on fomaxo.com), /product/<id> and /sitemap.xml are answered by api/seo.php (the shop still runs on #/… inside).
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^product/([a-z0-9-]{1,48})/?$ api/seo.php?p=product&id=$1 [L,QSA]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^fomaxo-([a-z0-9-]{1,80})/?$ api/seo.php?p=name&id=$1 [L,QSA]
+  RewriteRule ^sitemap\.xml$ api/seo.php?p=sitemap [L]
 </IfModule>
