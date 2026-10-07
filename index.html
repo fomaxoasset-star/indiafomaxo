@@ -2255,7 +2255,7 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
       <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
     </div>
     <div class="fbase"><span>© 2026 FOMAXO™. All rights reserved.</span><span>Inspire greatness</span></div>
-    <p class="fstat">We count visits anonymously on our own server to improve the shop. No advertising trackers.</p>
+    <p class="fstat" id="fstat">We count visits anonymously on our own server to improve the shop. No advertising trackers.</p>
   </div>
 </footer>
 
@@ -2581,9 +2581,90 @@ const LIVE = window.STORE_LIVE || {};
    and never twice (an existing "Unisex" anywhere in the type is taken out first). Car perfume, personal care and sets keep their type. */
 const unisexType = f => { const t = String(f || '').replace(/[\s·•|,/(–—-]*\bunisex\b\)?/gi, '').replace(/^[\s·•|,/–—-]+|[\s·•|,/(–—-]+$/g, '').trim(); return (t ? t + ' · ' : '') + 'Unisex'; };
 S.products.forEach(p => { if (!p.kind) p.family = unisexType(p.family); });
+/* Ad tags set on Admin → Settings → Ads (STORE_LIVE.ads): Meta Pixel, TikTok Pixel and the Google tag (Analytics G-… and/or
+   Ads AW-…). Each loads only when its ID is filled in, and only after the page has finished loading and the browser is idle,
+   so the first paint stays fast; events before that wait in a queue. Standard events: page view, product view, add to bag,
+   checkout, payment step and purchase (value in ₹, order number, item ids), the purchase sent once per order. */
+const ADS = (() => {
+  const a = LIVE.ads || {}, on = !!(a.meta || a.tiktok || a.ga4 || a.gads);
+  let q = [], ready = false, lastPage = '', coAt = null;
+  const run = f => { if (!on) return; if (ready) { try { f(); } catch(e) {} } else q.push(f); };
+  const load = src => { const s = document.createElement('script'); s.async = true; s.src = src; document.head.appendChild(s); };
+  const start = () => {
+    if (ready) return;
+    if (a.meta) {   // Meta's own loader, as in its snippet
+      const n = window.fbq = function(){ n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+      if (!window._fbq) window._fbq = n; n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
+      load('https://connect.facebook.net/en_US/fbevents.js'); fbq('init', a.meta);
+    }
+    if (a.tiktok) {   // TikTok's own loader, as in its snippet
+      window.TiktokAnalyticsObject = 'ttq'; const t = window.ttq = window.ttq || [];
+      t.methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie', 'holdConsent', 'revokeConsent', 'grantConsent'];
+      t.setAndDefer = (o, m) => { o[m] = function(){ o.push([m, ...arguments]); }; };
+      t.methods.forEach(m => t.setAndDefer(t, m));
+      t.instance = id => { const e = t._i[id] || []; t.methods.forEach(m => t.setAndDefer(e, m)); return e; };
+      const u = 'https://analytics.tiktok.com/i18n/pixel/events.js';
+      t._i = t._i || {}; t._i[a.tiktok] = []; t._i[a.tiktok]._u = u; t._t = t._t || {}; t._t[a.tiktok] = +new Date; t._o = t._o || {}; t._o[a.tiktok] = {};
+      load(`${u}?sdkid=${a.tiktok}&lib=ttq`);
+    }
+    if (a.ga4 || a.gads) {   // page views are sent by hand below, because the shop changes pages without reloading
+      window.dataLayer = window.dataLayer || []; window.gtag = function(){ dataLayer.push(arguments); };
+      gtag('js', new Date());
+      if (a.ga4) gtag('config', a.ga4, {send_page_view: false});
+      if (a.gads) gtag('config', a.gads, {send_page_view: false});
+      load('https://www.googletagmanager.com/gtag/js?id=' + (a.ga4 || a.gads));
+    }
+    ready = true; const w = q; q = []; w.forEach(run);
+  };
+  if (on) { const idle = () => window.requestIdleCallback ? requestIdleCallback(start, {timeout: 3000}) : setTimeout(start, 1500);
+    if (document.readyState === 'complete') idle(); else addEventListener('load', idle, {once: true}); }
+
+  const inrOf = id => P[id] && curOf(P[id]) === '₹';
+  const unit = (id, opt) => { const v = P[id] && P[id].prices[opt]; return hasPrice(v) ? Number(v) : 0; };
+  const items = lines => lines.filter(l => P[l.id]).map(l => ({id: l.id, opt: String(l.opt), qty: l.qty || 1, name: P[l.id].name, price: unit(l.id, l.opt)}));
+  const sum = it => Math.round(it.reduce((t, i) => t + i.price * i.qty, 0) * 100) / 100;
+  /* one event, in each platform's own names and fields */
+  const send = (fb, tt, ga, it, value, extra = {}) => run(() => {
+    const ids = [...new Set(it.map(i => i.id))], data = {currency: 'INR', value};
+    if (a.meta) fbq('track', fb, {...data, content_ids: ids, content_type: 'product', contents: it.map(i => ({id: i.id, quantity: i.qty, item_price: i.price})), num_items: it.reduce((t, i) => t + i.qty, 0),
+      ...(extra.no ? {order_id: extra.no} : {})}, extra.no ? {eventID: 'order-' + extra.no} : undefined);
+    if (a.tiktok) ttq.track(tt, {...data, content_type: 'product', contents: it.map(i => ({content_id: i.id, content_name: i.name, quantity: i.qty, price: i.price}))}, extra.no ? {event_id: 'order-' + extra.no} : undefined);
+    if (a.ga4 || a.gads) gtag('event', ga, {...data, ...(extra.no ? {transaction_id: extra.no} : {}),
+      items: it.map(i => ({item_id: i.id, item_name: i.name, item_variant: i.opt, price: i.price, quantity: i.qty}))});
+    if (extra.no && a.gads && a.gadsLabel) gtag('event', 'conversion', {send_to: `${a.gads}/${a.gadsLabel}`, ...data, transaction_id: extra.no});
+  });
+  return {
+    on,
+    page(path, seg){
+      if (!on || path === lastPage) return; lastPage = path; coAt = null;
+      run(() => {
+        if (a.meta) fbq('track', 'PageView');
+        if (a.tiktok) ttq.page();
+        if (a.ga4 || a.gads) gtag('event', 'page_view', {page_location: location.origin + location.pathname + '#/' + path.replace(/^\//, ''), page_path: '/' + path.replace(/^\//, ''), page_title: document.title});   // no ?… so private links (review, order) stay private
+      });
+      const id = seg[0] === 'product' && seg[1];
+      if (id && P[id] && inrOf(id)) {   // the size the product page opens on (?size= or the default)
+        const qs = new URLSearchParams(location.hash.split('?')[1] || ''), opt = qs.get('size') && P[id].sizes.map(String).includes(qs.get('size')) ? qs.get('size') : defaultSize(P[id]);
+        const it = items([{id, opt, qty: 1}]); send('ViewContent', 'ViewContent', 'view_item', it, sum(it));
+      }
+    },
+    add(id, opt, qty){ if (!on || !inrOf(id)) return; const it = items([{id, opt, qty}]); send('AddToCart', 'AddToCart', 'add_to_cart', it, sum(it)); },
+    checkout(lines){ if (!on || coAt === lastPage) return; coAt = lastPage; const it = items(lines); send('InitiateCheckout', 'InitiateCheckout', 'begin_checkout', it, sum(it)); },
+    pay(lines, value){ if (!on) return; const it = items(lines); send('AddPaymentInfo', 'AddPaymentInfo', 'add_payment_info', it, value || sum(it)); },
+    /* once per order number on this device, so going back to the thank-you page never counts it twice */
+    buy(no, total, lines){
+      if (!on || !no) return; no = String(no);
+      let seen = []; try { seen = JSON.parse(localStorage.getItem('fx_ads_buy') || '[]'); } catch(e) {}
+      if (seen.includes(no)) return;
+      try { localStorage.setItem('fx_ads_buy', JSON.stringify([...seen, no].slice(-20))); } catch(e) {}
+      const it = items(lines), v = Number(total);
+      send('Purchase', 'CompletePayment', 'purchase', it, v > 0 ? Math.round(v * 100) / 100 : sum(it), {no});
+    }
+  };
+})();
 /* Visitor analytics on our own server (api/track.php): a random visitor id kept on this device and a visit id that ends
-   after 30 minutes without activity. No names, IP addresses or advertising trackers; checkout details are sent only
-   when typed at checkout, so the shop can follow up on orders that were not finished. */
+   after 30 minutes without activity. No names or IP addresses; checkout details are sent only when typed at checkout,
+   so the shop can follow up on orders that were not finished. Ad tags (ADS above) are separate and off until an ID is set. */
 const TRK = (() => {
   const rid = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8);
   const get = (st, k) => { try { return st.getItem(k); } catch(e) { return null; } }, put = (st, k, v) => { try { st.setItem(k, v); } catch(e) {} };
@@ -2613,7 +2694,7 @@ const TRK = (() => {
   let lastView = '';
   return {
     send,
-    view(path, seg){ if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]}); },
+    view(path, seg){ ADS.page(path, seg); if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]}); },
     lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', email: c.email || '', state: c.state || '',
       address: [c.house, c.street, c.landmark, c.city, c.pin].filter(Boolean).join(', '), total: subtotal(lines) || 0,
       bag: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, name: P[l.id] ? `${P[l.id].name} · ${optLabel(P[l.id], l.opt)}` : l.id}))}}); }
@@ -2719,7 +2800,7 @@ function addToCart(id, opt, qty=1, silent, picks){
   const key = (picks || []).join('|');
   const l = cart.find(x => x.id === id && String(x.opt) === String(opt) && (x.picks || []).join('|') === key);
   if (l) l.qty = Math.min(99, l.qty + qty); else cart.push(picks ? {id, opt, qty, picks} : {id, opt, qty});
-  save(); TRK.send('add', {id, opt, q: qty});
+  save(); TRK.send('add', {id, opt, q: qty}); ADS.add(id, opt, qty);
   if (!silent) toast(`${P[id].name} · ${optLabel(P[id], opt)} added to your bag`, true);
 }
 function lineImg(l){ const p = P[l.id]; return imgFor(p, l.opt); }
@@ -3969,12 +4050,14 @@ function bindCheckout(q){
     return c;
   }
   const busy = (on, label) => { btn.disabled = on; if (on) $('#coPayTxt').textContent = label; else upd(); };
-  const done = (no, pay, review) => {
-    TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, '')});
+  const done = (no, pay, review, total) => {
+    TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, '')}); ADS.buy(no, total, lines);
     try { localStorage.setItem(LAST_KEY, JSON.stringify({at: Date.now(), lines: lines.map(l => l.picks ? {id: l.id, opt: l.opt, picks: l.picks} : {id: l.id, opt: l.opt})})); } catch(e) {}
     try { sessionStorage.removeItem('fx_coupon'); } catch(e) {}
     if (coBuy(q)) { try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {} } else { cart = []; save(); }
-    location.hash = `#/thank-you?order=${encodeURIComponent(no)}&pay=${pay}${review ? '&rv=' + encodeURIComponent(review) : ''}`;
+    /* the review link stays out of the address, so ad tags (which see the address) never get it */
+    try { if (review) sessionStorage.setItem('fx_rv', JSON.stringify({no: String(no), rv: review})); } catch(e) {}
+    location.hash = `#/thank-you?order=${encodeURIComponent(no)}&pay=${pay}`;
   };
   const post = async (url, body) => { const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.'); return d; };
   const payload = c => ({lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks})), customer: c, coupon: cpn ? cpn.code : ''});
@@ -4019,10 +4102,10 @@ function bindCheckout(q){
   f.onsubmit = async e => {
     e.preventDefault(); err.hidden = true;
     const c = details(); if (!c) return;
-    TRK.send('pay'); TRK.lead('payment', c, lines);
+    TRK.send('pay'); TRK.lead('payment', c, lines); ADS.pay(lines);
     if (method() === 'cod') {
       busy(true, 'Placing your order…');
-      try { const d = await post('api/cod.php', payload(c)); done(d.order, 'cod', d.review); } catch(x) { busy(false); showErr(x.message); }
+      try { const d = await post('api/cod.php', payload(c)); done(d.order, 'cod', d.review, d.total); } catch(x) { busy(false); showErr(x.message); }
       return;
     }
     busy(true, 'Opening secure payment…');
@@ -4034,7 +4117,7 @@ function bindCheckout(q){
         theme: {color: '#a8792f'},
         handler: async r => {
           busy(true, 'Confirming your payment…');
-          try { const d = await post(S.checkout.razorpay, {action: 'verify', ...r}); done(d.order, 'online', d.review); }
+          try { const d = await post(S.checkout.razorpay, {action: 'verify', ...r}); done(d.order, 'online', d.review, d.total); }
           catch(x) { busy(false); showErr(x.message); }
         },
         modal: {ondismiss: () => busy(false)}
@@ -4050,7 +4133,8 @@ function thankYou(q){
   const lead = !no ? 'Your payment was successful. A receipt is on its way to your email, and we will contact you shortly to arrange delivery.'
     : cod ? `Your order <b class="gold">${esc(no)}</b> is placed. Please keep the amount ready for cash on delivery. A confirmation is on its way to your email, and we will WhatsApp you to arrange delivery.`
     : `Your payment was successful and your order number is <b class="gold">${esc(no)}</b>. A confirmation is on its way to your email, and we will WhatsApp you to arrange delivery.`;
-  const rv = /^[a-f0-9]{32}$/.test(q.get('rv') || '') ? q.get('rv') : '';
+  let keep = {}; try { keep = JSON.parse(sessionStorage.getItem('fx_rv') || '{}') || {}; } catch(e) {}
+  const rvq = q.get('rv') || (keep.no === no ? keep.rv : '') || '', rv = /^[a-f0-9]{32}$/.test(rvq) ? rvq : '';
   return pageHead('Order confirmed', 'Thank <em class="metal">you</em>', lead) + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;flex-direction:column;gap:28px">
     ${rv ? `<div class="rv-ok" style="max-width:640px"><span class="rv-ver">✓ Verified Purchaser</span><p style="margin-top:10px">Once your order arrives, tell other customers what you think. Reviews written from your personal link show the Verified Purchaser badge. We've also emailed you this link.</p><a class="btn line sm" style="margin-top:16px" href="#/review?t=${rv}">Review your order</a></div>` : ''}
     <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Continue shopping</a><a class="btn line" href="#/contact">Contact us</a></div></div></section>${tyMore()}`;
@@ -4088,7 +4172,7 @@ function route(){
   }
   if (html === '') return;
   TRK.view(path, seg);
-  if (seg[0] === 'checkout' && coLines(q).length) TRK.send('checkout');
+  if (seg[0] === 'checkout' && coLines(q).length) { TRK.send('checkout'); ADS.checkout(coLines(q)); }
   if (seg[0] === 'checkout') $('#toast').classList.remove('show');
   document.body.classList.toggle('home', !seg[0]);
   app.innerHTML = `<div class="page-fade">${html}</div>`;
@@ -4182,6 +4266,8 @@ addEventListener('scroll', () => { if (ticking) return; ticking = true; requestA
 /* static bits */
 $('#footShop').innerHTML = `<a href="#/fragrances">All products</a><a href="#/collections/fragrance">Fragrance</a><a href="#/fragrances?f=car">Car Fragrance</a><a href="#/personal-care">Personal Care</a>`;
 $('#footIg').href = `https://www.instagram.com/${S.contact.instagram}/`;
+if (ADS.on) { const a = LIVE.ads, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Google' : '', a.tiktok && 'TikTok'].filter(Boolean);   /* the footer stays true once ad tags are on */
+  $('#fstat').textContent = `We count visits anonymously on our own server to improve the shop, and use ${n.join(n.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1')} ad tags to measure our ads.`; }
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;
 addEventListener('hashchange', route);
 /* the popups set on Admin → Offer. Only one per visit, never on the checkout or thank-you page, about 2.5 seconds after arrival:

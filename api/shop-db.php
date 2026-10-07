@@ -409,6 +409,17 @@ function shop_newprod_live(): ?array {
     'key' => substr(md5($n['label'] . '|' . $n['name'] . '|' . $n['id']), 0, 10)];
 }
 
+/* Ad tags set on Admin → Settings → Ads (STORE_LIVE.ads): Meta Pixel ID, TikTok Pixel ID, Google Analytics 4 ID (G-…),
+   Google Ads ID (AW-…) and its purchase conversion label. Empty boxes are left out; nothing loads on the website until one is filled in. */
+const SHOP_ADS = ['meta' => '/^\d{10,20}$/', 'tiktok' => '/^[A-Z0-9]{10,30}$/', 'ga4' => '/^G-[A-Z0-9]{4,16}$/', 'gads' => '/^AW-\d{6,15}$/', 'gadsLabel' => '/^[A-Za-z0-9_-]{4,40}$/'];
+function shop_ads(): array {
+  $a = json_decode((string)shop_setting('ads'), true); $a = is_array($a) ? $a : [];
+  $out = [];
+  foreach (SHOP_ADS as $k => $re) { $v = (string)($a[$k] ?? ''); if ($v !== '' && preg_match($re, $v)) $out[$k] = $v; }
+  if (!isset($out['gads'])) unset($out['gadsLabel']);
+  return $out;
+}
+
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
 function shop_import_json_orders(): void {
   $dir = fomaxo_orders_dir();
