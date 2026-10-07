@@ -406,5 +406,4 @@ body.zooming{overflow:hidden}
 .ofpick{display:flex;flex-direction:column;gap:8px}.ofadd{max-width:420px}
 .ofits .ofit:not(:has(input:checked)){display:none!important}.ofits{max-height:none!important}
 .ofnone{grid-column:1/-1}.ofits:has(input:checked) .ofnone{display:none}
-.npgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.npgrid label{margin:0}
-@media (max-width:820px){.npgrid{grid-template-columns:1fr}}
+.npgrid{display:contents}
