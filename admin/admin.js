@@ -138,9 +138,13 @@
      about); "Another reply" swaps the wording. Only a draft: nothing is saved until Save reply. */
   /* good: one short line on what they praised; bad: a clause on what FOMAXO is doing about it */
   var SG_TOPICS = [
-    {k: /\b(damag|broken|leak|crack|missing|wrong (item|product)|fake|empty)/i, nk: /./, good: [], bad: ['we will replace it for you right away']},
+    {k: /\b(damag|broken|leak|crack|missing|wrong (item|product)|fake|empty|fault|defect|not working|stopped working|nozzle)/i, nk: /./, good: [], bad: ['we will replace it for you right away'],
+      chk: ['We checked your order{n}, and you are right, your product was faulty.', 'We looked into your order{n}, and the problem you mentioned is real.'],
+      fix: ['We apologize, and FOMAXO will replace it and send you a special coupon for your next order 🙏', 'We sincerely apologize, so FOMAXO will send you a replacement and a special coupon for your next order 🙏']},
     {k: /long ?last|lasting|\blasts?\b|stays|all day|whole day|hours|longevity|fades?\b/i, nk: /not|n't|only|fades?\b|gone|less|short|weak/i, good: ['So happy it lasts all day for you', 'Glad it stays with you for hours'], bad: ['we are working to make it last longer']},
-    {k: /deliver|shipping|courier|arrived|on time|dispatch|late\b|delay/i, nk: /late\b|delay|slow|took|not (yet )?(arrived|delivered|received)|never/i, good: ['Happy it reached you so quickly', 'Glad the delivery was smooth'], bad: ['we are making our deliveries faster']},
+    {k: /deliver|shipping|courier|arrived|on time|dispatch|late\b|delay/i, nk: /late\b|delay|slow|took|not (yet )?(arrived|delivered|received)|never/i, good: ['Happy it reached you so quickly', 'Glad the delivery was smooth'], bad: ['we are making our deliveries faster'],
+      chk: ['We checked your order{n}, and you are right, it reached you later than it should have.', 'We looked into your delivery{n}, and it was delayed, just as you said.'],
+      fix: ['We apologize, and FOMAXO will send you a special coupon for your next order 🙏', 'We sincerely apologize, so FOMAXO will send you an exclusive coupon for your next order 🙏']},
     {k: /smell|scent|fragrance|aroma|perfume|notes?\b|fresh/i, nk: /(not|n't|no)\s+(like|nice|good|great|pleasant)|bad|harsh|too strong|weird|chemical|headache|alcohol/i, good: ['So glad you love the scent', 'Happy the fragrance won you over'], bad: ['your words on the scent go straight to our perfumers']},
     {k: /pack(ing|aging|aged)?\b|\bbox|bottle|wrap/i, nk: /broken|damag|poor|bad|torn|loose|cheap/i, good: ['Glad the packaging made it feel special', 'So happy you loved the box'], bad: ['we are improving our packing']},
     {k: /skin|lips?\b|moistur|glow|soft|smooth/i, nk: /rash|itch|irritat|burn|dry|sticky|allerg/i, good: ['So glad it feels lovely on your skin'], bad: ['we are looking into this right away']},
@@ -163,9 +167,12 @@
     var p = f.dataset.sgProduct ? 'FOMAXO ' + f.dataset.sgProduct : 'FOMAXO', good = stars >= 4;
     var fill = function (s) { return s.replace('{n}', name ? ', ' + name : '').replace('{h}', name ? 'Hi ' + name + ',' : 'Hi,').replace('{p}', p); };
     /* a good review uses only a topic it praises, a poor one only a topic it complains about */
-    var hit = SG_TOPICS.filter(function (t) { return t.k.test(body) && (good ? t.good : t.bad).length && (good ? !t.nk.test(body) : t.nk.test(body)); })[0];
+    var hits = SG_TOPICS.filter(function (t) { return t.k.test(body) && (good ? t.good : t.bad).length && (good ? !t.nk.test(body) : t.nk.test(body)); });
+    var hit = (!good && hits.filter(function (t) { return t.chk; })[0]) || hits[0];
     var bit = hit ? sgPick(good ? hit.good : hit.bad, i) : '';
     if (good) return fill(sgPick(SG_GOOD_OPEN, i)) + ' ' + (bit ? bit + sgPick(SG_EMO, i) : sgPick(SG_GOOD_END, i));
+    /* late delivery or a faulty product: tell them we checked and they are right, then a coupon */
+    if (hit && hit.chk) return fill(sgPick(hit.chk, i)) + ' ' + sgPick(hit.fix, i);
     if (stars === 3) return fill(sgPick(SG_OK_OPEN, i)) + ', and ' + (bit || 'we are always working to make ' + p + ' better') + '. As a thank you, FOMAXO will send you a special coupon for your next order 🙏';
     return (bit ? fill(sgPick(SG_BAD_OPEN, i)) + ', and ' + bit + '.' : fill(sgPick(SG_BAD_NOHIT, i))) + ' ' + sgPick(SG_BAD_END, i);
   }
