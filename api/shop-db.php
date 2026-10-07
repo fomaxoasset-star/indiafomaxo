@@ -364,11 +364,16 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null): array 
 function shop_offer(): array {
   $o = json_decode((string)shop_setting('offer'), true);
   $o = is_array($o) ? $o : [];
-  return ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
+  $r = ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
     'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true), 'pct' => max(0, min(99, (int)($o['pct'] ?? 0))),
     'items' => array_values(array_map('strval', array_filter((array)($o['items'] ?? []), 'is_scalar'))),
+    'lines' => array_values(array_map('strval', array_filter((array)($o['lines'] ?? []), 'is_scalar'))),
     /* the popup's words ('' = the standard ones: LIMITED TIME OFFER / on selected fragrances / Shop the offer) */
-    'title' => (string)($o['title'] ?? ''), 'sub' => (string)($o['sub'] ?? ''), 'btn' => (string)($o['btn'] ?? '')];   // products in the offer ([] = every product with an old price)
+    'title' => (string)($o['title'] ?? ''), 'sub' => (string)($o['sub'] ?? ''), 'btn' => (string)($o['btn'] ?? '')];   // items: products in the popup ([] = every product with an old price); lines: products with the line by prices
+  /* saved before the line had its own products: it showed on the popup's products, or on every product with an old price */
+  if (!array_key_exists('lines', $o) && $r['line']) $r['lines'] = $r['items'] ?: fomaxo_sale_ids();
+  $r['line'] = (bool)$r['lines'];
+  return $r;
 }
 /* the New product popup (Admin → Offer): on, kind 'soon' (Coming soon) or 'new' (Just arrived), name, a short line, and a product id ('' = none) */
 function shop_newprod(): array {
@@ -385,6 +390,7 @@ function shop_offer_live(): ?array {
   if ($o['mode'] === 'end') { $t = strtotime($o['end']); if ($t === false || $t <= time()) return null; $end = $t * 1000; }
   $live = ['end' => $end, 'popup' => $o['popup'], 'line' => $o['line']];
   if ($o['items']) $live['items'] = $o['items'];
+  if ($o['lines']) $live['lines'] = $o['lines'];
   foreach (['title', 'sub', 'btn'] as $k) if ($o[$k] !== '') $live[$k] = $o[$k];
   if ($o['pct'] > 0) $live['pct'] = min($o['pct'], fomaxo_best_pct($o['items'])[0]);   // a typed % never goes above the real biggest saving
   return $live;

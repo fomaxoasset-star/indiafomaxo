@@ -123,6 +123,13 @@ function fomaxo_best_pct(array $only = []): array {
   }
   return $best;
 }
+/* ids of the products on the website with an old price (a real saving) */
+function fomaxo_sale_ids(): array {
+  $ids = [];
+  foreach (fomaxo_catalog()['products'] as $id => $p) { if (!empty($p['hidden'])) continue;
+    foreach ($p['prices'] as $k => $v) if ((float)($p['was'][$k] ?? 0) > $v && $v > 0) { $ids[] = (string)$id; break; } }
+  return $ids;
+}
 function fomaxo_catalog(): array {
   static $cat; if ($cat !== null) return $cat;
   $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
