@@ -29,7 +29,7 @@ if ($tab === 'home') {
   $STOCK = shop_stock(); $low = shop_low_stock(); $alerts = [];
   foreach ($CAT as $id => $p) { if (!empty($p['hidden'])) continue; foreach ($p['prices'] as $opt => $_) { $v = $STOCK[$id][$opt] ?? null; if ($v !== null && $v <= max($low, 0)) $alerts[] = [$id, $p, (string)$opt, $v]; } }
   usort($alerts, fn($a, $b) => $a[3] <=> $b[3]);
-  $latest = shop_db()->query("SELECT * FROM orders WHERE status <> 'awaiting' ORDER BY id DESC LIMIT 30")->fetchAll();
+  $latest = shop_db()->query("SELECT * FROM orders WHERE " . IS_ORDER . " ORDER BY id DESC LIMIT 30")->fetchAll();
   $body .= $sw('#dashLists', ['orders' => 'Latest orders', 'stock' => 'Stock alerts']) . '<div id="dashLists" class="panes" style="display:contents">'
     . '<div class="box c-stock" data-pane="stock"><div class="bh"><h3>Stock alerts</h3><a class="btn line sm" href="' . h(self_url(['tab' => 'stock'])) . '">Update stock</a></div><div class="bb">';
   if (!$alerts) $body .= '<p class="empty">' . ($STOCK ? 'Nothing is running low.' : 'Write your stock on the Stock page so the shop can show “Only 3 left” and “Sold out”.') . '</p>';
@@ -71,7 +71,7 @@ if ($tab === 'orders') {
   $qd = array_diff_key($q, ['from' => 1, 'to' => 1, 'page' => 1]); $dseg = '';
   foreach (['today', 'd7', 'd30', 'all'] as $k) { [$a, $b] = preset_span($k); $dseg .= '<a href="' . h(self_url(array_filter(['from' => $a, 'to' => $b] + $qd))) . '"' . ($F['from'] === $a && $F['to'] === $b ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>'; }
   $body .= '<form class="filters' . ($nf ? ' open' : '') . '" id="ordFilters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '')
-    . '<label class="fx">Status' . $sel('status', ['' => 'All orders'] + TRACK_CHIPS + ['awaiting' => 'Unfinished online payments'] + (in_array($F['status'], ['todo', 'new', 'paid'], true) ? [$F['status'] => ['todo' => 'Pending', 'new' => 'New', 'paid' => 'Paid'][$F['status']]] : []), $F['status']) . '</label>'
+    . '<label class="fx">Status' . $sel('status', ['' => 'All orders'] + TRACK_CHIPS + (in_array($F['status'], ['todo', 'new', 'paid'], true) ? [$F['status'] => ['todo' => 'Pending', 'new' => 'New', 'paid' => 'Paid'][$F['status']]] : []), $F['status']) . '</label>'
     . '<label class="fx">Payment' . $sel('method', ['' => 'COD and online', 'cod' => 'Cash on delivery (COD)', 'online' => 'Online (card / UPI)'], $F['method']) . '</label>'
     . '<label class="dq"><span class="hide-m">Dates</span><span class="seg">' . $dseg . '</span></label>'
     . '<label class="fx dfl">From' . date_box('from', $F['from'], 'From') . '</label><label class="fx dfl">To' . date_box('to', $F['to'], 'To') . '</label>'
@@ -79,7 +79,7 @@ if ($tab === 'orders') {
     . '<button type="button" class="btn line show-m-i" data-open="#ordFilters">Filters' . ($nf ? ' (' . $nf . ')' : '') . '</button><button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
   $back = h(json_encode($q + ['page' => $page]));
   $body .= '<form id="qa" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="quick"><input type="hidden" name="back" value="' . $back . '"></form>';
-  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . ($F['status'] === 'awaiting' ? '. These shoppers opened online payment but did not finish. They have no order number and took no stock.' : '. Tap a button to update an order, or tap the order to see it.') . '</span></div><div class="bb np">';
+  $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . '. Tap a button to update an order, or tap the order to see it.' . '</span></div><div class="bb np">';
   if (!$orders) $body .= '<p class="empty">No orders' . (array_filter($F) ? ' for this filter' : ' yet') . '.</p>';
   foreach ($orders as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
@@ -260,7 +260,7 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
     . '<dt>Email</dt><dd>' . ($C['email'] ? '<a href="mailto:' . h($C['email']) . '">' . h($C['email']) . '</a>' : '—') . '</dd>'
     . '<dt>Address</dt><dd>' . h($C['address']) . '</dd><dt>State</dt><dd>' . h($C['state'] ?: '—') . '</dd>'
     . '<dt>First order</dt><dd>' . $dt($C['first']) . '</dd><dt>Last order</dt><dd>' . $dt($C['last']) . '</dd>'
-    . '<dt>Cancelled</dt><dd>' . $C['cancelled'] . '</dd><dt>Unpaid</dt><dd>' . $C['unpaid'] . '</dd></dl></div></div>';
+    . '<dt>Cancelled</dt><dd>' . $C['cancelled'] . '</dd></dl></div></div>';
   /* on the website */
   $body .= '<div class="box" data-pane="web"><div class="bh"><h3>On the website</h3><span class="muted small">From the device they ordered on</span></div><div class="bb">';
   if (!$W['visits']) $body .= '<p class="empty">No visits recorded yet. Visits are counted from the browser they checked out on, from when this was turned on.</p>';
@@ -278,7 +278,7 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   $body .= '<div class="box" data-pane="orders"><div class="bh"><h3>Orders</h3><span class="muted small">' . count($C['all']) . ' in all</span></div><div class="bb np">';
   foreach ($C['all'] as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
-    $body .= '<a class="corder os-' . h($o['status']) . '" href="' . h(self_url(array_filter(['tab' => 'orders', 'q' => $o['no'] ?: $o['name'], 'status' => $o['status'] === 'awaiting' ? 'awaiting' : '']))) . '"><div class="ch"><b>' . h($o['no'] ?: 'Not paid') . '</b><span class="muted small">' . h(date('d M Y', strtotime($o['created']))) . ' · ' . h(pay_label($o)) . '</span><span class="sp"></span><b>' . rupees((int)$o['total']) . '</b><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']] ?? $o['status']) . '</span></div>';
+    $body .= '<a class="corder os-' . h($o['status']) . '" href="' . h(self_url(array_filter(['tab' => 'orders', 'q' => $o['no'] ?: $o['name']]))) . '"><div class="ch"><b>' . h($o['no'] ?: 'Not paid') . '</b><span class="muted small">' . h(date('d M Y', strtotime($o['created']))) . ' · ' . h(pay_label($o)) . '</span><span class="sp"></span><b>' . rupees((int)$o['total']) . '</b><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']] ?? $o['status']) . '</span></div>';
     foreach ($items as $it) $body .= '<div class="ci">' . $thumbOf((string)($it['id'] ?? ''), 'th xs') . '<span>' . (int)($it['qty'] ?? 0) . ' × ' . h($it['name'] ?? '') . '</span><span class="muted">' . rupees((int)($it['unit'] ?? 0)) . '</span></div>';
     $body .= '</a>';
   }

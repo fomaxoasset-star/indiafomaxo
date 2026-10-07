@@ -289,14 +289,13 @@ function shop_find_order(string $ref, bool $lock = false, ?PDO $db = null): ?arr
 /* Admin: change an order's status. Cancelling or refunding puts its items back in stock; undoing that takes them again.
    Delivered saves the delivery time; a cash order counts as paid once delivered. Cancelled and refunded save when. */
 function shop_set_status(int $id, string $status, ?string $note = null): void {
-  if (!isset(FOMAXO_STATUSES[$status])) return;
+  if (!isset(FOMAXO_STATUSES[$status]) || $status === 'awaiting') return;   // "card not paid" is not an order status: an unpaid card try is not an order
   shop_tx(function (PDO $db) use ($id, $status, $note) {
     $s = $db->prepare('SELECT * FROM orders WHERE id = ?' . (shop_is_mysql() ? ' FOR UPDATE' : '')); $s->execute([$id]);
-    $r = $s->fetch(); if (!$r) return;
+    $r = $s->fetch(); if (!$r || ($r['method'] === 'online' && !$r['no'])) return;   // an unpaid card try becomes an order only when Razorpay confirms the payment
     $items = json_decode((string)$r['items'], true) ?: []; $taken = (int)$r['stock_taken'];
     $no = $r['no']; $was = $r['status']; $now = shop_now(); $cod = $r['method'] === 'cod';
     $paid = $r['paid_at']; $dlv = $r['delivered_at']; $closed = $r['closed_at'];
-    if (!$no && in_array($status, ['new', 'paid', 'delivered'], true)) $no = shop_next_no($db);   // an unpaid online attempt confirmed by hand
     $back = ['cancelled', 'awaiting', 'refunded'];
     if (in_array($status, $back, true) && $taken) { shop_return_stock($db, $items); $taken = 0; }
     elseif (!in_array($status, $back, true) && !$taken && $no) { shop_take_stock($db, $items, false); $taken = 1; }

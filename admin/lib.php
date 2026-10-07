@@ -17,6 +17,9 @@ function thumb(?array $p, string $cls = 'th'): string {
   return $src ? '<img class="' . $cls . '" src="' . h($src) . '" alt="" loading="lazy">' : '<span class="' . $cls . '"></span>';
 }
 const SALE_STATUSES = "('new', 'paid', 'delivered')";
+/* a real order has an order number and is not an unpaid card try. A card try that was never paid (still waiting, or cancelled by hand before this rule)
+   is kept quietly for the Conversion view but is not an order: it never shows in Orders, Members or totals. */
+const IS_ORDER = "status <> 'awaiting' AND COALESCE(no, '') <> ''";
 
 /* ---------------- dates: typed as dd/mm/yyyy everywhere ---------------- */
 /* "06/10/2026" (also 6/10/2026, or 2026-10-06 from links and the calendar) → "2026-10-06"; anything else → '' */
@@ -216,11 +219,10 @@ function save_images(string $id) {
 /* ---------------- orders ---------------- */
 function order_where(array $F): array {
   $w = []; $a = [];
-  if ($F['status'] === 'awaiting') $w[] = "status = 'awaiting'";
-  elseif (in_array($F['status'], ['pending', 'todo'], true)) $w[] = "status IN ('new', 'paid')";
+  $w[] = IS_ORDER;   // an unpaid card try is not an order: it never shows in Orders or its Excel
+  if (in_array($F['status'], ['pending', 'todo'], true)) $w[] = "status IN ('new', 'paid')";
   elseif ($F['status'] === 'unpaid') $w[] = "status = 'new' AND method = 'cod' AND paid_at IS NULL";
   elseif (isset(FOMAXO_STATUSES[$F['status']])) { $w[] = 'status = ?'; $a[] = $F['status']; }
-  else $w[] = "status <> 'awaiting'";
   if (in_array($F['method'], ['cod', 'online'], true)) { $w[] = 'method = ?'; $a[] = $F['method']; }
   if (($F['state'] ?? '') !== '') { $w[] = 'state = ?'; $a[] = $F['state']; }
   if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $F['from'])) { $w[] = 'created >= ?'; $a[] = $F['from'] . ' 00:00:00'; }
@@ -267,7 +269,7 @@ function order_tags(array $o): string {
   return '<span class="badge st-' . $st[0] . '">' . h($st[1]) . '</span><span class="badge ' . ($paid ? 'pd-yes">Paid' : 'pd-no">Unpaid') . '</span>';
 }
 /* the order page's Status list, with clear names: Pending · Unpaid (cash), Pending · Paid, Delivered, Undelivered (on a delivered order: back to Pending),
-   Cancelled, Refunded, and Card not paid (online orders) */
+   Cancelled and Refunded. There is no "Card not paid": an unpaid card try is not an order. */
 function order_status_options(array $o): array {
   $cod = $o['method'] === 'cod'; $st = $o['status'];
   $opts = [];
@@ -277,7 +279,6 @@ function order_status_options(array $o): array {
   if ($st === 'delivered') $opts['undelivered'] = 'Undelivered';
   $opts['cancelled'] = 'Cancelled';
   $opts['refunded'] = 'Refunded';
-  if (!$cod || $st === 'awaiting') $opts['awaiting'] = 'Card not paid';
   return $opts;
 }
 /* the three one-tap buttons of an active order (Paid or Refund · Mark delivered · Cancel order); they submit the page's #qa form.
@@ -437,17 +438,17 @@ function customer_key(array $o): array {
   $digits = substr(preg_replace('/\D/', '', (string)$o['phone']), -10);
   return [strlen($digits) === 10 ? "m:$digits" : (trim((string)$o['email']) !== '' ? 'e:' . strtolower(trim((string)$o['email'])) : ''), strlen($digits) === 10 ? $digits : ''];
 }
-/* everything about one customer: every order (with cancelled and unfinished ones counted apart), their reviews and their visits to the shop */
+/* everything about one customer: every order (cancelled ones counted apart; unpaid card tries are not orders), their reviews and their visits to the shop */
 function customer(string $key): ?array {
   $all = [];
-  foreach (shop_db()->query("SELECT * FROM orders WHERE test = 0 ORDER BY created, id") as $o) if (customer_key($o)[0] === $key) $all[] = $o;
+  foreach (shop_db()->query("SELECT * FROM orders WHERE " . IS_ORDER . " AND test = 0 ORDER BY created, id") as $o) if (customer_key($o)[0] === $key) $all[] = $o;
   if (!$all) return null;
   $sales = array_values(array_filter($all, fn($o) => in_array($o['status'], ['new', 'paid', 'delivered'], true)));
   $last = end($all); $c = ['key' => $key, 'phone' => customer_key($last)[1], 'name' => $last['name'], 'email' => '', 'address' => $last['address'], 'state' => $last['state'], 'all' => array_reverse($all)];
   foreach ($all as $o) if ($o['email'] !== '') $c['email'] = $o['email'];
   $c['count'] = count($sales); $c['spent'] = array_sum(array_map(fn($o) => (int)$o['total'], $sales)); $c['avg'] = $c['count'] ? intdiv($c['spent'], $c['count']) : 0;
   $c['first'] = $sales ? $sales[0]['created'] : ''; $c['last'] = $sales ? end($sales)['created'] : '';
-  $c['cancelled'] = count(array_filter($all, fn($o) => $o['status'] === 'cancelled')); $c['unpaid'] = count(array_filter($all, fn($o) => $o['status'] === 'awaiting'));
+  $c['cancelled'] = count(array_filter($all, fn($o) => $o['status'] === 'cancelled'));
   $c['reviews'] = reviews_list(['tokens' => array_values(array_filter(array_column($all, 'review'))), 'phone' => $c['phone']]);
   $c['web'] = customer_web($c['phone']);
   return $c;
@@ -699,7 +700,7 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
   else $leads = $db->query('SELECT * FROM leads WHERE removed = 0 ORDER BY updated DESC')->fetchAll();
   if (!$leads) return [];
   $orders = [];
-  foreach ($db->query("SELECT no, phone, created FROM orders WHERE status <> 'awaiting' AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;
+  foreach ($db->query("SELECT no, phone, created FROM orders WHERE " . IS_ORDER . " AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;
   foreach ($leads as &$l) {
     $l['later'] = '';
     foreach ($orders[$l['phone']] ?? [] as $o) if ($o['created'] >= substr($l['created'], 0, 16)) { $l['later'] = (string)$o['no']; break; }
