@@ -50,7 +50,7 @@ img{display:block;max-width:100%}
 .metal{background:var(--metal);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheen 10s ease-in-out infinite}
 #cart:not(.seen) img{display:none}/* the bag's photos load the first time it opens, not with every page */
 #app:empty{min-height:100vh}/* until the page is drawn, the footer waits below the screen instead of jumping down */
-.metal.still{animation-play-state:paused}/* off screen: the sheen waits (bindCommon) */
+.metal.still,.rings.still i{animation-play-state:paused}/* off screen: the sheen and the pulsing rings wait (bindCommon) */
 @keyframes sheen{0%,100%{background-position:0 0}50%{background-position:100% 0}}
 .eyebrow{font-size:11px;font-weight:400;letter-spacing:.42em;text-transform:uppercase;color:var(--gold)}
 h1,h2,h3,h4{font-family:var(--display);font-weight:300;line-height:1.08;letter-spacing:.1em;text-transform:uppercase;text-wrap:balance}
@@ -4252,7 +4252,7 @@ function bindCommon(){
   /* the gold sheen on headings only runs while the heading is on screen */
   sheenIO && sheenIO.disconnect();
   sheenIO = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('still', !e.isIntersecting)), {rootMargin: '100px 0px'});
-  $$('.metal').forEach(el => sheenIO.observe(el));
+  $$('.metal,.rings').forEach(el => sheenIO.observe(el));
   $$('form.notify').forEach(f => f.onsubmit = e => { e.preventDefault(); const em = $('input', f).value;
     location.href = `mailto:${S.contact.email}?subject=${encodeURIComponent('Register interest: ' + (f.dataset.interest || 'FOMAXO launches'))}&body=${encodeURIComponent('Please notify me: ' + em)}`; });
 }
@@ -4345,7 +4345,8 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
 (function space(){
   const cv = $('#space'); if (!cv || reduce) return;
   const ctx = cv.getContext('2d'); let W, H, D;
-  const N = innerWidth < 700 ? 110 : 240, pts = [];
+  const phone = innerWidth < 700;
+  const N = phone ? 80 : 240, pts = [];
   const rnd = (a, b) => a + Math.random() * (b - a);
   for (let i = 0; i < N; i++) pts.push({x: rnd(-1.6, 1.6), y: rnd(-1.2, 1.2), z: rnd(.15, 1.4), s: rnd(.6, 1.8), tw: rnd(0, 6.28)});
   const dot = document.createElement('canvas'); dot.width = dot.height = 64;
@@ -4357,12 +4358,13 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
   const gl = dotL.getContext('2d'), grl = gl.createRadialGradient(32, 32, 0, 32, 32, 32);
   grl.addColorStop(0, 'rgba(176,122,40,1)'); grl.addColorStop(.18, 'rgba(196,146,66,.9)'); grl.addColorStop(.45, 'rgba(184,134,60,.32)'); grl.addColorStop(1, 'rgba(184,134,60,0)');
   gl.fillStyle = grl; gl.fillRect(0, 0, 64, 64);
-  function size(){ D = Math.min(devicePixelRatio || 1, 1.5); W = cv.width = innerWidth * D; H = cv.height = innerHeight * D; }
+  /* phones: the dust is drawn at half screen size (soft glows, so it looks the same) */
+  function size(){ D = phone ? .5 : Math.min(devicePixelRatio || 1, 1.5); W = cv.width = innerWidth * D; H = cv.height = innerHeight * D; }
   size(); addEventListener('resize', size);
   let last = performance.now(), sy = scrollY, vel = 0;
-  const gap = finePointer ? 0 : 30;   // phones and tablets draw the dust 30 times a second (it drifts slowly, so it looks the same and costs half)
+  const gap = phone ? 40 : finePointer ? 0 : 30;   // phones draw the dust 24 times a second and tablets 30 (it drifts slowly, so it looks the same and costs less)
   function frame(t){
-    if (t - last < gap) { requestAnimationFrame(frame); return; }
+    if (t - last < gap || (phone && (document.body.classList.contains('lock') || /^#\/checkout/.test(location.hash)))) { requestAnimationFrame(frame); return; }   // phones: paused while the bag or menu covers the screen, or during checkout
     const dt = Math.min((t - last) / 1000, .05); last = t;
     if (!document.hidden){
       mouse.x += (mouse.tx - mouse.x) * .04; mouse.y += (mouse.ty - mouse.y) * .04;
