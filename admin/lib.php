@@ -627,11 +627,12 @@ function date_span(string $from, string $to): string {
   if (date('Y-m', $a) === date('Y-m', $b)) return date('j', $a) . '–' . date('j M', $b) . $yr;
   return date('j M', $a) . (date('Y', $a) !== date('Y', $b) ? date(' Y', $a) : '') . ' – ' . date('j M', $b) . $yr;
 }
-/* "Left at checkout": everyone who typed their details at checkout (kept for good; the page shows the dates picked), newest first, with the order they placed later if any */
+/* "Left at checkout": everyone who typed their details at checkout (kept for good; the page shows the dates picked), newest first, with the order they placed later if any.
+   Lines removed with their ✕ are left out (still in the table, as removed = 1). */
 function checkout_leads(?string $from = null, ?string $to = null): array {
   $db = shop_db();
-  if ($from !== null && $to !== null) { $s = $db->prepare('SELECT * FROM leads WHERE updated >= ? AND updated <= ? ORDER BY updated DESC'); $s->execute(["$from 00:00:00", "$to 23:59:59"]); $leads = $s->fetchAll(); }
-  else $leads = $db->query('SELECT * FROM leads ORDER BY updated DESC')->fetchAll();
+  if ($from !== null && $to !== null) { $s = $db->prepare('SELECT * FROM leads WHERE removed = 0 AND updated >= ? AND updated <= ? ORDER BY updated DESC'); $s->execute(["$from 00:00:00", "$to 23:59:59"]); $leads = $s->fetchAll(); }
+  else $leads = $db->query('SELECT * FROM leads WHERE removed = 0 ORDER BY updated DESC')->fetchAll();
   if (!$leads) return [];
   $orders = [];
   foreach ($db->query("SELECT no, phone, created FROM orders WHERE status <> 'awaiting' AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;

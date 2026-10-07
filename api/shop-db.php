@@ -46,6 +46,10 @@ function shop_db(): PDO {
     try { $SHOP_DB->exec("ALTER TABLE orders ADD wa_optin INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '6');
   }
+  if (shop_setting('schema') === '6') {   // Left at checkout: 1 = the owner removed this line from the list with its ✕ (the row is kept)
+    try { $SHOP_DB->exec("ALTER TABLE leads ADD removed INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
+    shop_set('schema', '7');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
