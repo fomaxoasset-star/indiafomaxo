@@ -214,7 +214,7 @@ if ($tab === 'offer') {
     . '<div class="ofrow"><b>Popup</b><div class="ofwords">'
     . $word('title', 'Top line', 30, 'LIMITED TIME OFFER', ['Limited time offer', 'Flash sale', 'Festive sale', 'Diwali offer', 'Weekend sale', 'Mega sale', 'Special offer', 'New launch offer'])
     . '<label>% off<input type="number" name="pct" min="1" max="' . max(1, $best) . '" step="1" inputmode="numeric" value="' . ($O['pct'] ? (int)$O['pct'] : '') . '" placeholder="' . ($best ? "max $best" : 'No old prices') . '"' . ($best ? '' : ' disabled') . '></label>'
-    . $word('sub', 'Under the %', 40, 'on selected fragrances', ['on selected fragrances', 'on all fragrances', 'on perfumes', 'on car perfumes', 'on personal care', 'on gift sets', 'on everything', 'on your first order'])
+    . $word('sub', 'Under the %', 40, 'on selected fragrances', ['on selected fragrances', 'on selected products', 'on all fragrances', 'on perfumes', 'on car perfumes', 'on personal care', 'on gift sets', 'on everything', 'on your first order'])
     . $word('btn', 'Button', 24, 'Shop the offer', ['Shop the offer', 'Shop now', 'Grab the deal', 'Shop fragrances', 'See the offer'])
     . '</div></div>'
     . '<div class="ofrow"><b>Products</b>'
