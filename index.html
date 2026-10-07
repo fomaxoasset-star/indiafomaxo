@@ -1,6 +1,6 @@
 <!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}</style>
 <!--seo--><link rel="canonical" href="https://fomaxo.in/"><meta property="og:url" content="https://fomaxo.in/"><meta property="og:type" content="website"><meta property="og:site_name" content="FOMAXO India">
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://fomaxo.in/#org","name":"FOMAXO","url":"https://fomaxo.in/","sameAs":["https://www.instagram.com/fomaxo_india/","https://fomaxo.com/"]},{"@type":"WebSite","@id":"https://fomaxo.in/#site","name":"FOMAXO India","url":"https://fomaxo.in/","publisher":{"@id":"https://fomaxo.in/#org"},"inLanguage":"en-IN"}]}</script><!--/seo--><!-- the shop's address and details for Google; api/seo.php swaps this block on each /product/… page -->
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://fomaxo.in/#org","name":"FOMAXO","url":"https://fomaxo.in/","sameAs":["https://www.instagram.com/fomaxo_india/","https://fomaxo.com/"]},{"@type":"WebSite","@id":"https://fomaxo.in/#site","name":"FOMAXO India","url":"https://fomaxo.in/","publisher":{"@id":"https://fomaxo.in/#org"},"inLanguage":"en-IN"}]}</script><!--/seo--><!-- the shop's address and details for Google; api/seo.php swaps this block on each /fomaxo-<name> product page -->
 <title>FOMAXO — Luxury Personal Care</title>
 <meta name="description" content="FOMAXO — luxury personal care founded in Dubai: fragrance, hair, body, face, lip and car care.">
 <meta name="theme-color" content="#050505">
@@ -3147,7 +3147,7 @@ function product(id, q){
     : [[ICON.lasting,'Smart Scent Technology for lasting wear'],[ICON.gift,'Premium packaging, ready to gift'],[ICON.pen,'Custom engraving on request'],[ICON.truck,'Free delivery across India']];
   const related = isCar ? [...CAR.filter(x => x.id !== p.id), ...FRAG].slice(0, 4) : isCare ? PC.filter(x => x.id !== p.id).sort((a, b) => (b.cat === p.cat) - (a.cat === p.cat)).slice(0, 4) : FRAG.filter(x => x.id !== p.id).slice(0, 4);
   const ship = S.shipping.length ? S.shipping.map(s => `<p>${esc(s)}</p>`).join('') : `<p class="ph">Add your delivery &amp; returns information in assets/data.js.</p>`;
-  document.title = `${p.kind === 'care' ? p.name : p.name + ' ' + String(p.family || '').split(' · ')[0]} — FOMAXO`;   // as on /product/… for Google (api/seo.php)
+  document.title = `${p.kind === 'care' ? p.name : p.name + ' ' + String(p.family || '').split(' · ')[0]} — FOMAXO`;   // as on its /fomaxo-<name> address for Google (api/seo.php)
   const wide = matchMedia('(min-width: 961px)').matches;   /* laptop: every section starts closed so the page fits one screen */
   return `<div class="wrap page-fade">
     <div class="crumbs pdp-crumbs" style="padding-top:34px"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${isCare ? '<a href="#/personal-care">Personal Care</a>' : '<a href="#/fragrances?f=fragrance">Fragrance</a>'}${isCar ? ' &nbsp;/&nbsp; <a href="#/fragrances?f=car">Car Fragrance</a>' : ''} &nbsp;/&nbsp; ${esc(p.name)}</div>

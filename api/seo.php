@@ -1,10 +1,11 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — real addresses for Google.
-   GET /product/<id>  → index.html with this product's title, description, photo, canonical address and Product data
+   GET /fomaxo-<name> → index.html with this product's title, description, photo, canonical address and Product data
                         (price, ₹, stock, star rating) in the page head. <base href="/"> keeps photos and scripts loading from
                         the site root, and a tiny script at the top turns the address into /#/product/<id> before the shop
                         starts, so it opens the product page exactly as before.
+   GET /product/<id>  → moves (301) to that product's /fomaxo-<name> address.
    GET /sitemap.xml   → the home page and every product on sale.
    Both come here through the rewrite rules in the root .htaccess. Names, prices, photos, hidden products and stock follow
    the admin page, as on the site. */
@@ -72,6 +73,14 @@ function seo_size_name(array $p, string $k): string {
   if ($p['kind'] === 'set') return "$k ml set";
   return "$k ml";
 }
+/* the product's own address, made from its name as on fomaxo.com: fomaxo.in/fomaxo-gold, fomaxo.in/fomaxo-avo-kiss-lip-balm.
+   Two products with the same name: the later one uses its id instead. */
+function seo_slug(string $s): string { return trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($s)) ?? '', '-'); }
+function seo_urls(array $all): array {
+  $out = []; $taken = [];
+  foreach ($all as $id => $p) { $s = seo_slug($p['name']) ?: seo_slug((string)$id); if (isset($taken[$s])) $s = seo_slug((string)$id); $taken[$s] = 1; $out[$id] = $s; }
+  return $out;
+}
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_HTML5, 'UTF-8'); }
 
 $page = (string)($_GET['p'] ?? '');
@@ -82,8 +91,9 @@ if ($page === 'sitemap') {
   $mod = gmdate('Y-m-d', (int)@filemtime(dirname(__DIR__) . '/index.html') ?: time());
   echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
   echo '  <url><loc>' . SITE . "/</loc><lastmod>$mod</lastmod></url>\n";
-  foreach (seo_products() as $p) {
-    echo '  <url><loc>' . SITE . '/product/' . h($p['id']) . "</loc><lastmod>$mod</lastmod>";
+  $all = seo_products(); $slugs = seo_urls($all);
+  foreach ($all as $id => $p) {
+    echo '  <url><loc>' . SITE . '/fomaxo-' . h($slugs[$id]) . "</loc><lastmod>$mod</lastmod>";
     foreach (array_slice($p['images'], 0, 5) as $im) echo '<image:image><image:loc>' . h($im) . '</image:loc></image:image>';
     echo "</url>\n";
   }
@@ -91,14 +101,20 @@ if ($page === 'sitemap') {
   exit;
 }
 
-/* ---- /product/<id> ---- */
-$id = (string)($_GET['id'] ?? '');
+/* ---- one product: /fomaxo-<name> ---- */
+$want = seo_slug((string)($_GET['id'] ?? ''));   // /fomaxo-<name> (or /product/<id>, which moves to the name address)
 $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
 if ($html === '') { http_response_code(503); exit; }
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-cache');
-$all = preg_match('/^[a-z0-9-]{1,48}$/', $id) ? seo_products() : [];
+$all = $want !== '' && strlen($want) <= 80 ? seo_products() : []; $slugs = seo_urls($all);
+$id = (string)(array_search($want, $slugs, true) ?: (isset($all[$want]) ? $want : ''));
 $p = $all[$id] ?? null;
+if ($p && ($_GET['p'] ?? '') !== 'name' || $p && $slugs[$id] !== $want) {
+  $q = $_GET; unset($q['p'], $q['id']);
+  header('Location: ' . SITE . '/fomaxo-' . $slugs[$id] . ($q ? '?' . http_build_query($q) : ''), true, 301); exit;
+}
+if (!$p) $id = $want;
 $hash = '#/product/' . $id;   // the address the shop itself uses; ?size=… and ?utm_… ride along after it
 $qs = (string)($_SERVER['QUERY_STRING'] ?? '');
 parse_str($qs, $q); unset($q['p'], $q['id']);
@@ -112,7 +128,7 @@ if (!$p) {   // unknown or hidden product: the shop's own "not found" page, and 
   exit;
 }
 
-$url = SITE . '/product/' . $p['id'];
+$url = SITE . '/fomaxo-' . $slugs[$id];
 $offers = [];
 foreach ($p['sizes'] as $k => $s) { $k = (string)$k; $offers[] = ['@type' => 'Offer', 'name' => seo_size_name($p, $k), 'sku' => "$p[id]-$k",
   'url' => $url . (count($p['sizes']) > 1 ? '?size=' . rawurlencode($k) : ''),
