@@ -333,11 +333,11 @@
 })();
 
 (function () {
-  /* Offer: the end date shows only for "Countdown to an end date", the note only for "Always on" */
+  /* Offer: the end date shows only for "Countdown" */
   var ofr = document.getElementById('offerForm');
   if (ofr) {
     var ofShow = function () { var m = (ofr.querySelector('input[name=mode]:checked') || {}).value;
-      ofr.querySelector('.ofend').hidden = m !== 'end'; ofr.querySelector('.ofalw').hidden = m !== 'always'; };
+      ofr.querySelector('.ofend').hidden = m !== 'end'; };
     ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
   }
 })();
@@ -375,7 +375,7 @@
   var newHTML = function () {
     var isNew = (newp.querySelector('input[name=np_kind]:checked') || {}).value === 'new', sel = newp.querySelector('select[name=np_id]');
     var opt = sel.options[sel.selectedIndex], img = opt ? opt.dataset.img : '', name = val(newp, 'np_name') || (opt && opt.value ? opt.textContent.replace(/ \(hidden\)$/, '') : '');
-    var note = !newp.querySelector('input[name=np_on]').checked ? 'On is not ticked, so this popup will not show.' : !name ? 'Write the product name, or pick the product.' : '';
+    var note = !document.querySelector('input[name=np_on]').checked ? 'On is not ticked, so this popup will not show.' : !name ? 'Write the product name, or pick the product.' : '';
     return [note, '<p class="pv-k">' + (isNew ? 'Just arrived' : 'Coming soon') + '</p>' + (img ? '<img class="pv-img" src="' + esc(img) + '" alt="">' : '')
       + '<p class="pv-name">' + esc(name || 'Product name') + '</p>' + (val(newp, 'np_line') ? '<p class="pv-on">' + esc(val(newp, 'np_line')) + '</p>' : '')
       + '<span class="pv-go">' + (isNew ? 'Shop now' : 'Explore FOMAXO') + '</span><span class="pv-no">Close</span>'];
