@@ -122,6 +122,29 @@
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
+  /* Left at checkout: ✕ on a line asks first, then removes it from the list without reloading (and from a big copy, if one is open) */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-lead]');
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!confirm('Remove ' + b.dataset.who + ' from Left at checkout?')) return;
+    var lts = b.closest('[data-csrf]'), fd = new FormData();
+    fd.append('csrf', lts ? lts.dataset.csrf : ''); fd.append('action', 'lead_remove'); fd.append('sid', b.dataset.lead); fd.append('js', '1');
+    b.disabled = true;
+    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) throw 0;
+      document.querySelectorAll('.lt[data-sid="' + b.dataset.lead + '"]').forEach(function (row) {
+        var box = row.closest('.box'); row.classList.add('going');
+        setTimeout(function () {
+          row.remove();
+          var n = box.querySelectorAll('.lt').length, c = box.querySelector('.lt-n');
+          if (c) c.textContent = n + (n === 1 ? ' person' : ' people');
+          if (!n && !box.querySelector('.lts .empty')) box.querySelector('.lts').insertAdjacentHTML('beforeend', '<p class="empty">Nobody left in this list for these dates.</p>');
+        }, 250);
+      });
+    }).catch(function () { b.disabled = false; alert('Could not remove it. Please reload the page and try again.'); });
+  }, true);
+
   /* Reviews: an emoji button under the reply box goes in where the cursor is */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-emo]');

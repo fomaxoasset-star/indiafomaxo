@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '47';
+const ASSET_V = '48';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -230,6 +230,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'offer_save') { $msg = save_offer(); go(['tab' => 'offer'], $msg); }
   if ($a === 'newprod_save') { go(['tab' => 'offer'], save_newprod($CAT)); }
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
+  if ($a === 'lead_remove') {   // Left at checkout ✕: hide that line from the list (admin.js sends it without reloading the page)
+    shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid = ?')->execute([(string)($_POST['sid'] ?? '')]);
+    if (!empty($_POST['js'])) { header('Content-Type: application/json'); echo '{"ok":true}'; exit; }
+    go(['tab' => 'analytics'], 'Removed from Left at checkout.');
+  }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
     go(['tab' => 'expenses'], 'Expense deleted.');
