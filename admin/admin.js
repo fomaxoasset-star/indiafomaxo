@@ -325,15 +325,15 @@
       var bw = Math.max(1, iw / n - gap), out = '';
       for (var g = 0; g <= 2; g++) {
         var y = padT + ih - ih * g / 2;
-        out += '<line x1="' + padL + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" stroke="#2e2a21" stroke-width="1"/>'
-          + '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" fill="#a59c89" font-size="11">' + short(max * g / 2, money) + '</text>';
+        out += '<line x1="' + padL + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" style="stroke:var(--line)" stroke-width="1"/>'
+          + '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" style="fill:var(--muted)" font-size="11">' + short(max * g / 2, money) + '</text>';
       }
       var every = Math.ceil(n / (W < 420 ? 6 : 12));
       vals.forEach(function (v, i) {
         var x = padL + i * (iw / n) + gap / 2, h = v > 0 ? Math.max(2, ih * v / max) : 0, y = padT + ih - h, r = Math.min(4, bw / 2, h);
-        if (h > 0) out += '<path d="M' + x + ',' + (padT + ih) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + y + ' ' + (x + bw) + ',' + (y + r) + 'V' + (padT + ih) + 'Z" fill="#c9a45c"/>';
+        if (h > 0) out += '<path d="M' + x + ',' + (padT + ih) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + y + ' ' + (x + bw) + ',' + (y + r) + 'V' + (padT + ih) + 'Z" style="fill:var(--gold)"/>';
         out += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * iw / n) + '" y="' + padT + '" width="' + (iw / n) + '" height="' + ih + '" fill="transparent"/>';
-        if (i % every === 0) out += '<text x="' + (x + bw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" fill="#a59c89" font-size="11">' + d.labels[i] + '</text>';
+        if (i % every === 0) out += '<text x="' + (x + bw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" style="fill:var(--muted)" font-size="11">' + d.labels[i] + '</text>';
       });
       svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = out;
       var tot = vals.reduce(function (a, b) { return a + b; }, 0);
@@ -363,17 +363,17 @@
       var X = function (i) { return padL + (n === 1 ? iw / 2 : iw * i / (n - 1)); }, Y = function (v) { return padT + ih - ih * (v - lo) / (hi - lo); };
       var out = '', steps = lo < 0 ? [lo, 0, hi] : [0, hi / 2, hi];
       steps.forEach(function (v) {
-        out += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="' + (v === 0 && lo < 0 ? '#5a4c2e' : '#2e2a21') + '" stroke-width="1"/>'
-          + '<text x="' + (padL - 8) + '" y="' + (Y(v) + 4) + '" text-anchor="end" fill="#a59c89" font-size="11">' + short(v, money) + '</text>';
+        out += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" style="stroke:var(' + (v === 0 && lo < 0 ? '--muted' : '--line') + ')" stroke-width="1"/>'
+          + '<text x="' + (padL - 8) + '" y="' + (Y(v) + 4) + '" text-anchor="end" style="fill:var(--muted)" font-size="11">' + short(v, money) + '</text>';
       });
       var pts = vals.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
-      out += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#c9a45c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+      out += '<polyline points="' + pts.join(' ') + '" fill="none" style="stroke:var(--gold)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
       var every = Math.ceil(n / (W < 420 ? 6 : 12)), r = n > 60 ? 2.5 : 3.5;
       vals.forEach(function (v, i) {
-        out += '<circle class="dot" data-i="' + i + '" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + r + '" fill="' + (v < 0 ? '#d46a5a' : '#e3c68a') + '" stroke="#16140f" stroke-width="1.5"/>';
+        out += '<circle class="dot" data-i="' + i + '" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + r + '" style="fill:var(' + (v < 0 ? '--red' : '--gold2') + ');stroke:var(--panel)" stroke-width="1.5"/>';
         var w = n === 1 ? iw : iw / (n - 1);
         out += '<rect class="hit" data-i="' + i + '" x="' + (X(i) - w / 2) + '" y="' + padT + '" width="' + w + '" height="' + ih + '" fill="transparent"/>';
-        if (i % every === 0) out += '<text x="' + X(i) + '" y="' + (H - 4) + '" text-anchor="' + (i === 0 && n > 1 ? 'start' : 'middle') + '" fill="#a59c89" font-size="11">' + G.labels[i] + '</text>';
+        if (i % every === 0) out += '<text x="' + X(i) + '" y="' + (H - 4) + '" text-anchor="' + (i === 0 && n > 1 ? 'start' : 'middle') + '" style="fill:var(--muted)" font-size="11">' + G.labels[i] + '</text>';
       });
       svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = out;
       var tot = vals.reduce(function (a, b) { return a + b; }, 0);

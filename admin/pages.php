@@ -432,8 +432,48 @@ if ($tab === 'expenses') {
 /* ============ Analytics ============ */
 if ($tab === 'analytics') {
   $D = pick_dates('analytics'); $from = $D['from']; $to = $D['to'];
+  $cv = isset($_GET['cv']);   // Overview | Conversion, both on the same date bar
+  $body .= '<div class="atop"><span class="seg aview"><a href="' . h(self_url(['tab' => 'analytics'])) . '"' . ($cv ? '' : ' class="on"') . '>Overview</a><a href="' . h(self_url(['tab' => 'analytics', 'cv' => 1])) . '"' . ($cv ? ' class="on"' : '') . '>Conversion</a></span>'
+    . date_bar($D, $cv ? ['cv' => '1'] : [], '. Your own visits and bots are not counted.') . '</div>';
+}
+if ($tab === 'analytics' && $cv) {
+  $C = conversion_stats($from, $to, $CAT);
+  $pc = fn($a, $b) => $b ? round($a / $b * 100, 1) . '%' : '–';
+  $since = '<p class="muted small cvs">Counting since ' . h(dmy($C['since'])) . '.</p>';
+  $body .= $sw('#cvPanes', ['products' => 'Products', 'checkout' => 'Checkout', 'campaigns' => 'Campaigns', 'scroll' => 'Homepage scroll']) . '<div class="cv panes" id="cvPanes">';
+  /* 1. products */
+  $body .= '<div class="box c-prod on" data-pane="products"><div class="bh"><h3>Products: viewed → bag → bought</h3></div><div class="bb np"><table class="grid ctab"><thead><tr><th>Product</th><th class="r">Viewed</th><th class="r">To bag</th><th class="r">Orders</th><th class="r">Units</th><th class="r">Buy rate</th></tr></thead><tbody>';
+  if (!$C['products']) $body .= '<tr><td colspan="6" class="empty">No product views in these dates.</td></tr>';
+  foreach ($C['products'] as $id => $x) $body .= '<tr><td><div class="pc">' . $thumbOf($id, 'th sm') . '<b>' . h($x['name']) . '</b></div></td><td class="r">' . number_format($x['viewed']) . '</td><td class="r">' . number_format($x['bag']) . '</td><td class="r">' . number_format($x['orders']) . '</td><td class="r">' . number_format($x['units']) . '</td><td class="r"><b>' . ($x['viewed'] ? $pc($x['orders'], $x['viewed']) : '–') . '</b></td></tr>';
+  $body .= '</tbody></table><p class="muted small cvn">Viewed and To bag count visits. Buy rate = orders ÷ viewed. Free items are not counted.</p></div></div>';
+  /* 2. checkout drop-off */
+  $st = $C['steps']; $top = max(1, ...array_values($st));
+  $rows = [['Opened checkout', $st['checkout'], null], ['Typed name or mobile', $st['typed'], $st['checkout']], ['Reached payment choice', $st['pay'], $st['typed']], ['Opened Razorpay page', $st['card'], null], ['Bought', $st['buy'], $st['pay']]];
+  $body .= '<div class="box c-drop" data-pane="checkout"><div class="bh"><h3>Checkout drop-off</h3></div><div class="bb"><div class="fun cfun">';
+  foreach ($rows as [$label, $n, $before]) $body .= '<div class="st"><span>' . $label . ($before !== null && $before > $n ? ' <span class="stop">' . number_format($before - $n) . ' stopped</span>' : '') . '</span><b>' . number_format($n) . '</b><span class="bar"><i style="width:' . round($n / $top * 100, 1) . '%"></i></span></div>';
+  $E = $C['empty'];
+  $body .= '</div><p class="muted small cvn">Counted per visit. Cash on delivery orders skip the Razorpay page, so Bought is compared with Reached payment choice.</p>'
+    . '<table class="grid etab"><thead><tr><th>Box left empty</th><th class="r">People</th><th class="r">Share</th></tr></thead><tbody>';
+  foreach (['name' => 'Name', 'phone' => 'Mobile', 'state' => 'State', 'address' => 'Address', 'email' => 'Email (optional)'] as $k => $l) $body .= '<tr><td>' . $l . '</td><td class="r">' . number_format($E[$k]) . '</td><td class="r muted">' . $pc($E[$k], $E['people']) . '</td></tr>';
+  $body .= '</tbody></table><p class="muted small cvn">Of ' . number_format($E['people']) . ($E['people'] === 1 ? ' person' : ' people') . ' who typed details and did not order.</p>'
+    . '<p class="cvu">Card payments not finished: <b>' . number_format($C['unpaid']['n']) . '</b>' . ($C['unpaid']['n'] ? ' (' . rupees($C['unpaid']['total']) . ' total)' : '') . '</p>'
+    . '<p class="muted small cvs">Opened Razorpay page: counting since ' . h(dmy($C['since'])) . '.</p></div></div>';
+  /* 3. campaigns */
+  $body .= '<div class="box c-camp" data-pane="campaigns"><div class="bh"><h3>Campaigns</h3></div><div class="bb np"><table class="grid ctab"><thead><tr><th>Source / campaign</th><th class="r">Visits</th><th class="r">Bought</th><th class="r">Conv.</th><th class="r">Revenue</th></tr></thead><tbody>';
+  if (!$C['campaigns']) $body .= '<tr><td colspan="5" class="empty">No visits in these dates.</td></tr>';
+  foreach ($C['campaigns'] as $x) $body .= '<tr><td><b>' . h(SOURCES[$x['source']] ?? ucfirst($x['source'] ?: 'direct')) . '</b>' . ($x['campaign'] !== '' ? '<small class="cn">' . h($x['campaign']) . '</small>' : '') . '</td><td class="r">' . number_format($x['visits']) . '</td><td class="r">' . number_format($x['bought']) . '</td><td class="r">' . $pc($x['bought'], $x['visits']) . '</td><td class="r">' . ($x['revenue'] ? rupees($x['revenue']) : '–') . '</td></tr>';
+  $body .= '</tbody></table><p class="muted small cvn">Tag a post or ad link: fomaxo.in/?utm_source=instagram&amp;utm_campaign=diwali-post</p>' . str_replace('cvs">Counting', 'cvs cvn">Campaign names: counting', $since) . '</div></div>';
+  /* 4. homepage scroll */
+  $hm = $C['home'];
+  $body .= '<div class="box c-scroll" data-pane="scroll"><div class="bh"><h3>Homepage scroll</h3></div><div class="bb"><div class="fun cfun">';
+  foreach ([0 => 'Opened the homepage', 25 => 'Scrolled 25%', 50 => 'Scrolled 50%', 75 => 'Scrolled 75%', 100 => 'Reached the bottom'] as $m => $l) {
+    $n = $m ? $C['depth'][$m] : $hm;
+    $body .= '<div class="st"><span>' . $l . '</span><b>' . number_format($n) . ' <small class="muted">' . ($hm ? round($n / $hm * 100) . '%' : '–') . '</small></b><span class="bar"><i style="width:' . ($hm ? round($n / $hm * 100, 1) : 0) . '%"></i></span></div>';
+  }
+  $body .= '</div><p class="muted small cvn">Visits that opened the homepage. The site sends one small anonymous note at each depth, once per visit.</p>' . $since . '</div></div></div>';
+}
+if ($tab === 'analytics' && !$cv) {
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
-  $body .= date_bar($D, [], '. Your own visits and bots are not counted.');
   $body .= '<div class="kpis n8 strip" style="--n:8">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
     . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
