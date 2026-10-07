@@ -1758,6 +1758,8 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
 html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
 .psave i{font-style:normal;opacity:.7}
+.pl{display:inline-flex;align-items:baseline;gap:10px}
+.plab{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 .zoom-dot{position:absolute;right:24px;top:50%;z-index:2;width:68px;height:68px;margin-top:-34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:9px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:#1a140b;background:radial-gradient(circle at 35% 30%,#e9c98b,#b8883f);box-shadow:0 8px 24px -8px rgba(0,0,0,.6);pointer-events:none;transition:opacity .3s}
 .stage.zoom .zoom-dot{opacity:0}
 @media(max-width:600px){.zoom-dot{width:54px;height:54px;margin-top:-27px;right:14px;font-size:8px}}
@@ -2745,7 +2747,7 @@ const wasHTML = (p, size) => { const c = p.compareAt && p.compareAt[size]; retur
 const pctOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
 const offTag = (p, s) => { const n = pctOff(p, s); return n ? `<span class="off-tag">${n}% off</span>` : ''; };
 const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size);
-  if (m && cls === 'pprice') return `<span class="pnow">${n ? `<s class="pold">${money(p.compareAt[size], curOf(p))}</s>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
+  if (m && cls === 'pprice') return `<span class="pnow">${n ? `<span class="pl"><small class="plab">Regular price</small><s class="pold">${money(p.compareAt[size], curOf(p))}</s></span>` : ''}<span class="prow">${n ? '<span class="pl"><small class="plab">Offer price</small><span class="pprice">' + m + '</span></span>' : `<span class="pprice">${m}</span>`}${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
   return m ? `<span class="${cls}">${wasHTML(p, size)}${m}</span>` : `<span class="${cls} na">Price on request</span>`; };
 /* the limited-time offer set on Admin → Offer (STORE_LIVE.offer): end = the moment it ends (ms), 0 = always on with no clock.
    Prices are never changed here. The big % is the one typed on Admin → Offer, else the biggest real saving among products with an
