@@ -86,7 +86,7 @@ if ($tab === 'orders') {
     $btns = order_buttons($o);
     $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary>' . $orderThumb($o)
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
-      . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . '</small></span>'
+      . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small></span>'
       . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . ($o['coupon'] !== '' ? ' · <span class="cpn">' . h($o['coupon']) . '</span>' : '') . '</small></span>'
       . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . '</span></summary>'
       . '<div class="otop">' . order_tracker($o) . '</div>'
@@ -95,6 +95,7 @@ if ($tab === 'orders') {
     $body .= ($o['coupon'] !== '' ? '<p class="small muted">Coupon <b class="cpn">' . h($o['coupon']) . '</b> −' . rupees((int)$o['discount']) . '</p>' : '')
       . ($o['cod_fee'] ? '<p class="small muted">Cash on delivery fee ' . rupees((int)$o['cod_fee']) . '</p>' : '') . '<p><b>Total ' . rupees((int)$o['total']) . '</b></p></div>'
       . '<div><h4>Delivery</h4><p>' . h($o['name']) . '<br>' . h($o['address']) . '</p><p><a href="tel:' . h(preg_replace('/[^0-9+]/', '', $o['phone'])) . '">' . h($o['phone']) . '</a> · <a href="https://wa.me/' . h(preg_replace('/\D/', '', $o['phone'])) . '" target="_blank" rel="noopener">WhatsApp</a><br><a href="mailto:' . h($o['email']) . '">' . h($o['email']) . '</a></p>'
+      . '<p class="small ' . ((int)($o['wa_optin'] ?? 0) ? 'wa-in">✓ Wants order updates and offers on WhatsApp' : 'muted">Did not tick WhatsApp offers') . '</p>'
       . ($o['note'] ? '<p class="muted">Customer note: ' . h($o['note']) . '</p>' : '') . '</div>'
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
       . '<form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="status"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'

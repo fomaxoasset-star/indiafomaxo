@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '40';
+const ASSET_V = '41';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -283,13 +283,13 @@ if ($do === 'excel') {
   [$where, $args] = order_where($F);
   $s = shop_db()->prepare("SELECT * FROM orders$where ORDER BY id"); $s->execute($args);
   $head = ['Order no', 'Date', 'Status', 'Payment type', 'Razorpay payment ID', 'Items', 'Units', 'Subtotal (₹)', 'Coupon', 'Coupon discount (₹)', 'COD fee (₹)', 'Total (₹)',
-    'Customer', 'Mobile', 'Email', 'Address', 'City', 'State', 'PIN code', 'Customer note', 'Your note', 'Paid at'];
+    'Customer', 'Mobile', 'WhatsApp offers', 'Email', 'Address', 'City', 'State', 'PIN code', 'Customer note', 'Your note', 'Paid at'];
   $rows = [];
   foreach ($s as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $rows[] = [$o['no'] ?: '(not paid)', substr($o['created'], 0, 16), FOMAXO_STATUSES[$o['status']] ?? $o['status'], pay_label($o), $o['payment_id'],
       implode("\n", array_map(fn($r) => ltrim($r, '• '), explode("\n", (string)$o['rows_text']))), array_sum(array_map(fn($i) => (int)($i['qty'] ?? 0), $items)),
-      ($o['total'] - $o['cod_fee'] + $o['discount']) / 100, $o['coupon'], $o['discount'] / 100, $o['cod_fee'] / 100, $o['total'] / 100, $o['name'], $o['phone'], $o['email'], $o['address'], $o['city'], $o['state'], $o['pin'],
+      ($o['total'] - $o['cod_fee'] + $o['discount']) / 100, $o['coupon'], $o['discount'] / 100, $o['cod_fee'] / 100, $o['total'] / 100, $o['name'], $o['phone'], (int)($o['wa_optin'] ?? 0) ? 'Yes' : 'No', $o['email'], $o['address'], $o['city'], $o['state'], $o['pin'],
       $o['note'], $o['admin_note'], $o['paid_at'] ? substr($o['paid_at'], 0, 16) : ''];
   }
   send_sheet('FOMAXO-orders-' . date('Y-m-d'), $head, $rows);

@@ -42,6 +42,10 @@ function shop_db(): PDO {
     if ($SHOP_DB->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $SHOP_DB->exec("ALTER TABLE coupons MODIFY ends VARCHAR(16) NOT NULL DEFAULT ''");
     shop_set('schema', '5');
   }
+  if (shop_setting('schema') === '5') {   // the WhatsApp opt-in tick at checkout: 1 = the shopper asked for order updates and offers on WhatsApp
+    try { $SHOP_DB->exec("ALTER TABLE orders ADD wa_optin INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
+    shop_set('schema', '6');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -76,7 +80,7 @@ function shop_schema(PDO $db): void {
       note VARCHAR(300) NOT NULL DEFAULT '', payment_id VARCHAR(64) NOT NULL DEFAULT '', test INT NOT NULL DEFAULT 0,
       review VARCHAR(40) NOT NULL DEFAULT '', stock_taken INT NOT NULL DEFAULT 0, admin_note VARCHAR(500) NOT NULL DEFAULT '',
       updated VARCHAR(19) NOT NULL DEFAULT '', delivered_at VARCHAR(19) NULL, closed_at VARCHAR(19) NULL,
-      coupon VARCHAR(24) NOT NULL DEFAULT '', discount INT NOT NULL DEFAULT 0)$tail",
+      coupon VARCHAR(24) NOT NULL DEFAULT '', discount INT NOT NULL DEFAULT 0, wa_optin INT NOT NULL DEFAULT 0)$tail",
     "CREATE TABLE IF NOT EXISTS stock(product VARCHAR(48) NOT NULL, opt VARCHAR(16) NOT NULL, qty INT NOT NULL, PRIMARY KEY(product, opt))$tail",
     "CREATE TABLE IF NOT EXISTS products(id VARCHAR(48) NOT NULL PRIMARY KEY, added INT NOT NULL DEFAULT 0, hidden INT NOT NULL DEFAULT 0,
       data $text NOT NULL, sort INT NOT NULL DEFAULT 0, updated VARCHAR(19) NOT NULL DEFAULT '')$tail",
@@ -250,7 +254,7 @@ function shop_order_row(array $rec): array {
     'name' => $c['name'], 'phone' => $c['phone'], 'email' => $c['email'], 'address' => $c['address'], 'city' => $c['city'] ?? '',
     'state' => $c['state'] ?? '', 'pin' => $c['pin'] ?? '', 'note' => $c['note'] ?? '', 'payment_id' => $rec['payment'] ?? '',
     'test' => !empty($rec['test']) ? 1 : 0, 'review' => $rec['review'] ?? '', 'stock_taken' => !empty($rec['stock_taken']) ? 1 : 0, 'updated' => shop_now(),
-    'coupon' => (string)($rec['coupon'] ?? ''), 'discount' => (int)($rec['discount'] ?? 0)];
+    'coupon' => (string)($rec['coupon'] ?? ''), 'discount' => (int)($rec['discount'] ?? 0), 'wa_optin' => !empty($c['wa']) ? 1 : 0];
 }
 function shop_insert_order(PDO $db, array $rec): void {
   $row = shop_order_row($rec); $cols = array_keys($row);
@@ -263,7 +267,7 @@ function shop_rec(array $r): array {
     'rows' => $r['rows_text'] === '' ? [] : explode("\n", (string)$r['rows_text']),
     'ids' => array_values(array_unique(array_column(json_decode((string)$r['items'], true) ?: [], 'id'))),
     'cust' => ['name' => $r['name'], 'phone' => $r['phone'], 'email' => $r['email'], 'address' => $r['address'], 'city' => $r['city'],
-      'state' => $r['state'], 'pin' => $r['pin'], 'note' => $r['note']],
+      'state' => $r['state'], 'pin' => $r['pin'], 'note' => $r['note'], 'wa' => (int)($r['wa_optin'] ?? 0)],
     'payment' => $r['payment_id'], 'test' => (bool)$r['test'], 'review' => $r['review'], 'stock_taken' => (bool)$r['stock_taken'],
     'paid' => $r['paid_at'], 'cod' => $r['method'] === 'cod', 'admin_note' => $r['admin_note'], 'id' => (int)$r['id'],
     'coupon' => (string)($r['coupon'] ?? ''), 'discount' => (int)($r['discount'] ?? 0)];
