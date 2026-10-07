@@ -2192,6 +2192,21 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 .ofp-no:hover{color:var(--ivory)}
 @media(max-width:600px){.ofp-box{max-width:340px;padding:26px 18px 16px}.ofp-pct{font-size:48px}.ofp-cd{gap:6px;margin-top:16px}.ofp-cd b{font-size:22px}.ofp-cd span{font-size:9px;letter-spacing:.1em}.ofp-img{width:120px;height:150px;margin-top:14px}.ofp-items{gap:8px;margin-top:12px}.ofp-item{flex-basis:88px}.ofp-item img{width:88px;height:100px}.ofp-name{font-size:24px}.ofp-hurry{margin-top:14px;font-size:15px}.ofp-go{margin-top:14px}}
 @media(prefers-reduced-motion:reduce){.ofp,.ofp-box{transition:none}}
+/* ===== even spacing: one gap between every section on every page (tighter, and the same everywhere) ===== */
+:root{--gap:clamp(56px,6vw,88px)}
+section.sec{padding:var(--gap) 0}
+section.sec+section.sec,section+.final,section.sec+#store.sec{padding-top:0}
+.acro:last-child{margin-bottom:0}
+section.sec+section.sec.story{padding-top:var(--gap)}
+.perks-strip+section.sec{padding-top:var(--gap)}
+.sec-head{margin-bottom:clamp(26px,3vw,44px)}
+.final{padding:var(--gap) var(--pad)}
+.pc-shop{padding-bottom:var(--gap)}
+.phead{padding:clamp(32px,4.5vw,64px) 0 clamp(24px,2.8vw,40px)}
+.pdp{padding-bottom:var(--gap)}
+footer{padding-top:clamp(32px,3vw,44px)}
+@media(max-width:700px){:root{--gap:48px}}
+@media(max-width:980px){.co{padding-bottom:var(--gap)}}
 </style>
 </head><body>
 <script>document.body.classList.add("home")</script>
@@ -3198,7 +3213,7 @@ function product(id, q){
         <div id="rvList"><p class="rv-none">Loading reviews…</p></div><div class="rv-pager" id="rvPager" hidden><button type="button" class="rv-arrow" data-pg="-1" aria-label="Previous reviews">&#8249;</button><span id="rvPgInfo"></span><button type="button" class="rv-arrow" data-pg="1" aria-label="Next reviews">&#8250;</button></div></div>
     </div>
 
-    <section style="padding:80px 0 120px;border-top:1px solid var(--line)">
+    <section style="padding:var(--gap) 0;border-top:1px solid var(--line)">
       <div class="sec-head"><div class="t rv-up"><span class="eyebrow">You may also like</span><h2>Complete your <em class="metal">collection</em></h2></div></div>
       <div class="grid four${isCare ? ' pc-grid' : ''}">${related.map((r,i) => isCare ? pcCard(r, i) : card(r, {d:'d'+i})).join('')}</div>
     </section>
@@ -3287,11 +3302,11 @@ function collections(sub){
     ${S.tiers.map((t,i) => tierRow(t,i)).join('')}</div></section>` + finalCTA();
   if (sub === 'signature') return tierPage('signature');
   if (sub === 'mini'){ const m = S.mini; return pageHead('<a href="#/collections">Collections</a> / Mini', `Mini <em class="metal">Collection</em>`, m.text) +
-    `<section style="padding:60px 0 120px"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">10ml · pocket-sized</span><h2>${m.headline}</h2></div></div><div class="grid four">${m.products.map((id,i)=>card(P[id],{d:'d'+(i%4), size:10})).join('')}</div></div></section>` + finalCTA(); }
+    `<section style="padding:clamp(28px,4vw,56px) 0 var(--gap)"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">10ml · pocket-sized</span><h2>${m.headline}</h2></div></div><div class="grid four">${m.products.map((id,i)=>card(P[id],{d:'d'+(i%4), size:10})).join('')}</div></div></section>` + finalCTA(); }
   if (sub === 'gifting') return gifting();
   if (sub === 'name') return giftPage();
   if (sub === 'personal-care') return pageHead('<a href="#/collections">Collections</a> / Personal Care', `Personal Care <em class="metal">Collection</em>`, 'Luxury rituals for hair, body, face and lips — guided by the same principles as every FOMAXO perfume: simplicity, quality and recognisability.') +
-    `<section style="padding:60px 0 120px"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">Hair · body · face · lips</span><h2>Elevating everyday rituals</h2></div></div><div class="pc-grid">${PC.map((p,i)=>pcCard(p,i)).join('')}</div></div></section>` + finalCTA();
+    `<section style="padding:clamp(28px,4vw,56px) 0 var(--gap)"><div class="wrap"><div class="sec-head"><div class="t rv-up"><span class="eyebrow">Hair · body · face · lips</span><h2>Elevating everyday rituals</h2></div></div><div class="pc-grid">${PC.map((p,i)=>pcCard(p,i)).join('')}</div></div></section>` + finalCTA();
   if (sub === 'elite'){ location.replace('#/collections'); return ''; }
   if (sub === 'discovery'){ location.replace('#/fragrances'); return ''; }
   const tiles = [
@@ -3302,7 +3317,7 @@ function collections(sub){
     ['name','Exclusive Personalized Gifting','Your gift. Your scent. Your legacy. The highest form of personalisation: a perfume gifted after the client themselves.','gift-name-birthday']
   ];
   return pageHead('Collections', 'The <em class="metal">Collections</em>', 'From signature Eau de Parfum to personal care and bespoke gifting — explore the world of FOMAXO.') +
-    `<section style="padding:60px 0 120px"><div class="wrap"><div class="coll">${tiles.map(t => `<a class="rv-up" href="#/collections/${t[0]}"><img src="${IMG(t[3])}" alt="" loading="lazy"><div class="in"><span class="eyebrow">Collection</span><h3>${t[1]}</h3><p>${t[2]}</p><span class="link" style="align-self:flex-start">Explore →</span></div></a>`).join('')}</div></div></section>` + finalCTA();
+    `<section style="padding:clamp(28px,4vw,56px) 0 var(--gap)"><div class="wrap"><div class="coll">${tiles.map(t => `<a class="rv-up" href="#/collections/${t[0]}"><img src="${IMG(t[3])}" alt="" loading="lazy"><div class="in"><span class="eyebrow">Collection</span><h3>${t[1]}</h3><p>${t[2]}</p><span class="link" style="align-self:flex-start">Explore →</span></div></a>`).join('')}</div></div></section>` + finalCTA();
 }
 
 function gifting(){
@@ -3835,7 +3850,7 @@ function bindReviews(p){
 }
 
 /* #/review?t=… — the link a customer gets after a paid order */
-const reviewOrderPage = () => { document.title = 'Review your order — FOMAXO'; return pageHead('Review your order', 'Share your <em class="metal">experience</em>', 'Tell other customers what you thought. Your reviews will carry the Verified Purchaser badge.') + `<section style="padding:0 0 120px"><div class="wrap" id="rvOrder"><p class="rv-none">Loading your order…</p></div><div class="wrap rv-ctas"><a class="btn" href="#/fragrances">Continue Shopping</a><a class="btn line" href="#/contact">Contact Us</a></div></section>`; };
+const reviewOrderPage = () => { document.title = 'Review your order — FOMAXO'; return pageHead('Review your order', 'Share your <em class="metal">experience</em>', 'Tell other customers what you thought. Your reviews will carry the Verified Purchaser badge.') + `<section style="padding:0 0 var(--gap)"><div class="wrap" id="rvOrder"><p class="rv-none">Loading your order…</p></div><div class="wrap rv-ctas"><a class="btn" href="#/fragrances">Continue Shopping</a><a class="btn line" href="#/contact">Contact Us</a></div></section>`; };
 async function bindReviewOrder(token){
   const box = $('#rvOrder');
   try {
