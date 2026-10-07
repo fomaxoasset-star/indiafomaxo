@@ -339,11 +339,19 @@
     var ofShow = function () { var m = (ofr.querySelector('input[name=mode]:checked') || {}).value;
       ofr.querySelector('.ofend').hidden = m !== 'end'; };
     ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
-    /* Products: type or pick a name to add it; untick a picked one to take it out */
-    var add = ofr.querySelector('.ofadd');
-    if (add) add.addEventListener('input', function () {
-      var v = add.value.trim().toLowerCase(), hit = [].slice.call(ofr.querySelectorAll('input[name="items[]"]')).filter(function (i) { return i.dataset.name.toLowerCase() === v; })[0];
-      if (hit) { hit.checked = true; add.value = ''; hit.dispatchEvent(new Event('change', {bubbles: true})); }
+    /* Products (popup and line): type or pick a name to add it; untick a picked one to take it out */
+    ofr.querySelectorAll('.ofpick').forEach(function (pk) {
+      var add = pk.querySelector('.ofadd');
+      add.addEventListener('input', function () {
+        var v = add.value.trim().toLowerCase(), hit = [].slice.call(pk.querySelectorAll('.ofit input')).filter(function (i) { return i.dataset.name.toLowerCase() === v; })[0];
+        if (hit) { hit.checked = true; add.value = ''; hit.dispatchEvent(new Event('change', {bubbles: true})); }
+      });
+    });
+    /* Line by prices: "Same as popup" picks the popup's products */
+    var same = ofr.querySelector('[data-ofsame]');
+    if (same) same.addEventListener('click', function () {
+      ofr.querySelectorAll('input[name="lines[]"]').forEach(function (i) { i.checked = !!ofr.querySelector('input[name="items[]"][value="' + i.value + '"]:checked'); });
+      ofr.dispatchEvent(new Event('change', {bubbles: true}));
     });
   }
 })();
@@ -378,20 +386,20 @@
       + '<p class="pv-on">' + esc(val(sale, 'sub') || 'on selected fragrances') + '</p>' + items + cd
       + '<p class="pv-hurry">HURRY UP!!!</p><span class="pv-go">' + esc(val(sale, 'btn') || 'Shop the offer') + '</span><span class="pv-no">No thanks</span>'];
   };
-  /* the line by sale prices: on a shop card and on the product page, for the first ticked product (or the one with the biggest saving) */
+  /* the line by sale prices: on a shop card for each product picked for the line, and on a product page */
   var lineHTML = function () {
     var mode = (sale.querySelector('input[name=mode]:checked') || {}).value;
-    var i = sale.querySelector('input[name="items[]"]:checked') || sale.querySelector('input[name="items[]"]');
-    var note = mode === 'off' ? 'The timer is Off, so the line will not show.' : !sale.querySelector('input[name=line]').checked ? 'Line by prices is not ticked, so the line will not show.' : !i ? 'No product has an old price yet, so the line will not show.' : '';
-    if (!i) return [note, '<p class="pv-on">No product with an old price.</p>'];
-    var d = i.dataset, end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
+    var picked = [].slice.call(sale.querySelectorAll('input[name="lines[]"]:checked'));
+    var note = mode === 'off' ? 'The timer is Off, so the line will not show.' : !picked.length ? 'No product is picked for the line, so it will not show.' : '';
+    if (!picked.length) return [note, '<p class="pv-on">Pick products under Line by prices.</p>'];
+    var end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
     var cd = mode === 'end' ? '<b>Ends in ' + Math.floor(left / 86400) + 'D ' + pad(Math.floor(left % 86400 / 3600)) + 'H ' + pad(Math.floor(left % 3600 / 60)) + 'M ' + pad(left % 60) + 'S</b>' : '';
     var clock = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
     var ln = function (cls) { return '<div class="pv-ofl ' + cls + (cd ? '' : ' nocd') + '"><span>' + clock + esc(val(sale, 'title') || 'Limited time offer') + '</span>' + cd + '</div>'; };
-    var price = (d.was ? '<s>' + esc(d.was) + '</s> ' : '') + '<span>' + esc(d.price) + '</span>';
-    return [note, '<p class="pv-lab">Shop card</p><div class="pv-card">' + (d.img ? '<img src="' + esc(d.img) + '" alt="">' : '<span class="pv-noimg"></span>')
-      + '<b>' + esc(d.name) + '</b><p class="pv-price">' + price + '</p>' + ln('cardl') + '</div>'
-      + '<p class="pv-lab">Product page</p><p class="pv-price big">' + price + '</p>' + ln('boxl')];
+    var price = function (d) { return (d.was ? '<s>' + esc(d.was) + '</s> ' : '') + '<span>' + esc(d.price) + '</span>'; };
+    return [note, '<p class="pv-lab">Shop cards (' + picked.length + ' product' + (picked.length > 1 ? 's' : '') + ')</p><div class="pv-cards">' + picked.map(function (i) { var d = i.dataset;
+        return '<div class="pv-card">' + (d.img ? '<img src="' + esc(d.img) + '" alt="">' : '<span class="pv-noimg"></span>') + '<b>' + esc(d.name) + '</b><p class="pv-price">' + price(d) + '</p>' + ln('cardl') + '</div>'; }).join('') + '</div>'
+      + '<p class="pv-lab">Product page</p><p class="pv-price big">' + price(picked[0].dataset) + '</p>' + ln('boxl')];
   };
   var newHTML = function () {
     var sel = newp.querySelector('select[name=np_id]'), opt = sel.options[sel.selectedIndex], img = opt ? opt.dataset.img : '';

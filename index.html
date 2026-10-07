@@ -2655,13 +2655,14 @@ const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], cu
 /* the limited-time offer set on Admin → Offer (STORE_LIVE.offer): end = the moment it ends (ms), 0 = always on with no clock.
    Prices are never changed here. The big % is the one typed on Admin → Offer, else the biggest real saving among products with an
    old price, and never more than that biggest real saving.
-   Products ticked on Admin → Offer (items) are the only ones in the offer; none ticked = every product with an old price. */
+   Products picked for the popup (items) set its % and tiles; none picked = every product with an old price. The line by prices shows only on the products picked for it (lines). */
 const OFFER = (() => { const o = LIVE.offer; if (!o || (o.end && o.end <= Date.now())) return null;
   const items = (o.items || []).filter(id => P[id]), pool = items.length ? items.map(id => P[id]) : [...S.products, ...PC];
   const best = Math.max(0, ...pool.flatMap(p => p.sizes.map(s => pctOff(p, s)))), pct = +o.pct > 0 ? Math.min(+o.pct, best) : best;
-  return {end: +o.end || 0, popup: !!o.popup && pct > 0, line: !!o.line, pct, items,
+  /* the line by prices goes on the products picked for it (saved before that: the popup's products, or all with an old price) */
+  const lines = o.lines ? o.lines.filter(id => P[id]) : !o.line ? [] : items.length ? items : pool.map(p => p.id);
+  return {end: +o.end || 0, popup: !!o.popup && pct > 0, line: lines.length > 0, lines, pct, items,
     title: o.title || 'Limited time offer', sub: o.sub || 'on selected fragrances', btn: o.btn || 'Shop the offer'}; })();
-const inOffer = p => !OFFER.items.length || OFFER.items.includes(p.id);
 /* a product's size with the biggest saving, for its price in the popup */
 const bestSize = p => p.sizes.reduce((a, s) => pctOff(p, s) > pctOff(p, a) ? s : a, p.sizes[0]);
 const offerLeft = () => { const t = Math.max(0, Math.floor((OFFER.end - Date.now()) / 1000)); return [Math.floor(t / 86400), Math.floor(t % 86400 / 3600), Math.floor(t % 3600 / 60), t % 60]; };
@@ -2669,7 +2670,7 @@ const pad2 = n => String(n).padStart(2, '0');
 const offerText = () => { const [d, h, m, s] = offerLeft(); return `Ends in ${d}D ${pad2(h)}H ${pad2(m)}M ${pad2(s)}S`; };
 const CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 /* the slim line by sale prices: a gold box on the product page, a plain line on shop cards; only on products with an old price */
-const offerLine = (p, cls) => OFFER && OFFER.line && inOffer(p) && p.sizes.some(s => pctOff(p, s) > 0)
+const offerLine = (p, cls) => OFFER && OFFER.lines.includes(p.id) && p.sizes.some(s => pctOff(p, s) > 0)
   ? `<div class="ofl ${cls}${OFFER.end ? '' : ' nocd'}"><span class="ofl-k">${CLOCK}${esc(OFFER.title)}</span>${OFFER.end ? `<b data-ofcd>${offerText()}</b>` : ''}</div>` : '';
 const fromHTML = p => { const v = p.sizes.map(s => p.prices[s]).filter(hasPrice); const mn = Math.min(...v), ms = p.sizes.find(s => p.prices[s] == mn); return v.length ? `<span class="price">${p.sizes.length > 1 ? '<small>from</small> ' : ''}${wasHTML(p, ms)}${money(mn, curOf(p))}</span>` : `<span class="price na">Price on request</span>`; };
 const pRateHTML = (r, n) => n

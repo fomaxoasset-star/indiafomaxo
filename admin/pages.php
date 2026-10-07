@@ -164,11 +164,11 @@ if ($tab === 'coupons') {
 /* ============ Offer: the limited-time offer popup and countdown lines, and the New product popup, on the website ============ */
 if ($tab === 'offer') {
   $O = shop_offer(); $left = $O['mode'] === 'end' && $O['end'] !== '' ? strtotime($O['end']) - time() : 0;
-  $what = implode(' + ', array_filter([$O['popup'] ? 'popup' : '', $O['line'] ? 'line by prices' : '']));
+  $what = implode(' + ', array_filter([$O['popup'] ? 'popup' : '', $O['lines'] ? 'line by prices on ' . count($O['lines']) . ' product' . (count($O['lines']) > 1 ? 's' : '') : '']));
   $best = fomaxo_best_pct($O['items'])[0];
   [$sk, $status] = match (true) {
     $O['mode'] === 'off' => ['off', 'Off. Nothing shows on the website.'],
-    $what === '' => ['off', 'Nothing shows: tick Popup or Line below.'],
+    $what === '' => ['off', 'Nothing shows: tick Popup, or pick products for the line.'],
     $O['mode'] === 'end' && $left <= 0 => ['end', 'Ended ' . offer_when($O['end']) . '. Nothing shows now.'],
     $O['mode'] === 'end' => ['on', 'On until ' . offer_when($O['end']) . ' (' . offer_left($left) . '): ' . $what . '.'],
     default => ['on', 'On, no timer: ' . $what . '.'],
@@ -188,9 +188,13 @@ if ($tab === 'offer') {
     $w = (float)($p['was'][$bk] ?? 0);
     return ' data-name="' . h($p['name']) . '" data-img="' . h($p['img'] ? '/' . $p['img'] : '') . '" data-price="' . h($r($p['prices'][$bk])) . '" data-was="' . h($w > $p['prices'][$bk] ? $r($w) : '') . '"'; };
   arsort($sale);
-  $picks = '';
-  foreach ($sale as $id => $n) $picks .= '<label class="ofit" title="' . h($CAT[$id]['name']) . '"><input type="checkbox" name="items[]" value="' . h($id) . '" data-pct="' . $n . '"' . $pv($id) . '' . (in_array($id, $O['items'], true) ? ' checked' : '') . '>'
-    . $thumbOf($id, 'th sm') . '<span>' . h($CAT[$id]['name']) . '</span><small>' . $n . '% off</small></label>';
+  /* a product picker: type or pick a name to add it; only the picked ones show, untick to take one out */
+  $picker = function (string $k, array $on, string $none, string $ph, string $extra = '') use ($sale, $CAT, $pv, $thumbOf) {
+    $c = '';
+    foreach ($sale as $id => $n) $c .= '<label class="ofit" title="' . h($CAT[$id]['name']) . '"><input type="checkbox" name="' . $k . '[]" value="' . h($id) . '" data-pct="' . $n . '"' . $pv($id) . (in_array($id, $on, true) ? ' checked' : '') . '>'
+      . $thumbOf($id, 'th sm') . '<span>' . h($CAT[$id]['name']) . '</span><small>' . $n . '% off</small></label>';
+    return '<div class="ofpick"><div class="ofaddrow"><input class="ofadd" list="ofw-items" placeholder="' . $ph . '" autocomplete="off" aria-label="' . $ph . '">' . $extra . '</div>'
+      . '<div class="ofits">' . $c . '<span class="ofnone muted small">' . $none . '</span></div></div>'; };
   /* a popup words box: type anything, or pick from the list (a datalist) */
   $word = fn(string $k, string $label, int $max, string $std, array $list) => '<label>' . $label . '<input name="' . $k . '" maxlength="' . $max . '" list="ofw-' . $k . '" value="' . h($O[$k]) . '" placeholder="' . h($std) . '" autocomplete="off">'
     . '<datalist id="ofw-' . $k . '">' . implode('', array_map(fn($v) => '<option value="' . h($v) . '">', $list)) . '</datalist></label>';
@@ -211,17 +215,16 @@ if ($tab === 'offer') {
     . '<span class="qbtns">' . implode('', array_map(fn($hh, $l) => '<button class="btn line sm" name="quick" value="' . $hh . '" title="Save, ending ' . $l . ' from now">' . $l . '</button>', [24, 48, 72, 168], ['24h', '48h', '3 days', '7 days'])) . '</span>'
     . '<span class="cpt2">' . date_box('end', substr($end, 0, 10), 'Ends on')
     . '<input type="time" name="end_time" value="' . h(strlen($end) > 10 ? substr($end, 11, 5) : '') . '" aria-label="End time (India time)" title="India time; empty = 11:59 pm"></span></div></div>'
-    . '<div class="ofrow"><b>Popup</b><div class="ofwords">'
+    . '<div class="ofrow"><div class="ofk"><b>Popup</b>' . $tick('popup', 'On') . '</div><div class="ofcol"><div class="ofwords">'
     . $word('title', 'Top line', 30, 'LIMITED TIME OFFER', ['Limited time offer', 'Flash sale', 'Festive sale', 'Diwali offer', 'Weekend sale', 'Mega sale', 'Special offer', 'New launch offer'])
     . '<label>% off<input type="number" name="pct" min="1" max="' . max(1, $best) . '" step="1" inputmode="numeric" value="' . ($O['pct'] ? (int)$O['pct'] : '') . '" placeholder="' . ($best ? "max $best" : 'No old prices') . '"' . ($best ? '' : ' disabled') . '></label>'
-    . $word('sub', 'Under the %', 40, 'on selected fragrances', ['on selected fragrances', 'on all fragrances', 'on perfumes', 'on car perfumes', 'on personal care', 'on gift sets', 'on everything', 'on your first order'])
+    . $word('sub', 'Under the %', 40, 'on selected fragrances', ['on selected fragrances', 'on selected products', 'on all fragrances', 'on perfumes', 'on car perfumes', 'on personal care', 'on gift sets', 'on everything', 'on your first order'])
     . $word('btn', 'Button', 24, 'Shop the offer', ['Shop the offer', 'Shop now', 'Grab the deal', 'Shop fragrances', 'See the offer'])
-    . '</div></div>'
-    . '<div class="ofrow"><b>Products</b>'
-    . ($sale ? '<div class="ofpick"><input class="ofadd" list="ofw-items" placeholder="Type or pick a product to add" autocomplete="off" aria-label="Add a product to the offer">'
-      . '<datalist id="ofw-items">' . implode('', array_map(fn($id, $n) => '<option value="' . h($CAT[$id]['name']) . '" label="' . $n . '% off">', array_keys($sale), $sale)) . '</datalist>'
-      . '<div class="ofits">' . $picks . '<span class="ofnone muted small">None picked: every product with an old price is in the offer.</span></div></div>' : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div>'
-    . '<div class="row ofbtns"><span class="oftk"><b>Show</b>' . $tick('popup', 'Popup') . $tick('line', 'Line by prices') . '</span><button class="btn">Save</button><button type="button" class="btn line" data-preview="sale">Preview</button><button class="btn danger sm" name="action" value="offer_off" formnovalidate data-confirm="Turn the sale offer off? The popup and lines leave the website.">Turn off</button></div>'
+    . '</div>' . ($sale ? $picker('items', $O['items'], 'None picked: the popup counts every product with an old price.', 'Add a product to the popup') : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div></div>'
+    . '<div class="ofrow"><div class="ofk"><b>Line by prices</b></div>'
+    . ($sale ? $picker('lines', $O['lines'], 'None picked: no line shows.', 'Add a product', '<button type="button" class="btn line sm" data-ofsame title="Pick the same products as the popup">Same as popup</button>') : '<p class="muted small" style="margin:0">Needs products with an old price.</p>') . '</div>'
+    . ($sale ? '<datalist id="ofw-items">' . implode('', array_map(fn($id, $n) => '<option value="' . h($CAT[$id]['name']) . '" label="' . $n . '% off">', array_keys($sale), $sale)) . '</datalist>' : '')
+    . '<div class="row ofbtns"><button class="btn">Save</button><button type="button" class="btn line" data-preview="sale">Preview</button><button class="btn danger sm" name="action" value="offer_off" formnovalidate data-confirm="Turn the sale offer off? The popup and lines leave the website.">Turn off</button></div>'
     . '</form></div></div>'
     /* box 2: the New product popup */
     . '<div class="box ofr" data-pane="new"><div class="bh"><h3>New product popup</h3><label class="cpon"><input type="checkbox" name="np_on" value="1" form="newpForm"' . ($N['on'] ? ' checked' : '') . '><span>On</span></label></div><div class="bb">'
