@@ -50,6 +50,11 @@ function shop_db(): PDO {
     try { $SHOP_DB->exec("ALTER TABLE leads ADD removed INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '7');
   }
+  if (shop_setting('schema') === '7') {   // Analytics → Conversion: the utm_campaign name each visit came with; conv_since = the day campaigns, the Razorpay step and homepage scroll started being counted
+    try { $SHOP_DB->exec("ALTER TABLE visits ADD campaign VARCHAR(60) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
+    if (shop_setting('conv_since') === null) shop_set('conv_since', date('Y-m-d'));
+    shop_set('schema', '8');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;

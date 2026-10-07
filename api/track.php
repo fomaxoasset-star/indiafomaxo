@@ -2,8 +2,9 @@
 declare(strict_types=1);
 /* FOMAXO India — visitor analytics, kept on this server (no Google or other trackers).
    POST (navigator.sendBeacon from index.html) {t: type, v: visitor id, s: visit id, src, p: path, id, opt, q, lead}
-   Types: view (page), product (product page), add (to bag), checkout, pay (payment step), buy (order placed), lead (checkout
-   details typed), ping (still on the site). Visitor and visit ids are random strings made in the browser; no IP address,
+   Types: view (page), product (product page), add (to bag), checkout, pay (payment step), card (the Razorpay payment page opened),
+   buy (order placed), lead (checkout details typed), scroll (how far down the homepage: q = 25, 50, 75 or 100, once each per visit),
+   ping (still on the site). c is the utm_campaign name in the link the visit came from, kept with the visit. Visitor and visit ids are random strings made in the browser; no IP address,
    name or cookie is stored for ordinary visits. Each visit's country and (in India) state are looked up from the IP address on this
    server (api/geo, DB-IP Lite); only the country and state are kept, never the address. Bots and the shop owner's own visits (signed in to /admin) are not counted. */
 require __DIR__ . '/store-lib.php';
@@ -22,7 +23,7 @@ $in = json_decode($raw, true); if (!is_array($in)) exit;
 $t = (string)($in['t'] ?? '');
 $id = fn($k) => preg_match('/^[a-z0-9]{8,16}$/', (string)($in[$k] ?? '')) ? (string)$in[$k] : '';
 $vid = $id('v'); $sid = $id('s');
-if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'buy', 'lead', 'ping'], true)) exit;
+if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping'], true)) exit;
 
 try {
   $db = shop_db(); $now = time();
@@ -57,9 +58,12 @@ try {
   $path = mb_substr(preg_replace('/[^\w\/\-.]/', '', (string)($in['p'] ?? '/')) ?? '/', 0, 120);
   $product = preg_match('/^[a-z0-9-]{1,48}$/', (string)($in['id'] ?? '')) ? (string)$in['id'] : '';
   $device = preg_match('/Mobi|Android|iPhone|iPad/i', $ua) ? 'phone' : 'computer';
+  $qty = max(0, min(99, (int)($in['q'] ?? 0)));
+  if ($t === 'scroll') { $qty = (int)($in['q'] ?? 0); if (!in_array($qty, [25, 50, 75, 100], true)) exit; }
+  $campaign = trim(preg_replace('/[^a-z0-9_.-]+/', '-', strtolower(substr((string)($in['c'] ?? ''), 0, 60))) ?? '', '-');   // e.g. ?utm_campaign=diwali-post
   $s = $db->prepare('SELECT 1 FROM visits WHERE sid = ?'); $s->execute([$sid]);
-  if (!$s->fetchColumn()) try { $db->prepare('INSERT INTO visits(sid, vid, started, last, source, device, pages, country, region) VALUES(?,?,?,?,?,?,?,?,?)')->execute([$sid, $vid, $now, $now, $src, $device, $t === 'view' ? 1 : 0, ...fomaxo_geo(fomaxo_geo_ip())]); } catch (Throwable $e) { /* the same visit, sent twice at once */ }
+  if (!$s->fetchColumn()) try { $db->prepare('INSERT INTO visits(sid, vid, started, last, source, device, pages, country, region, campaign) VALUES(?,?,?,?,?,?,?,?,?,?)')->execute([$sid, $vid, $now, $now, $src, $device, $t === 'view' ? 1 : 0, ...fomaxo_geo(fomaxo_geo_ip()), ...[$campaign]]); } catch (Throwable $e) { /* the same visit, sent twice at once */ }
   $db->prepare('INSERT INTO events(ts, vid, sid, type, source, path, product, qty, device) VALUES(?,?,?,?,?,?,?,?,?)')
-    ->execute([shop_now(), $vid, $sid, $t, $src, $path, $product, max(0, min(99, (int)($in['q'] ?? 0))), $device]);
+    ->execute([shop_now(), $vid, $sid, $t, $src, $path, $product, $qty, $device]);
   if ($t === 'buy') $db->prepare('UPDATE leads SET ordered = 1 WHERE sid = ?')->execute([$sid]);
 } catch (Throwable $e) { error_log('FOMAXO track: ' . $e->getMessage()); }

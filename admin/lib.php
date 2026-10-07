@@ -37,7 +37,7 @@ function date_box(string $name, string $ymd, string $label = '', bool $required 
     . '<input type="date" tabindex="-1" aria-label="Pick ' . h($label ?: 'a date') . ' from the calendar"></span></span>';
 }
 /* the date bar on each page: which quick buttons it has, and where it starts */
-const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
+const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
   'reports' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all']];
 const DATE_PRESETS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
 /* the first and last day of a quick button ('' for All); Year is the last 12 months */
@@ -610,6 +610,70 @@ function analytics(string $from, string $to, array $CAT): array {
   uasort($pr, fn($x, $y) => [$y['views'], $y['units']] <=> [$x['views'], $x['units']]);
   $out['products'] = $pr;
   return $out;
+}
+/* Analytics → Conversion: what turns visits into orders. Only real orders count (new, paid or delivered; not test, cancelled or refunded).
+   Campaign names, the Razorpay step and homepage scroll are counted from setting conv_since (the day they started being sent). */
+function conversion_stats(string $from, string $to, array $CAT): array {
+  $db = shop_db(); $a = ["$from 00:00:00", "$to 23:59:59"];
+  $q = function (string $sql, array $args = []) use ($db) { $s = $db->prepare($sql); $s->execute($args); return $s; };
+  $since = (string)(shop_setting('conv_since') ?? date('Y-m-d'));
+  $orders = $q('SELECT no, total, items FROM orders WHERE status IN ' . SALE_STATUSES . ' AND test = 0 AND created >= ? AND created <= ?', $a)->fetchAll();
+
+  /* 1. products: visits that opened it → visits that added it → orders and units (free items not counted) */
+  $pr = [];
+  foreach ($q("SELECT product, COUNT(DISTINCT CASE WHEN type = 'product' THEN sid END) v, COUNT(DISTINCT CASE WHEN type = 'add' THEN sid END) b
+               FROM events WHERE type IN ('product', 'add') AND product <> '' AND ts >= ? AND ts <= ? GROUP BY product", $a) as $r)
+    $pr[$r['product']] = ['viewed' => (int)$r['v'], 'bag' => (int)$r['b'], 'orders' => 0, 'units' => 0];
+  foreach ($orders as $o) {
+    $seen = [];
+    foreach (json_decode((string)$o['items'], true) ?: [] as $it) {
+      $id = (string)($it['id'] ?? ''); if ($id === '' || !empty($it['free']) || (int)($it['unit'] ?? 0) <= 0) continue;
+      $pr[$id] ??= ['viewed' => 0, 'bag' => 0, 'orders' => 0, 'units' => 0];
+      $pr[$id]['units'] += max(1, (int)($it['qty'] ?? 1));
+      if (!isset($seen[$id])) { $seen[$id] = 1; $pr[$id]['orders']++; }
+    }
+  }
+  foreach ($pr as $id => &$p) $p['name'] = $CAT[$id]['name'] ?? $id; unset($p);
+  uasort($pr, fn($x, $y) => [$y['viewed'], $y['orders']] <=> [$x['viewed'], $x['orders']]);
+
+  /* 2. checkout drop-off, per visit */
+  $n = fn(string $t) => (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
+  $steps = ['checkout' => $n('checkout'), 'typed' => (int)$q('SELECT COUNT(*) FROM leads WHERE created >= ? AND created <= ?', $a)->fetchColumn(),
+    'pay' => $n('pay'), 'card' => $n('card'), 'buy' => $n('buy')];
+  /* boxes left empty by people who typed details and did not order (then or later) */
+  $paidPhones = [];
+  foreach ($db->query("SELECT phone, created FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0") as $o) $paidPhones[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o['created'];
+  $empty = ['people' => 0, 'name' => 0, 'phone' => 0, 'state' => 0, 'address' => 0, 'email' => 0];
+  foreach ($q('SELECT name, phone, state, address, email, ordered, created FROM leads WHERE updated >= ? AND updated <= ?', $a) as $l) {
+    if ((int)$l['ordered']) continue;
+    foreach ($paidPhones[$l['phone']] ?? [] as $c) if ($l['phone'] !== '' && $c >= substr($l['created'], 0, 16)) continue 2;
+    $empty['people']++;
+    foreach (['name', 'phone', 'state', 'address', 'email'] as $k) if (trim((string)$l[$k]) === '') $empty[$k]++;
+  }
+  $unpaid = $q("SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders WHERE status = 'awaiting' AND test = 0 AND created >= ? AND created <= ?", $a)->fetch();
+
+  /* 3. campaigns: each visit by where it came from (utm_source, and utm_campaign since conv_since), the visits that bought and what they spent */
+  $t0 = strtotime($from); $t1 = strtotime("$to +1 day");
+  $camp = [];
+  foreach ($q('SELECT source, campaign, COUNT(*) n FROM visits WHERE started >= ? AND started < ? GROUP BY source, campaign', [$t0, $t1]) as $r)
+    $camp[$r['source'] . '|' . $r['campaign']] = ['source' => (string)$r['source'], 'campaign' => (string)$r['campaign'], 'visits' => (int)$r['n'], 'bought' => 0, 'revenue' => 0];
+  $rev = []; foreach ($orders as $o) $rev[strtolower((string)$o['no'])] = (int)$o['total'];
+  $done = [];
+  foreach ($q("SELECT e.sid, e.product, v.source, v.campaign FROM events e JOIN visits v ON v.sid = e.sid WHERE e.type = 'buy' AND v.started >= ? AND v.started < ?", [$t0, $t1]) as $r) {
+    $k = $r['source'] . '|' . $r['campaign']; if (!isset($camp[$k]) || !isset($rev[$r['product']])) continue;
+    if (!isset($done[$r['sid']])) { $done[$r['sid']] = 1; $camp[$k]['bought']++; }
+    $camp[$k]['revenue'] += $rev[$r['product']]; unset($rev[$r['product']]);
+  }
+  uasort($camp, fn($x, $y) => [$y['bought'], $y['visits']] <=> [$x['bought'], $x['visits']]);
+
+  /* 4. homepage scroll: visits that opened the homepage, and how many of them reached 25 / 50 / 75 / 100 % of it */
+  $sa = [max($a[0], "$since 00:00:00"), $a[1]];
+  $home = (int)$q("SELECT COUNT(DISTINCT sid) FROM events WHERE type = 'view' AND path = '/' AND ts >= ? AND ts <= ?", $sa)->fetchColumn();
+  $depth = [25 => 0, 50 => 0, 75 => 0, 100 => 0];
+  foreach ($q("SELECT qty, COUNT(DISTINCT sid) n FROM events WHERE type = 'scroll' AND ts >= ? AND ts <= ? GROUP BY qty", $sa) as $r) if (isset($depth[(int)$r['qty']])) $depth[(int)$r['qty']] = min($home, (int)$r['n']);
+
+  return ['since' => $since, 'products' => $pr, 'steps' => $steps, 'empty' => $empty, 'unpaid' => ['n' => (int)$unpaid['n'], 'total' => (int)$unpaid['t']],
+    'campaigns' => array_values($camp), 'home' => $home, 'depth' => $depth];
 }
 /* top countries, and visitors by Indian state, for the dates picked at the top (distinct visitors, from api/track.php's lookup) */
 function geo_stats(string $from, string $to): array {
