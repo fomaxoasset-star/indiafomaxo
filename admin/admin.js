@@ -139,11 +139,11 @@
   /* good: one short line on what they praised; bad: a clause on what FOMAXO is doing about it */
   var SG_TOPICS = [
     {k: /\b(damag|broken|leak|crack|missing|wrong (item|product)|fake|empty|fault|defect|not working|stopped working|nozzle)/i, nk: /./, good: [], bad: ['we will replace it for you right away'],
-      chk: ['We checked your order{n}, and you are right, your product was faulty.', 'We looked into your order{n}, and the problem you mentioned is real.'],
+      chk: ['{h} we checked and found your product was indeed faulty.', '{h} we looked into your order and found the product was indeed faulty.'],
       fix: ['We apologize, and FOMAXO will replace it and send you a special coupon for your next order 🙏', 'We sincerely apologize, so FOMAXO will send you a replacement and a special coupon for your next order 🙏']},
     {k: /long ?last|lasting|\blasts?\b|stays|all day|whole day|hours|longevity|fades?\b/i, nk: /not|n't|only|fades?\b|gone|less|short|weak/i, good: ['So happy it lasts all day for you', 'Glad it stays with you for hours'], bad: ['we are working to make it last longer']},
     {k: /deliver|shipping|courier|arrived|on time|dispatch|late\b|delay/i, nk: /late\b|delay|slow|took|not (yet )?(arrived|delivered|received)|never/i, good: ['Happy it reached you so quickly', 'Glad the delivery was smooth'], bad: ['we are making our deliveries faster'],
-      chk: ['We checked your order{n}, and you are right, it reached you later than it should have.', 'We looked into your delivery{n}, and it was delayed, just as you said.'],
+      chk: ['{h} we checked and found your delivery was indeed late.', '{h} we looked into your order and found the delivery was indeed late.'],
       fix: ['We apologize, and FOMAXO will send you a special coupon for your next order 🙏', 'We sincerely apologize, so FOMAXO will send you an exclusive coupon for your next order 🙏']},
     {k: /smell|scent|fragrance|aroma|perfume|notes?\b|fresh/i, nk: /(not|n't|no)\s+(like|nice|good|great|pleasant)|bad|harsh|too strong|weird|chemical|headache|alcohol/i, good: ['So glad you love the scent', 'Happy the fragrance won you over'], bad: ['your words on the scent go straight to our perfumers']},
     {k: /pack(ing|aging|aged)?\b|\bbox|bottle|wrap/i, nk: /broken|damag|poor|bad|torn|loose|cheap/i, good: ['Glad the packaging made it feel special', 'So happy you loved the box'], bad: ['we are improving our packing']},
