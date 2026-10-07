@@ -339,6 +339,12 @@
     var ofShow = function () { var m = (ofr.querySelector('input[name=mode]:checked') || {}).value;
       ofr.querySelector('.ofend').hidden = m !== 'end'; };
     ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
+    /* Products: type or pick a name to add it; untick a picked one to take it out */
+    var add = ofr.querySelector('.ofadd');
+    if (add) add.addEventListener('input', function () {
+      var v = add.value.trim().toLowerCase(), hit = [].slice.call(ofr.querySelectorAll('input[name="items[]"]')).filter(function (i) { return i.dataset.name.toLowerCase() === v; })[0];
+      if (hit) { hit.checked = true; add.value = ''; hit.dispatchEvent(new Event('change', {bubbles: true})); }
+    });
   }
 })();
 
@@ -372,20 +378,36 @@
       + '<p class="pv-on">' + esc(val(sale, 'sub') || 'on selected fragrances') + '</p>' + items + cd
       + '<p class="pv-hurry">HURRY UP!!!</p><span class="pv-go">' + esc(val(sale, 'btn') || 'Shop the offer') + '</span><span class="pv-no">No thanks</span>'];
   };
+  /* the line by sale prices: on a shop card and on the product page, for the first ticked product (or the one with the biggest saving) */
+  var lineHTML = function () {
+    var mode = (sale.querySelector('input[name=mode]:checked') || {}).value;
+    var i = sale.querySelector('input[name="items[]"]:checked') || sale.querySelector('input[name="items[]"]');
+    var note = mode === 'off' ? 'The timer is Off, so the line will not show.' : !sale.querySelector('input[name=line]').checked ? 'Line by prices is not ticked, so the line will not show.' : !i ? 'No product has an old price yet, so the line will not show.' : '';
+    if (!i) return [note, '<p class="pv-on">No product with an old price.</p>'];
+    var d = i.dataset, end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
+    var cd = mode === 'end' ? '<b>Ends in ' + Math.floor(left / 86400) + 'D ' + pad(Math.floor(left % 86400 / 3600)) + 'H ' + pad(Math.floor(left % 3600 / 60)) + 'M ' + pad(left % 60) + 'S</b>' : '';
+    var clock = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+    var ln = function (cls) { return '<div class="pv-ofl ' + cls + (cd ? '' : ' nocd') + '"><span>' + clock + esc(val(sale, 'title') || 'Limited time offer') + '</span>' + cd + '</div>'; };
+    var price = (d.was ? '<s>' + esc(d.was) + '</s> ' : '') + '<span>' + esc(d.price) + '</span>';
+    return [note, '<p class="pv-lab">Shop card</p><div class="pv-card">' + (d.img ? '<img src="' + esc(d.img) + '" alt="">' : '<span class="pv-noimg"></span>')
+      + '<b>' + esc(d.name) + '</b><p class="pv-price">' + price + '</p>' + ln('cardl') + '</div>'
+      + '<p class="pv-lab">Product page</p><p class="pv-price big">' + price + '</p>' + ln('boxl')];
+  };
   var newHTML = function () {
-    var isNew = (newp.querySelector('input[name=np_kind]:checked') || {}).value === 'new', sel = newp.querySelector('select[name=np_id]');
-    var opt = sel.options[sel.selectedIndex], img = opt ? opt.dataset.img : '', name = val(newp, 'np_name') || (opt && opt.value ? opt.textContent.replace(/ \(hidden\)$/, '') : '');
+    var sel = newp.querySelector('select[name=np_id]'), opt = sel.options[sel.selectedIndex], img = opt ? opt.dataset.img : '';
+    var isNew = !!(opt && opt.value && !/ \(hidden\)$/.test(opt.textContent)), name = val(newp, 'np_name') || (opt && opt.value ? opt.textContent.replace(/ \(hidden\)$/, '') : '');
     var note = !document.querySelector('input[name=np_on]').checked ? 'On is not ticked, so this popup will not show.' : !name ? 'Write the product name, or pick the product.' : '';
-    return [note, '<p class="pv-k">' + (isNew ? 'Just arrived' : 'Coming soon') + '</p>' + (img ? '<img class="pv-img" src="' + esc(img) + '" alt="">' : '')
+    return [note, '<p class="pv-k">' + esc(val(newp, 'np_label') || 'Coming soon') + '</p>' + (img ? '<img class="pv-img" src="' + esc(img) + '" alt="">' : '')
       + '<p class="pv-name">' + esc(name || 'Product name') + '</p>' + (val(newp, 'np_line') ? '<p class="pv-on">' + esc(val(newp, 'np_line')) + '</p>' : '')
       + '<span class="pv-go">' + (isNew ? 'Shop now' : 'Explore FOMAXO') + '</span><span class="pv-no">Close</span>'];
   };
   var draw = function () {
     if (!box) return;
-    var r = which === 'sale' ? saleHTML() : newHTML();
+    var r = which === 'sale' ? saleHTML() : which === 'line' ? lineHTML() : newHTML();
     box.querySelector('.pv-note').textContent = r[0]; box.querySelector('.pv-note').hidden = !r[0];
     var site = box.querySelector('.pv-site'); site.classList.toggle('light', !dark);
-    site.querySelector('.pv-box').innerHTML = '<span class="pv-x">×</span>' + r[1];
+    site.querySelector('.pv-box').classList.toggle('pv-plain', which === 'line');
+    site.querySelector('.pv-box').innerHTML = (which === 'line' ? '' : '<span class="pv-x">×</span>') + r[1];
     box.querySelectorAll('[data-pvmode]').forEach(function (b) { b.classList.toggle('on', (b.dataset.pvmode === 'dark') === dark); });
     box.querySelectorAll('[data-pvwhich]').forEach(function (b) { b.classList.toggle('on', b.dataset.pvwhich === which); });
   };
@@ -394,7 +416,7 @@
   var open = function (w) {
     which = w; close();
     box = document.createElement('div'); box.className = 'pvw';
-    box.innerHTML = '<div class="pv-bar"><span class="seg">' + (sale ? '<button type="button" data-pvwhich="sale">Sale popup</button>' : '') + (newp ? '<button type="button" data-pvwhich="new">New product popup</button>' : '')
+    box.innerHTML = '<div class="pv-bar"><span class="seg">' + (sale ? '<button type="button" data-pvwhich="sale">Sale popup</button><button type="button" data-pvwhich="line">Line by prices</button>' : '') + (newp ? '<button type="button" data-pvwhich="new">New product popup</button>' : '')
       + '</span><span class="seg"><button type="button" data-pvmode="dark">Dark</button><button type="button" data-pvmode="light">Light</button></span><button type="button" class="btn sm" data-pvclose>Close preview</button></div>'
       + '<p class="pv-note"></p><div class="pv-site"><div class="pv-box"></div></div><p class="muted small pv-foot">Preview only. Press Save on the page to put it on the website.</p>';
     box.addEventListener('click', function (e) {
@@ -403,7 +425,7 @@
       if (t && t.dataset.pvwhich) { which = t.dataset.pvwhich; draw(); }
     });
     document.body.appendChild(box); document.addEventListener('keydown', key); draw();
-    tick = setInterval(function () { if (which === 'sale') draw(); }, 1000);
+    tick = setInterval(function () { if (which !== 'new') draw(); }, 1000);
   };
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-preview]'); if (b) open(b.dataset.preview); });
 })();
