@@ -222,19 +222,18 @@ if ($tab === 'offer') {
       . '<datalist id="ofw-items">' . implode('', array_map(fn($id, $n) => '<option value="' . h($CAT[$id]['name']) . '" label="' . $n . '% off">', array_keys($sale), $sale)) . '</datalist>'
       . '<div class="ofits">' . $picks . '<span class="ofnone muted small">None picked: every product with an old price is in the offer.</span></div></div>' : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div>'
     . '<div class="row ofbtns"><span class="oftk"><b>Show</b>' . $tick('popup', 'Popup') . $tick('line', 'Line by prices') . '</span><button class="btn">Save</button><button type="button" class="btn line" data-preview="sale">Preview</button><button class="btn danger sm" name="action" value="offer_off" formnovalidate data-confirm="Turn the sale offer off? The popup and lines leave the website.">Turn off</button></div>'
-    . '<p class="muted small" style="margin:0">Prices never change here. Old prices are set on Products.</p>'
     . '</form></div></div>'
     /* box 2: the New product popup */
     . '<div class="box ofr" data-pane="new"><div class="bh"><h3>New product popup</h3><label class="cpon"><input type="checkbox" name="np_on" value="1" form="newpForm"' . ($N['on'] ? ' checked' : '') . '><span>On</span></label></div><div class="bb">'
     . '<p class="ofst ofst-' . $nsk . '">' . h($nstatus) . '</p>'
     . '<form method="post" class="cpf" id="newpForm">' . $csrfField . '<input type="hidden" name="action" value="newprod_save">'
-    . '<label>Type<input name="np_label" maxlength="24" list="ofw-np_label" value="' . h($N['label']) . '" placeholder="Coming soon" autocomplete="off">'
+    . '<div class="npgrid"><label>Type<input name="np_label" maxlength="24" list="ofw-np_label" value="' . h($N['label']) . '" placeholder="Coming soon" autocomplete="off">'
     . '<datalist id="ofw-np_label">' . implode('', array_map(fn($v) => '<option value="' . h($v) . '">', ['Coming soon', 'Just arrived', 'New launch', 'Launching soon', 'Back in stock', 'Now available', 'Only at FOMAXO'])) . '</datalist></label>'
-    . '<label>Product<select name="np_id">' . $opts . '</select></label>'
+    . '<label>Product<select name="np_id">' . $opts . '</select></label></div><div class="npgrid">'
     . '<label>Name<input name="np_name" maxlength="40" value="' . h($N['name']) . '" placeholder="' . h($np['name'] ?? 'Royal Oud') . '"></label>'
-    . '<label>Short line<input name="np_line" maxlength="90" value="' . h($N['line']) . '" placeholder="Optional, e.g. A warm new scent for evenings"></label>'
+    . '<label>Short line<input name="np_line" maxlength="90" value="' . h($N['line']) . '" placeholder="Optional"></label></div>'
     . '<div class="row ofbtns"><button class="btn">Save</button><button type="button" class="btn line" data-preview="new">Preview</button></div>'
-    . '<p class="muted small" style="margin:0">Shows once per visitor, before the sale popup. A product on the website gets a “Shop now” button; otherwise “Explore FOMAXO”.</p>'
+    . '<p class="muted small" style="margin:0">Shows once per visitor, before the sale popup.</p>'
     . '</form></div></div></div>';
 }
 
