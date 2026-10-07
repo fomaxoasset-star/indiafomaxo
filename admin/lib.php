@@ -321,13 +321,17 @@ function order_tracker(array $o): string {
    Returns the message to show ('!' first when nothing was saved). */
 function save_offer(): string {
   $mode = in_array($_POST['mode'] ?? '', ['end', 'always', 'off'], true) ? $_POST['mode'] : 'off';
-  $o = ['mode' => $mode, 'end' => shop_offer()['end'], 'popup' => !empty($_POST['popup']), 'line' => !empty($_POST['line']), 'pct' => 0];
+  $o = ['mode' => $mode, 'end' => shop_offer()['end'], 'popup' => !empty($_POST['popup']), 'line' => !empty($_POST['line']), 'pct' => 0,
+    'title' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['title'] ?? ''))), 0, 30),
+    'sub' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['sub'] ?? ''))), 0, 40),
+    'btn' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['btn'] ?? ''))), 0, 24),
+    'items' => array_values(array_intersect(array_map('strval', (array)($_POST['items'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products']))))];
   /* the % in the popup: empty = the biggest real saving; never more than that */
   $pct = trim((string)($_POST['pct'] ?? '')); $note = '';
   if ($pct !== '') {
     if (!ctype_digit($pct) || (int)$pct < 1 || (int)$pct > 99) return '!Please type the % as a whole number from 1 to 99, or leave it empty for the biggest real saving.';
-    [$best] = fomaxo_best_pct();
-    if ($best < 1) return '!No product has an old price on Products yet, so there is no real saving to show. Leave the % empty, or add old prices first.';
+    [$best] = fomaxo_best_pct($o['items']);
+    if ($best < 1) return '!' . ($o['items'] ? 'None of the ticked products has' : 'No product has') . ' an old price on Products yet, so there is no real saving to show. Leave the % empty, or add old prices first.';
     if ((int)$pct > $best) { $note = " You typed {$pct}%, but the biggest real saving is {$best}%, so the popup shows {$best}% OFF."; $pct = (string)$best; }
     $o['pct'] = (int)$pct;
   }

@@ -365,7 +365,10 @@ function shop_offer(): array {
   $o = json_decode((string)shop_setting('offer'), true);
   $o = is_array($o) ? $o : [];
   return ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
-    'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true), 'pct' => max(0, min(99, (int)($o['pct'] ?? 0)))];
+    'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true), 'pct' => max(0, min(99, (int)($o['pct'] ?? 0))),
+    'items' => array_values(array_map('strval', array_filter((array)($o['items'] ?? []), 'is_scalar'))),
+    /* the popup's words ('' = the standard ones: LIMITED TIME OFFER / on selected fragrances / Shop the offer) */
+    'title' => (string)($o['title'] ?? ''), 'sub' => (string)($o['sub'] ?? ''), 'btn' => (string)($o['btn'] ?? '')];   // products in the offer ([] = every product with an old price)
 }
 /* the New product popup (Admin → Offer): on, kind 'soon' (Coming soon) or 'new' (Just arrived), name, a short line, and a product id ('' = none) */
 function shop_newprod(): array {
@@ -380,7 +383,9 @@ function shop_offer_live(): ?array {
   $end = 0;
   if ($o['mode'] === 'end') { $t = strtotime($o['end']); if ($t === false || $t <= time()) return null; $end = $t * 1000; }
   $live = ['end' => $end, 'popup' => $o['popup'], 'line' => $o['line']];
-  if ($o['pct'] > 0) $live['pct'] = min($o['pct'], fomaxo_best_pct()[0]);   // a typed % never goes above the real biggest saving
+  if ($o['items']) $live['items'] = $o['items'];
+  foreach (['title', 'sub', 'btn'] as $k) if ($o[$k] !== '') $live[$k] = $o[$k];
+  if ($o['pct'] > 0) $live['pct'] = min($o['pct'], fomaxo_best_pct($o['items'])[0]);   // a typed % never goes above the real biggest saving
   return $live;
 }
 /* what the website gets for the New product popup (STORE_LIVE.newProduct): null when off. key changes when the popup changes, so each visitor sees each one once. */
