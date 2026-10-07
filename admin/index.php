@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '50';
+const ASSET_V = '51';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -245,6 +245,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('notify_email', $email);
     $fee = trim((string)($_POST['pay_fee'] ?? '2')); if (is_numeric($fee)) shop_set('pay_fee', (string)max(0, min(10, round((float)$fee, 2))));
     go(['tab' => 'settings'], 'Settings saved.');
+  }
+  if ($a === 'cod') {
+    $num = fn(string $k) => trim((string)($_POST[$k] ?? ''));
+    $min = $num('cod_min'); $max = $num('cod_max'); $fee = $num('cod_fee');
+    $back = ['tab' => 'settings', 'pane' => 'cod'];
+    if (!preg_match('/^\d{1,7}$/', $min)) go($back, '!Please write the minimum order in whole rupees, for example 1000.');
+    if ($max !== '' && !preg_match('/^\d{1,7}$/', $max)) go($back, '!Please write the maximum order in whole rupees, or leave it empty for no limit.');
+    if (!preg_match('/^\d{1,5}$/', $fee)) go($back, '!Please write the cash on delivery fee in whole rupees. 0 means no fee.');
+    $min = (int)$min; $max = (int)$max; $fee = (int)$fee;
+    if ($max > 0 && $max <= $min) go($back, '!The maximum must be more than the minimum (₹' . number_format($min) . ').');
+    shop_set('cod', json_encode(['min' => $min, 'max' => $max, 'fee' => $fee]));
+    go($back, 'Saved. Cash on delivery from ₹' . number_format($min) . ($max ? ', under ₹' . number_format($max) : '') . ($fee ? ', fee ₹' . number_format($fee) : ', no fee') . '.');
   }
   if ($a === 'ads') {
     $ads = []; $names = ['meta' => 'Meta Pixel ID', 'tiktok' => 'TikTok Pixel ID', 'ga4' => 'Google Analytics ID', 'gads' => 'Google Ads ID', 'gadsLabel' => 'Purchase conversion label'];

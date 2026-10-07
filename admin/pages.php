@@ -674,17 +674,26 @@ if ($tab === 'stores') {
 /* ============ Settings ============ */
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
-  $adsFirst = ($_GET['pane'] ?? '') === 'ads';   // back on the Ads pane after saving it (phones show one pane at a time)
+  $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
+  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $first = $adsFirst || $codFirst;
+  $COD = fomaxo_catalog()['cod'] ?? null;
   $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
-  $setPanes = ['notify' => 'Emails', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
-  if ($adsFirst) $setPanes = ['ads' => 'Ads'] + $setPanes;
+  $setPanes = ['notify' => 'Emails', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  if ($first) $setPanes = [$pane => $setPanes[$pane]] + $setPanes;
+  $rs = fn(int $paise) => (string)intdiv($paise, 100);
   $body .= $sw('#setPanes', $setPanes) . '<div class="set panes" id="setPanes">'
-    . '<form method="post" class="box' . ($adsFirst ? '' : ' on') . '" data-pane="notify">' . $csrfField . '<input type="hidden" name="action" value="settings"><div class="bh"><h3>Order emails</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
+    . '<form method="post" class="box' . ($first ? '' : ' on') . '" data-pane="notify">' . $csrfField . '<input type="hidden" name="action" value="settings"><div class="bh"><h3>Order emails</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Send new order emails to<input type="email" name="notify_email" value="' . h($email) . '" placeholder="' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '"></label>'
     . '<p class="muted small" style="margin:0">Every new order is emailed here, and so is a password reset link if you forget your password. Empty uses ' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '.</p>'
     . '<label>Card / UPI payment fee %<input type="number" name="pay_fee" min="0" max="10" step="0.01" value="' . h((string)pay_fee_pct()) . '"></label>'
     . '<p class="muted small" style="margin:0">Razorpay’s fee on each online payment, used for Fees in Reports.</p><button class="btn">Save</button></div></form>'
+    . '<form method="post" class="box' . ($codFirst ? ' on' : '') . '" data-pane="cod" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="cod"><div class="bh"><h3>Cash on delivery</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . ($COD ? '' : '<p class="small" style="margin:0;color:var(--red,#e5484d)">Cash on delivery is turned off in index.html, so these numbers are not used yet.</p>')
+    . '<label>Minimum order (₹)<input type="number" name="cod_min" min="0" step="1" required value="' . h($rs((int)($COD['min'] ?? 100000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only from this amount.</p>'
+    . '<label>Maximum order (₹)<input type="number" name="cod_max" min="0" step="1" value="' . (($COD['max'] ?? 0) ? h($rs((int)$COD['max'])) : '') . '" placeholder="No limit"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only for orders under this amount, after any coupon. Customers don’t see it until their order reaches it. Empty or 0 = no limit.</p>'
+    . '<label>Cash on delivery fee (₹)<input type="number" name="cod_fee" min="0" step="1" required value="' . h($rs((int)($COD['fee'] ?? 5000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Added to every cash on delivery order. 0 = no fee.</p>'
+    . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box' . ($adsFirst ? ' on' : '') . '" data-pane="ads" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="ads"><div class="bh"><h3>Ad tracking</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . '<p class="muted small" style="margin:0">Paste an ID to turn it on; an empty box stays off. The website then tells Meta, TikTok and Google about product views, adds to bag, checkouts and purchases (with the ₹ value), so ads learn who buys.</p>'
     . $adIn('meta', 'Meta Pixel ID', '123456789012345', 'Facebook and Instagram. Events Manager → your pixel.')

@@ -1973,6 +1973,14 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-opt>svg{flex:none;width:26px;height:26px;color:var(--gold)}
 .co-opt.off{cursor:not-allowed}
 .co-opt.off b{color:var(--muted)}
+/* COD box wording: one straight line with a dot between on a computer; on a phone the first part on one line, the second under it */
+.co-cl>span{white-space:nowrap}
+.co-cl>span+span::before{content:" · "}
+@media(max-width:820px){.co-cl>span{display:block}.co-cl>span+span::before{content:none}}
+@media(max-width:380px){.co-cl{font-size:12.5px!important;letter-spacing:-.01em}}
+/* order at or over the hidden COD maximum: the box goes grey and can't be picked */
+.co-opt.max{opacity:.6;background:transparent;border-color:var(--line)}
+.co-opt.max>svg{color:var(--muted)}
 .co-codoff{display:none}
 .co-opt.na{justify-content:center;min-height:120px;padding:24px}
 .co-opt.na>:not(.co-codoff){display:none}
@@ -2307,7 +2315,7 @@ window.STORE = {
     checkoutUrl: "",
     razorpay: "api/razorpay.php",     // online payment (UPI, cards, netbanking, wallets) on the checkout page. Keys go in fomaxo-private/razorpay-config.php on Hostinger. Set to "" to turn off.
     coupons: true,                    // the coupon code box at checkout, always open. Codes are made in fomaxo.in/admin → Coupons. Set to false to hide the box.
-    cod: { min: 1000, fee: 50, onlyName: "fake name" }   // cash on delivery for orders of ₹1,000 and above, with a ₹50 fee. While onlyName is set, COD shows "COD unactivated" and only works when the Full name is exactly that (for testing, no minimum). Remove onlyName to open COD to everyone; write cod: null to turn it off.
+    cod: { min: 1000, fee: 50, onlyName: "fake name" }   // cash on delivery for orders of ₹1,000 and above, with a ₹50 fee. The minimum, a hidden maximum and the fee saved on fomaxo.in/admin → Settings → Cash on delivery replace these. While onlyName is set, COD shows "COD unactivated" and only works when the Full name is exactly that (for testing, no minimum). Remove onlyName to open COD to everyone; write cod: null to turn it off.
   },
 
   /* Social links shown on the Contact page (gold icons under "Support").
@@ -2554,6 +2562,8 @@ const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.sl
 const LIVE = window.STORE_LIVE || {};
 (function(){
   const hid = new Set(LIVE.hidden || []), pr = LIVE.prices || {}, ca = LIVE.compareAt || {}, ed = LIVE.edits || {};
+  /* cash on delivery minimum, hidden maximum and fee from Admin → Settings */
+  if (LIVE.cod && S.checkout.cod && typeof S.checkout.cod === 'object') Object.assign(S.checkout.cod, LIVE.cod);
   /* details and photos edited on the admin page */
   S.products.forEach(p => { const e = ed[p.id]; if (!e) return; const main = p.lockMain && p.images[0];
     /* an editorial photo that is one of the product photos follows the admin edit; a separate one (not in images) stays */
@@ -3918,8 +3928,15 @@ function coLines(q){
 }
 function coSaved(){ try { return JSON.parse(localStorage.getItem(CO_KEY) || '{}') || {}; } catch(e) { return {}; } }
 const coCod = () => S.checkout.cod && typeof S.checkout.cod === 'object' ? S.checkout.cod : null;
-/* COD is open when the order reaches the minimum, or, while cod.onlyName is set, only for that exact full name (testing) */
-const coCodOn = (cod, t, name) => !!cod && (cod.onlyName ? String(name || '').replace(/\s+/g, ' ').trim().toLowerCase() === cod.onlyName.toLowerCase() : t >= cod.min);
+/* COD is open when the bag reaches the minimum and the order (after any coupon, before the COD fee) is under the hidden maximum.
+   While cod.onlyName is set, only that exact full name can use it (testing, no minimum).
+   'na' = turned off for testing, 'min' = below the minimum, 'max' = at or over the maximum, 'ok' = open */
+const coCodState = (cod, t, net, name) => !cod ? 'na'
+  : cod.onlyName && String(name || '').replace(/\s+/g, ' ').trim().toLowerCase() !== cod.onlyName.toLowerCase() ? 'na'
+  : cod.max > 0 && net >= cod.max ? 'max' : !cod.onlyName && t < cod.min ? 'min' : 'ok';
+/* the two parts of the wording in the COD box: one line on a computer with a dot between, two lines on a phone */
+const coCodLine = (cod, st) => st === 'max' ? `<span>COD for orders under ${inr(cod.max)}</span><span>Please pay by card.</span>`
+  : `<span>Pay in Cash When Order Arrives</span>${cod.fee > 0 ? `<span>Fee ${inr(cod.fee)}</span>` : ''}`;
 const inr = v => money(v, '₹');
 
 /* on phones, email is optional at checkout and payment opens without it */
@@ -3929,7 +3946,7 @@ function checkoutPage(q){
   const lines = coLines(q), t = subtotal(lines);
   if (!lines.length) return pageHead('Checkout', 'Your bag is <em class="metal">empty</em>', 'Add a fragrance or a personal care favourite, then come back here to check out.') + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Shop fragrances</a><a class="btn line" href="#/personal-care">Personal care</a></div></section>`;
   if (t === null || cartCur(lines) !== '₹' || !(S.checkout.razorpay || coCod())) return pageHead('Checkout', 'Order on <em class="metal">WhatsApp</em>', 'An item in your bag is priced on request, so we will confirm your order with you on WhatsApp.') + `<section class="sec" style="padding-top:40px"><div class="wrap"><button class="btn" id="coWa">Order via WhatsApp</button></div></section>`;
-  const d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codOk = coCodOn(cod, t, d.name);
+  const d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codSt = coCodState(cod, t, t, d.name), codOk = codSt === 'ok';
   const was = lines.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
   const phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
   return `<section class="co"><div class="wrap co-grid">
@@ -3940,7 +3957,7 @@ function checkoutPage(q){
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
-    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
+    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
     ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
@@ -3976,7 +3993,7 @@ function checkoutPage(q){
     <div class="co-need" id="coNeed" role="status" aria-live="polite" hidden>${LOCK_SVG}<div><b>Fill in your delivery details to unlock payment</b><span>Still needed:</span><span class="co-chips" id="coChips"></span></div></div>
     <div class="co-pay" role="radiogroup" aria-label="Payment method">
       ${S.checkout.razorpay ? `<label class="co-opt"><input type="radio" name="pay" value="online" checked><span class="co-ot"><b>UPI / Card / Netbanking / Wallets</b><small>Pay securely now with Razorpay</small></span>${CO_ICON.card}</label>` : ''}
-      ${cod ? `<label class="co-opt${codOk ? '' : ' off'}${cod.onlyName && !codOk ? ' na' : ''}"><input type="radio" name="pay" value="cod"${codOk ? (S.checkout.razorpay ? '' : ' checked') : ' disabled'}><span class="co-ot"><b>Cash on delivery</b><small>${cod.onlyName ? 'Pay in cash when your order arrives' : `For orders of ${inr(cod.min)} and above`}${cod.fee ? ` · ${inr(cod.fee)} fee` : ''}</small>${cod.onlyName ? '' : `<small class="co-more" id="coCodNote"${codOk ? ' hidden' : ''}>Add ${inr(cod.min - t)} more to activate COD</small>`}</span>${CO_ICON.cash}${cod.onlyName ? '<b class="co-codoff">COD NOT AVAILABLE AT MOMENT</b>' : ''}</label>` : ''}
+      ${cod ? `<label class="co-opt${codOk ? '' : ' off'}${codSt === 'na' ? ' na' : ''}"><input type="radio" name="pay" value="cod"${codOk ? (S.checkout.razorpay ? '' : ' checked') : ' disabled'}><span class="co-ot"><b>Cash on delivery</b><small class="co-cl" id="coCodLine">${coCodLine(cod, codSt)}</small>${cod.onlyName ? '' : `<small class="co-more" id="coCodNote"${codSt === 'min' ? '' : ' hidden'}>Add ${inr(cod.min - t)} more to activate COD</small>`}</span>${CO_ICON.cash}${cod.onlyName ? '<b class="co-codoff">COD NOT AVAILABLE AT MOMENT</b>' : ''}</label>` : ''}
     </div>
     <p class="co-err" id="coErr" role="alert" hidden></p>
     <button class="btn block co-btn" id="coPay" type="submit">${LOCK_SVG}<span id="coPayTxt">Pay ${inr(t)} securely</span></button>
@@ -4015,11 +4032,15 @@ function bindCheckout(q){
   const missing = () => NEED.filter(([k, , ok]) => !ok(E[k].value.replace(/\s+/g, ' ').trim()));
   let wasLocked = null;
   const upd = () => {
-    const miss = missing(), locked = miss.length > 0, isCod = method() === 'cod', fr = $('#coFeeRow');
+    const miss = missing(), locked = miss.length > 0, fr = $('#coFeeRow');
     f.classList.toggle('co-locked', locked);
-    const codOn = coCodOn(cod, t, E.name.value), cr = f.querySelector('input[value=cod]');
-    if (cr) { const co = cr.closest('.co-opt'); co.classList.toggle('off', !codOn); co.classList.toggle('na', !codOn && !!cod.onlyName); const cn = $('#coCodNote'); if (cn) cn.hidden = codOn; if (!codOn && cr.checked) { cr.checked = false; const on = f.querySelector('input[value=online]'); if (on) on.checked = true; } }
+    const codSt = coCodState(cod, t, t - (cpn ? cpn.off : 0), E.name.value), codOn = codSt === 'ok', cr = f.querySelector('input[value=cod]');
+    if (cr) { const co = cr.closest('.co-opt'), cl = $('#coCodLine'), w = coCodLine(cod, codSt); co.classList.toggle('off', !codOn); co.classList.toggle('na', codSt === 'na'); co.classList.toggle('max', codSt === 'max');
+      if (cl.innerHTML !== w) cl.innerHTML = w; const cn = $('#coCodNote'); if (cn) cn.hidden = codSt !== 'min';
+      /* over the maximum (or COD closed), the payment moves to card */
+      if (!codOn && cr.checked) { cr.checked = false; const on = f.querySelector('input[value=online]'); if (on) on.checked = true; } }
     $$('input[name=pay]', f).forEach(r => { r.disabled = locked || (r.value === 'cod' && !codOn); });
+    const isCod = method() === 'cod';
     const need = $('#coNeed'); need.hidden = !locked;
     if (locked) $('#coChips').innerHTML = miss.map(([k, l]) => `<button type="button" data-need="${k}">${l}</button>`).join('');
     if (fr) fr.hidden = !isCod;
