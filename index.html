@@ -2118,6 +2118,7 @@ html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px
   .co-opt{padding:16px}
   .co-btn{font-size:12px;letter-spacing:.16em;padding:0 18px}
   .co-trust{font-size:14px}
+  .co-trust .co-wa-ic svg{width:17px;height:17px}
 }
 /* product heading: collection above the name, the type in a small gold line just below it */
 .ptitle{display:flex;flex-direction:column;gap:10px}
@@ -3973,7 +3974,7 @@ function checkoutPage(q){
     <ul class="co-trust">
       <li>${ICON.truck}Delivered in 1–3 days across INDIA</li>
       <li>${LOCK_SVG}Secure payments by Razorpay</li>
-      <li>${CO_ICON.wa}<span>Questions? WhatsApp us on <a href="https://wa.me/${S.checkout.whatsapp}" target="_blank" rel="noopener">${esc((S.contact.phones[0] || {}).number || '+' + S.checkout.whatsapp)}</a></span></li>
+      <li class="co-wa-ic">${CO_ICON.wa}<span>Questions? WhatsApp us on <a href="https://wa.me/${S.checkout.whatsapp}" target="_blank" rel="noopener">${esc((S.contact.phones[0] || {}).number || '+' + S.checkout.whatsapp)}</a></span></li>
     </ul>
   </form>
 </div></section>`;
