@@ -134,6 +134,56 @@
     t.dispatchEvent(new Event('input', {bubbles: true}));
   });
 
+  /* Reviews: Reply fills the box with a reply that fits the review (name, product, stars, what they wrote
+     about); "Another reply" swaps the wording. Only a draft: nothing is saved until Save reply. */
+  var SG_TOPICS = [
+    {k: /\b(damag|broken|leak|crack|missing|wrong (item|product)|fake|empty)/i, nk: /./, good: [], bad: ['An order should never reach you like this, and we will make it right.']},
+    {k: /long ?last|lasting|\blasts?\b|stays|all day|whole day|hours|longevity|fades?\b/i, nk: /not|n't|only|fades?\b|gone|less|short|weak/i, good: ['So happy it lasts all day for you.', 'Glad it stays with you for hours.', 'We work hard on long wear, so this means a lot.'], bad: ['Long wear matters a lot to us. Spraying on pulse points and clothes helps it stay longer.']},
+    {k: /deliver|shipping|courier|arrived|on time|dispatch|late\b|delay/i, nk: /late\b|delay|slow|took|not (yet )?(arrived|delivered|received)|never/i, good: ['Happy it reached you quickly.', 'Glad the delivery was smooth.'], bad: ['We will look into the delivery delay with our courier.']},
+    {k: /smell|scent|fragrance|aroma|perfume|notes?\b|fresh/i, nk: /(not|n't|no)\s+(like|nice|good|great|pleasant)|bad|harsh|too strong|weird|chemical|headache|alcohol/i, good: ['We are delighted you love the scent.', 'So glad the fragrance won you over.', 'Happy to hear the scent is a favourite.'], bad: ['Scent is personal, and we would love to help you find one you enjoy.']},
+    {k: /pack(ing|aging|aged)?\b|\bbox|bottle|wrap/i, nk: /broken|damag|poor|bad|torn|loose|cheap/i, good: ['Glad the packaging made it feel special.', 'We put a lot of care into the box, so thank you for noticing.'], bad: ['We will check the packing with our team.']},
+    {k: /skin|lips?\b|moistur|glow|soft|smooth/i, nk: /rash|itch|irritat|burn|dry|sticky|allerg/i, good: ['So glad it feels lovely on your skin.'], bad: ['Please stop using it for now and tell us how your skin is.']},
+    {k: /compliment|praise|everyone (asked|loved|likes)|asked me/i, nk: /^$/, good: ['Enjoy all the compliments!', 'The compliments are well deserved.'], bad: []},
+    {k: /gift|birthday|anniversary|wife|husband|girlfriend|boyfriend|mom\b|mother|dad\b|father|sister|brother/i, nk: /^$/, good: ['So lovely that it made a special gift.', 'We are glad it made the gift memorable.'], bad: []},
+    {k: /price|value|worth|afford|money|expensive|costly|overpriced/i, nk: /expensive|costly|overpriced|too much|not worth/i, good: ['Glad you feel it is great value.', 'Happy it feels worth every rupee.'], bad: ['We will share your note on price with our team.']}
+  ];
+  var SG_GOOD_OPEN = ['Thank you so much{n}!', 'Thank you{n}! This made our day.', '{h} thank you for the lovely review!', 'Thank you for choosing FOMAXO{n}!'];
+  var SG_GOOD_MID = ['We are so happy you love {p}.', 'It is wonderful to hear {p} is a hit with you.', 'We are thrilled {p} is working for you.', 'Glad {p} found a place in your collection.'];
+  var SG_GOOD_END = ['Enjoy it, and see you again soon 🙏', 'Hope to see you again soon ✨', 'Thank you for being part of the FOMAXO family ❤️', 'Your support means the world to us 🙏'];
+  var SG_OK_OPEN = ['Thank you for your honest review{n}.', '{h} thank you for sharing your thoughts.'];
+  var SG_BAD_OPEN = ['{h} we are sorry {p} did not meet your expectations.', 'We are sorry to hear this{n}.', 'Thank you for telling us{n}. We are sorry for the trouble.'];
+  var SG_BAD_END = ['We would love the chance to make this right for you 🙏', 'Your feedback helps us get better, thank you for sharing it 🙏', 'We hope to win you back with your next FOMAXO 🙏'];
+  function sgPick(a, i) { return a.length ? a[i % a.length] : ''; }
+  function sgReply(f, i) {
+    var name = (f.dataset.sgName || '').trim().split(/\s+/)[0] || '', stars = +f.dataset.sgStars || 5, body = f.dataset.sgBody || '';
+    if (name) name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    var p = f.dataset.sgProduct ? 'FOMAXO ' + f.dataset.sgProduct : 'FOMAXO', good = stars >= 4;
+    var fill = function (s) { return s.replace('{n}', name ? ', ' + name : '').replace('{h}', name ? 'Hi ' + name + ',' : 'Hi,').replace('{p}', p); };
+    /* a good review uses only the topics it praises, a poor one only the topics it complains about */
+    var hits = SG_TOPICS.filter(function (t) { return t.k.test(body) && (good ? t.good : t.bad).length && (good ? !t.nk.test(body) : t.nk.test(body)); }).slice(0, 2);
+    var bits = hits.map(function (t, j) { return sgPick(good ? t.good : t.bad, i + j); });
+    if (good) return [fill(sgPick(SG_GOOD_OPEN, i)), fill(sgPick(SG_GOOD_MID, i + 1))].concat(bits, sgPick(SG_GOOD_END, i + 2)).join(' ');
+    var open = stars === 3 ? fill(sgPick(SG_OK_OPEN, i)) + (bits.length ? '' : ' We are always working to make ' + p + ' better.') : fill(sgPick(SG_BAD_OPEN, i));
+    return [open].concat(bits, stars === 3 && !bits.length ? 'We hope your next FOMAXO earns all 5 stars 🙏' : sgPick(SG_BAD_END, i)).join(' ');
+  }
+  function sgFill(f, next) {
+    var t = f.querySelector('textarea');
+    f.sgI = next ? (f.sgI || 0) + 1 : Math.floor(Math.random() * 12);
+    t.value = sgReply(f, f.sgI).slice(0, t.maxLength > 0 ? t.maxLength : 1000);
+    t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; /* the whole draft shows, no scrolling inside the box */
+    t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+    t.dispatchEvent(new Event('input', {bubbles: true}));
+  }
+  document.addEventListener('change', function (e) {
+    if (!e.target.matches || !e.target.matches('.rvr-tg') || !e.target.checked) return;
+    var f = e.target.parentNode.querySelector('.rvr-form');
+    if (f && f.dataset.sgName != null && !f.querySelector('textarea').value.trim()) sgFill(f, false);
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-sg-next]');
+    if (b) sgFill(b.closest('form'), true);
+  });
+
   /* Stock and product forms: changed boxes light up, and leaving with unsaved changes asks first */
   var dirty = false;
   document.querySelectorAll('form[data-watch]').forEach(function (f) {
