@@ -152,7 +152,7 @@
   var SG_GOOD_END = ['Enjoy it, and see you again soon 🙏', 'Hope to see you again soon ✨', 'Thank you for being part of the FOMAXO family ❤️', 'Your support means the world to us 🙏'];
   var SG_OK_OPEN = ['Thank you for your honest review{n}.', '{h} thank you for sharing your thoughts.'];
   var SG_BAD_OPEN = ['{h} we are sorry {p} did not meet your expectations.', 'We are sorry to hear this{n}.', 'Thank you for telling us{n}. We are sorry for the trouble.'];
-  var SG_BAD_END = ['Please WhatsApp us on +91 73491 05165 and we will help you right away 🙏', 'Please message us on WhatsApp at +91 73491 05165 so we can sort this out for you.', 'Do reach us on WhatsApp at +91 73491 05165, we would love to make it right.'];
+  var SG_BAD_END = ['We would love the chance to make this right for you 🙏', 'Your feedback helps us get better, thank you for sharing it 🙏', 'We hope to win you back with your next FOMAXO 🙏'];
   function sgPick(a, i) { return a.length ? a[i % a.length] : ''; }
   function sgReply(f, i) {
     var name = (f.dataset.sgName || '').trim().split(/\s+/)[0] || '', stars = +f.dataset.sgStars || 5, body = f.dataset.sgBody || '';
@@ -164,7 +164,7 @@
     var bits = hits.map(function (t, j) { return sgPick(good ? t.good : t.bad, i + j); });
     if (good) return [fill(sgPick(SG_GOOD_OPEN, i)), fill(sgPick(SG_GOOD_MID, i + 1))].concat(bits, sgPick(SG_GOOD_END, i + 2)).join(' ');
     var open = stars === 3 ? fill(sgPick(SG_OK_OPEN, i)) + (bits.length ? '' : ' We are always working to make ' + p + ' better.') : fill(sgPick(SG_BAD_OPEN, i));
-    return [open].concat(bits, stars === 3 && !bits.length ? 'We would love to hear what would make it 5 stars for you, so do WhatsApp us on +91 73491 05165 🙏' : sgPick(SG_BAD_END, i)).join(' ');
+    return [open].concat(bits, stars === 3 && !bits.length ? 'We hope your next FOMAXO earns all 5 stars 🙏' : sgPick(SG_BAD_END, i)).join(' ');
   }
   function sgFill(f, next) {
     var t = f.querySelector('textarea');
