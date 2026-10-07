@@ -581,10 +581,10 @@ if ($tab === 'reviews') {
       . (($r['reply'] ?? '') !== '' ? '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '"><button class="btn line sm danger" name="delete" value="1" data-confirm="Remove your reply from the website?">Delete reply</button></form>' : '')
       . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm danger" data-confirm="Remove this review from the website? You can put it back later.">Remove</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Put back') . '</button>') . '</form>' . '</div>'
-      . '<form method="post" class="rvr-form">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+      . '<form method="post" class="rvr-form" data-sg-name="' . h($r['anonymous'] ? '' : $r['name']) . '" data-sg-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-sg-stars="' . (int)round((float)$r['rating']) . '" data-sg-body="' . h($r['body']) . '">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…" required>' . h($r['reply'] ?? '') . '</textarea>'
       . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
-      . '<div class="row"><button class="btn sm">Save reply</button></div></form></div>';
+      . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button></div></form></div>';
   }
   $body .= '</div></div>';
   /* stars by product (live reviews only, as on the website) */
