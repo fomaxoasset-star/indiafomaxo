@@ -323,7 +323,7 @@ function save_offer(): string {
   $mode = in_array($_POST['mode'] ?? '', ['end', 'always', 'off'], true) ? $_POST['mode'] : 'off';
   $o = ['mode' => $mode, 'end' => shop_offer()['end'], 'popup' => !empty($_POST['popup']), 'pct' => 0,
     'title' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['title'] ?? ''))), 0, 30),
-    'sub' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['sub'] ?? ''))), 0, 40),
+    'sub' => mb_strtoupper(mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['sub'] ?? ''))), 0, 40)),
     'btn' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['btn'] ?? ''))), 0, 24),
     'items' => array_values(array_intersect(array_map('strval', (array)($_POST['items'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products'])))),
     'lines' => array_values(array_intersect(array_map('strval', (array)($_POST['lines'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products']))))];

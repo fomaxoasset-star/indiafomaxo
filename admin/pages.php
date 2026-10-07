@@ -218,7 +218,7 @@ if ($tab === 'offer') {
     . '<div class="ofrow"><div class="ofk"><b>Popup</b>' . $tick('popup', 'On') . '</div><div class="ofcol"><div class="ofwords">'
     . $word('title', 'Top line', 30, 'LIMITED TIME OFFER', ['Limited time offer', 'Flash sale', 'Festive sale', 'Diwali offer', 'Weekend sale', 'Mega sale', 'Special offer', 'New launch offer'])
     . '<label>% off<input type="number" name="pct" min="1" max="' . max(1, $best) . '" step="1" inputmode="numeric" value="' . ($O['pct'] ? (int)$O['pct'] : '') . '" placeholder="' . ($best ? "max $best" : 'No old prices') . '"' . ($best ? '' : ' disabled') . '></label>'
-    . $word('sub', 'Under the %', 40, 'on selected fragrances', ['on selected fragrances', 'on selected products', 'on all fragrances', 'on perfumes', 'on car perfumes', 'on personal care', 'on gift sets', 'on everything', 'on your first order'])
+    . $word('sub', 'Under the %', 40, 'ON SELECTED FRAGRANCES', ['ON SELECTED PRODUCTS', 'ON SELECTED FRAGRANCES', 'ON SELECTED PERSONAL CARE', 'ON ALL FRAGRANCES', 'ON PERFUMES', 'ON GIFT SETS', 'ON EVERYTHING', 'ON YOUR FIRST ORDER'])
     . $word('btn', 'Button', 24, 'Shop the offer', ['Shop the offer', 'Shop now', 'Grab the deal', 'Shop fragrances', 'See the offer'])
     . '</div>' . ($sale ? $picker('items', $O['items'], 'None picked: the popup counts every product with an old price.', 'Add a product to the popup') : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div></div>'
     . '<div class="ofrow"><div class="ofk"><b>Line by prices</b></div>'
