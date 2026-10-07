@@ -352,14 +352,15 @@ function save_offer(): string {
 /* Saves the New product popup box on the Offer page. $cat = the product list (hidden products can be picked too). */
 function save_newprod(array $cat): string {
   $clean = fn(string $k) => trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? '')));
-  $n = ['on' => !empty($_POST['np_on']), 'kind' => ($_POST['np_kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => $clean('np_name'), 'line' => $clean('np_line'), 'id' => (string)($_POST['np_id'] ?? '')];
+  $n = ['on' => !empty($_POST['np_on']), 'label' => $clean('np_label') ?: 'Coming soon', 'name' => $clean('np_name'), 'line' => $clean('np_line'), 'id' => (string)($_POST['np_id'] ?? '')];
+  if (mb_strlen($n['label']) > 24) return '!The type can have up to 24 characters.';
   if ($n['id'] !== '' && !isset($cat[$n['id']])) $n['id'] = '';
   if ($n['name'] === '' && $n['id'] !== '') $n['name'] = mb_substr($cat[$n['id']]['name'], 0, 40);
   if (mb_strlen($n['name']) > 40) return '!The product name can have up to 40 characters.';
   if (mb_strlen($n['line']) > 90) return '!The short line can have up to 90 characters.';
   if ($n['on'] && $n['name'] === '') return '!Please write the product name, or pick the product.';
   shop_set('newprod', json_encode($n, JSON_UNESCAPED_UNICODE));
-  return !$n['on'] ? 'Saved. The new product popup is off.' : 'Saved. The “' . ($n['kind'] === 'new' ? 'Just arrived' : 'Coming soon') . '” popup for ' . $n['name'] . ' is on. Each visitor sees it once.';
+  return !$n['on'] ? 'Saved. The new product popup is off.' : 'Saved. The “' . $n['label'] . '” popup for ' . $n['name'] . ' is on. Each visitor sees it once.';
 }
 /* "09/10/2026, 11:59 pm" */
 function offer_when(string $ymdhi): string { return date('d/m/Y, g:i a', strtotime($ymdhi)); }

@@ -197,7 +197,7 @@ if ($tab === 'offer') {
 
   $N = shop_newprod(); $np = $N['id'] !== '' ? ($CAT[$N['id']] ?? null) : null;
   $nsk = $N['on'] && $N['name'] !== '' ? 'on' : 'off';
-  $nstatus = $nsk === 'on' ? 'On: “' . ($N['kind'] === 'new' ? 'Just arrived' : 'Coming soon') . '” for ' . $N['name'] . '.' : 'Off. No new product popup shows.';
+  $nstatus = $nsk === 'on' ? 'On: “' . $N['label'] . '” for ' . $N['name'] . '.' : 'Off. No new product popup shows.';
   $opts = '<option value="">No product (no photo)</option>';
   foreach ($CAT as $id => $p) $opts .= '<option value="' . h($id) . '" data-img="' . h($p['img'] ? '/' . $p['img'] : '') . '"' . ($N['id'] === (string)$id ? ' selected' : '') . '>' . h($p['name']) . (!empty($p['hidden']) ? ' (hidden)' : '') . '</option>';
 
@@ -226,14 +226,13 @@ if ($tab === 'offer') {
     . '<div class="box ofr" data-pane="new"><div class="bh"><h3>New product popup</h3><label class="cpon"><input type="checkbox" name="np_on" value="1" form="newpForm"' . ($N['on'] ? ' checked' : '') . '><span>On</span></label></div><div class="bb">'
     . '<p class="ofst ofst-' . $nsk . '">' . h($nstatus) . '</p>'
     . '<form method="post" class="cpf" id="newpForm">' . $csrfField . '<input type="hidden" name="action" value="newprod_save">'
-    . '<div class="ofrow"><b>Type</b><span class="seg ck">'
-    . '<label><input type="radio" name="np_kind" value="soon"' . ($N['kind'] === 'soon' ? ' checked' : '') . '>Coming soon</label>'
-    . '<label><input type="radio" name="np_kind" value="new"' . ($N['kind'] === 'new' ? ' checked' : '') . '>Just arrived</label></span></div>'
+    . '<label>Type<input name="np_label" maxlength="24" list="ofw-np_label" value="' . h($N['label']) . '" placeholder="Coming soon" autocomplete="off">'
+    . '<datalist id="ofw-np_label">' . implode('', array_map(fn($v) => '<option value="' . h($v) . '">', ['Coming soon', 'Just arrived', 'New launch', 'Launching soon', 'Back in stock', 'Now available', 'Only at FOMAXO'])) . '</datalist></label>'
     . '<label>Product<select name="np_id">' . $opts . '</select></label>'
     . '<label>Name<input name="np_name" maxlength="40" value="' . h($N['name']) . '" placeholder="' . h($np['name'] ?? 'Royal Oud') . '"></label>'
     . '<label>Short line<input name="np_line" maxlength="90" value="' . h($N['line']) . '" placeholder="Optional, e.g. A warm new scent for evenings"></label>'
     . '<div class="row ofbtns"><button class="btn">Save</button><button type="button" class="btn line" data-preview="new">Preview</button></div>'
-    . '<p class="muted small" style="margin:0">Shows once per visitor, before the sale popup.</p>'
+    . '<p class="muted small" style="margin:0">Shows once per visitor, before the sale popup. A product on the website gets a “Shop now” button; otherwise “Explore FOMAXO”.</p>'
     . '</form></div></div></div>';
 }
 

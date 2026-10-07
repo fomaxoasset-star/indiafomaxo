@@ -4170,12 +4170,12 @@ if (OFFER || NEWP) {
       <p class="ofp-hurry">HURRY UP!!!</p>
       <a class="btn block ofp-go" href="#/fragrances">${esc(OFFER.btn)}</a>
       <button class="ofp-no" type="button">No thanks</button>`;
-  const newpHTML = () => { const isNew = NEWP.kind === 'new';
-    return `<p class="ofp-k" id="ofpK">${isNew ? 'Just arrived' : 'Coming soon'}</p>
+  const newpHTML = () => { const isNew = !!NEWP.id;
+    return `<p class="ofp-k" id="ofpK">${esc(NEWP.label || (NEWP.kind === 'new' ? 'Just arrived' : 'Coming soon'))}</p>
       ${NEWP.img ? `<img class="ofp-img" src="${esc(NEWP.img)}" alt="FOMAXO ${esc(NEWP.name)}">` : ''}
       <p class="ofp-name">${esc(NEWP.name)}</p>
       ${NEWP.line ? `<p class="ofp-on">${esc(NEWP.line)}</p>` : ''}
-      <a class="btn block ofp-go" href="${isNew && NEWP.id ? '#/product/' + encodeURIComponent(NEWP.id) : '#/fragrances'}">${isNew ? 'Shop now' : 'Explore FOMAXO'}</a>
+      <a class="btn block ofp-go" href="${isNew ? '#/product/' + encodeURIComponent(NEWP.id) : '#/fragrances'}">${isNew ? 'Shop now' : 'Explore FOMAXO'}</a>
       <button class="ofp-no" type="button">Close</button>`; };
   const openPop = () => {
     if (pop || visitUsed() || onCheckout()) return;

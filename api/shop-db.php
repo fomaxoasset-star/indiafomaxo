@@ -373,7 +373,8 @@ function shop_offer(): array {
 /* the New product popup (Admin → Offer): on, kind 'soon' (Coming soon) or 'new' (Just arrived), name, a short line, and a product id ('' = none) */
 function shop_newprod(): array {
   $n = json_decode((string)shop_setting('newprod'), true); $n = is_array($n) ? $n : [];
-  return ['on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? '')];
+  return ['on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? ''),
+    'label' => (string)($n['label'] ?? '') !== '' ? (string)$n['label'] : (($n['kind'] ?? '') === 'new' ? 'Just arrived' : 'Coming soon')];
 }
 /* what the website gets (STORE_LIVE.offer): null when nothing should show, also once the end has passed.
    end = the end as milliseconds since 1970 (0 = always on), so every phone counts to the same moment */
@@ -393,8 +394,9 @@ function shop_newprod_live(): ?array {
   $n = shop_newprod();
   if (!$n['on'] || $n['name'] === '') return null;
   $p = $n['id'] !== '' ? (fomaxo_catalog()['products'][$n['id']] ?? null) : null;
-  return ['kind' => $n['kind'], 'name' => $n['name'], 'line' => $n['line'], 'id' => $p && empty($p['hidden']) ? $n['id'] : '', 'img' => $p['img'] ?? '',
-    'key' => substr(md5($n['kind'] . '|' . $n['name'] . '|' . $n['id']), 0, 10)];
+  $show = $p && empty($p['hidden']);   // a product on the website gets "Shop now"; otherwise "Explore FOMAXO"
+  return ['kind' => $show ? 'new' : 'soon', 'label' => $n['label'], 'name' => $n['name'], 'line' => $n['line'], 'id' => $show ? $n['id'] : '', 'img' => $p['img'] ?? '',
+    'key' => substr(md5($n['label'] . '|' . $n['name'] . '|' . $n['id']), 0, 10)];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
