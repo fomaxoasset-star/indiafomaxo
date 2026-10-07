@@ -341,3 +341,69 @@
     ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
   }
 })();
+
+/* Offer: Preview shows the popup as shoppers will see it, from what is typed and ticked now (nothing is saved) */
+(function () {
+  var sale = document.getElementById('offerForm'), newp = document.getElementById('newpForm');
+  if (!sale && !newp) return;
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); };
+  var val = function (f, n) { var e = f.querySelector('[name="' + n + '"]'); return e ? e.value.trim() : ''; };
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var dark = true, which = 'sale', box = null, tick = null;
+  /* the end typed on the page (dd/mm/yyyy and a time, India time) as a moment, or 0 */
+  var endAt = function () {
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(val(sale, 'end')); if (!m) return 0;
+    var t = /^(\d{2}):(\d{2})$/.exec(val(sale, 'end_time')) || [0, '23', '59'];
+    return Date.UTC(+m[3], +m[2] - 1, +m[1], +t[1], +t[2]) - 330 * 60000;
+  };
+  var saleHTML = function () {
+    var mode = (sale.querySelector('input[name=mode]:checked') || {}).value;
+    var picked = [].slice.call(sale.querySelectorAll('input[name="items[]"]:checked'));
+    var best = picked.length ? Math.max.apply(null, picked.map(function (i) { return +i.dataset.pct; })) : +sale.dataset.best;
+    var typed = parseInt(val(sale, 'pct'), 10), pct = typed > 0 ? Math.min(typed, best) : best;
+    var note = mode === 'off' ? 'The timer is Off, so this popup will not show.' : !sale.querySelector('input[name=popup]').checked ? 'Popup is not ticked, so this popup will not show.' : typed > best ? 'You typed ' + typed + '%, but the biggest real saving is ' + best + '%, so it shows ' + best + '%.' : '';
+    var end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
+    var cd = mode === 'end' ? '<div class="pv-cd">' + [Math.floor(left / 86400), pad(Math.floor(left % 86400 / 3600)), pad(Math.floor(left % 3600 / 60)), pad(left % 60)].map(function (n, i) {
+      return '<div><b>' + (end ? n : '–') + '</b><span>' + ['Days', 'Hours', 'Min', 'Sec'][i] + '</span></div>'; }).join('') + '</div>' : '';
+    var items = picked.length ? '<div class="pv-items">' + picked.map(function (i) { var d = i.dataset;
+      return '<div class="pv-item">' + (d.img ? '<img src="' + esc(d.img) + '" alt="">' : '<span class="pv-noimg"></span>') + '<b>' + esc(d.name) + '</b><span>' + (d.was ? '<s>' + esc(d.was) + '</s> ' : '') + esc(d.price) + '</span></div>'; }).join('') + '</div>' : '';
+    return [note, '<p class="pv-k">' + esc(val(sale, 'title') || 'Limited time offer') + '</p>'
+      + (best ? '<p class="pv-pct">' + pct + '% off</p>' : '<p class="pv-on">No product has an old price yet, so this popup stays hidden.</p>')
+      + '<p class="pv-on">' + esc(val(sale, 'sub') || 'on selected fragrances') + '</p>' + items + cd
+      + '<p class="pv-hurry">HURRY UP!!!</p><span class="pv-go">' + esc(val(sale, 'btn') || 'Shop the offer') + '</span><span class="pv-no">No thanks</span>'];
+  };
+  var newHTML = function () {
+    var isNew = (newp.querySelector('input[name=np_kind]:checked') || {}).value === 'new', sel = newp.querySelector('select[name=np_id]');
+    var opt = sel.options[sel.selectedIndex], img = opt ? opt.dataset.img : '', name = val(newp, 'np_name') || (opt && opt.value ? opt.textContent.replace(/ \(hidden\)$/, '') : '');
+    var note = !newp.querySelector('input[name=np_on]').checked ? 'On is not ticked, so this popup will not show.' : !name ? 'Write the product name, or pick the product.' : '';
+    return [note, '<p class="pv-k">' + (isNew ? 'Just arrived' : 'Coming soon') + '</p>' + (img ? '<img class="pv-img" src="' + esc(img) + '" alt="">' : '')
+      + '<p class="pv-name">' + esc(name || 'Product name') + '</p>' + (val(newp, 'np_line') ? '<p class="pv-on">' + esc(val(newp, 'np_line')) + '</p>' : '')
+      + '<span class="pv-go">' + (isNew ? 'Shop now' : 'Explore FOMAXO') + '</span><span class="pv-no">Close</span>'];
+  };
+  var draw = function () {
+    if (!box) return;
+    var r = which === 'sale' ? saleHTML() : newHTML();
+    box.querySelector('.pv-note').textContent = r[0]; box.querySelector('.pv-note').hidden = !r[0];
+    var site = box.querySelector('.pv-site'); site.classList.toggle('light', !dark);
+    site.querySelector('.pv-box').innerHTML = '<span class="pv-x">×</span>' + r[1];
+    box.querySelectorAll('[data-pvmode]').forEach(function (b) { b.classList.toggle('on', (b.dataset.pvmode === 'dark') === dark); });
+    box.querySelectorAll('[data-pvwhich]').forEach(function (b) { b.classList.toggle('on', b.dataset.pvwhich === which); });
+  };
+  var close = function () { if (box) { box.remove(); box = null; clearInterval(tick); document.removeEventListener('keydown', key); } };
+  var key = function (e) { if (e.key === 'Escape') close(); };
+  var open = function (w) {
+    which = w; close();
+    box = document.createElement('div'); box.className = 'pvw';
+    box.innerHTML = '<div class="pv-bar"><span class="seg">' + (sale ? '<button type="button" data-pvwhich="sale">Sale popup</button>' : '') + (newp ? '<button type="button" data-pvwhich="new">New product popup</button>' : '')
+      + '</span><span class="seg"><button type="button" data-pvmode="dark">Dark</button><button type="button" data-pvmode="light">Light</button></span><button type="button" class="btn sm" data-pvclose>Close preview</button></div>'
+      + '<p class="pv-note"></p><div class="pv-site"><div class="pv-box"></div></div><p class="muted small pv-foot">Preview only. Press Save on the page to put it on the website.</p>';
+    box.addEventListener('click', function (e) {
+      var t = e.target.closest('button'); if (e.target === box || (t && t.hasAttribute('data-pvclose'))) { close(); return; }
+      if (t && t.dataset.pvmode) { dark = t.dataset.pvmode === 'dark'; draw(); }
+      if (t && t.dataset.pvwhich) { which = t.dataset.pvwhich; draw(); }
+    });
+    document.body.appendChild(box); document.addEventListener('keydown', key); draw();
+    tick = setInterval(function () { if (which === 'sale') draw(); }, 1000);
+  };
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-preview]'); if (b) open(b.dataset.preview); });
+})();

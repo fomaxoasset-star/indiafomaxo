@@ -113,11 +113,11 @@ function fomaxo_seed_products(array $live): void {
   }
   shop_set('products_seeded', shop_now());
 }
-/* the biggest real % saving among products on the website with an old price, and that product's name: what the offer popup shows */
-function fomaxo_best_pct(): array {
+/* the biggest real % saving among products on the website with an old price (only those in $only, when given), and that product's name: what the offer popup shows */
+function fomaxo_best_pct(array $only = []): array {
   $best = [0, ''];
-  foreach (fomaxo_catalog()['products'] as $p) {
-    if (!empty($p['hidden'])) continue;
+  foreach (fomaxo_catalog()['products'] as $id => $p) {
+    if (!empty($p['hidden']) || ($only && !in_array((string)$id, $only, true))) continue;
     foreach ($p['prices'] as $k => $v) { $w = (float)($p['was'][$k] ?? 0);
       if ($w > $v && $v > 0 && ($n = (int)round(($w - $v) / $w * 100)) > $best[0]) $best = [$n, $p['name']]; }
   }
