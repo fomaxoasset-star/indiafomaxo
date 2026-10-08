@@ -1941,7 +1941,7 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-fit .cb-two .gf-pics img:nth-child(odd):last-child{grid-column:span 2;object-fit:contain;background:radial-gradient(circle at 50% 55%,#2a2116,#0b0a08 70%)}
 .cb-fit .gf-pics{aspect-ratio:2/1}#cb-sets .gf-pics{aspect-ratio:auto;height:120px}.cb-fit .cb-fhead .lead,.cb-fit .cb-fhead h2::after{display:none}
 .cb-fit .gf-set .gf-body{gap:10px;padding:20px 22px}.cb-fit .gf-set h3{font-size:18px}.cb-fit .gf-set .v{font-size:15px;line-height:1.35}
-.cb-fit .gf-pick{gap:6px;padding-top:10px;padding-bottom:0}.cb-fit .gf-pick > small:first-child{display:none}
+.cb-fit .gf-pick{gap:6px;padding-top:10px;padding-bottom:0}.cb-fit .cb-two .gf-body{display:flex;flex-direction:column}.cb-fit .cb-two .gf-pick{flex:1;min-height:0;gap:8px}.cb-fit .cb-two .cb-slot{flex:1 1 0;min-height:50px;max-height:104px}.gf-set .ctas .btn.cb-soon{padding-top:9px;padding-bottom:9px;line-height:1.3}.cb-fit .cb-two .cb-slot img,.cb-fit .cb-two .cb-slot .ph0{width:auto;height:min(100%,64px);aspect-ratio:1;max-height:64px;min-height:40px}.cb-fit .gf-pick > small:first-child{display:none}
 .cb-fit .cb-slot{gap:10px;padding:5px 12px 5px 5px}.cb-fit .cb-slot img,.cb-fit .cb-slot .ph0{width:40px;height:40px}.cb-fit .cb-slot b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cb-fit .cb-slot small{font-size:9.5px}
 .cb-fit .cb-price{padding-top:10px}.cb-fit .cb-price b{font-size:24px}.cb-fit .ctas .btn{padding-top:12px;padding-bottom:12px}
 }
@@ -3879,8 +3879,12 @@ function cbEven(){
   const ps = $$('[data-cbpanel]'), cs = $$('[data-cbpanel] .gf-set'); if (!cs.length) return;
   cs.forEach(c => c.style.height = ''); if (!matchMedia('(min-width:901px)').matches) return;
   const hid = ps.filter(p => p.hidden); hid.forEach(p => p.hidden = false);
-  const h = Math.max(...cs.map(c => c.offsetHeight)); hid.forEach(p => p.hidden = true);
-  cs.forEach(c => c.style.height = h + 'px');
+  const nat = Math.max(...cs.map(c => c.offsetHeight)); hid.forEach(p => p.hidden = true);
+  /* and the section fills the screen under the menu: heading, tabs and cards, no empty band below */
+  const sec = $('#cb-fest'), card = cs.find(c => c.offsetParent), nav = $('header.nav');
+  const top = card && sec ? card.parentElement.getBoundingClientRect().top - sec.querySelector('.wrap').firstElementChild.getBoundingClientRect().top : 0;
+  const room = innerHeight - (nav ? nav.getBoundingClientRect().bottom : 0) - top - 28;
+  cs.forEach(c => c.style.height = Math.max(nat, Math.min(room, 760)) + 'px');
 }
 /* combo picture window: every product the slot's (hidden) dropdown offers, one card per product with its sizes;
    picking one sets the dropdown, so the card pictures and the WhatsApp message follow it */
