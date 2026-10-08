@@ -552,5 +552,3 @@ body.zooming{overflow:hidden}
   .rfst.on,.rfsw input:checked+span{color:#fff}
 }
 @media (min-width:821px){#cpPanes .cpf{gap:14px}}   /* laptops: Add a coupon spreads into the free space of its box */
-/* phone coupon list: code, what it gives and used on one line, the buttons in one row under them */
-@media (max-width:820px){.cpt thead{display:none}.cpt tr{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;align-items:start;border-bottom:1px solid var(--line)}.cpt td{border:0!important}.cpt td.nw{grid-column:1/-1;padding-top:0!important;text-align:left}.cpt .cpa{justify-content:flex-start;flex-wrap:nowrap}.cpt .cpa .linkbtn{margin-left:auto}}
