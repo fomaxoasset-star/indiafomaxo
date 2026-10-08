@@ -59,7 +59,7 @@ function shop_db(): PDO {
     try { $SHOP_DB->exec("ALTER TABLE coupons ADD stack INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '9');
   }
-  if (shop_setting('schema') === '9') {   // sorry coupons: phone = the last 10 digits of the one mobile number the code works for ('' = any shopper)
+  if (shop_setting('schema') === '9') {   // goodwill coupons: phone = the last 10 digits of the one mobile number the code works for ('' = any shopper)
     try { $SHOP_DB->exec("ALTER TABLE coupons ADD phone VARCHAR(10) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '10');
   }
@@ -118,7 +118,7 @@ function shop_schema(PDO $db): void {
       source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0,
       country VARCHAR(2) NOT NULL DEFAULT '', region VARCHAR(60) NOT NULL DEFAULT '')$tail",
     /* coupon codes made on the admin page: kind 'pct' (value = % off) or 'amt' (value = paise off); min_order in paise, starts and ends 'Y-m-d H:i' ('' = no limit; an old end of only 'Y-m-d' lasts the whole day),
-       max_uses 0 = no limit. Uses are counted from the orders that carry the code. phone = a sorry coupon's one mobile number (last 10 digits, '' = anyone). */
+       max_uses 0 = no limit. Uses are counted from the orders that carry the code. phone = a goodwill coupon's one mobile number (last 10 digits, '' = anyone). */
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
       starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '')$tail",
@@ -367,7 +367,7 @@ function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Us
 /* the last 10 digits of a mobile number ('' when it has fewer), so +91 98765 43210, 098765 43210 and 9876543210 all match */
 function coupon_phone(string $phone): string { $d = preg_replace('/\D/', '', $phone) ?? ''; return strlen($d) >= 10 ? substr($d, -10) : ''; }
 /* Checks a code for a bag of $subtotal paise. $offer = what the website offer (multi-buy) takes off this bag, in paise.
-   $phone = the shopper's mobile number, which a sorry coupon (one mobile number, one use) must match.
+   $phone = the shopper's mobile number, which a goodwill coupon (one mobile number, one use) must match.
    Returns ['error' => …] or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'stack', 'label'].
    "Use the bigger offer": the coupon or the offer, whichever saves more. "Use both": the offer first, then the coupon off the rest.
    The minimum order counts the bag before any discount. The bag always keeps at least ₹1 to pay, so online payment still works. */
@@ -378,7 +378,7 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null, int $of
   if (!$c || !(int)$c['active']) return ['error' => "$code is not a valid coupon code."];
   if (coupon_time($c) === 'soon') return ['error' => "Coupon $code starts on " . coupon_when(coupon_starts($c)) . '.'];
   if (coupon_time($c) === 'over') return ['error' => "Coupon $code has expired."];
-  if ((string)($c['phone'] ?? '') !== '') {   // a sorry coupon: only for the mobile number it was made for, and only once
+  if ((string)($c['phone'] ?? '') !== '') {   // a goodwill coupon: only for the mobile number it was made for, and only once
     if (coupon_phone($phone) === '') return ['error' => "Coupon $code is for one mobile number. Please type your mobile number in the delivery details first, then apply the code."];
     if (coupon_phone($phone) !== $c['phone']) return ['error' => "Coupon $code is for a different mobile number. Please use the mobile number it was sent to."];
     if (shop_coupon_uses($db, $code) >= max(1, (int)$c['max_uses'])) return ['error' => "Coupon $code has already been used. It works one time only."];
