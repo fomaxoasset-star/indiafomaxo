@@ -440,8 +440,11 @@ body.zooming{overflow:hidden}
 /* Sale popup preview at laptop or phone width, with the product size from the size bar (same sums as the website) */
 .pv-size{display:flex;gap:8px 12px;flex-wrap:wrap;justify-content:center;align-items:center;padding:8px 12px;border-radius:8px;background:var(--panel);font-size:13px}
 .pv-size label{display:inline-flex;flex-direction:row;align-items:center;gap:10px;margin:0;color:var(--muted);font-size:13px}.pv-size input[type=range]{width:200px;accent-color:var(--gold)}.pv-sw{min-width:78px;color:var(--gold2);font-weight:500}
+.pv-parts{flex-wrap:wrap}
+.pv-site.laptop .pv-k,.pv-site.phone .pv-k{font-size:calc(12px * var(--fk,1))}.pv-site.laptop .pv-pct{font-size:calc(58px * var(--fp,1))}.pv-site.phone .pv-pct{font-size:calc(48px * var(--fp,1))}
+.pv-site.laptop .pv-on,.pv-site.phone .pv-on{font-size:calc(15px * var(--fs,1))}.pv-site.laptop .pv-go,.pv-site.phone .pv-go{min-height:calc(48px * var(--fb,1));font-size:calc(11px * var(--fb,1));text-align:center}
 .pv-site.laptop{max-width:max(380px,calc(var(--ofn,1) * (var(--ofw) + 10px) + 52px))}.pv-site.laptop .pv-items{gap:10px}
-.pv-site.phone{max-width:max(340px,calc(var(--ofn,1) * (var(--ofw) + 8px) + 36px))}.pv-site.phone .pv-pct{font-size:46px}.pv-site.phone .pv-box{padding:26px 16px 16px}
+.pv-site.phone{max-width:max(340px,calc(var(--ofn,1) * (var(--ofw) + 8px) + 36px))}.pv-site.phone .pv-box{padding:26px 16px 16px}
 .pv-site:has(.pv-cards){max-width:min(640px,100%)}.pv-box.pv-plain:has(.pv-cards){width:auto}.pv-plain .boxl{max-width:340px}
 /* Analytics → Conversion: Overview | Conversion at the top, on the same date bar. Laptop: four boxes in 3 columns on one screen. Phone: one box at a time */
 .atop{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;flex:none}.atop .dbar{flex:1 1 auto}

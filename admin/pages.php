@@ -234,6 +234,7 @@ if ($tab === 'offer') {
     /* product picture size in the popup: changed with the sliders in Preview, saved with Save */
     . '<input type="hidden" name="size_l" value="' . $O['sizeL'] . '" data-min="' . SHOP_OFFER_SIZE['L'][0] . '" data-def="' . SHOP_OFFER_SIZE['L'][1] . '" data-max="' . SHOP_OFFER_SIZE['L'][2] . '">'
     . '<input type="hidden" name="size_p" value="' . $O['sizeP'] . '" data-min="' . SHOP_OFFER_SIZE['P'][0] . '" data-def="' . SHOP_OFFER_SIZE['P'][1] . '" data-max="' . SHOP_OFFER_SIZE['P'][2] . '">'
+    . implode('', array_map(fn($d) => implode('', array_map(fn($k) => '<input type="hidden" name="fs[' . $d . '][' . $k . ']" value="' . $O['fs'][strtoupper($d)][$k] . '" data-min="' . SHOP_OFFER_FS[$k][0] . '" data-def="100" data-max="' . SHOP_OFFER_FS[$k][1] . '">', array_keys(SHOP_OFFER_FS))), ['l', 'p']))
     . '<div class="ofrow"><b>Timer</b><span class="seg ck ofm">' . $radio('end', 'Countdown') . $radio('always', 'Always on') . $radio('off', 'Off') . '</span></div>'
     . '<div class="ofend"' . ($O['mode'] === 'end' ? '' : ' hidden') . '><b>Ends</b><div class="ofendin">'
     . '<span class="qbtns">' . implode('', array_map(fn($hh, $l) => '<button class="btn line sm" name="quick" value="' . $hh . '" title="Save, ending ' . $l . ' from now">' . $l . '</button>', [24, 48, 72, 168], ['24h', '48h', '3 days', '7 days'])) . '</span>'

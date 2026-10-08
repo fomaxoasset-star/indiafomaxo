@@ -450,8 +450,11 @@
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
   var dark = true, which = 'sale', box = null, tick = null, phone = matchMedia('(max-width:820px)').matches;
   /* the popup's product picture size, laptop and phone: kept in the form's hidden size_l / size_p, so Save puts it on the website */
-  var sizeIn = function () { return sale && sale.querySelector('input[name="size_' + (phone ? 'p' : 'l') + '"]'); };
+  var part = 'img', FS = ['title', 'pct', 'sub', 'btn'];   // what the slider sizes: the product pictures, or one of the popup's words
+  var sizeIn = function (k, ph) { k = k || part; ph = ph === undefined ? phone : ph;
+    return sale && sale.querySelector(k === 'img' ? 'input[name="size_' + (ph ? 'p' : 'l') + '"]' : 'input[name="fs[' + (ph ? 'p' : 'l') + '][' + k + ']"]'); };
   var sizeWord = function (i) { var lo = +i.dataset.min, hi = +i.dataset.max, f = (+i.value - lo) / (hi - lo);
+    if (part !== 'img') return +i.value === 100 ? 'Standard' : i.value + '%';
     return (+i.value === +i.dataset.def ? 'Standard' : f < .25 ? 'Small' : f < .5 ? 'Medium' : f < .75 ? 'Large' : 'Extra large'); };
   /* the end typed on the page (dd/mm/yyyy and a time, India time) as a moment, or 0 */
   var endAt = function () {
@@ -468,7 +471,7 @@
     var end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
     var cd = mode === 'end' ? '<div class="pv-cd">' + [Math.floor(left / 86400), pad(Math.floor(left % 86400 / 3600)), pad(Math.floor(left % 3600 / 60)), pad(left % 60)].map(function (n, i) {
       return '<div><b>' + (end ? n : '–') + '</b><span>' + ['Days', 'Hours', 'Min', 'Sec'][i] + '</span></div>'; }).join('') + '</div>' : '';
-    var items = picked.length ? '<div class="pv-items" style="--ofw:' + (+sizeIn().value) + 'px;--ofn:' + picked.length + '">' + picked.map(function (i) { var d = i.dataset;
+    var items = picked.length ? '<div class="pv-items">' + picked.map(function (i) { var d = i.dataset;
       return '<div class="pv-item">' + (d.img ? '<img src="' + esc(d.img) + '" alt="">' : '<span class="pv-noimg"></span>') + '<b>' + esc(d.name) + '</b><span>' + (d.was ? '<s>' + esc(d.was) + '</s> ' : '') + esc(d.price) + '</span></div>'; }).join('') + '</div>' : '';
     return [note, '<p class="pv-k">' + esc(val(sale, 'title') || 'Limited time offer') + '</p>'
       + (best ? '<p class="pv-pct">' + pct + '% off</p>' : '<p class="pv-on">No product has an old price yet, so this popup stays hidden.</p>')
@@ -509,7 +512,9 @@
       r0.min = si.dataset.min; r0.max = si.dataset.max; r0.value = si.value; sz.querySelector('.pv-sw').textContent = sizeWord(si);
       sz.querySelector('[data-pvreset]').disabled = +si.value === +si.dataset.def; }
     site.classList.toggle('phone', which === 'sale' && phone); site.classList.toggle('laptop', which === 'sale' && !phone);
-    site.style.cssText = which === 'sale' && si ? '--ofw:' + si.value + 'px;--ofn:' + Math.max(1, sale.querySelectorAll('input[name="items[]"]:checked').length) : '';
+    site.style.cssText = which === 'sale' && si ? '--ofw:' + sizeIn('img').value + 'px;--ofn:' + Math.max(1, sale.querySelectorAll('input[name="items[]"]:checked').length)
+      + FS.map(function (k, i) { return ';--f' + 'kpsb'[i] + ':' + sizeIn(k).value / 100; }).join('') : '';
+    box.querySelectorAll('[data-pvpart]').forEach(function (b) { b.classList.toggle('on', b.dataset.pvpart === part); });
     site.querySelector('.pv-box').classList.toggle('pv-plain', which === 'line');
     site.querySelector('.pv-box').innerHTML = (which === 'line' ? '' : '<span class="pv-x">×</span>') + r[1];
     box.querySelectorAll('[data-pvmode]').forEach(function (b) { b.classList.toggle('on', (b.dataset.pvmode === 'dark') === dark); });
@@ -524,7 +529,8 @@
     box.innerHTML = '<div class="pv-bar"><span class="seg">' + (sale ? '<button type="button" data-pvwhich="sale">Sale popup</button><button type="button" data-pvwhich="line">Line by prices</button>' : '') + (newp ? '<button type="button" data-pvwhich="new">New product popup</button>' : '')
       + '</span><span class="seg"><button type="button" data-pvmode="dark">Dark</button><button type="button" data-pvmode="light">Light</button></span><button type="button" class="btn sm" data-pvclose>Close preview</button></div>'
       + (sale ? '<div class="pv-size"><span class="seg"><button type="button" data-pvdev="laptop">Laptop</button><button type="button" data-pvdev="phone">Phone</button></span>'
-        + '<label>Product size<input type="range" step="5" aria-label="Product picture size in the popup"></label><b class="pv-sw"></b>'
+        + '<span class="seg pv-parts"><button type="button" data-pvpart="img">Products</button><button type="button" data-pvpart="title">Top line</button><button type="button" data-pvpart="pct">% off</button><button type="button" data-pvpart="sub">Under the %</button><button type="button" data-pvpart="btn">Button</button></span>'
+        + '<label>Size<input type="range" step="5" aria-label="Size in the popup"></label><b class="pv-sw"></b>'
         + '<button type="button" class="btn line sm" data-pvreset>Reset</button><button type="button" class="btn sm" data-pvsave>Save</button></div>' : '')
       + '<p class="pv-note"></p><div class="pv-site"><div class="pv-box"></div></div><p class="muted small pv-foot">Preview only. Press Save on the page to put it on the website.</p>';
     box.addEventListener('click', function (e) {
@@ -532,6 +538,7 @@
       if (t && t.dataset.pvmode) { dark = t.dataset.pvmode === 'dark'; draw(); }
       if (t && t.dataset.pvwhich) { which = t.dataset.pvwhich; draw(); }
       if (t && t.dataset.pvdev) { phone = t.dataset.pvdev === 'phone'; draw(); }
+      if (t && t.dataset.pvpart) { part = t.dataset.pvpart; draw(); }
       if (t && t.hasAttribute('data-pvreset')) { sizeIn().value = sizeIn().dataset.def; draw(); }
       if (t && t.hasAttribute('data-pvsave')) sale.requestSubmit();
     });

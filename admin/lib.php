@@ -328,7 +328,8 @@ function save_offer(): string {
     'btn' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['btn'] ?? ''))), 0, 24),
     'items' => array_values(array_intersect(array_map('strval', (array)($_POST['items'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products'])))),
     'lines' => array_values(array_intersect(array_map('strval', (array)($_POST['lines'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products'])))),
-    'sizeL' => shop_offer_size($_POST['size_l'] ?? 0, 'L'), 'sizeP' => shop_offer_size($_POST['size_p'] ?? 0, 'P')];
+    'sizeL' => shop_offer_size($_POST['size_l'] ?? 0, 'L'), 'sizeP' => shop_offer_size($_POST['size_p'] ?? 0, 'P'),
+    'fs' => ['L' => shop_offer_fs(is_array($_POST['fs'] ?? null) ? $_POST['fs']['l'] ?? [] : []), 'P' => shop_offer_fs(is_array($_POST['fs'] ?? null) ? $_POST['fs']['p'] ?? [] : [])]];
   $o['line'] = (bool)$o['lines'];
   /* the % in the popup: empty = the biggest real saving; never more than that */
   $pct = trim((string)($_POST['pct'] ?? '')); $note = '';
