@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '56';
+const ASSET_V = '57';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -239,6 +239,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid = ?')->execute([(string)($_POST['sid'] ?? '')]);
     if (!empty($_POST['js'])) { header('Content-Type: application/json'); echo '{"ok":true}'; exit; }
     go(['tab' => 'analytics'], 'Removed from Left at checkout.');
+  }
+  if ($a === 'refill_auto') {   // Automatic sending box on Refill reminders: WhatsApp Business details (saved above public_html), timing, On / Off
+    require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
+    $back = ['tab' => 'members', 'refill' => 1];
+    $v = fn(string $k) => preg_replace('/\s+/', '', (string)($_POST[$k] ?? '')) ?? '';
+    $tok = $v('wa_token'); $pid = $v('wa_phone_id'); $sec = $v('wa_secret');
+    if ($tok !== '' && !preg_match('/^[A-Za-z0-9_\-]{20,600}$/', $tok)) go($back, '!Please check the access token. Copy it again from Meta.');
+    if ($pid !== '' && !preg_match('/^\d{6,25}$/', $pid)) go($back, '!Please check the phone number ID. It is only numbers.');
+    if ($sec !== '' && !preg_match('/^[A-Fa-f0-9]{32}$/', $sec)) go($back, '!Please check the app secret (32 letters and numbers).');
+    if (($tok . $pid . $sec) !== '' && !wa_config_save(['access_token' => $tok, 'phone_number_id' => $pid, 'app_secret' => strtolower($sec)])) go($back, '!Could not save. Please try again.');
+    $n = fn(string $k, int $lo, int $hi, int $def) => ctype_digit($x = trim((string)($_POST[$k] ?? ''))) ? max($lo, min($hi, (int)$x)) : $def;
+    $tm = refill_time(); $tf = $n('rf_from', 0, 23, $tm['from']); $tt = $n('rf_to', 1, 24, $tm['to']);
+    if ($tt <= $tf) go($back, '!The Until hour must be after the Send from hour.');
+    shop_set('refill_time', json_encode(['days' => $n('rf_days', 1, 365, $tm['days']), 'from' => $tf, 'to' => $tt]));
+    $want = ($_POST['auto_on'] ?? '') === '1'; $on = $want && wa_ready();
+    shop_set('refill_auto', $on ? '1' : '0');
+    go($back, $on ? 'Saved. Automatic refill messages are on.' : ($want ? '!Saved, but it stays off until the access token and phone number ID are saved.' : 'Saved. Automatic refill messages are off.'));
+  }
+  if ($a === 'wa_stop') {   // Stop on a customer's page: no more WhatsApp offers or automatic messages
+    require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
+    $ph = (string)($_POST['phone'] ?? '');
+    go(['tab' => 'members', 'c' => 'm:' . coupon_phone($ph)], wa_stop($ph, 'admin') ? 'WhatsApp offers stopped for this customer. No more automatic messages.' : '!This customer has no mobile number.');
+  }
+  if ($a === 'refill_sent') {   // tapped WhatsApp on Refill reminders (admin.js sends it without reloading): that order shows Sent and its coupon is made
+    require_once dirname(__DIR__) . '/api/refill-lib.php';
+    $no = (string)($_POST['no'] ?? '');
+    if (preg_match('/^FMX-IN-\d+$/', $no)) refill_mark($no);
+    http_response_code(204); exit;
   }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);

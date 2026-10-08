@@ -557,3 +557,21 @@
   };
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-preview]'); if (b) open(b.dataset.preview); });
 })();
+
+/* Refill reminders: tapping WhatsApp opens the ready message and notes the order as Sent (its REFILL- coupon is made then), without reloading */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('[data-rf]');
+  if (!a) return;
+  var list = a.closest('[data-csrf]'), fd = new FormData();
+  fd.append('csrf', list ? list.dataset.csrf : ''); fd.append('action', 'refill_sent'); fd.append('no', a.dataset.rf);
+  fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'});
+  var cell = a.parentNode;
+  if (!cell.querySelector('.rsent')) {
+    var d = new Date(), s = document.createElement('span');
+    s.className = 'rsent'; s.textContent = 'Sent ' + ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+    cell.insertBefore(s, a);
+    var todo = document.querySelector('[data-rfn="todo"]'), done = document.querySelector('[data-rfn="sent"]');
+    if (todo && !a.classList.contains('line')) { todo.textContent = Math.max(0, +todo.textContent - 1); done.textContent = +done.textContent + 1; }
+  }
+  a.classList.add('line');
+});
