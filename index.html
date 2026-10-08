@@ -1409,17 +1409,33 @@ html[data-mode="light"] .hero-cine .ctas .btn:not(.line) .sub{color:#f0d3a0;opac
 .pc-stars.none{visibility:hidden}
 /* order again: last order on this device, in the bag and on the home page */
 .again h5{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:500;margin:0 0 12px}
-.ag-row{display:grid;gap:10px}
-.ag-item{display:grid;grid-template-columns:56px 1fr auto;gap:14px;align-items:center;border:1px solid var(--line);background:var(--panel);padding:8px 10px 8px 8px}
-.ag-item img{width:56px;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--panel-2)}
-.ag-t{display:flex;flex-direction:column;gap:4px;min-width:0}
-.ag-t b{font-family:var(--hfont);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ivory);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ag-t small{font-size:12px;color:var(--muted);letter-spacing:.04em}
-.ag-item .bl-add{padding:9px 16px}
-.again.in-bag{text-align:left;margin:4px 0 6px}
+.ag-head{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;margin:0 0 14px}
+.again .ag-head h5{margin:0}.ag-head h5 span{color:var(--muted);letter-spacing:.06em;text-transform:none;font-size:12px;margin-left:4px}
+.ag-acts{display:flex;align-items:center;gap:8px}
+.ag-all{border:1px solid var(--gold);color:var(--gold);background:none;font:500 10.5px var(--sans);letter-spacing:.16em;text-transform:uppercase;padding:8px 14px;cursor:pointer;white-space:nowrap;transition:background .3s,color .3s}
+.ag-all:hover{background:var(--gold);color:var(--black)}
+.ag-arr{width:32px;height:32px;border:1px solid var(--line-2);background:none;color:var(--gold);font-size:18px;line-height:1;cursor:pointer}
+.ag-arr:hover{border-color:var(--gold)}
+.ag-row{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:2px}
+.ag-row::-webkit-scrollbar{display:none}
+.ag-card{flex:0 0 128px;scroll-snap-align:start;display:flex;flex-direction:column;gap:3px;min-width:0}
+.ag-ph{position:relative;margin-bottom:6px}
+.ag-ph img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--panel-2);border:1px solid var(--line)}
+.ag-plus{position:absolute;right:6px;bottom:6px;width:30px;height:30px;border-radius:50%;border:0;background:var(--gold);color:var(--black);display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);transition:transform .2s,background .3s}
+.ag-plus:hover{background:var(--gold-hi);transform:scale(1.08)}
+.ag-card b{font-family:var(--hfont);font-weight:600;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ivory);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ag-card small{font-size:11.5px;color:var(--muted);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.again.in-bag{text-align:left;margin:18px 0 6px}
+.again.in-bag .ag-head{flex-wrap:wrap}.again.in-bag .ag-head h5 span{display:block;margin:6px 0 0}.again.in-bag .ag-head h5 span i{display:none}
+.again.in-bag .ag-card{flex-basis:104px}
 .again-home{padding:clamp(28px,4vw,44px) 0 0}
-.again-home .again{border:1px solid var(--line-2);padding:18px 18px 20px;background:var(--deep)}
-@media(min-width:760px){.again-home .ag-row{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}}
+.again-home .again{border:1px solid var(--line-2);padding:16px 18px;background:var(--deep)}
+@media(max-width:759px){
+  .ag-head{flex-wrap:wrap}.ag-head h5 span{display:block;margin:6px 0 0}.ag-head h5 span i{display:none}.ag-arr{display:none}
+  .ag-all{padding:7px 10px;font-size:10px;letter-spacing:.12em}
+  .ag-card{flex-basis:104px}
+  .again-home .again{padding:14px}
+}
 .pay-note{font-size:12.5px;color:var(--muted);text-align:center;margin:-4px 0 4px;letter-spacing:.02em}
 .soc-off{cursor:default;opacity:.55}
 .soc-off:hover{transform:none!important}
@@ -2879,11 +2895,18 @@ function lastOrder(){
 }
 function againHTML(cls=''){
   const L = lastOrder(); if (!L.length) return '';
-  return `<div class="again ${cls}"><h5>Order again</h5><div class="ag-row">${L.map((l, i) => { const o = P[l.id].sizes.find(s => String(s) === String(l.opt)) ?? l.opt;
-    return `<div class="ag-item"><a href="#/product/${l.id}" data-close><img src="${IMG(imgFor(P[l.id], o))}" alt="" loading="lazy"></a><div class="ag-t"><b>${esc(P[l.id].kind === 'care' ? P[l.id].title || P[l.id].name : P[l.id].name)}</b><small>${esc(optLabel(P[l.id], o))} · ${money(P[l.id].prices[o], curOf(P[l.id]))}</small></div><button type="button" class="bl-add" data-again="${i}">Add</button></div>`; }).join('')}</div></div>`;
+  const n = L.length, arrows = cls ? '' : '<button type="button" class="ag-arr" data-ag-go="-1" aria-label="Back">‹</button><button type="button" class="ag-arr" data-ag-go="1" aria-label="More">›</button>';
+  return `<div class="again ${cls}"><div class="ag-head"><h5>Order again <span><i>· </i>${n} item${n > 1 ? 's' : ''} from your last order</span></h5><div class="ag-acts">${n > 3 ? arrows : ''}${n > 1 ? '<button type="button" class="ag-all" data-again-all>Add all to bag</button>' : ''}</div></div>
+    <div class="ag-row">${L.map((l, i) => { const p = P[l.id], o = p.sizes.find(s => String(s) === String(l.opt)) ?? l.opt;
+    return `<div class="ag-card"><div class="ag-ph"><a href="#/product/${l.id}" data-close><img src="${IMG(imgFor(p, o))}" alt="" loading="lazy"></a><button type="button" class="ag-plus" data-again="${i}" aria-label="Add ${esc(p.name)} to bag"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></button></div><b>${esc(p.kind === 'care' ? p.title || p.name : p.name)}</b><small>${esc(optLabel(p, o))} · ${money(p.prices[o], curOf(p))}</small></div>`; }).join('')}</div></div>`;
 }
-document.addEventListener('click', e => { const b = e.target.closest('[data-again]'); if (!b) return; const l = lastOrder()[+b.dataset.again]; if (!l) return;
-  addToCart(l.id, P[l.id].sizes.find(s => String(s) === String(l.opt)) ?? l.opt, 1, false, l.picks && l.picks.length ? l.picks : undefined); });
+const againLine = l => [l.id, P[l.id].sizes.find(s => String(s) === String(l.opt)) ?? l.opt, 1, false, l.picks && l.picks.length ? l.picks : undefined];
+document.addEventListener('click', e => {
+  const go = e.target.closest('[data-ag-go]'); if (go) { const r = $('.ag-row', go.closest('.again')); if (r) r.scrollBy({left: +go.dataset.agGo * r.clientWidth * .8, behavior: 'smooth'}); return; }
+  if (e.target.closest('[data-again-all]')) { const L = lastOrder(), before = cart.reduce((a, l) => a + l.qty, 0); L.forEach(l => { const a = againLine(l); a[3] = true; addToCart(...a); });
+    const added = cart.reduce((a, l) => a + l.qty, 0) - before; if (added) toast(`${added} item${added > 1 ? 's' : ''} from your last order added to your bag`, true); return; }
+  const b = e.target.closest('[data-again]'); if (!b) return; const l = lastOrder()[+b.dataset.again]; if (!l) return;
+  addToCart(...againLine(l)); });
 function renderCart(){
   const n = cart.reduce((a, l) => a + l.qty, 0);
   const cc = $('#cartCount'); cc.textContent = n; cc.classList.toggle('on', n > 0);
