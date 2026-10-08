@@ -510,6 +510,13 @@ function review_set(int $id, string $status): void {
   if (!in_array($status, ['live', 'hidden'], true) || !($db = reviews_db())) return;
   $db->prepare('UPDATE reviews SET status = ? WHERE id = ?')->execute([$status, $id]);
 }
+/* delete a review for good: the row, its helpful votes and its photo files */
+function review_delete(int $id): void {
+  global $PRIV; if (!($db = reviews_db())) return;
+  $s = $db->prepare('SELECT photos FROM reviews WHERE id = ?'); $s->execute([$id]);
+  foreach (json_decode((string)$s->fetchColumn(), true) ?: [] as $p) @unlink("$PRIV/photos/" . basename($p));
+  $db->prepare('DELETE FROM reviews WHERE id = ?')->execute([$id]); $db->prepare('DELETE FROM votes WHERE review_id = ?')->execute([$id]);
+}
 /* tap-to-add emoji under the review reply box, in this order */
 const REPLY_EMOJI = ['🙏', '❤️', '😊', '✨', '🎁', '👍', '😍', '🥰', '🌸', '💐', '🤗', '😢'];
 /* FOMAXO's public answer under a review; an empty text removes it */

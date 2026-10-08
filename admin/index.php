@@ -178,8 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'review') {
     $st = (string)($_POST['status'] ?? ''); review_set((int)($_POST['id'] ?? 0), $st);
-    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review removed from the website.' : 'Review is back on the website.');
+    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review hidden from the website.' : 'Review is on the website.');
   }
+  if ($a === 'review_delete') { review_delete((int)($_POST['id'] ?? 0)); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Review deleted.'); }
   if ($a === 'review_reply') {
     $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? ''); review_reply((int)($_POST['id'] ?? 0), $txt);
     go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), trim($txt) === '' ? 'Reply removed from the website.' : 'Reply is on the website under the review.');
