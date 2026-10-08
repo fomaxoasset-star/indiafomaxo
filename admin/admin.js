@@ -603,7 +603,7 @@ document.addEventListener('click', function (e) {
     Array.prototype.forEach.call(x.ul.children, function (li) { li.hidden = q !== '' && (' ' + li.textContent.toLowerCase()).indexOf(' ' + q) < 0; li.classList.remove('on'); });
     x.ul.hidden = !shown(x.ul).length;
   }
-  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; }
+  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; f.dispatchEvent(new Event('change', {bubbles: true})); }
   document.addEventListener('focusin', function (e) { if (e.target.matches && e.target.matches('[data-ffind]')) { e.target.select(); filter(e.target, true); } });
   document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; filter(f); } });
   document.addEventListener('focusout', function (e) {
@@ -625,5 +625,47 @@ document.addEventListener('click', function (e) {
       m[i].classList.add('on'); m[i].scrollIntoView({block: 'nearest'});
     } else if (e.key === 'Enter' && !ul.hidden && m.length) { e.preventDefault(); pick(f, m[i > -1 ? i : 0]); }
     else if (e.key === 'Escape') ul.hidden = true;
+  });
+})();
+
+/* Left at checkout → WhatsApp: a ready message to that customer. "No coupon", or % off / ₹ off / a free product, for which a new CART- code
+   is made (one use, only their mobile) when Open WhatsApp is tapped; the message can be changed before sending */
+(function () {
+  var dlg = document.getElementById('ltWa'); if (!dlg) return;
+  var q = function (s) { return dlg.querySelector(s); }, kind = q('.ltwa-kind'), val = q('.ltwa-val input'), free = q('.ltwa-free [data-ffind]'),
+    freeV = q('input[name=ltfree]'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'), phone = '', hi = '';
+  var END = '\n\nThank you,\n*FOMAXO*';
+  function build() {
+    var k = kind.value, v = parseInt(val.value, 10) || 0;
+    dlg.dataset.kind = k;
+    if (!k) { text.value = hi + '\n\nCan we help you finish your order? Just reply to this message.\n\nFinish your order on our website:\nhttps://fomaxo.in' + END; return; }
+    var gift = k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || 10) + '% off' : '₹' + (v || 200) + ' off') + '*';
+    text.value = hi + '\n\nTo help you finish it, here is ' + gift + ' your order.\n\nYour code:\n*[CODE]*\n\nWorks one time, only with this mobile number.'
+      + '\n\nType the code at checkout on our website:\nhttps://fomaxo.in' + END;
+  }
+  function wa(t) { return 'https://wa.me/91' + phone + '?text=' + encodeURIComponent(t); }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-ltwa]'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();   // the button sits in the line's summary: don't open the line
+    phone = b.dataset.ltwa; hi = b.dataset.hi; q('.ltwa-who').textContent = b.dataset.who;
+    kind.value = ''; val.value = ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+  });
+  kind.addEventListener('change', build); val.addEventListener('input', build); free.addEventListener('change', build);
+  q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
+  send.addEventListener('click', function () {
+    var k = kind.value; err.hidden = true;
+    if (!k) { window.open(wa(text.value), '_blank'); dlg.close(); return; }
+    var w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the code is made
+    var fd = new FormData(), lts = document.querySelector('.lts');
+    fd.append('csrf', lts ? lts.dataset.csrf : ''); fd.append('action', 'lead_coupon'); fd.append('phone', phone); fd.append('gkind', k);
+    fd.append('pct', val.value || (k === 'pct' ? '10' : '200')); fd.append('gfree', freeV.value);
+    send.disabled = true;
+    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+      send.disabled = false;
+      if (!d.code) throw new Error(d.error || 'The code could not be made.');
+      text.value = text.value.split('[CODE]').join(d.code);
+      if (w) w.location = wa(text.value); else location.href = wa(text.value);
+      dlg.close();
+    }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
   });
 })();
