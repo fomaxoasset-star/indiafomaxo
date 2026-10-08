@@ -446,19 +446,32 @@ function make_goodwill_coupon(): array {
     'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $phone, 'created' => shop_now()]);
   return [$code, "$code is ready: " . (int)$v . '% off for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
 }
-/* the WhatsApp link that sends a goodwill coupon to its customer, with a short ready message */
+/* A coupon's WhatsApp message, laid out like the refill reminder: short lines, a blank line between parts, the offer and code in *bold*
+   (WhatsApp shows *text* as bold). No emoji: wa.me shows them as "?". $intro = the opening line, $extra = more lines for the details part. */
+function coupon_wa_text(array $c, string $intro, array $extra = []): string {
+  $n2 = "\n\n";
+  $min = (int)$c['min_order'];
+  $details = array_filter(array_merge([
+    $min && $c['kind'] !== 'free' ? 'Minimum order: *' . rupees($min) . '*' : '',   // a free product's minimum is already in the opening line
+    coupon_ends($c) !== '' ? 'Valid till: *' . date('j M Y', strtotime(coupon_ends($c))) . '*' : '',
+  ], $extra));
+  return "Hi,$n2$intro{$n2}Your code:\n*{$c['code']}*" . ($details ? $n2 . implode("\n", $details) : '')
+    . "{$n2}Type the code at checkout on our website:\nhttps://fomaxo.in{$n2}Thank you,\n*FOMAXO*";
+}
+/* the WhatsApp link that sends a goodwill coupon to its customer, with a ready message */
 function goodwill_wa(array $c): string {
-  return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode('Hi, this is FOMAXO. As a goodwill gesture for your last order, here is ' . (int)$c['value'] . '% off your next order with the code '
-    . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time' . (coupon_ends($c) !== '' ? ', until ' . date('j M Y', strtotime(coupon_ends($c))) . '.' : ' and has no end date.'));
+  return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode(coupon_wa_text($c,
+    'We are sorry about your last order. As a goodwill gesture, here is *' . (int)$c['value'] . '% off* your next order.',
+    ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]));
 }
 
-/* the WhatsApp message that shares a coupon: WhatsApp opens and the owner picks the customer (no emoji: wa.me shows them as "?") */
+/* the WhatsApp message that shares a coupon: WhatsApp opens and the owner picks the customer */
 function coupon_wa(array $c): string {
   $min = (int)$c['min_order'];
-  $what = $c['kind'] === 'free' ? 'a free ' . coupon_free_name($c) : coupon_label($c);
-  return 'https://wa.me/?text=' . rawurlencode('Hi, this is FOMAXO. Here is ' . $what . ' for you' . ($min ? ' when you shop for ' . rupees($min) . ' or more' : ' on your next order')
-    . '. Use the code ' . $c['code'] . ' at checkout on fomaxo.in.' . (!empty($c['per_cust']) ? ' It works one time per customer.' : '')
-    . (coupon_ends($c) !== '' ? ' Valid till ' . date('j M Y', strtotime(coupon_ends($c))) . '.' : ''));
+  $intro = $c['kind'] === 'free'
+    ? ($min ? 'Shop for *' . rupees($min) . '* or more and get a *free ' . coupon_free_name($c) . '* with your order.' : 'Here is a *free ' . coupon_free_name($c) . '* with your next order.')
+    : 'Here is *' . coupon_label($c) . '* your next order.';
+  return 'https://wa.me/?text=' . rawurlencode(coupon_wa_text($c, $intro, [!empty($c['per_cust']) ? 'One use per customer.' : '']));
 }
 
 /* ---------------- members (repeat customers) ---------------- */
