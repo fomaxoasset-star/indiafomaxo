@@ -22,5 +22,7 @@ if (isset($order['error'])) fail($order['error']);
 $cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : ''], $order['subtotal']);
 if (!$cp) fail('Please type your coupon code.');
 if (isset($cp['error'])) fail($cp['error']);
-out(['code' => $cp['code'], 'label' => $cp['label'], 'discount' => $cp['discount'] / 100, 'subtotal' => $order['subtotal'] / 100, 'total' => ($order['subtotal'] - $cp['discount']) / 100,
+/* discount = the coupon, offer = the multi-buy discount kept with it ("Use both", or a bigger offer); stack = the coupon's choice */
+out(['code' => $cp['code'], 'label' => $cp['label'], 'discount' => $cp['discount'] / 100, 'offer' => $cp['offer'] / 100, 'stack' => $cp['stack'],
+  'subtotal' => $order['subtotal'] / 100, 'total' => ($order['subtotal'] - $cp['off']) / 100,
   'ends' => $cp['ends'] === '' ? null : date('c', strtotime($cp['ends'] . ':59'))]);   // for "Ends in 2h 15m" at checkout

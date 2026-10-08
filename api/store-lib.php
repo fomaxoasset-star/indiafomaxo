@@ -245,12 +245,16 @@ function fomaxo_price_order(array $in): array {
   return ['items' => $items, 'rows' => $rows, 'subtotal' => $total];
 }
 
+/* What the website offer (multi-buy) takes off a bag of $subtotal paise. fomaxo.in has no multi-buy offer yet, so 0;
+   a coupon's "Use the bigger offer" / "Use both" choice (Admin → Coupons) is weighed against this. */
+function fomaxo_multibuy(int $subtotal): int { return 0; }
+
 /* The coupon code typed at checkout, checked against this bag (api/shop-db.php): [] when none was typed,
-   ['error' => …], or ['code', 'discount' (paise), 'label']. */
+   ['error' => …], or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'off' (both together), 'label']. */
 function fomaxo_coupon(array $in, int $subtotal, ?PDO $db = null): array {
   $code = is_string($in['coupon'] ?? null) ? trim($in['coupon']) : '';
   if ($code === '') return [];
-  try { return shop_coupon_apply($code, $subtotal, $db); }
+  try { $cp = shop_coupon_apply($code, $subtotal, $db, fomaxo_multibuy($subtotal)); return isset($cp['error']) ? $cp : $cp + ['off' => $cp['discount'] + $cp['offer']]; }
   catch (Throwable $e) { error_log('FOMAXO coupon: ' . $e->getMessage()); return ['error' => 'Coupon codes cannot be checked right now. Please try again, or remove the code.']; }
 }
 

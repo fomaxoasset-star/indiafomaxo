@@ -2045,8 +2045,8 @@ html[data-mode="light"] .co-err{color:#a8322a}
 .co-cpn-form input:focus{border-color:var(--gold-hi)}
 .co-cpn-form input::placeholder{color:var(--dim);letter-spacing:.04em;text-transform:none;opacity:1}
 .co-cpn-form .btn{min-height:46px;flex:none}
-.co-cpn-msg{margin-top:10px;font-size:13.5px;color:#d0493e}
-html[data-mode="light"] .co-cpn-msg{color:#a8322a}
+.co-cpn-msg{margin-top:10px;font-size:13.5px;color:#d0493e}.co-cpn-msg.info{color:var(--gold)}
+html[data-mode="light"] .co-cpn-msg:not(.info){color:#a8322a}
 .co-cpn-on{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--gold)}
 .co-cpn-on b{font-weight:500;letter-spacing:.1em;color:var(--gold-hi)}
 .co-cpn-end{display:block;margin-top:4px;font-size:12.5px;letter-spacing:.04em;color:var(--muted)}
@@ -3980,7 +3980,7 @@ function checkoutPage(q){
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > p.prices[l.opt] ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(p.prices[l.opt] * l.qty)}</span></div></div>`; }).join('')}</div>
-    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
+    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coMbRow" hidden><span>Multi-buy discount</span><b id="coMbRowOff"></b></div><div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
     ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
@@ -4045,7 +4045,9 @@ function bindCheckout(q){
   $$('.co-item[role=button]').forEach(it => { it.onclick = openBag; it.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBag(); } }; });
   if (S.checkout.razorpay) loadRazorpay().catch(() => {});
   const method = () => (f.querySelector('input[name=pay]:checked') || {}).value;
-  let cpn = null;   // the coupon applied: {code, off} (off in rupees, worked out by api/coupon.php; cod.php and razorpay.php work it out again)
+  /* the coupon applied: {code, off, cp, offer} in rupees, worked out by api/coupon.php (cod.php and razorpay.php work it out again).
+     cp = the coupon, offer = the multi-buy discount kept with it ("Use both", or when the offer saves more), off = both together */
+  let cpn = null;
   const total = () => t - (cpn ? cpn.off : 0) + (method() === 'cod' && cod ? cod.fee : 0);
   /* payment stays locked until every required delivery field is filled in correctly */
   const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', v => /^[6-9]\d{9}$/.test(v.replace(/\D/g, ''))],
@@ -4069,7 +4071,8 @@ function bindCheckout(q){
     if (fr) fr.hidden = !isCod;
     $('#coTotal').textContent = inr(total());
     const sv = $('#coSave'), saved = Number(sv.dataset.was) + (cpn ? cpn.off : 0); sv.hidden = saved <= 0; sv.textContent = `You save ${inr(saved)} on this order`;
-    const cr2 = $('#coCpnRow'); if (cr2) { cr2.hidden = !cpn; if (cpn) { $('#coCpnRowCode').textContent = cpn.code; $('#coCpnRowOff').textContent = '−' + inr(cpn.off); } }
+    const cr2 = $('#coCpnRow'), mb = $('#coMbRow'); if (cr2) { cr2.hidden = !(cpn && cpn.cp > 0); mb.hidden = !(cpn && cpn.offer > 0);
+      if (cpn) { $('#coCpnRowCode').textContent = cpn.code; $('#coCpnRowOff').textContent = '−' + inr(cpn.cp); $('#coMbRowOff').textContent = '−' + inr(cpn.offer); } }
     btn.disabled = locked;
     $('#coPayTxt').textContent = locked ? 'Complete delivery details to pay' : isCod ? `Place order · ${inr(total())} on delivery` : `Pay ${inr(total())} securely`;
     $$('.co-opt', f).forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
@@ -4125,11 +4128,11 @@ function bindCheckout(q){
 
   /* The coupon code box: the code is checked on the server against this bag, and kept for this visit if the page redraws */
   const CPN = 'fx_coupon', cIn = $('#coCpnIn');
-  const cpnShow = msg => {
-    const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || '';
-    $('#coCpnOn').hidden = !cpn; $('#coCpnSaved').hidden = !cpn;
+  const cpnShow = (msg, info) => {   // info: a gold note, not an error
+    const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || ''; m.classList.toggle('info', !!info);
+    $('#coCpnOn').hidden = !cpn; $('#coCpnSaved').hidden = !(cpn && cpn.cp > 0);
     $('#coCpnForm').hidden = !!cpn;
-    if (cpn) { $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.off); }
+    if (cpn) { $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.cp); }
     cpnEnd(); upd();
   };
   /* a coupon with a time limit: "Ends in 2h 15m" in its last two days, else the day it ends */
@@ -4147,7 +4150,9 @@ function bindCheckout(q){
     code = String(code || '').replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
     if (!code) { cpnShow('Please type your coupon code.'); return; }
     const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
-    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines}); cpn = {code: d.code, off: Number(d.discount), ends: d.ends || ''}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {} cpnShow(''); }
+    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines}); const cp = Number(d.discount), offer = Number(d.offer || 0);
+      cpn = {code: d.code, cp, offer, off: cp + offer, ends: d.ends || ''}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {}
+      !cp && offer > 0 ? cpnShow('Your multi-buy discount saves more, so we kept it.', true) : cpnShow(''); }
     catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message); }
     finally { b.disabled = false; b.textContent = 'Apply'; }
   };
