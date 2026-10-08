@@ -436,17 +436,20 @@ function make_goodwill_coupon(): array {
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
   if (!ctype_digit($v) || (int)$v < 1 || (int)$v > 99) return ['', '!Please write the % off, from 1 to 99.'];
+  $end = trim((string)($_POST['ends'] ?? '')); $end = $end === '' ? '' : parse_day($end);   // optional: works until the end of that day
+  if ($end === '' && trim((string)($_POST['ends'] ?? '')) !== '') return ['', '!Please type the end date as dd/mm/yyyy, or leave it empty.'];
+  if ($end !== '' && $end < date('Y-m-d')) return ['', '!The end date has already passed. Please pick today or a later day.'];
   $abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';   // no 0/O or 1/I, so it is easy to read out
   $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?');
   do { $code = 'GOODWILL-'; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
-  shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => (int)$v, 'min_order' => 0, 'starts' => '', 'ends' => '',
+  shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => (int)$v, 'min_order' => 0, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
     'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $phone, 'created' => shop_now()]);
   return [$code, "$code is ready: " . (int)$v . '% off for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
 }
 /* the WhatsApp link that sends a goodwill coupon to its customer, with a short ready message */
 function goodwill_wa(array $c): string {
   return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode('Hi, this is FOMAXO. As a goodwill gesture for your last order, here is ' . (int)$c['value'] . '% off your next order with the code '
-    . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time and has no end date.');
+    . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time' . (coupon_ends($c) !== '' ? ', until ' . date('j M Y', strtotime(coupon_ends($c))) . '.' : ' and has no end date.'));
 }
 
 /* the WhatsApp message that shares a free product coupon: WhatsApp opens and the owner picks the customer (no emoji: wa.me shows them as "?") */
@@ -454,7 +457,7 @@ function free_coupon_wa(array $c): string {
   $min = (int)$c['min_order'];
   return 'https://wa.me/?text=' . rawurlencode('Hi, this is FOMAXO. Here is a free ' . coupon_free_name($c) . ' for you' . ($min ? ' when you shop for ' . rupees($min) . ' or more' : ' with your next order')
     . '. Use the code ' . $c['code'] . ' at checkout on fomaxo.in.' . (!empty($c['per_cust']) ? ' It works one time per customer.' : '')
-    . (coupon_ends($c) !== '' ? ' Valid till ' . coupon_when(coupon_ends($c)) . '.' : ''));
+    . (coupon_ends($c) !== '' ? ' Valid till ' . date('j M Y', strtotime(coupon_ends($c))) . '.' : ''));
 }
 
 /* ---------------- members (repeat customers) ---------------- */
