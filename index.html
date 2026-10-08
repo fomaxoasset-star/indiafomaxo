@@ -3526,6 +3526,9 @@ const COMBO_SETS = [
   {id: 'big-three', combo: true, tag: 'Parfum wardrobe', name: 'The Big Three', badge: 'Best value', save: 751, v: 'A strong, a fresh and a classic parfum. One for every mood.', slots: 3, live: true, only: PARFUM, items: [['gold', 100], ['dollar', 100], ['oldmoney', 50]]},
   {id: 'festive-hamper', combo: true, tag: 'Diwali and weddings', name: 'Festive Hamper', badge: 'Festive', save: 617, v: 'Parfum, body care, a lip balm and a car fragrance in one gift box.', slots: 5, live: true, only: [PARFUM, PARFUM, CARE('body'), CARE('lips'), CARF], items: [['gold', 100], ['matchacoco', 50], ['pc-passionsin-gel', 'one'], ['pc-kissberry', 'one'], ['carrush', 'one']]}
 ];
+/* combos of 3 or more products (not the offer): every product after the first can be left out ("No product");
+   the saving then shrinks with what is left (see cbPrices), and with under 2 products it is no longer a combo */
+COMBO_SETS.forEach(g => { if (!g.offer && g.slots >= 3) g.none = [...Array(g.slots).keys()].slice(1); });
 /* festival tabs on the Combo page, nearest festival first. dates: the day of each festival (check them each year);
    a festival counts as coming up until the day after it. when: months used once the dates run out */
 const FI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -3544,8 +3547,12 @@ const festWhen = f => { const n = f.next; if (!n) return ''; const day = new Dat
   return `${esc(n.label)} · ${day} · <b>${n.days < 0 ? 'Happy ' + esc(n.label) : n.days === 0 ? 'Today' : n.days === 1 ? 'Tomorrow' : n.days + ' days to go'}</b>`; };
 /* worth = today's price of each product picked; combo price = worth less the combo's saving */
 const cbVal = ([id, sz]) => P[id] ? +P[id].prices[sz] || 0 : 0;
-const cbPrices = (g, picks) => { const worth = picks.reduce((a, x) => a + cbVal(x), 0), save = Math.min(g.free ? g.free.reduce((a, k) => a + (picks[k] ? cbVal(picks[k]) : 0), 0) : g.save || 0, worth); return {worth, save, price: worth - save}; };
-const cbPriceHTML = (g, picks) => { const c = cbPrices(g, picks); return `<div><small>Worth</small><s>${money(c.worth, '₹')}</s></div><div><small>${g.free ? 'You pay' : 'Combo price'}</small><b>${money(c.price, '₹')}</b></div>${c.save ? `<span class="cb-save">${g.free ? `Gift worth ${money(c.save, '₹')} free` : `Save ${money(c.save, '₹')} · ${Math.round(c.save / c.worth * 100)}%`}</span>` : ''}`; };
+const cbSum = picks => picks.reduce((a, x) => a + cbVal(x), 0);
+/* products left out or swapped: same % off as the full combo, price rounded to end in 9 */
+const cbSave = (g, picks, worth) => { if (picks.length < 2) return 0; const base = cbSum(g.items); if (worth === base) return g.save || 0;
+  const price = Math.round(worth * (1 - (g.save || 0) / base) / 10) * 10 - 1; return Math.max(0, worth - price); };
+const cbPrices = (g, picks) => { const worth = cbSum(picks), save = Math.min(g.free ? g.free.reduce((a, k) => a + (picks[k] ? cbVal(picks[k]) : 0), 0) : cbSave(g, picks, worth), worth); return {worth, save, price: worth - save}; };
+const cbPriceHTML = (g, picks) => { const c = cbPrices(g, picks), one = !g.free && picks.length < 2; return `${one ? '' : `<div><small>Worth</small><s>${money(c.worth, '₹')}</s></div>`}<div><small>${g.free ? 'You pay' : one ? 'Price' : 'Combo price'}</small><b>${money(c.price, '₹')}</b></div>${one ? '<span class="cb-save">Add one more product to get the combo price</span>' : c.save ? `<span class="cb-save">${g.free ? `Gift worth ${money(c.save, '₹')} free` : `Save ${money(c.save, '₹')} · ${Math.round(c.save / c.worth * 100)}%`}</span>` : ''}`; };
 const cbPicks = gid => $$(`[data-gpick="${gid}"]`).filter(sel => sel.value).map(sel => sel.value.split('|'));
 const buildSets = list => list.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
   .filter(g => g.items.length === list.find(x => x.id === g.id).items.length);
@@ -3570,7 +3577,7 @@ const cbSlot = (id, sz) => { const p = P[id]; return p
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
     <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${IMG(imgFor(P[id], s))}"${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-      <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
+      <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items)}</div>` : ''}
       <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button></div>
     </div></article>`;
