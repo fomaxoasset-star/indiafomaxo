@@ -1595,6 +1595,7 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
 }
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+.pcard .stk-row:empty{display:block}.pcard .ev0{display:none!important}   /* evenCards(): an empty part keeps its row's height, or goes when the whole row lacks it */
 .pc-buy .pc-add{margin-top:0}
 .pc-sizes{display:flex;justify-content:center;gap:8px}
 .pc-size{min-width:64px;height:34px;padding:0 12px;border:1px solid var(--line-2);color:var(--champagne);font-size:13px;letter-spacing:.06em;transition:border-color .3s,color .3s,background .3s}
@@ -3515,7 +3516,7 @@ function pcCard(p, i=0, o={}){
   const multi = !o.size && p.sizes.length > 1 && !isSet;
   const size = o.size || (p.sizes.length === 1 ? p.sizes[0] : isSet ? p.sizes[0] : defaultSize(p));
   const href = `#/product/${p.id}${o.size ? '?size=' + o.size : ''}`;
-  const sizes = multi ? `<div class="pc-sizes" role="group" aria-label="Size">${[...p.sizes].sort((a, b) => b - a).map(s => `<button type="button" class="pc-size${s === size ? ' on' : ''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}" data-psize="${s}" aria-pressed="${s === size}">${esc(optLabel(p, s))}</button>`).join('')}</div>` : '';
+  const sizes = multi ? `<div class="pc-sizes" role="group" aria-label="Size">${[...p.sizes].sort((a, b) => b - a).map(s => `<button type="button" class="pc-size${s === size ? ' on' : ''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}" data-psize="${s}" aria-pressed="${s === size}">${esc(optLabel(p, s))}</button>`).join('')}</div>` : '<div class="pc-sizes"></div>';
   const btn = isOut(p) ? '<button class="pc-add oos" type="button" disabled>Out of stock</button>'
     : isSet ? `<div class="pc-btns"><a class="pc-add pc-line" href="${href}">Add To Cart</a><a class="pc-add" href="${href}">Buy Now</a></div>`
     : sizeOut(p, size) ? `<div class="pc-btns"><button class="pc-add pc-line oos" type="button" data-pcadd="${p.id}" data-opt="${size}" disabled>Out of stock</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}" hidden>Buy Now</button></div>`
@@ -3527,14 +3528,33 @@ function pcCard(p, i=0, o={}){
     </a>
     <div class="pc-info">
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
-      ${offerLine(p, 'card-l')}
+      <div class="pc-ofl">${offerLine(p, 'card-l')}</div>
       <div class="pc-price">${isSet ? fromHTML(p) : priceHTML(p, size)}</div><div class="stk-row" data-stk>${isSet ? '' : stockTag(p, size)}</div>
       ${starsHTML(p)}
-      ${p.short ? `<p class="pc-tagline">${esc(p.short)}</p>` : ''}
+      <p class="pc-tagline">${esc(p.short || '')}</p>
     </div>
     <div class="pc-buy">${sizes}${btn}</div>
   </article>`;
 }
+/* shop cards in a row line up: each part (name, offer line, price, stock tag, stars, words, sizes) takes the height of the
+   tallest one in its row, so a card without a stock tag or sizes keeps the same gaps as its neighbours */
+const EV_PARTS = ['h3', '.pc-ofl', '.pc-price', '.stk-row', '.pc-stars', '.pc-tagline', '.pc-sizes'];
+function evenCards(){
+  $$('.pc-grid').forEach(g => {
+    const cards = [...g.children].filter(c => c.classList.contains('pcard')), rows = new Map();
+    cards.forEach(c => EV_PARTS.forEach(sel => { const el = $(sel, c); if (el) { el.style.minHeight = ''; el.classList.remove('ev0'); } }));
+    cards.forEach(c => { const t = c.offsetTop; rows.has(t) ? rows.get(t).push(c) : rows.set(t, [c]); });
+    rows.forEach(row => EV_PARTS.forEach(sel => {
+      const els = row.map(c => $(sel, c)).filter(Boolean), h = Math.max(0, ...els.map(el => el.classList.contains('none') ? 0 : parseFloat(getComputedStyle(el).height) || 0));   // no-review stars only hold space beside real ones
+      els.forEach(el => { if (h) el.style.minHeight = h + 'px'; else el.classList.add('ev0'); });
+    }));
+  });
+}
+let evFrame = 0;
+const evenSoon = () => { cancelAnimationFrame(evFrame); evFrame = requestAnimationFrame(evenCards); };
+new MutationObserver(ms => { if (ms.some(m => !(m.target.closest && m.target.closest('[data-ofcd]')))) evenSoon(); }).observe(app, {childList: true, subtree: true});
+addEventListener('resize', evenSoon);
+document.fonts && document.fonts.ready.then(evenSoon);
 app.addEventListener('click', e => {
   const b = e.target.closest('[data-psize]'); if (!b) return;
   const c = b.closest('.pcard'), p = P[c.dataset.pc], s = isNaN(+b.dataset.psize) ? b.dataset.psize : +b.dataset.psize;
