@@ -61,6 +61,15 @@ if ($tab === 'orders') {
   $body .= '<div class="steps5" aria-label="Orders by step">';
   foreach (TRACK_CHIPS as $k => $label) $body .= '<a class="step tc-' . $k . ($F['status'] === $k ? ' on' : '') . '" href="' . h(self_url(array_filter(['status' => $F['status'] === $k ? '' : $k] + $q))) . '"><span>' . $label . '</span><b>' . ($TC[$k] ?? 0) . '</b></a>';
   $body .= '</div>';
+  /* who used a coupon: one gold box that shows only those orders, then a chip per code */
+  $CC = order_coupon_counts(['coupon' => ''] + $F); $cOn = $F['coupon'] !== '';
+  $body .= '<div class="cpbar"><a class="cpbox' . ($F['coupon'] === 'yes' ? ' on' : '') . '" href="' . h(self_url(array_filter(['coupon' => $F['coupon'] === 'yes' ? '' : 'yes'] + $q))) . '"><span>Used a coupon</span><b>' . $CC['n'] . '</b><small>' . ($CC['off'] ? rupees($CC['off']) . ' off in all' : 'No coupon orders') . '</small></a>';
+  if ($CC['codes']) {
+    $body .= '<div class="chips" aria-label="Orders by coupon code">';
+    foreach ($CC['codes'] as $code => $n) $body .= '<a class="chip' . ($F['coupon'] === (string)$code ? ' on' : '') . '" href="' . h(self_url(array_filter(['coupon' => $F['coupon'] === (string)$code ? '' : $code] + $q))) . '"><span class="cpn">' . h($code) . '</span> <b>' . $n . '</b></a>';
+    $body .= '</div>';
+  }
+  $body .= '</div>';
   if ($SUM['states']) {
     $body .= '<div class="chips" aria-label="Orders by state">';
     foreach ($SUM['states'] as $st => $n) $body .= '<a class="chip' . ($F['state'] === $st ? ' on' : '') . '" href="' . h(self_url(array_filter(['state' => $F['state'] === $st ? '' : $st] + $q))) . '">' . h($st) . ' <b>' . $n . '</b></a>';
@@ -70,12 +79,12 @@ if ($tab === 'orders') {
   /* Today / 7 days / 30 days / All fill in From and To (All empties them); the other filters stay */
   $qd = array_diff_key($q, ['from' => 1, 'to' => 1, 'page' => 1]); $dseg = '';
   foreach (['today', 'd7', 'd30', 'all'] as $k) { [$a, $b] = preset_span($k); $dseg .= '<a href="' . h(self_url(array_filter(['from' => $a, 'to' => $b] + $qd))) . '"' . ($F['from'] === $a && $F['to'] === $b ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>'; }
-  $body .= '<form class="filters' . ($nf ? ' open' : '') . '" id="ordFilters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '')
+  $body .= '<form class="filters' . ($nf ? ' open' : '') . '" id="ordFilters" method="get"><input type="hidden" name="tab" value="orders">' . ($F['state'] !== '' ? '<input type="hidden" name="state" value="' . h($F['state']) . '">' : '') . ($cOn ? '<input type="hidden" name="coupon" value="' . h($F['coupon']) . '">' : '')
     . '<label class="fx">Status' . $sel('status', ['' => 'All orders'] + TRACK_CHIPS + (in_array($F['status'], ['todo', 'new', 'paid'], true) ? [$F['status'] => ['todo' => 'Pending', 'new' => 'New', 'paid' => 'Paid'][$F['status']]] : []), $F['status']) . '</label>'
     . '<label class="fx">Payment' . $sel('method', ['' => 'COD and online', 'cod' => 'Cash on delivery (COD)', 'online' => 'Online (card / UPI)'], $F['method']) . '</label>'
     . '<label class="dq"><span class="hide-m">Dates</span><span class="seg">' . $dseg . '</span></label>'
     . '<label class="fx dfl">From' . date_box('from', $F['from'], 'From') . '</label><label class="fx dfl">To' . date_box('to', $F['to'], 'To') . '</label>'
-    . '<label class="grow"><span class="hide-m">Search</span><input type="search" name="q" value="' . h($F['q']) . '" placeholder="Order no, name, mobile, email or note" aria-label="Search orders"></label>'
+    . '<label class="grow"><span class="hide-m">Search</span><input type="search" name="q" value="' . h($F['q']) . '" placeholder="Order no, name, mobile or coupon" aria-label="Search orders"></label>'
     . '<button type="button" class="btn line show-m-i" data-open="#ordFilters">Filters' . ($nf ? ' (' . $nf . ')' : '') . '</button><button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
   $back = h(json_encode($q + ['page' => $page]));
   $body .= '<form id="qa" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="quick"><input type="hidden" name="back" value="' . $back . '"></form>';
@@ -86,8 +95,8 @@ if ($tab === 'orders') {
     $btns = order_buttons($o);
     $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary>' . $orderThumb($o)
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
-      . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small></span>'
-      . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . ($o['coupon'] !== '' ? ' · <span class="cpn">' . h($o['coupon']) . '</span>' : '') . '</small></span>'
+      . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small>' . order_coupon_tag($o) . '</span>'
+      . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
       . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . '</span></summary>'
       . '<div class="otop">' . order_tracker($o) . '</div>'
       . '<div class="od"><div class="items"><h4>Items</h4>';
@@ -169,7 +178,7 @@ if ($tab === 'coupons') {
         : '<td>' . h(coupon_label($c)) . ' <span class="cpstag' . (!empty($c['stack']) ? ' both' : '') . '">' . coupon_stack_label($c) . '</span><small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
           . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
           . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>')
-        . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'q' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
+        . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
         . '<td class="r nw"><form method="post" class="cpa">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
         . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'

@@ -225,10 +225,12 @@ function order_where(array $F): array {
   elseif (isset(FOMAXO_STATUSES[$F['status']])) { $w[] = 'status = ?'; $a[] = $F['status']; }
   if (in_array($F['method'], ['cod', 'online'], true)) { $w[] = 'method = ?'; $a[] = $F['method']; }
   if (($F['state'] ?? '') !== '') { $w[] = 'state = ?'; $a[] = $F['state']; }
+  if (($F['coupon'] ?? '') === 'yes') $w[] = "coupon <> ''";   // the "Used a coupon" box
+  elseif (($F['coupon'] ?? '') !== '') { $w[] = 'coupon = ?'; $a[] = $F['coupon']; }   // one code's chip
   if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $F['from'])) { $w[] = 'created >= ?'; $a[] = $F['from'] . ' 00:00:00'; }
   if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $F['to'])) { $w[] = 'created <= ?'; $a[] = $F['to'] . ' 23:59:59'; }
   if ($F['q'] !== '') {
-    $like = '%' . str_replace(['%', '_'], '', $F['q']) . '%'; $digits = preg_replace('/\D/', '', $F['q']);
+    $like = '%' . str_replace(['%', '_'], '', $F['q']) . '%'; $digits = substr(preg_replace('/\D/', '', $F['q']), -10);   // +91 98765 43210 finds 9876543210
     $w[] = '(no LIKE ? OR name LIKE ? OR email LIKE ? OR payment_id LIKE ? OR admin_note LIKE ? OR coupon LIKE ?' . (strlen($digits) >= 4 ? ' OR REPLACE(phone, \' \', \'\') LIKE ?' : '') . ')';
     array_push($a, $like, $like, $like, $like, $like, $like); if (strlen($digits) >= 4) $a[] = "%$digits%";
   }
@@ -252,6 +254,20 @@ function order_summary(array $F): array {
   return $out;
 }
 
+/* the "Used a coupon" box and its code chips: orders with a coupon, the money it took off, and each code's count, with every other filter applied */
+function order_coupon_counts(array $F): array {
+  [$where, $args] = order_where(['coupon' => 'yes'] + $F);
+  $s = shop_db()->prepare("SELECT coupon, COUNT(*) n, COALESCE(SUM(discount), 0) d FROM orders$where GROUP BY coupon ORDER BY n DESC, coupon"); $s->execute($args);
+  $out = ['n' => 0, 'off' => 0, 'codes' => []];
+  foreach ($s as $r) { $out['n'] += (int)$r['n']; $out['off'] += (int)$r['d']; $out['codes'][$r['coupon']] = (int)$r['n']; }
+  return $out;
+}
+/* a gold tag on an order that used a coupon: the code and the money it took off (goodwill codes say so) */
+function order_coupon_tag(array $o): string {
+  if ((string)$o['coupon'] === '') return '';
+  $gw = preg_match('/^(GOODWILL|SORRY)-/', $o['coupon']);
+  return '<span class="ctag' . ($gw ? ' gw' : '') . '" title="' . ($gw ? 'Goodwill coupon' : 'Used a coupon') . '"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm6 1v2h2V8H9Zm0 3v2h2v-2H9Zm0 3v2h2v-2H9Z"/></svg><b>' . h($o['coupon']) . '</b>' . ((int)$o['discount'] ? '<i>−' . rupees((int)$o['discount']) . '</i>' : '') . '</span>';
+}
 /* the tracking chips: how many orders are pending, unpaid cash, delivered, cancelled and refunded, with every other filter applied */
 function order_track_counts(array $F): array {
   [$where, $args] = order_where(['status' => ''] + $F);
