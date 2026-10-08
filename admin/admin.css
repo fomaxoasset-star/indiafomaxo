@@ -7,9 +7,11 @@ body.app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:
 a{color:var(--gold2)}[hidden]{display:none!important}
 header{display:flex;align-items:center;gap:18px;padding:0 20px;height:54px;border-bottom:1px solid var(--line);background:#0a0907;flex:none}
 .brand{color:var(--gold);text-decoration:none;letter-spacing:.24em;font:600 17px Cinzel,serif;white-space:nowrap}.brand span{color:var(--muted);letter-spacing:.14em;font:400 11px Manrope,sans-serif;margin-left:6px;text-transform:uppercase}
-.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;height:100%}.tabs::-webkit-scrollbar{display:none}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:0 1 auto;min-width:0;height:100%}.tabs::-webkit-scrollbar{display:none}
 .tabs a{display:flex;align-items:center;padding:0 12px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:14px}.tabs a.on{color:var(--gold2);border-color:var(--gold)}
-.hlinks{display:flex;gap:14px;font-size:13px;white-space:nowrap;margin-left:auto}.hlinks .short{display:none}.hlinks a{color:var(--muted)}
+.hlinks{display:flex;justify-content:flex-end;gap:14px;font-size:13px;white-space:nowrap;margin-left:auto}
+/* laptop: the logo and the links on each side take equal room, so the tabs sit in the middle of the bar */
+body.app header>.brand,body.app header>.hlinks{flex:1 1 0}.hlinks .short{display:none}.hlinks a{color:var(--muted)}
 main{flex:1;min-height:0;width:100%;max-width:1360px;margin:0 auto;padding:14px 20px 16px;display:flex;flex-direction:column;gap:12px}
 body:not(.app) main{max-width:1180px;padding:24px 16px 60px}main.center{display:flex;align-items:center;justify-content:flex-start;padding-top:9vh}
 h1,h2,h3,h4{font-family:Cinzel,serif}h2{font-weight:600;font-size:19px;margin:0;letter-spacing:.04em;color:var(--gold2)}h3{font-weight:600;font-size:13px;margin:0;letter-spacing:.08em;color:var(--gold)}
