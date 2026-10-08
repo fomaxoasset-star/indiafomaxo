@@ -182,7 +182,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'review_delete') { review_delete((int)($_POST['id'] ?? 0)); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Review deleted.'); }
   if ($a === 'review_reply') {
-    $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? ''); review_reply((int)($_POST['id'] ?? 0), $txt);
+    $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? '');
+    /* Save reply with an empty box keeps the reply already there; only Delete reply removes it */
+    if (!isset($_POST['delete']) && trim($txt) === '') go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Reply kept as it was.');
+    review_reply((int)($_POST['id'] ?? 0), $txt);
     go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), trim($txt) === '' ? 'Reply removed from the website.' : 'Reply is on the website under the review.');
   }
   if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
