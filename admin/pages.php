@@ -302,7 +302,7 @@ if ($tab === 'members' && isset($_GET['refill'])) {
   $open = count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
   $body .= '<div class="row ctop"><a class="btn line sm" href="' . h(self_url(['tab' => 'members'])) . '">‹ Members</a><h2>Refill reminders</h2></div>';
   $body .= '<details class="box rfauto"><summary><b>Automatic sending</b><span class="rfst' . ($autoOn ? ' on' : '') . '">' . ($autoOn ? 'On' : 'Off') . '</span><span class="muted small rfsum">'
-    . ($autoOn ? 'sent by itself to customers who ticked WhatsApp offers, ' . $tm['days'] . ' days after the order, ' . refill_hour($tm['from']) . '–' . refill_hour($tm['to']) : 'messages are sent only when you tap WhatsApp') . '</span></summary>'
+    . ($autoOn ? 'sent by itself to customers who ticked WhatsApp offers, ' . $tm['days'] . ' days after the order, ' . refill_hour($tm['from']) . '–' . refill_hour($tm['to']) . ', ' . refill_pct() . '% off' . (refill_min() ? ' from ' . rupees(refill_min() * 100) : '') : 'messages are sent only when you tap WhatsApp') . '</span></summary>'
     . '<form method="post" class="bb rff" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="refill_auto">'
     . '<div class="rfg two"><label>WhatsApp access token<input name="wa_token" type="password" autocomplete="new-password" placeholder="' . ($waOk ? 'Saved' : 'From Meta → WhatsApp → API Setup') . '"></label>'
     . '<label>Phone number ID<input name="wa_phone_id" inputmode="numeric" autocomplete="off" placeholder="' . ($waOk ? 'Saved' : 'e.g. 123456789012345') . '"></label></div>'
@@ -310,6 +310,9 @@ if ($tab === 'members' && isset($_GET['refill'])) {
     . '<p class="muted small rfhook">STOP replies switch the customer off by themselves. In Meta → WhatsApp → Configuration → Webhook, paste Callback URL <b class="sel">https://fomaxo.in/api/whatsapp.php</b> and Verify token <b class="sel">' . h(wa_hook_token()) . '</b>, then subscribe to messages.' . ($nStop ? ' Stopped so far: ' . $nStop . '.' : '') . '</p>'
     . '<div class="rfg three"><label>Days after order<input name="rf_days" type="number" min="1" max="365" inputmode="numeric" value="' . $tm['days'] . '"></label>'
     . '<label>Send from' . $hsel('rf_from', 0, 23, $tm['from']) . '</label><label>Until' . $hsel('rf_to', 1, 24, $tm['to']) . '</label></div>'
+    . '<div class="rfg two"><label>Coupon % off<input name="rf_pct" type="number" min="1" max="99" inputmode="numeric" value="' . refill_pct() . '"></label>'
+    . '<label>Minimum order ₹<input name="rf_min" type="number" min="0" step="1" inputmode="numeric" value="' . (refill_min() ?: '') . '" placeholder="None"></label></div>'
+    . '<p class="muted small" style="margin:0">The message says: <b>' . h(refill_offer(refill_pct(), refill_min())) . '</b></p>'
     . '<div class="rfrow"><div class="rfsw" role="radiogroup" aria-label="Automatic sending"><label><input type="radio" name="auto_on" value="1"' . ($autoOn ? ' checked' : '') . '><span>On</span></label><label><input type="radio" name="auto_on" value=""' . ($autoOn ? '' : ' checked') . '><span>Off</span></label></div>'
     . '<button class="btn sm">Save</button></div>'
     . ($err !== '' && $autoOn ? '<p class="small rferr">Last problem: ' . h($err) . '</p>' : '')
@@ -322,7 +325,8 @@ if ($tab === 'members' && isset($_GET['refill'])) {
     foreach ($due as $k => $o) {
       $p = refill_parts($o); $ph = coupon_phone((string)$o['phone']);
       $act = $o['stopped'] ? '<span class="rstop" title="Replied STOP on WhatsApp">Stopped</span>'
-        : ($o['sent'] ? '<span class="rsent">' . ($o['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($o['sent']))) . '</span>' : '')
+        : ($o['sent'] ? '<span class="rsent">' . ($o['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($o['sent']))) . '</span>'
+          : '<span class="rdue" title="' . $tm['days'] . ' days after the order (Days after order)">' . ($o['days'] >= $tm['days'] ? 'Reminder due' : 'Reminder ' . h(date('d/m', strtotime(substr((string)$o['created'], 0, 10) . ' +' . $tm['days'] . ' days')))) . '</span>')
           . '<button type="button" class="btn sm' . ($o['sent'] ? ' line' : '') . '" data-rf="' . h($o['no']) . '" data-phone="' . h($ph) . '" data-who="' . h($o['name'] ?: phone_fmt($ph)) . '"'
           . ' data-first="' . h($p['first'] !== '' ? $p['first'] : 'there') . '" data-perfumes="' . h($p['perfumes']) . '" data-days="' . $p['days'] . '" data-review="' . h((string)$p['review']) . '">WhatsApp</button>';
       $body .= '<tr' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td><a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
@@ -333,10 +337,11 @@ if ($tab === 'members' && isset($_GET['refill'])) {
   }
   /* WhatsApp on a line: a ready message, with a coupon for that customer only (% off, ₹ off or a free product) or none (admin.js) */
   $waSvg = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
-  $body .= '<dialog class="ltwa" id="rfWa" data-pct="' . refill_pct() . '"><div class="bh"><h3>WhatsApp <b class="ltwa-who"></b></h3></div><div class="bb cpf">'
+  $body .= '<dialog class="ltwa" id="rfWa" data-pct="' . refill_pct() . '" data-min="' . (refill_min() ?: '') . '"><div class="bh"><h3>WhatsApp <b class="ltwa-who"></b></h3></div><div class="bb cpf">'
     . '<label>Coupon<select class="ltwa-kind"><option value="">No coupon</option><option value="pct" selected>% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select></label>'
     . '<label class="ltwa-val">How much<input type="number" min="1" step="1" inputmode="numeric" placeholder="' . refill_pct() . '"></label>'
     . '<label class="ltwa-free">Free product' . free_pick('gfree', null) . '</label>'
+    . '<label class="ltwa-min">Minimum order ₹<input type="number" min="0" step="1" inputmode="numeric" placeholder="None"></label>'
     . '<p class="muted small ltwa-note">A new REFILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.</p>'
     . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="14"></textarea></label>'
     . '<p class="err ltwa-err" hidden></p>'

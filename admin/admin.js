@@ -563,13 +563,14 @@
 (function () {
   var dlg = document.getElementById('rfWa'); if (!dlg) return;
   var q = function (s) { return dlg.querySelector(s); }, kind = q('.ltwa-kind'), val = q('.ltwa-val input'), free = q('.ltwa-free [data-ffind]'),
-    freeV = q('input[name=gfree]'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'), btn = null, PCT = dlg.dataset.pct || '10';
+    freeV = q('input[name=gfree]'), min = q('.ltwa-min input'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'), btn = null, PCT = dlg.dataset.pct || '10';
   function build() {
     var k = kind.value, v = parseInt(val.value, 10) || 0, d = btn.dataset, n2 = '\n\n';
     dlg.dataset.kind = k;
-    var gift = k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || PCT) + '% off' : '₹' + (v || 200) + ' off') + '*';
+    var gift = k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || PCT) + '% off' : '₹' + (v || 200) + ' off') + '*',
+      m = parseInt(min.value, 10) || 0, order = m ? 'your next order of ₹' + m.toLocaleString('en-IN') + ' or more' : 'your next order';
     text.value = 'Hi ' + d.first + ',' + n2 + 'I hope you are enjoying ' + d.perfumes + '. It has been ' + d.days + ' days since your order, so your bottle may be running low.'
-      + (k ? n2 + 'As a thank you, here is your personal code for ' + gift + ' your next order (single use):' + n2 + '*[CODE]*' : '')
+      + (k ? n2 + 'As a thank you, here is your personal code for ' + gift + ' ' + order + ' (single use):' + n2 + '*[CODE]*' : '')
       + n2 + 'You can reorder anytime here:\nhttps://fomaxo.in'
       + (d.review ? n2 + 'If you have a moment, we would love your honest review. It will show as Verified Purchaser:\n' + d.review : '')
       + n2 + 'Just reply here if you would like help choosing your next scent. If you would rather not get these messages, reply STOP.' + n2 + 'Thank you,\nFOMAXO';
@@ -577,6 +578,7 @@
   function wa(t) { return 'https://wa.me/91' + btn.dataset.phone + '?text=' + encodeURIComponent(t); }
   function sent(day) {   // the line shows Sent with today's date (India time, from the server), and the counts move once
     var cell = btn.parentNode;
+    var due = cell.querySelector('.rdue'); if (due) due.remove();
     if (!cell.querySelector('.rsent')) {
       var s = document.createElement('span');
       s.className = 'rsent'; s.textContent = 'Sent ' + day;
@@ -589,15 +591,15 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-rf]'); if (!b) return;
     e.preventDefault(); btn = b; q('.ltwa-who').textContent = b.dataset.who;
-    kind.value = 'pct'; val.value = ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+    kind.value = 'pct'; val.value = ''; min.value = dlg.dataset.min || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
   });
-  kind.addEventListener('change', build); val.addEventListener('input', build); free.addEventListener('change', build);
+  kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); free.addEventListener('change', build);
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
   send.addEventListener('click', function () {
     var k = kind.value, w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the code is made
     var fd = new FormData(), list = btn.closest('[data-csrf]');
     fd.append('csrf', list ? list.dataset.csrf : ''); fd.append('action', 'refill_sent'); fd.append('no', btn.dataset.rf); fd.append('gkind', k);
-    fd.append('pct', val.value || (k === 'pct' ? PCT : '200')); fd.append('gfree', freeV.value);
+    fd.append('pct', val.value || (k === 'pct' ? PCT : '200')); fd.append('gfree', freeV.value); fd.append('gmin', min.value);
     err.hidden = true; send.disabled = true;
     fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
       send.disabled = false;
@@ -683,7 +685,7 @@ document.addEventListener('click', function (e) {
     phone = b.dataset.ltwa; hi = b.dataset.hi; q('.ltwa-who').textContent = b.dataset.who;
     kind.value = ''; val.value = ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
   });
-  kind.addEventListener('change', build); val.addEventListener('input', build); free.addEventListener('change', build);
+  kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); free.addEventListener('change', build);
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
   send.addEventListener('click', function () {
     var k = kind.value; err.hidden = true;

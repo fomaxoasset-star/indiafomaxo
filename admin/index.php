@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '63';
+const ASSET_V = '64';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -257,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tm = refill_time(); $tf = $n('rf_from', 0, 23, $tm['from']); $tt = $n('rf_to', 1, 24, $tm['to']);
     if ($tt <= $tf) go($back, '!The Until hour must be after the Send from hour.');
     shop_set('refill_time', json_encode(['days' => $n('rf_days', 1, 365, $tm['days']), 'from' => $tf, 'to' => $tt]));
+    shop_set('refill_pct', (string)$n('rf_pct', 1, 99, refill_pct())); shop_set('refill_min', (string)$n('rf_min', 0, 1000000, 0));   // the automatic coupon; an empty minimum = none
     $want = ($_POST['auto_on'] ?? '') === '1'; $on = $want && wa_ready();
     shop_set('refill_auto', $on ? '1' : '0');
     go($back, $on ? 'Saved. Automatic refill messages are on.' : ($want ? '!Saved, but it stays off until the access token and phone number ID are saved.' : 'Saved. Automatic refill messages are off.'));

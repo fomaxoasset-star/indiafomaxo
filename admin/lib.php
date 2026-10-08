@@ -453,13 +453,15 @@ function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // CART-:
     if (!ctype_digit($v) || (int)$v < 1 || (int)$v > 99) return ['', '!Please write the % off, from 1 to 99.'];
     $value = (int)$v;
   }
+  $min = trim((string)($_POST['gmin'] ?? ''));   // optional minimum order in ₹ (Refill reminders box)
+  if ($min !== '' && !ctype_digit($min)) return ['', '!Please write the minimum order in rupees, like 1500, or leave it empty.'];
   $end = trim((string)($_POST['ends'] ?? '')); $end = $end === '' ? '' : parse_day($end);   // optional: works until the end of that day
   if ($end === '' && trim((string)($_POST['ends'] ?? '')) !== '') return ['', '!Please type the end date as dd/mm/yyyy, or leave it empty.'];
   if ($end !== '' && $end < date('Y-m-d')) return ['', '!The end date has already passed. Please pick today or a later day.'];
   $abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';   // no 0/O or 1/I, so it is easy to read out
   $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?');
   do { $code = $prefix; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
-  $c = ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => 0, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
+  $c = ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => (int)$min * 100, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
     'max_uses' => 1, 'stack' => 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'active' => 1, 'phone' => $phone, 'created' => shop_now()];
   shop_upsert('coupons', ['code'], $c);
   return [$code, "$code is ready: " . coupon_label($c) . ' for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];

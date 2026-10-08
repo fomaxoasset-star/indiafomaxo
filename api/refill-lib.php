@@ -16,6 +16,10 @@ function refill_time(): array {
 /* 11 → "11 AM", 20 → "8 PM", 0 and 24 → "12 AM" */
 function refill_hour(int $h): string { return (($h % 12) ?: 12) . ' ' . ($h % 24 < 12 ? 'AM' : 'PM'); }
 function refill_pct(): int { return max(1, min(99, (int)(shop_setting('refill_pct') ?? '10'))); }
+/* the automatic coupon's minimum order in ₹ (0 = none), set on Automatic sending */
+function refill_min(): int { return max(0, (int)(shop_setting('refill_min') ?? '0')); }
+/* what the coupon gives, as the message says it: "10% off your next order" or "10% off your next order of ₹1,500 or more" */
+function refill_offer(int $pct, int $min): string { return $pct . '% off your next order' . ($min ? ' of ' . rupees($min * 100) . ' or more' : ''); }
 /* a private key of this shop for the coupon codes and the webhook Verify token (made once, never shown) */
 function refill_key(): string { $k = shop_setting('wa_key'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('wa_key', $k); } return $k; }
 
@@ -27,15 +31,14 @@ function refill_code(string $no): string {
 }
 
 /* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself) and, with $coupon, saves the order's
-   REFILL- code in Coupons (the automatic message: single use, only with this customer's mobile, no end date). A tap makes its own code (admin). */
+   REFILL- code in Coupons with the % and minimum set on Automatic sending (single use, only with this customer's mobile, no end date). A tap makes its own code (admin). */
 function refill_mark(string $no, string $how = 'tap', bool $coupon = true): void {
   $sent = json_decode((string)shop_setting('refill_sent'), true) ?: [];
   if (isset($sent[$no])) return;   // one message per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());
   if ($coupon && $ph !== '') {
-    $code = refill_code($no); $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?'); $s->execute([$code]);
-    if (!$s->fetchColumn()) shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => refill_pct(), 'min_order' => 0, 'starts' => '', 'ends' => '',
+    shop_upsert('coupons', ['code'], ['code' => refill_code($no), 'kind' => 'pct', 'value' => refill_pct(), 'min_order' => refill_min() * 100, 'starts' => '', 'ends' => '',
       'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $ph, 'created' => shop_now()]);
   }
   $keep = date('Y-m-d', strtotime('-' . (refill_time()['list_to'] + 30) . ' days'));   // forgotten only once the order has long left the list
@@ -78,11 +81,11 @@ function refill_review(string $token): ?string {
   return "https://fomaxo.in/#/review?t=$token";
 }
 
-/* what the message says for one order: first name, perfumes, days, %, coupon, review link (null once everything is reviewed) */
+/* what the message says for one order: first name, perfumes, days, %, offer words, coupon, review link (null once everything is reviewed) */
 function refill_parts(array $o): array {
   $names = array_values(array_unique(array_filter(array_map(fn($i) => trim((string)($i['name'] ?? '')), json_decode((string)$o['items'], true) ?: []))));
   return ['first' => preg_split('/\s+/u', trim((string)$o['name']))[0] ?? '', 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],
-          'pct' => refill_pct(), 'code' => refill_code((string)$o['no']), 'review' => refill_review((string)$o['review'])];
+          'pct' => refill_pct(), 'offer' => refill_offer(refill_pct(), refill_min()), 'code' => refill_code((string)$o['no']), 'review' => refill_review((string)$o['review'])];
 }
 
 /* the message, with a blank line between each part so it reads like a personal note (the same words as the WhatsApp template; *…* is WhatsApp bold) */

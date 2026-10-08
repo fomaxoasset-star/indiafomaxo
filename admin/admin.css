@@ -516,7 +516,7 @@ body.zooming{overflow:hidden}
 .rfsw span{display:block;padding:6px 22px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold2)}.rfsw input:checked+span{background:var(--gold);color:#17130b}.rfsw input:focus-visible+span{outline:2px solid var(--gold2);outline-offset:-3px}
 .rferr{color:var(--red);margin:0;font-weight:600}
 .rfk{flex:none;grid-template-columns:repeat(2,minmax(0,220px))}.rflist td{padding:8px 10px}.rflist th:first-child,.rflist td:first-child{padding-left:14px}.rflist th:last-child,.rflist td:last-child{padding-right:14px}.rflist .btn{width:auto;display:inline-flex}.rflist tr.dim2 td>*:not(.ra){opacity:.75}
-.rsent{font-size:12px;font-weight:600;color:var(--green);margin-right:10px}.rstop{font-size:12px;font-weight:700;color:var(--red)}
+.rsent{font-size:12px;font-weight:600;color:var(--green);margin-right:10px}.rdue{font-size:12px;font-weight:600;color:var(--gold);margin-right:10px}.rstop{font-size:12px;font-weight:700;color:var(--red)}
 .wtag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:1px 7px;margin-left:8px;border-radius:20px;border:1px solid color-mix(in srgb,var(--green) 45%,transparent);color:var(--green);background:color-mix(in srgb,var(--green) 10%,transparent);white-space:nowrap;vertical-align:1px}
 .wastop{display:inline;margin:0 0 0 10px}.btn.xs{height:auto;min-height:0;width:auto;padding:2px 10px;font-size:11px}
 .rfnote{padding:10px 14px;margin:0;border-top:1px solid var(--line2)}
@@ -527,7 +527,7 @@ body.zooming{overflow:hidden}
   .rflist tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line2)}
   .rflist td{display:block;padding:0!important;border:0!important;font-size:13px;min-width:0}.rflist td:nth-child(2){grid-row:2;margin-top:2px}.rflist td.ra{grid-column:2;grid-row:1/3}
   .rflist td small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rflist td:nth-child(2) b,.rflist td:nth-child(2) small{display:inline;font-size:12px}.rflist td:nth-child(2) b::after{content:" · ";font-weight:400;color:var(--muted)}
-  .rflist .rsent{display:block;margin:0 0 4px;font-size:11px}.rflist .btn{padding:0 10px}.rfnote{padding:8px 10px}
+  .rflist .rsent,.rflist .rdue{display:block;margin:0 0 4px;font-size:11px}.rflist .btn{padding:0 10px}.rfnote{padding:8px 10px}
 }
 
 /* light mode: the admin follows the phone or computer setting (black text, gold, cream background) */
@@ -560,4 +560,4 @@ body.zooming{overflow:hidden}
 /* Left at checkout → WhatsApp: the ready-message box */
 .ltwa{width:min(460px,calc(100vw - 24px));padding:0;border:1px solid var(--gold);border-radius:12px;background:var(--panel);color:var(--text)}.ltwa::backdrop{background:rgba(0,0,0,.55)}
 .ltwa .bb{padding:14px 16px 16px}.ltwa textarea{width:100%;font-size:13px;line-height:1.45;resize:vertical}.ltwa-btns{display:flex;gap:8px;justify-content:flex-end}.ltwa-btns .btn{gap:6px}
-.ltwa:not([data-kind=pct]):not([data-kind=amt]) .ltwa-val,.ltwa:not([data-kind=free]) .ltwa-free,.ltwa[data-kind=""] .ltwa-note{display:none}
+.ltwa:not([data-kind=pct]):not([data-kind=amt]) .ltwa-val,.ltwa:not([data-kind=free]) .ltwa-free,.ltwa[data-kind=""] .ltwa-note,.ltwa[data-kind=""] .ltwa-min{display:none}
