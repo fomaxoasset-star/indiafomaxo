@@ -422,12 +422,13 @@ function save_coupon(): string {
   $ends = $when('ends', '23:59'); if ($ends === null) return '!Please type the end date as dd/mm/yyyy (and a time if you want one), or leave it empty.';
   if ($starts !== '' && $ends !== '' && $ends <= $starts) return '!The coupon has to end after it starts.';
   $uses = trim((string)($_POST['max_uses'] ?? '')); if ($uses !== '' && (!ctype_digit($uses))) return '!Please write the usage limit as a number, or leave it empty.';
-  $s = shop_db()->prepare('SELECT created FROM coupons WHERE code = ?'); $s->execute([$code]); $was = $s->fetchColumn();
+  $s = shop_db()->prepare('SELECT created, active FROM coupons WHERE code = ?'); $s->execute([$code]); $row = $s->fetch() ?: null; $was = $row ? $row['created'] : false;
+  $on = $row ? (int)$row['active'] : 1;   // a new coupon is on; an edited one stays on or off (Turn off / Turn on in the list)
   if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
   shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
     'starts' => $starts, 'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses),
-    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'per_cust' => !empty($_POST['per_cust']) ? 1 : 0, 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
-  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (empty($_POST['active']) ? ' It is off until you switch it on.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
+    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'per_cust' => !empty($_POST['per_cust']) ? 1 : 0, 'active' => $on, 'created' => $was ?: shop_now()]);
+  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (!$on ? ' It is off until you turn it on in the list.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
 }
 
 /* A goodwill coupon for a customer who had a late delivery or a faulty product: a new code like GOODWILL-7K2Q, % off,
