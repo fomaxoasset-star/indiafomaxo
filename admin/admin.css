@@ -358,6 +358,17 @@ body.zooming{overflow:hidden}
 .wa-in{color:var(--green)}
 .cpn{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;color:var(--gold2)}
 .cpt td small .badge{margin-top:4px}.cb-on{color:var(--green)}.cb-off{color:var(--muted)}.cb-end{color:var(--red)}.cpt tr.cs-off td,.cpt tr.cs-end td{opacity:.75}
+/* Sorry coupon box, at the top of Your coupons: mobile + % off + Make coupon, then the new code with Send on WhatsApp */
+.sry{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 14px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.sry-h{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}.sry-h b{color:var(--gold2);font-weight:600;font-size:13.5px}.sry-h small{font-size:12px}
+.sry-f{display:grid;grid-template-columns:minmax(0,220px) 118px auto;gap:8px;align-items:center;justify-content:start}
+.sry .sry-pct{flex-direction:row;align-items:center;gap:6px;margin:0;color:var(--text);font-size:13px;white-space:nowrap}.sry-pct input{width:58px;text-align:center}
+.sry-done{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--gold);border-radius:8px;font-size:13px}
+.sry-done .btn,.sry-wa{gap:6px}.sry-done svg,.sry-wa svg{flex:none}
+.cpstag.sorry{border-color:var(--gold);background:var(--gold);color:var(--panel);font-weight:600}
+.cpt .cpn{white-space:nowrap}.cpt td small.sry-ph{display:block;font-size:12px;color:var(--muted);margin-top:2px}.cb-used{color:var(--muted)}.cpt tr.cs-used td{opacity:.75}
+@media (max-width:820px){.sry{padding:10px 12px}.sry-h small{display:none}.sry-f{grid-template-columns:minmax(0,1fr) auto auto}.sry-pct input{width:52px}.sry-pct span{font-size:12px}
+  .sry-done{justify-content:space-between}.sry-wa span{display:none}.sry-wa{padding:6px 10px}}
 .cpa{display:inline-flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 @media (max-width:820px){.cpa{gap:6px}.cpt td{font-size:13px}.cpv{grid-template-columns:1fr}}
 @media (min-width:821px){.cpt td small.show-m{display:none}}

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — "Have a coupon code?" on the checkout page.
-   POST {code, lines} → prices the bag here and checks the code (made on fomaxo.in/admin → Coupons); returns the discount
+   POST {code, lines, phone} → prices the bag here and checks the code (made on fomaxo.in/admin → Coupons); returns the discount
    and the new total, or a short message. Only a preview: api/cod.php and api/razorpay.php check the code again when the order is placed. */
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -19,7 +19,7 @@ $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
 $order = fomaxo_price_order($in);
 if (isset($order['error'])) fail($order['error']);
-$cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : ''], $order['subtotal']);
+$cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : '', 'phone' => is_string($in['phone'] ?? null) ? $in['phone'] : ''], $order['subtotal']);   // phone: for sorry coupons
 if (!$cp) fail('Please type your coupon code.');
 if (isset($cp['error'])) fail($cp['error']);
 /* discount = the coupon, offer = the multi-buy discount kept with it ("Use both", or a bigger offer); stack = the coupon's choice */
