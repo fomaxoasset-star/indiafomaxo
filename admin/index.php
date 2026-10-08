@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '55';
+const ASSET_V = '56';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -311,7 +311,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (($_GET['tab'] ?? '') === 'reports') $_GET['tab'] = 'sales';   // Sales was called Reports; old links still open it
 $tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
-      'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
+      'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : '',
+      'coupon' => ($_GET['coupon'] ?? '') === 'yes' ? 'yes' : coupon_clean((string)($_GET['coupon'] ?? ''))];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
 $do = (string)($_GET['do'] ?? '');
 if ($do === 'excel') {
