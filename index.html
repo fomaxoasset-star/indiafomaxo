@@ -1442,12 +1442,18 @@ html[data-mode="light"] .hero-cine .ctas .btn:not(.line) .sub{color:#f0d3a0;opac
 .again.in-bag .ag-head{flex-wrap:wrap}.again.in-bag .ag-head h5 span{display:block;margin:6px 0 0}.again.in-bag .ag-head h5 span i{display:none}
 .again.in-bag .ag-card{flex-basis:104px}
 .again-home{padding:clamp(28px,4vw,44px) 0 0}
-.again-home .again{border:1px solid var(--line-2);padding:16px 18px;background:var(--deep)}
+.again-home .again{border:1px solid var(--line-2);padding:16px 18px;background:var(--deep);width:fit-content;max-width:100%;margin-inline:auto}
+.again-home .again.ag-many{width:auto}
+.again-home .ag-head{contain:inline-size;flex-wrap:wrap}
+.again-home .ag-card{flex:0 0 var(--oa-w,160px);width:var(--oa-w,160px)}
+.again-home .ag-fits .ag-arr{display:none}
 @media(max-width:759px){
   .ag-head{flex-wrap:wrap}.ag-head h5 span{display:block;margin:6px 0 0}.ag-head h5 span i{display:none}.ag-arr{display:none}
   .ag-all{padding:7px 10px;font-size:10px;letter-spacing:.12em}
   .ag-card{flex-basis:104px}
-  .again-home .again{padding:14px}
+  .again-home .again{padding:14px;width:auto}
+  .again-home .ag-card{flex-basis:calc((100% - 24px) / 2.4);width:auto}
+  .again-home .ag-few .ag-card{flex-basis:calc((100% - 12px) / 2)}
 }
 .pay-note{font-size:12.5px;color:var(--muted);text-align:center;margin:-4px 0 4px;letter-spacing:.02em}
 .soc-off{cursor:default;opacity:.55}
@@ -3073,7 +3079,8 @@ function lastOrder(){
 function againHTML(cls=''){
   const L = lastOrder(); if (!L.length) return '';
   const n = L.length, arrows = cls ? '' : '<button type="button" class="ag-arr" data-ag-go="-1" aria-label="Back">‹</button><button type="button" class="ag-arr" data-ag-go="1" aria-label="More">›</button>';
-  return `<div class="again ${cls}"><div class="ag-head"><h5>Order again <span><i>· </i>${n} item${n > 1 ? 's' : ''} from your last order</span></h5><div class="ag-acts">${n > 3 ? arrows : ''}${n > 1 ? '<button type="button" class="ag-all" data-again-all>Add all to bag</button>' : ''}</div></div>
+  const w = n <= 2 ? 290 : n === 3 ? 220 : n <= 5 ? 190 : 160;   // home tile width by item count; 6+ keeps the full-width swipe row
+  return `<div class="again ${cls}${cls ? '' : ` ${n <= 2 ? 'ag-few' : n >= 6 ? 'ag-many' : ''}" style="--oa-w:${w}px`}"><div class="ag-head"><h5>Order again <span><i>· </i>${n} item${n > 1 ? 's' : ''} from your last order</span></h5><div class="ag-acts">${n > 1 ? arrows : ''}${n > 1 ? '<button type="button" class="ag-all" data-again-all>Add all to bag</button>' : ''}</div></div>
     <div class="ag-row">${L.map((l, i) => { const p = P[l.id], o = p.sizes.find(s => String(s) === String(l.opt)) ?? l.opt;
     return `<div class="ag-card"><div class="ag-ph"><a href="#/product/${l.id}" data-close><img src="${IMG(imgFor(p, o))}" alt="" loading="lazy"></a><button type="button" class="ag-plus" data-again="${i}" aria-label="Add ${esc(p.name)} to bag"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></button></div><b>${esc(p.kind === 'care' ? p.title || p.name : p.name)}</b><small>${esc(optLabel(p, o))} · ${money(p.prices[o], curOf(p))}</small></div>`; }).join('')}</div></div>`;
 }
@@ -3959,7 +3966,9 @@ function evenCards(){
   });
 }
 let evFrame = 0;
-const evenSoon = () => { cancelAnimationFrame(evFrame); evFrame = requestAnimationFrame(evenCards); };
+// home Order again: hide the arrows when every tile already fits
+const agFit = () => $$('.again-home .again').forEach(a => { const r = $('.ag-row', a); if (r) a.classList.toggle('ag-fits', r.scrollWidth <= r.clientWidth + 1); });
+const evenSoon = () => { cancelAnimationFrame(evFrame); evFrame = requestAnimationFrame(() => { evenCards(); agFit(); }); };
 new MutationObserver(ms => { if (ms.some(m => !(m.target.closest && m.target.closest('[data-ofcd]')))) evenSoon(); }).observe(app, {childList: true, subtree: true});
 addEventListener('resize', evenSoon);
 document.fonts && document.fonts.ready.then(evenSoon);
