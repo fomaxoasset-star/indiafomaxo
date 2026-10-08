@@ -497,7 +497,7 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .st-tx{display:flex;flex-direction:column;gap:4px;min-width:0}
 .st-tx b{font-family:var(--display);font-weight:300;font-size:16px;letter-spacing:.04em;line-height:1.35;color:var(--ivory)}
 .st-pick:hover .st-tx b,.st-item.on .st-tx b{color:var(--gold-hi)}
-.st-soon .st-no{min-width:1.6em;text-align:center}.st-soon:hover{background:linear-gradient(90deg,rgba(215,170,105,.08),transparent)}
+.st-soon .st-no{min-width:1.6em;text-align:center}.st-join{container-type:inline-size;display:block}.st-join a{display:block;font-size:clamp(8px,4.1cqi,24px);letter-spacing:.14em;white-space:nowrap;text-align:justify;text-align-last:justify;border-bottom:0}.st-soon:hover{background:linear-gradient(90deg,rgba(215,170,105,.08),transparent)}
 .st-tx small{font-size:13px;line-height:1.5;color:var(--muted)}
 .st-acts{display:flex;gap:18px;padding:0 20px 16px 47px;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
 .st-acts a{color:var(--gold);border-bottom:1px solid transparent;padding-bottom:2px}.st-acts a:hover{color:var(--gold-hi);border-color:var(--gold-hi)}
@@ -3679,7 +3679,7 @@ function storeLocation(list){
   <section class="sec" id="store"><div class="wrap">
     ${secHead('Visit us', stores.length > 1 ? 'Our <em class="metal">stores</em>' : 'Our <em class="metal">store</em>')}
     <div class="store-map rv-up">
-      <ul class="st-list">${stores.map(item).join('')}<li class="st-item st-soon"><a class="st-pick" href="#/partnership"><span class="st-no">+</span><span class="st-tx"><b>New Stores Coming Soon</b></span></a><div class="st-acts"><a href="#/partnership">Interested in joining us →</a></div></li></ul>
+      <ul class="st-list">${stores.map(item).join('')}<li class="st-item st-soon"><a class="st-pick" href="#/partnership"><span class="st-no">+</span><span class="st-tx"><b>New Stores Coming Soon</b></span></a><div class="st-acts st-join"><a href="#/partnership">Interested in Joining Our Franchise</a></div></li></ul>
       <div class="map"><span class="pin">FOMAXO</span><iframe id="storeMap" src="${esc(embed(stores[0]))}" title="Map of the FOMAXO stores" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
     </div>
   </div></section>`;
