@@ -1921,6 +1921,10 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-tab.on{background:linear-gradient(135deg,#b8894a,#e3c08a 55%,#c99a5b);border-color:transparent;color:#0a0805;font-weight:500;box-shadow:0 10px 30px rgba(184,137,74,.25)}
 .cb-tab.on svg{color:#0a0805}
 @media(max-width:700px){.cb-tabs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--pad)) 26px;padding:4px var(--pad)}.cb-tabs::-webkit-scrollbar{display:none}.cb-tab{flex:none;padding:11px 18px;font-size:13px}}
+.cb-tab span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.cb-tab small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;margin-top:2px}
+.cb-when{text-align:center;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:-12px 0 26px}
+.cb-when b{font-weight:500;color:var(--gold-hi)}
 .gf-sets.cb-two{grid-template-columns:repeat(2,minmax(0,1fr));max-width:1000px;margin:0 auto}
 @media(max-width:700px){.gf-sets.cb-two{grid-template-columns:minmax(0,1fr)}}
 .cb-tag{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);margin-bottom:-6px}
@@ -3522,16 +3526,22 @@ const COMBO_SETS = [
   {id: 'big-three', combo: true, tag: 'Parfum wardrobe', name: 'The Big Three', badge: 'Best value', save: 751, v: 'A strong, a fresh and a classic parfum. One for every mood.', slots: 3, live: true, only: PARFUM, items: [['gold', 100], ['dollar', 100], ['oldmoney', 50]]},
   {id: 'festive-hamper', combo: true, tag: 'Diwali and weddings', name: 'Festive Hamper', badge: 'Festive', save: 617, v: 'Parfum, body care, a lip balm and a car fragrance in one gift box.', slots: 5, live: true, only: [PARFUM, PARFUM, CARE('body'), CARE('lips'), CARF], items: [['gold', 100], ['matchacoco', 50], ['pc-passionsin-gel', 'one'], ['pc-kissberry', 'one'], ['carrush', 'one']]}
 ];
-/* festival tabs on the Combo page; the tab open first is the festival coming up by month */
+/* festival tabs on the Combo page, nearest festival first. dates: the day of each festival (check them each year);
+   a festival counts as coming up until the day after it. when: months used once the dates run out */
 const FI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const FESTS = [
-  {key: 'onam', name: 'Onam', when: [8], icon: FI('<circle cx="12" cy="12" r="2.5"/><path d="M12 3c1.6 2.2 1.6 4.2 0 6.5C10.4 7.2 10.4 5.2 12 3zm0 18c-1.6-2.2-1.6-4.2 0-6.5 1.6 2.3 1.6 4.3 0 6.5zM3 12c2.2-1.6 4.2-1.6 6.5 0C7.2 13.6 5.2 13.6 3 12zm18 0c-2.2 1.6-4.2 1.6-6.5 0 2.3-1.6 4.3-1.6 6.5 0z"/>')},
-  {key: 'vishu', name: 'Vishu', when: [2, 3], icon: FI('<path d="M12 3v6M8 5l4 4 4-4"/><circle cx="8" cy="14" r="2"/><circle cx="16" cy="14" r="2"/><circle cx="12" cy="18" r="2"/><path d="M12 9v7"/>')},
-  {key: 'diwali', name: 'Diwali', when: [9, 10], icon: FI('<path d="M12 4c2 2.5 2 4.5 0 6.5-2-2-2-4 0-6.5z"/><path d="M4 14h16c-1 3.5-4.2 6-8 6s-7-2.5-8-6z"/>')},
-  {key: 'eid', name: 'Eid', when: [4, 5, 6], icon: FI('<path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z"/><path d="M18 6l.6 1.4L20 8l-1.4.6L18 10l-.6-1.4L16 8l1.4-.6z"/>')},
-  {key: 'christmas', name: 'Christmas', when: [11, 0, 1], icon: FI('<path d="M12 3l5 7h-3l4 6H6l4-6H7z"/><path d="M12 16v4"/>')},
-  {key: 'rakhi', name: 'Raksha Bandhan', when: [7], icon: FI('<circle cx="12" cy="12" r="3"/><path d="M2 12h7M15 12h7M9.5 9.5 7 7m7.5 2.5L17 7m-7.5 7.5L7 17m7.5-2.5L17 17"/>')}
+  {key: 'onam', name: 'Onam', dates: [['2026-08-26'], ['2027-09-12'], ['2028-08-31']], when: [8], icon: FI('<circle cx="12" cy="12" r="2.5"/><path d="M12 3c1.6 2.2 1.6 4.2 0 6.5C10.4 7.2 10.4 5.2 12 3zm0 18c-1.6-2.2-1.6-4.2 0-6.5 1.6 2.3 1.6 4.3 0 6.5zM3 12c2.2-1.6 4.2-1.6 6.5 0C7.2 13.6 5.2 13.6 3 12zm18 0c-2.2 1.6-4.2 1.6-6.5 0 2.3-1.6 4.3-1.6 6.5 0z"/>')},
+  {key: 'vishu', name: 'Vishu', dates: [['2026-04-14'], ['2027-04-15'], ['2028-04-14']], when: [2, 3], icon: FI('<path d="M12 3v6M8 5l4 4 4-4"/><circle cx="8" cy="14" r="2"/><circle cx="16" cy="14" r="2"/><circle cx="12" cy="18" r="2"/><path d="M12 9v7"/>')},
+  {key: 'diwali', name: 'Diwali', dates: [['2026-11-08'], ['2027-10-29'], ['2028-10-17']], when: [9, 10], icon: FI('<path d="M12 4c2 2.5 2 4.5 0 6.5-2-2-2-4 0-6.5z"/><path d="M4 14h16c-1 3.5-4.2 6-8 6s-7-2.5-8-6z"/>')},
+  {key: 'eid', name: 'Eid', dates: [['2026-03-20', 'Eid ul-Fitr'], ['2026-05-27', 'Eid al-Adha'], ['2027-03-10', 'Eid ul-Fitr'], ['2027-05-17', 'Eid al-Adha'], ['2028-02-27', 'Eid ul-Fitr'], ['2028-05-05', 'Eid al-Adha']], when: [4, 5, 6], icon: FI('<path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z"/><path d="M18 6l.6 1.4L20 8l-1.4.6L18 10l-.6-1.4L16 8l1.4-.6z"/>')},
+  {key: 'christmas', name: 'Christmas', dates: [['2026-12-25'], ['2027-12-25'], ['2028-12-25']], when: [11, 0, 1], icon: FI('<path d="M12 3l5 7h-3l4 6H6l4-6H7z"/><path d="M12 16v4"/>')},
+  {key: 'rakhi', name: 'Raksha Bandhan', dates: [['2026-08-28'], ['2027-08-17'], ['2028-08-05']], when: [7], icon: FI('<circle cx="12" cy="12" r="3"/><path d="M2 12h7M15 12h7M9.5 9.5 7 7m7.5 2.5L17 7m-7.5 7.5L7 17m7.5-2.5L17 17"/>')}
 ];
+const DAY = 864e5, today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const festNext = f => { const t = today0().getTime(); for (const [d, label] of f.dates || []) { const [y, mo, dd] = d.split('-').map(Number), at = new Date(y, mo - 1, dd).getTime();
+  if (at >= t - DAY) return {at, label: label || f.name, days: Math.round((at - t) / DAY)}; } return null; };
+const festWhen = f => { const n = f.next; if (!n) return ''; const day = new Date(n.at).toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
+  return `${esc(n.label)} · ${day} · <b>${n.days < 0 ? 'Happy ' + esc(n.label) : n.days === 0 ? 'Today' : n.days === 1 ? 'Tomorrow' : n.days + ' days to go'}</b>`; };
 /* worth = today's price of each product picked; combo price = worth less the combo's saving */
 const cbVal = ([id, sz]) => P[id] ? +P[id].prices[sz] || 0 : 0;
 const cbPrices = (g, picks) => { const worth = picks.reduce((a, x) => a + cbVal(x), 0), save = Math.min(g.free ? g.free.reduce((a, k) => a + (picks[k] ? cbVal(picks[k]) : 0), 0) : g.save || 0, worth); return {worth, save, price: worth - save}; };
@@ -3641,7 +3651,8 @@ function giftPage(){
 function comboPage(){
   document.title = 'Combos — FOMAXO';
   const all = buildSets(COMBO_SETS), sets = all.filter(g => !g.offer && !g.fest && COMBO_SHOW.includes(g.id)), offers = all.filter(g => g.offer);
-  const m = new Date().getMonth(), fests = FESTS.map(f => ({...f, sets: all.filter(g => g.fest === f.key)})).filter(f => f.sets.length), open = (fests.find(f => f.when.includes(m)) || fests[0] || {}).key;
+  const m = new Date().getMonth(), fests = FESTS.map(f => ({...f, next: festNext(f), sets: all.filter(g => g.fest === f.key)})).filter(f => f.sets.length)
+    .sort((a, b) => (a.next ? a.next.at : 9e15) - (b.next ? b.next.at : 9e15)), open = ((fests[0] && fests[0].next ? fests[0] : fests.find(f => f.when.includes(m)) || fests[0]) || {}).key;
   return `
   <section class="gf-hero">
     <div class="gf-copy">
@@ -3665,8 +3676,8 @@ function comboPage(){
   </div></section>` : ''}
   ${fests.length ? `<section class="sec" id="cb-fest" style="padding-top:0"><div class="wrap">
     <div class="cb-fhead"><span class="eyebrow">Festive celebrations</span><h2>Festive <em class="metal">combos</em></h2><p class="lead">Combos made for the festivals we celebrate across India and Kerala.</p></div>
-    <div class="cb-tabs" role="tablist" aria-label="Festivals">${fests.map(f => `<button type="button" role="tab" class="cb-tab${f.key === open ? ' on' : ''}" data-cbfest="${f.key}" aria-selected="${f.key === open}">${f.icon}${esc(f.name)}</button>`).join('')}</div>
-    ${fests.map(f => `<div class="gf-sets cb-two" role="tabpanel" data-cbpanel="${f.key}"${f.key === open ? '' : ' hidden'}>${f.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>`).join('')}
+    <div class="cb-tabs" role="tablist" aria-label="Festivals">${fests.map(f => `<button type="button" role="tab" class="cb-tab${f.key === open ? ' on' : ''}" data-cbfest="${f.key}" aria-selected="${f.key === open}">${f.icon}<span>${esc(f.name)}${f.next ? `<small>${new Date(f.next.at).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}</small>` : ''}</span></button>`).join('')}</div>
+    ${fests.map(f => `<div role="tabpanel" data-cbpanel="${f.key}"${f.key === open ? '' : ' hidden'}>${f.next ? `<p class="cb-when">${festWhen(f)}</p>` : ''}<div class="gf-sets cb-two">${f.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div></div>`).join('')}
   </div></section>` : ''}
   <section class="sec" id="cb-sets" style="padding-top:0"><div class="wrap">
     ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Our favourite combos, each priced below its products. Tap Change to swap any product, then tap Order combo to send it to us on WhatsApp.</p>')}
