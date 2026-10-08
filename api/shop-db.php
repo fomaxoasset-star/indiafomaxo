@@ -475,7 +475,7 @@ function shop_ads(): array {
 
 /* Site pages turned off on Admin → Settings → Site pages (STORE_LIVE.pagesOff). A page that is off leaves the top menu,
    the phone menu and the footer, and its address opens the home page. Home, products, checkout and policies always stay. */
-const SHOP_PAGES = ['fragrances' => 'Fragrance', 'personal-care' => 'Personal Care', 'gift' => 'Gift', 'collections' => 'Collections',
+const SHOP_PAGES = ['fragrances' => 'Fragrance', 'personal-care' => 'Personal Care', 'gift' => 'Gift', 'combo' => 'Combo', 'collections' => 'Collections',
   'about' => 'About FOMAXO', 'contact' => 'Contact', 'partnership' => 'Franchise', 'dubai' => 'Visit Dubai'];
 function shop_pages_off(): array {
   $o = json_decode((string)shop_setting('pages_off'), true);
