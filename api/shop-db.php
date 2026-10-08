@@ -473,6 +473,15 @@ function shop_ads(): array {
   return $out;
 }
 
+/* Site pages turned off on Admin → Settings → Site pages (STORE_LIVE.pagesOff). A page that is off leaves the top menu,
+   the phone menu and the footer, and its address opens the home page. Home, products, checkout and policies always stay. */
+const SHOP_PAGES = ['fragrances' => 'Fragrance', 'personal-care' => 'Personal Care', 'gift' => 'Gift', 'collections' => 'Collections',
+  'about' => 'About FOMAXO', 'contact' => 'Contact', 'partnership' => 'Franchise', 'dubai' => 'Visit Dubai'];
+function shop_pages_off(): array {
+  $o = json_decode((string)shop_setting('pages_off'), true);
+  return is_array($o) ? array_values(array_intersect(array_keys(SHOP_PAGES), $o)) : [];
+}
+
 /* Cash on delivery limits set on Admin → Settings → Cash on delivery, in rupees: min = COD from this order amount,
    max = COD only for orders under this amount after any coupon (0 = no limit), fee = added to every COD order (0 = none).
    Until they are saved there, the values in index.html (STORE.checkout.cod) are used. */

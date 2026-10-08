@@ -710,11 +710,13 @@ if ($tab === 'stores') {
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
   $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
-  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $first = $adsFirst || $codFirst;
+  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $first = $adsFirst || $codFirst || $pgFirst;
   $COD = fomaxo_catalog()['cod'] ?? null;
   $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
-  $setPanes = ['notify' => 'Emails', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  $setPanes = ['notify' => 'Emails', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  $OFF = shop_pages_off();
+  $pgAddr = ['dubai' => 'fomaxo.com'];
   if ($first) $setPanes = [$pane => $setPanes[$pane]] + $setPanes;
   $rs = fn(int $paise) => (string)intdiv($paise, 100);
   $body .= $sw('#setPanes', $setPanes) . '<div class="set panes" id="setPanes">'
@@ -723,6 +725,10 @@ if ($tab === 'settings') {
     . '<p class="muted small" style="margin:0">Every new order is emailed here, and so is a password reset link if you forget your password. Empty uses ' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '.</p>'
     . '<label>Card / UPI payment fee %<input type="number" name="pay_fee" min="0" max="10" step="0.01" value="' . h((string)pay_fee_pct()) . '"></label>'
     . '<p class="muted small" style="margin:0">Razorpay’s fee on each online payment, used for Fees in Sales.</p><button class="btn">Save</button></div></form>'
+    . '<form method="post" class="box' . ($pgFirst ? ' on' : '') . '" data-pane="pages">' . $csrfField . '<input type="hidden" name="action" value="pages"><div class="bh"><h3>Site pages</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . '<p class="muted small" style="margin:0">Turn a page off to hide it. It leaves the menu and the footer, and its link opens the home page. Home, products, checkout and policies always show.</p>'
+    . '<div class="pgs">' . implode('', array_map(fn($k, $n) => '<label class="pg"><span><b>' . h($n) . '</b><small>' . h($pgAddr[$k] ?? 'fomaxo.in/#/' . $k) . '</small></span><input type="checkbox" class="tgl" name="on[]" value="' . h($k) . '"' . (in_array($k, $OFF, true) ? '' : ' checked') . ' aria-label="Show ' . h($n) . '"></label>', array_keys(SHOP_PAGES), SHOP_PAGES)) . '</div>'
+    . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box' . ($codFirst ? ' on' : '') . '" data-pane="cod" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="cod"><div class="bh"><h3>Cash on delivery</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . ($COD ? '' : '<p class="small" style="margin:0;color:var(--red,#e5484d)">Cash on delivery is turned off in index.html, so these numbers are not used yet.</p>')
     . '<label>Minimum order (₹)<input type="number" name="cod_min" min="0" step="1" required value="' . h($rs((int)($COD['min'] ?? 100000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only from this amount.</p>'

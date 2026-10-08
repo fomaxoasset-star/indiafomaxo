@@ -2601,6 +2601,9 @@ const app = $('#app');
 const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=8`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
 /* changes made on the admin page (fomaxo.in/admin): hidden products, new prices, added products, stock */
 const LIVE = window.STORE_LIVE || {};
+/* pages turned off on Admin → Settings → Site pages (STORE_LIVE.pagesOff): they leave the menus and the footer, and their address opens the home page */
+const PAGES_OFF = new Set(LIVE.pagesOff || []);
+const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/(www\.)?fomaxo\.com/.test(h)) return PAGES_OFF.has('dubai'); const m = h.match(/^#\/([^/?]+)/); return !!m && PAGES_OFF.has(m[1]); };
 (function(){
   const hid = new Set(LIVE.hidden || []), pr = LIVE.prices || {}, ca = LIVE.compareAt || {}, ed = LIVE.edits || {};
   /* cash on delivery minimum, hidden maximum and fee from Admin → Settings */
@@ -4271,6 +4274,7 @@ function route(){
   const raw = location.hash.replace(/^#/, '') || '/';
   const [path, qs] = raw.split('?'); const q = new URLSearchParams(qs || '');
   const seg = path.split('/').filter(Boolean);
+  if (PAGES_OFF.has(seg[0])) { location.replace('#/'); return; }   // turned off on the admin page
   clearInterval(heroTimer); clearInterval(homeGridTimer); mobileBarCheck = null; $('#mbuy').classList.remove('show');
   document.title = 'FOMAXO — The House of Luxury Care';
   let html, after;
@@ -4387,6 +4391,8 @@ addEventListener('scroll', () => { if (ticking) return; ticking = true; requestA
 /* static bits */
 $('#footShop').innerHTML = `<a href="#/fragrances">All products</a><a href="#/collections/fragrance">Fragrance</a><a href="#/fragrances?f=car">Car Fragrance</a><a href="#/personal-care">Personal Care</a>`;
 $('#footIg').href = `https://www.instagram.com/${S.contact.instagram}/`;
+if (PAGES_OFF.size) { $$('#menu a, #mnav nav a, footer .fgrid a').forEach(a => { if (pageOff(a.getAttribute('href'))) a.style.display = 'none'; });
+  $$('footer .fgrid > div').forEach(c => { if (c.querySelector('h5') && ![...c.querySelectorAll('a')].some(a => a.style.display !== 'none')) c.style.display = 'none'; }); }
 if (ADS.on) { const a = LIVE.ads, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Google' : '', a.tiktok && 'TikTok'].filter(Boolean);   /* the footer stays true once ad tags are on */
   $('#fstat').textContent = `We count visits anonymously on our own server to improve the shop, and use ${n.join(n.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1')} ad tags to measure our ads.`; }
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;

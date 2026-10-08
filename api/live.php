@@ -33,6 +33,7 @@ try {
   if (($offer = shop_offer_live()) !== null) $live['offer'] = $offer;   // the limited-time offer popup and countdown lines
   if (($np = shop_newprod_live()) !== null) $live['newProduct'] = $np;   // the Coming soon / Just arrived popup
   if ($ads = shop_ads()) $live['ads'] = $ads;
+  if ($off = shop_pages_off()) $live['pagesOff'] = $off;   // pages turned off on Admin → Settings → Site pages
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {
