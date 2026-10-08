@@ -452,10 +452,11 @@ function goodwill_wa(array $c): string {
     . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time' . (coupon_ends($c) !== '' ? ', until ' . date('j M Y', strtotime(coupon_ends($c))) . '.' : ' and has no end date.'));
 }
 
-/* the WhatsApp message that shares a free product coupon: WhatsApp opens and the owner picks the customer (no emoji: wa.me shows them as "?") */
-function free_coupon_wa(array $c): string {
+/* the WhatsApp message that shares a coupon: WhatsApp opens and the owner picks the customer (no emoji: wa.me shows them as "?") */
+function coupon_wa(array $c): string {
   $min = (int)$c['min_order'];
-  return 'https://wa.me/?text=' . rawurlencode('Hi, this is FOMAXO. Here is a free ' . coupon_free_name($c) . ' for you' . ($min ? ' when you shop for ' . rupees($min) . ' or more' : ' with your next order')
+  $what = $c['kind'] === 'free' ? 'a free ' . coupon_free_name($c) : coupon_label($c);
+  return 'https://wa.me/?text=' . rawurlencode('Hi, this is FOMAXO. Here is ' . $what . ' for you' . ($min ? ' when you shop for ' . rupees($min) . ' or more' : ' on your next order')
     . '. Use the code ' . $c['code'] . ' at checkout on fomaxo.in.' . (!empty($c['per_cust']) ? ' It works one time per customer.' : '')
     . (coupon_ends($c) !== '' ? ' Valid till ' . date('j M Y', strtotime(coupon_ends($c))) . '.' : ''));
 }
