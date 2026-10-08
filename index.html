@@ -1938,7 +1938,7 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-fit .cb-two .gf-set{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr)}
 .cb-fit .cb-two .gf-pics{aspect-ratio:auto;height:100%;min-height:0;contain:size;grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr)}   /* contain: the pictures take the card's height, never set it */
 .cb-fit .cb-wide .gf-set{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cb-fit .cb-wide .gf-pics{min-height:0;aspect-ratio:auto;height:100%}
-.cb-fit .cb-two .gf-pics img:nth-child(odd):last-child{grid-column:span 2;object-fit:contain;background:radial-gradient(circle at 50% 55%,#2a2116,#0b0a08 70%)}
+.cb-fit .cb-two .gf-pics img:nth-child(odd):last-child{grid-column:span 2}
 .cb-fit .gf-pics{aspect-ratio:2/1}#cb-sets .gf-pics{aspect-ratio:auto;height:120px}.cb-fit .cb-fhead .lead,.cb-fit .cb-fhead h2::after{display:none}
 .cb-fit .gf-set .gf-body{gap:10px;padding:20px 22px}.cb-fit .gf-set h3{font-size:18px}.cb-fit .gf-set .v{font-size:15px;line-height:1.35}
 .cb-fit .gf-pick{gap:6px;padding-top:10px;padding-bottom:0}.cb-fit .cb-two .gf-body{display:flex;flex-direction:column}.cb-fit .cb-two .gf-pick{flex:1;min-height:0;gap:8px}.cb-fit .cb-two .cb-slot{flex:1 1 0;min-height:50px;max-height:104px}.gf-set .ctas .btn.cb-soon{padding-top:9px;padding-bottom:9px;line-height:1.3}.cb-fit .cb-two .cb-slot img,.cb-fit .cb-two .cb-slot .ph0{width:auto;height:min(100%,64px);aspect-ratio:1;max-height:64px;min-height:40px}.cb-fit .gf-pick > small:first-child{display:none}
@@ -3671,7 +3671,7 @@ const lineUnit = (l, offs) => +P[l.id].prices[l.opt] - (offs.get(l) || 0);
 const cbRows = (lines, offs) => { const seen = new Set(); return lines.map((l, i) => ({l, i})).filter(({l}) => !l.cb || !offs.has(l) || (!seen.has(l.cb) && seen.add(l.cb))); };
 const cbInfo = (lines, l, offs) => { const ls = cbGroup(lines, l.cb), g = CB[l.cb.split('~')[0]];
   return {g, ls, worth: ls.reduce((a, x) => a + +P[x.id].prices[x.opt], 0), price: ls.reduce((a, x) => a + lineUnit(x, offs), 0),
-    pics: `<span class="cb-col n${Math.min(ls.length, 4)}">${ls.slice(0, 4).map(x => `<img src="${IMG(P[x.id] ? cbImg(P[x.id], x.opt) : lineImg(x))}" alt="">`).join('')}</span>`,
+    pics: `<span class="cb-col n${Math.min(ls.length, 4)}">${ls.slice(0, 4).map(x => `<img src="${IMG(lineImg(x))}" alt="">`).join('')}</span>`,
     names: ls.map(x => { const p = P[x.id]; return (p.kind ? p.name : `${p.name} ${optLabel(p, x.opt)}`) + (g.free && g.free.includes(x.cs) ? ' (free gift)' : ''); }).join(' · ')}; };
 /* a combo whose products changed (sold out, re-priced out of its slot) leaves the bag as a whole */
 { const bad = new Set(cart.filter(l => l.cb).map(l => l.cb).filter(t => !cbValid(CB[t.split('~')[0]], cbGroup(cart, t))));
@@ -3703,14 +3703,11 @@ const WA_SVG = () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="
 const MOOD = {gold: 'Strong · Seductive', dollar: 'Fresh · Zesty', oldmoney: 'Quiet luxury', royalcandy: 'Sweet · Bold', matchacoco: 'Matcha · Coconut', passionsin: 'Warm · Magnetic'};
 const cbName = (p, sz) => p.kind ? p.name : `${p.name} · ${sz}ml`;
 const cbSub = p => p.kind === 'car' ? 'Car fragrance' : p.kind ? (p.vol || 'Personal care') : (MOOD[p.id] || p.family || '');
-/* combo pictures always show the product: photos with a model or scenery use a close crop of the bottle or jar */
-const CB_IMG = {'pc-kissberry': 'cb-pc-kissberry', 'pc-avokiss': 'cb-pc-avokiss', 'pc-melondrip': 'cb-pc-melondrip', carrush: 'cb-carrush', drivenoir: 'cb-drivenoir', passiondrive: 'cb-passiondrive'};
-const cbImg = (p, sz) => CB_IMG[p.id] || imgFor(p, sz);
 const cbSlot = (id, sz) => { const p = P[id]; return p
-  ? `<img src="${IMG(cbImg(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
+  ? `<img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
   : `<span class="ph0"></span><span class="t"><b>No product</b><small>Tap to add one</small></span><span class="go">Add ›</span>`; };
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${P[id] ? IMG((g.combo ? cbImg : imgFor)(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
+    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
       <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items.filter(x => x.length))}</div>` : ''}
@@ -3864,7 +3861,7 @@ function bindGift(){
   $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|');
     const row = $(`[data-cbslot="${sel.dataset.gpick}|${sel.dataset.gslot}"]`); if (row) row.innerHTML = cbSlot(id, sz);
     const pr = $(`[data-cbprice="${sel.dataset.gpick}"]`), cg = COMBO_SETS.find(x => x.id === sel.dataset.gpick); if (pr && cg) pr.innerHTML = cbPriceHTML(cg, cbPicks(cg.id)); if (!im) return;
-    im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG((cg ? cbImg : imgFor)(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
+    im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG(imgFor(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
   $$('[data-cbslot]').forEach(b => b.onclick = () => cbPicker(b));
   $$('[data-cbadd]').forEach(b => b.onclick = () => cbAdd(b.dataset.cbadd));
@@ -3897,7 +3894,7 @@ function cbPicker(btn){
   let [cur, curSz] = sel.value.split('|');
   const allParfum = [...groups.keys()].every(id => !P[id].kind);
   const card = id => { const p = P[id], szs = groups.get(id), sz = id === cur ? curSz : szs[0];
-    return `<button type="button" class="cb-card${id === cur ? ' on' : ''}" data-cbp="${id}"><img src="${IMG(cbImg(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(p.name)}</b><small>${esc(cbSub(p))}</small>${p.kind ? '' : `<span class="sz">${szs.map(s => `<span data-cbs="${s}"${id === cur && s === curSz ? ' class="on"' : ''}>${s}ml</span>`).join('')}</span>`}</span></button>`; };
+    return `<button type="button" class="cb-card${id === cur ? ' on' : ''}" data-cbp="${id}"><img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(p.name)}</b><small>${esc(cbSub(p))}</small>${p.kind ? '' : `<span class="sz">${szs.map(s => `<span data-cbs="${s}"${id === cur && s === curSz ? ' class="on"' : ''}>${s}ml</span>`).join('')}</span>`}</span></button>`; };
   const d = document.createElement('div'); d.className = 'cb-sheet';
   d.innerHTML = `<div class="in" role="dialog" aria-modal="true" aria-label="Choose a product"><div class="hd"><div><h3>Choose ${allParfum ? 'your parfum' : 'a product'}</h3><p>${esc(g.name)} · ${allParfum ? 'tap a parfum, then pick the size' : 'tap a product to put it in your combo'}</p></div><button type="button" class="x" data-cbx aria-label="Close">✕</button></div>
     <div class="g">${[...groups.keys()].map(card).join('')}${none ? `<button type="button" class="cb-card${cur ? '' : ' on'}" data-cbp=""><span class="ph0">—</span><span class="t"><b>No product</b><small>Leave this one empty</small></span></button>` : ''}</div>
@@ -3906,7 +3903,7 @@ function cbPicker(btn){
   const esc_ = e => { if (e.key === 'Escape') close(); };
   const set = (id, sz) => { cur = id; curSz = sz; sel.value = id ? `${id}|${sz}` : ''; sel.dispatchEvent(new Event('change'));
     $$('.cb-card', d).forEach(c => { const on = c.dataset.cbp === id; c.classList.toggle('on', on); $$('[data-cbs]', c).forEach(s => s.classList.toggle('on', on && s.dataset.cbs === sz));
-      const im = $('img', c); if (on && im) im.src = IMG(cbImg(P[id], sz)); }); };
+      const im = $('img', c); if (on && im) im.src = IMG(imgFor(P[id], sz)); }); };
   d.onclick = e => { if (e.target === d || e.target.closest('[data-cbx]')) return close();
     const c = e.target.closest('[data-cbp]'); if (!c) return; const id = c.dataset.cbp, s = e.target.closest('[data-cbs]');
     set(id, s ? s.dataset.cbs : id === cur ? curSz : (groups.get(id) || [''])[0]); };
