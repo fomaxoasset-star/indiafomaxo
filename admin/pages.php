@@ -142,6 +142,9 @@ if ($tab === 'coupons') {
       return implode('', array_map(fn($opt, $pr) => '<option value="' . h("$id|$opt") . '"' . (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt ? ' selected' : '') . '>'
         . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
     }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products']));
+  /* the free product picker: type a few letters to narrow the list, then pick the product and size (admin.js) */
+  $freePick = fn(string $name, ?array $E) => '<span class="fpick"><input type="search" data-ffind placeholder="Type to find" aria-label="Find a product" autocomplete="off">'
+    . '<select name="' . $name . '" aria-label="Free product">' . $freeOpts($E) . '</select></span>';
   $num = fn($p) => $p % 100 ? number_format($p / 100, 2, '.', '') : (string)intdiv($p, 100);
   $panes = ['list' => 'Your coupons', 'add' => $E ? 'Edit ' . h($E['code']) : 'Add a coupon'];
   $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
@@ -154,7 +157,7 @@ if ($tab === 'coupons') {
     . '<label><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label>'
     . '<label><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label></div>'
     . '<div class="cp2"><label class="cpamt">Amount<input type="number" name="value" min="1" step="any" inputmode="decimal" value="' . h($E && $E['kind'] !== 'free' ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label>'
-    . '<label class="cpfree">Free product<select name="free">' . $freeOpts($E) . '</select></label>'
+    . '<label class="cpfree">Free product' . $freePick('free', $E) . '</label>'
     . '<label><span class="cpmin">Minimum order ₹</span><span class="cpspend">Spend at least ₹</span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="None"></label></div>'
     . '<div class="cpf cpx">'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
@@ -176,7 +179,7 @@ if ($tab === 'coupons') {
     . '<div class="sry-f"><input name="phone" type="tel" inputmode="tel" maxlength="16" required placeholder="Mobile" aria-label="Customer mobile number" autocomplete="off">'
     . '<select name="gkind" class="sry-kind" aria-label="Coupon gives"><option value="pct">% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select>'
     . '<input name="pct" class="sry-val" type="number" min="1" step="1" inputmode="numeric" placeholder="10" aria-label="How much off">'
-    . '<select name="gfree" class="sry-free" aria-label="Free product">' . $freeOpts(null) . '</select>'
+    . str_replace('class="fpick"', 'class="fpick sry-free"', $freePick('gfree', null))
     . '<label class="sry-end">' . str_replace('placeholder="dd/mm/yyyy"', 'placeholder="Ends (optional)"', date_box('ends', '', 'End date (optional)')) . '</label>'
     . '<button class="btn">Make coupon</button></div>'
     . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . h(coupon_label($M)) . ' · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'

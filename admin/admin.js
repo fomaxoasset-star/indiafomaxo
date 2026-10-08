@@ -592,3 +592,14 @@ document.addEventListener('click', function (e) {
   for (var i = 0; i < 4; i++) c += abc[Math.floor(Math.random() * abc.length)];
   var inp = b.parentNode.querySelector('input'); inp.value = c; inp.dispatchEvent(new Event('input', {bubbles: true}));
 });
+
+/* Coupons: typing in "Type to find" keeps only the free products whose name matches, and picks the first one */
+document.addEventListener('input', function (e) {
+  var f = e.target;
+  if (!f.matches || !f.matches('[data-ffind]')) return;
+  var sel = f.parentNode.querySelector('select'), q = f.value.trim().toLowerCase(), was = sel.value;
+  if (!sel._all) sel._all = Array.prototype.slice.call(sel.options);
+  var keep = sel._all.filter(function (o, i) { return i === 0 || o.text.toLowerCase().indexOf(q) > -1; });
+  sel.replaceChildren.apply(sel, keep);   // removed, not hidden: phones show hidden options
+  sel.value = q ? (keep[1] ? keep[1].value : '') : was;
+});
