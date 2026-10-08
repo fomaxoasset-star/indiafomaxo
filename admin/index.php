@@ -277,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $_POST['phone'] = (string)$ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('REFILL-');
       if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
     }
-    refill_mark($no, 'tap', false);
+    refill_mark($no);
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'expense_delete') {

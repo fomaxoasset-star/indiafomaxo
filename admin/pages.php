@@ -128,7 +128,6 @@ if ($tab === 'coupons') {
   $CP = shop_coupons(); $ed = coupon_clean((string)($_GET['edit'] ?? '')); $E = $CP[$ed] ?? null; $today = date('Y-m-d');
   if ($E && $E['phone'] !== '') $E = null;   // a goodwill coupon is made once and not edited
   $goodwill = fn(array $c) => (string)($c['phone'] ?? '') !== '';   // a goodwill coupon: one mobile number, one use, no end date
-  $waIc = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
   $state = fn(array $c) => $goodwill($c) && $c['uses'] ? ['used', 'Used'] : (!(int)$c['active'] ? ['off', 'Off'] : ($goodwill($c) ? (coupon_time($c) === 'over' ? ['end', 'Expired'] : ['on', 'Not used']) : (coupon_time($c) === 'over' ? ['end', 'Expired'] : ((int)$c['max_uses'] && $c['uses'] >= (int)$c['max_uses'] ? ['end', 'Used up'] : (coupon_time($c) === 'soon' ? ['soon', 'Starts later'] : ['on', 'On'])))));
   /* a time limit in the list: "6 Oct, 6:00 pm" (the year only when it is not this year; no hour for a whole day) */
   $at = fn(string $v, string $whole) => $v === '' ? '' : date(substr($v, 0, 4) === date('Y') ? 'j M' : 'j M Y', strtotime($v)) . (substr($v, 11) === $whole ? '' : ', ' . date('g:i a', strtotime($v)));
@@ -174,17 +173,17 @@ if ($tab === 'coupons') {
     . '<label class="sry-end">' . str_replace('placeholder="dd/mm/yyyy"', 'placeholder="Ends (optional)"', date_box('ends', '', 'End date (optional)')) . '</label>'
     . '<button class="btn">Make coupon</button></div>'
     . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . h(coupon_label($M)) . ' · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'
-      . '<a class="btn sm" href="' . h(goodwill_wa($M)) . '" target="_blank" rel="noopener">' . $waIc . '<span>Send on WhatsApp</span></a></div>' : '')
+      . '<a class="btn sm" href="' . h(goodwill_wa($M)) . '" target="_blank" rel="noopener">' . WA_SVG . '<span>Send on WhatsApp</span></a></div>' : '')
     . '</form>'
     /* a coupon just added or saved: on top, ready to send on WhatsApp */
-    . ($N ? '<div class="sry-done cpmade"><span><b class="cpn">' . h($N['code']) . '</b> ' . h(coupon_label($N)) . ' is ready</span><a class="btn sm" href="' . h(coupon_wa($N)) . '" target="_blank" rel="noopener">' . $waIc . '<span>Send on WhatsApp</span></a></div>' : '')
+    . ($N ? '<div class="sry-done cpmade"><span><b class="cpn">' . h($N['code']) . '</b> ' . h(coupon_label($N)) . ' is ready</span><a class="btn sm" href="' . h(coupon_wa($N)) . '" target="_blank" rel="noopener">' . WA_SVG . '<span>Send on WhatsApp</span></a></div>' : '')
     . '<div class="bb np">';
   if (!$CP) $body .= '<p class="empty">No coupons yet. Add one, like WELCOME10 for 10% off.</p>';
   else {
     $body .= '<table class="grid cpt"><thead><tr><th>Code</th><th>Discount</th><th class="hide-m">Minimum</th><th class="hide-m">Time limit</th><th class="r">Used</th><th class="r hide-m">Sales</th><th class="r hide-m">Given off</th><th></th></tr></thead><tbody>';
     foreach ($CP as $c) {
       [$sk, $sl] = $state($c);
-      $wa = $goodwill($c) ? (!$c['uses'] && !str_starts_with($c['code'], 'REFILL-') ? goodwill_wa($c) : '') : ((int)$c['active'] ? coupon_wa($c) : '');   // refill codes go out on their own
+      $wa = $goodwill($c) ? (!$c['uses'] && str_starts_with($c['code'], 'GOODWILL-') ? goodwill_wa($c) : '') : ((int)$c['active'] ? coupon_wa($c) : '');   // CART- and REFILL- codes go out from their own WhatsApp box
       $used = $c['uses'] . ((int)$c['max_uses'] ? ' / ' . (int)$c['max_uses'] : '');
       $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
         . ($goodwill($c) ? '<td>' . h(coupon_label($c)) . ' <span class="cpstag goodwill">' . (str_starts_with($c['code'], 'REFILL-') ? 'Refill' : (str_starts_with($c['code'], 'CART-') ? 'Left cart' : 'Goodwill')) . '</span><small class="sry-ph">For ' . h(phone_fmt($c['phone'])) . '</small>' . ($limit($c) !== '' ? '<small class="show-m">' . h($limit($c)) . '</small>' : '') . '</td>'
@@ -197,7 +196,7 @@ if ($tab === 'coupons') {
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
         . '<td class="r nw"><form method="post" class="cpa">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
         . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'
-        . ($wa !== '' ? '<a class="btn line sm sry-wa" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . $waIc . '<span>WhatsApp</span></a>' : '')
+        . ($wa !== '' ? '<a class="btn line sm sry-wa" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')
         . (!$goodwill($c) ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons', 'edit' => $c['code']])) . '">Edit</a>' : '')
         . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';
     }
@@ -335,18 +334,8 @@ if ($tab === 'members' && isset($_GET['refill'])) {
     }
     $body .= '</tbody></table>';
   }
-  /* WhatsApp on a line: a ready message, with a coupon for that customer only (% off, ₹ off or a free product) or none (admin.js) */
-  $waSvg = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
-  $body .= '<dialog class="ltwa" id="rfWa" data-pct="' . refill_pct() . '" data-min="' . (refill_min() ?: '') . '"><div class="bh"><h3>WhatsApp <b class="ltwa-who"></b></h3></div><div class="bb cpf">'
-    . '<label>Coupon<select class="ltwa-kind"><option value="">No coupon</option><option value="pct" selected>% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select></label>'
-    . '<label class="ltwa-val">How much<input type="number" min="1" step="1" inputmode="numeric" placeholder="' . refill_pct() . '"></label>'
-    . '<label class="ltwa-free">Free product' . free_pick('gfree', null) . '</label>'
-    . '<label class="ltwa-min">Minimum order ₹<input type="number" min="0" step="1" inputmode="numeric" placeholder="None"></label>'
-    . '<p class="muted small ltwa-note">A new REFILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.</p>'
-    . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="14"></textarea></label>'
-    . '<p class="err ltwa-err" hidden></p>'
-    . '<div class="row ltwa-btns"><button type="button" class="btn line" data-ltwa-close>Cancel</button><button type="button" class="btn" data-ltwa-send>' . $waSvg . '<span>Open WhatsApp</span></button></div></div></dialog>';
-  $body .= '<p class="muted small rfnote">Customers whose latest order was ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days ago. WhatsApp opens a ready message where you pick the coupon (No coupon, % off, ₹ off or a free product); after you send it the customer shows Sent. With Automatic sending on, customers marked WhatsApp ✓ get it by itself ' . $tm['days'] . ' days after the order; the rest only when you tap. Once they order again they leave this list.</p></div></div>';
+  $body .= wa_box('rfWa', 'gfree', 'pct', refill_pct(), refill_min(), 'A new REFILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
+  $body .= '<p class="muted small rfnote">Customers whose latest order was ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days ago. Each order gets one message: a tap or the automatic one. Once they order again they leave this list.</p></div></div>';
 } elseif ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   /* the customer page */
   $W = $C['web']; $wa = $C['phone'] ? 'https://wa.me/91' . $C['phone'] . '?text=' . rawurlencode('Hi ' . $C['name'] . ', this is FOMAXO. ') : '';
@@ -627,7 +616,6 @@ if ($tab === 'analytics' && !$cv) {
   $body .= '</tbody></table></div></div>';
   /* left at checkout: everyone who typed their details in these dates (all of them are kept for good) */
   $L = checkout_leads($from, $to);
-  $waSvg = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
   $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="lt-n muted nw">' . count($L) . (count($L) === 1 ? ' person' : ' people') . '</span><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts" data-csrf="' . h($CSRF) . '"><div class="lt-hd"><span></span><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span><span></span></div>';
   if (!$L) $body .= '<p class="empty">Nobody typed their details at checkout in these dates.</p>';
   /* one line per person (date, name, state, bag, where they stopped, ordered later); WhatsApp at the end only for an Indian mobile number (6–9 and 10 digits, what WhatsApp works on); tap the line to open mobile, email, address and products */
@@ -640,7 +628,7 @@ if ($tab === 'analytics' && !$cv) {
       . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
       . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
       . '<span class="lt-later">' . $later . '</span>'
-      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm" data-ltwa="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-hi="' . h($hi) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . '">' . $waSvg . '<span>WhatsApp</span></button>' : '') . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm" data-ltwa data-phone="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-hi="' . h($hi) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '') . '</span>'
       . '<span class="lt-chev" aria-hidden="true"></span></summary>'
       . '<div class="lt-more"><dl>'
       . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
@@ -652,14 +640,7 @@ if ($tab === 'analytics' && !$cv) {
       . '</div></details>';
   }
   /* WhatsApp from Left at checkout: a ready message, with or without a coupon made for that customer only (admin.js) */
-  $body .= '<dialog class="ltwa" id="ltWa"><div class="bh"><h3>WhatsApp <b class="ltwa-who"></b></h3></div><div class="bb cpf">'
-    . '<label>Coupon<select class="ltwa-kind"><option value="">No coupon</option><option value="pct">% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select></label>'
-    . '<label class="ltwa-val">How much<input type="number" min="1" step="1" inputmode="numeric" placeholder="10"></label>'
-    . '<label class="ltwa-free">Free product' . free_pick('ltfree', null) . '</label>'
-    . '<p class="muted small ltwa-note">A new code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.</p>'
-    . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="12"></textarea></label>'
-    . '<p class="err ltwa-err" hidden></p>'
-    . '<div class="row ltwa-btns"><button type="button" class="btn line" data-ltwa-close>Cancel</button><button type="button" class="btn" data-ltwa-send>' . $waSvg . '<span>Open WhatsApp</span></button></div></div></dialog>';
+  $body .= wa_box('ltWa', 'ltfree', '', 10, 0, 'A new code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
   $body .= '</div></div></div></div>';
 }
 

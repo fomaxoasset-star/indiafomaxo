@@ -30,14 +30,14 @@ function refill_code(string $no): string {
   return $c;
 }
 
-/* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself) and, with $coupon, saves the order's
-   REFILL- code in Coupons with the % and minimum set on Automatic sending (single use, only with this customer's mobile, no end date). A tap makes its own code (admin). */
-function refill_mark(string $no, string $how = 'tap', bool $coupon = true): void {
+/* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself). Sent by itself also saves the order's REFILL- code
+   in Coupons with the % and minimum set on Automatic sending (single use, only with this customer's mobile, no end date); a tap makes its own code (admin). */
+function refill_mark(string $no, string $how = 'tap'): void {
   $sent = json_decode((string)shop_setting('refill_sent'), true) ?: [];
   if (isset($sent[$no])) return;   // one message per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());
-  if ($coupon && $ph !== '') {
+  if ($how === 'auto' && $ph !== '') {
     shop_upsert('coupons', ['code'], ['code' => refill_code($no), 'kind' => 'pct', 'value' => refill_pct(), 'min_order' => refill_min() * 100, 'starts' => '', 'ends' => '',
       'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $ph, 'created' => shop_now()]);
   }
@@ -81,19 +81,9 @@ function refill_review(string $token): ?string {
   return "https://fomaxo.in/#/review?t=$token";
 }
 
-/* what the message says for one order: first name, perfumes, days, %, offer words, coupon, review link (null once everything is reviewed) */
+/* what the message says for one order: first name, perfumes, days, offer words, coupon, review link (null once everything is reviewed) */
 function refill_parts(array $o): array {
   $names = array_values(array_unique(array_filter(array_map(fn($i) => trim((string)($i['name'] ?? '')), json_decode((string)$o['items'], true) ?: []))));
   return ['first' => preg_split('/\s+/u', trim((string)$o['name']))[0] ?? '', 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],
-          'pct' => refill_pct(), 'offer' => refill_offer(refill_pct(), refill_min()), 'code' => refill_code((string)$o['no']), 'review' => refill_review((string)$o['review'])];
-}
-
-/* the message, with a blank line between each part so it reads like a personal note (the same words as the WhatsApp template; *…* is WhatsApp bold) */
-function refill_text(array $p): string {
-  $n2 = "\n\n";
-  return 'Hi ' . $p['first'] . ',' . $n2 . 'I hope you are enjoying ' . $p['perfumes'] . '. It has been ' . $p['days'] . ' days since your order, so your bottle may be running low.'
-    . $n2 . 'As a thank you, here is your personal code for ' . $p['pct'] . '% off your next order (single use):' . $n2 . '*' . $p['code'] . '*'
-    . $n2 . "You can reorder anytime here:\nhttps://fomaxo.in"
-    . ($p['review'] ? $n2 . "If you have a moment, we would love your honest review. It will show as Verified Purchaser:\n" . $p['review'] : '')
-    . $n2 . 'Just reply here if you would like help choosing your next scent. If you would rather not get these messages, reply STOP.' . $n2 . "Thank you,\nFOMAXO";
+          'offer' => refill_offer(refill_pct(), refill_min()), 'code' => refill_code((string)$o['no']), 'review' => refill_review((string)$o['review'])];
 }
