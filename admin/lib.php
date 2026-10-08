@@ -435,17 +435,31 @@ function save_coupon(): string {
    for their one mobile number (last 10 digits), one use, no end date. Returns [the code or '', the message to show]. */
 function make_goodwill_coupon(): array {
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
+  $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
-  if (!ctype_digit($v) || (int)$v < 1 || (int)$v > 99) return ['', '!Please write the % off, from 1 to 99.'];
+  $free = ['', ''];
+  if ($kind === 'free') {
+    $free = explode('|', (string)($_POST['gfree'] ?? ''), 2) + ['', ''];
+    $p = fomaxo_catalog()['products'][$free[0]] ?? null;
+    if (!$p || $p['kind'] === 'set' || !isset($p['prices'][$free[1]])) return ['', '!Please choose the free product.'];
+    $value = 0;
+  } elseif ($kind === 'amt') {
+    if (!ctype_digit($v) || (int)$v < 1) return ['', '!Please write the ₹ off, like 200.'];
+    $value = (int)$v * 100;
+  } else {
+    if (!ctype_digit($v) || (int)$v < 1 || (int)$v > 99) return ['', '!Please write the % off, from 1 to 99.'];
+    $value = (int)$v;
+  }
   $end = trim((string)($_POST['ends'] ?? '')); $end = $end === '' ? '' : parse_day($end);   // optional: works until the end of that day
   if ($end === '' && trim((string)($_POST['ends'] ?? '')) !== '') return ['', '!Please type the end date as dd/mm/yyyy, or leave it empty.'];
   if ($end !== '' && $end < date('Y-m-d')) return ['', '!The end date has already passed. Please pick today or a later day.'];
   $abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';   // no 0/O or 1/I, so it is easy to read out
   $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?');
   do { $code = 'GOODWILL-'; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
-  shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => (int)$v, 'min_order' => 0, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
-    'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $phone, 'created' => shop_now()]);
-  return [$code, "$code is ready: " . (int)$v . '% off for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
+  $c = ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => 0, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
+    'max_uses' => 1, 'stack' => 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'active' => 1, 'phone' => $phone, 'created' => shop_now()];
+  shop_upsert('coupons', ['code'], $c);
+  return [$code, "$code is ready: " . coupon_label($c) . ' for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
 }
 /* A coupon's WhatsApp message, laid out like the refill reminder: short lines, a blank line between parts, the offer and code in *bold*
    (WhatsApp shows *text* as bold). No emoji: wa.me shows them as "?". $intro = the opening line, $extra = more lines for the details part. */
@@ -462,7 +476,7 @@ function coupon_wa_text(array $c, string $intro, array $extra = []): string {
 /* the WhatsApp link that sends a goodwill coupon to its customer, with a ready message */
 function goodwill_wa(array $c): string {
   return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode(coupon_wa_text($c,
-    'We are sorry about your last order. As a goodwill gesture, here is *' . (int)$c['value'] . '% off* your next order.',
+    'We are sorry about your last order. As a goodwill gesture, here is ' . ($c['kind'] === 'free' ? 'a *free ' . coupon_free_name($c) . '* with your next order.' : '*' . coupon_label($c) . '* your next order.'),
     ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]));
 }
 

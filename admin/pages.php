@@ -136,6 +136,12 @@ if ($tab === 'coupons') {
     return $s && $e ? "$s → $e" : ($s ? "From $s" : ($e ? "Until $e" : '')); };
   $tbox = fn(string $name, string $v, string $whole) => '<div class="cpt2">' . date_box($name, substr($v, 0, 10), $name === 'starts' ? 'Starts on' : 'Ends on')
     . '<input type="time" name="' . $name . '_time" value="' . h(strlen($v) > 10 && substr($v, 11) !== $whole ? substr($v, 11, 5) : '') . '" aria-label="' . ($name === 'starts' ? 'Start time' : 'End time') . '"></div>';
+  /* a free product's choices: every product and size, at ₹0 in the order (gift sets are left out, they need fragrances picked) */
+  $freeOpts = fn(?array $E) => '<option value="">Choose the free product</option>' . implode('', array_map(function ($id, $p) use ($E) {
+      if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) return '';
+      return implode('', array_map(fn($opt, $pr) => '<option value="' . h("$id|$opt") . '"' . (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt ? ' selected' : '') . '>'
+        . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
+    }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products']));
   $num = fn($p) => $p % 100 ? number_format($p / 100, 2, '.', '') : (string)intdiv($p, 100);
   $panes = ['list' => 'Your coupons', 'add' => $E ? 'Edit ' . h($E['code']) : 'Add a coupon'];
   $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
@@ -148,12 +154,7 @@ if ($tab === 'coupons') {
     . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label>'
     . '<label class="' . (($E['kind'] ?? '') === 'free' ? 'on' : '') . '"><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label></div>'
     . '<div class="cp2"><label class="cpamt">Amount<input type="number" name="value" min="1" step="any" inputmode="decimal" value="' . h($E && $E['kind'] !== 'free' ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label>'
-    /* a free product coupon: the product and size added to the order at ₹0 (gift sets are left out, they need fragrances picked) */
-    . '<label class="cpfree">Free product<select name="free">' . '<option value="">Choose the free product</option>' . implode('', array_map(function ($id, $p) use ($E) {
-        if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) return '';
-        return implode('', array_map(fn($opt, $pr) => '<option value="' . h("$id|$opt") . '"' . (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt ? ' selected' : '') . '>'
-          . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
-      }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products'])) . '</select></label>'
+    . '<label class="cpfree">Free product<select name="free">' . $freeOpts($E) . '</select></label>'
     . '<label><span class="cpmin">Minimum order ₹</span><span class="cpspend">Spend at least ₹</span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="None"></label></div>'
     . '<div class="cpf cpx">'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
@@ -168,15 +169,17 @@ if ($tab === 'coupons') {
     . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'
     . '<p class="muted small" style="margin:0">Shoppers type the code in “Have a coupon code?” at checkout. It works for cash on delivery and online payment, and the discount is worked out on the server.</p></div></form>'
     . '<div class="box' . ($E ? '' : ' on') . '" data-pane="list"><div class="bh"><h3>Your coupons · ' . count($CP) . '</h3></div>';
-  /* Goodwill coupon: the owner types a customer's mobile number and the % off; a new one-use code for that number only, no end date */
+  /* Goodwill coupon: the owner types a customer's mobile number and picks % off, ₹ off or a free product; a new one-use code for that number only, no end date */
   $M = $CP[coupon_clean((string)($_GET['made'] ?? ''))] ?? null; $N = $M && !$goodwill($M) && (int)$M['active'] ? $M : null; $M = $M && $goodwill($M) ? $M : null;
   $body .= '<form method="post" class="sry">' . $csrfField . '<input type="hidden" name="action" value="coupon_goodwill">'
-    . '<div class="sry-h"><b>Goodwill coupon</b><small class="muted">For a late delivery or a faulty product. One use, only this mobile number. No end date unless you pick one. It deletes itself once used.</small></div>'
+    . '<div class="sry-h"><b>Goodwill coupon</b><small class="muted">For a late delivery or a faulty product: % off, ₹ off or a free product. One use, only this mobile number. No end date unless you pick one. It deletes itself once used.</small></div>'
     . '<div class="sry-f"><input name="phone" type="tel" inputmode="tel" maxlength="16" required placeholder="Mobile" aria-label="Customer mobile number" autocomplete="off">'
-    . '<label class="sry-pct"><input name="pct" type="number" min="1" max="99" step="1" inputmode="numeric" required placeholder="10" aria-label="% off"><span>% off</span></label>'
+    . '<select name="gkind" class="sry-kind" aria-label="Coupon gives"><option value="pct">% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select>'
+    . '<input name="pct" class="sry-val" type="number" min="1" step="1" inputmode="numeric" placeholder="10" aria-label="How much off">'
+    . '<select name="gfree" class="sry-free" aria-label="Free product">' . $freeOpts(null) . '</select>'
     . '<label class="sry-end">' . str_replace('placeholder="dd/mm/yyyy"', 'placeholder="Ends (optional)"', date_box('ends', '', 'End date (optional)')) . '</label>'
     . '<button class="btn">Make coupon</button></div>'
-    . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . (int)$M['value'] . '% off · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'
+    . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . h(coupon_label($M)) . ' · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'
       . '<a class="btn sm" href="' . h(goodwill_wa($M)) . '" target="_blank" rel="noopener">' . $waIc . '<span>Send on WhatsApp</span></a></div>' : '')
     . '</form>'
     /* a coupon just added or saved: on top, ready to send on WhatsApp */
