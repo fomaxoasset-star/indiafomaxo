@@ -41,7 +41,7 @@ function date_box(string $name, string $ymd, string $label = '', bool $required 
 }
 /* the date bar on each page: which quick buttons it has, and where it starts */
 const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
-  'reports' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all']];
+  'sales' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all']];
 const DATE_PRESETS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
 /* the first and last day of a quick button ('' for All); Year is the last 12 months */
 function preset_span(string $r): array {
@@ -56,7 +56,7 @@ function pick_dates(string $page): array {
   $r = (string)($_GET['r'] ?? ''); $save = $r !== '';
   if ($r === '' && (isset($_GET['from']) || isset($_GET['to']))) { $r = 'custom'; $save = true; }
   if ($save) { $f = parse_day($_GET['from'] ?? ''); $t = parse_day($_GET['to'] ?? ''); }
-  else { $s = (array)($saved[$page] ?? []); $r = (string)($s['r'] ?? $start); $f = (string)($s['from'] ?? ''); $t = (string)($s['to'] ?? ''); }
+  else { $s = (array)($saved[$page] ?? ($page === 'sales' ? $saved['reports'] ?? [] : []));  /* Sales keeps the dates picked when it was called Reports */ $r = (string)($s['r'] ?? $start); $f = (string)($s['from'] ?? ''); $t = (string)($s['to'] ?? ''); }
   if ($r === 'custom') {
     if ($f === '' && $t === '') $r = in_array('all', $presets, true) ? 'all' : $start;
     else { if ($f === '') $f = $t; if ($t === '') $t = $f; if ($f > $t) [$f, $t] = [$t, $f]; }
@@ -585,7 +585,7 @@ function report_rows(string $from, string $to, string $unit = 'M'): array {
 }
 /* month by month for one year */
 function report_year(int $year): array { return report_rows("$year-01-01", "$year-12-31", 'M'); }
-/* the Reports table for the dates picked: day by day up to 3 months, month by month for longer, by year for All */
+/* the Sales table for the dates picked: day by day up to 3 months, month by month for longer, by year for All */
 function report_view(array $D): array {
   if ($D['r'] === 'all') {
     $first = (string)shop_db()->query("SELECT MIN(d) FROM (SELECT MIN(substr(created, 1, 10)) d FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 UNION ALL SELECT MIN(day) FROM expenses) x")->fetchColumn();

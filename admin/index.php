@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — private admin page: fomaxo.in/admin
-   Home, Products, Stock, Orders (FMX-IN-1001 …), Coupons, Offer (the limited-time offer), Analytics, Expenses, Reports (profit & loss), Members, Reviews and Settings. Everything is kept in the
+   Home, Products, Stock, Orders (FMX-IN-1001 …), Coupons, Offer (the limited-time offer), Analytics, Expenses, Sales (profit & loss, once called Reports), Members, Reviews and Settings. Everything is kept in the
    shop database (api/shop-db.php). Helpers are in admin/lib.php; styles in admin.css, charts and phone switches in admin.js.
 
    Password: create  public_html/api/data/admin-password.txt  in Hostinger File Manager with your password as its only
@@ -308,7 +308,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* ---------------- downloads ---------------- */
-$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'expenses', 'reports', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
+if (($_GET['tab'] ?? '') === 'reports') $_GET['tab'] = 'sales';   // Sales was called Reports; old links still open it
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : ''];
 $pyear = (int)($_GET['year'] ?? date('Y')); if ($pyear < 2000 || $pyear > 2100) $pyear = (int)date('Y');
@@ -330,8 +331,8 @@ if ($do === 'excel') {
 }
 if ($do === 'report_excel') {
   $n = fn($p) => round($p / 100, 2); $rows = [];
-  /* ?year= (the Home page link) gives that year month by month; otherwise the dates picked on Reports, as its table shows them */
-  $V = isset($_GET['year']) ? ['unit' => 'M', 'from' => "$pyear-01-01", 'to' => "$pyear-12-31", 'rows' => report_year($pyear)] : report_view(pick_dates('reports'));
+  /* ?year= (the Home page link) gives that year month by month; otherwise the dates picked on Sales, as its table shows them */
+  $V = isset($_GET['year']) ? ['unit' => 'M', 'from' => "$pyear-01-01", 'to' => "$pyear-12-31", 'rows' => report_year($pyear)] : report_view(pick_dates('sales'));
   $kl = fn($k) => ['D' => fn($k) => date('d/m/Y', strtotime($k)), 'M' => fn($k) => date('M Y', strtotime("$k-01")), 'Y' => fn($k) => (string)$k][$V['unit']]($k);
   foreach ($V['rows'] as $k => $r) $rows[] = [$kl($k), $r['orders'], $n($r['sales']), $n($r['discounts']), $n($r['coupons']), $n($r['fees']), $n($r['cost']), $n($r['gross']), $n($r['expenses']), $n($r['net']), $r['nocost'] ?: ''];
   $t = report_sum($V['rows']); $rows[] = ['Total', $t['orders'], $n($t['sales']), $n($t['discounts']), $n($t['coupons']), $n($t['fees']), $n($t['cost']), $n($t['gross']), $n($t['expenses']), $n($t['net']), $t['nocost'] ?: ''];
@@ -356,7 +357,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offer', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'reports' => 'Reports', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offer', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';
