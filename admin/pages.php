@@ -136,15 +136,21 @@ if ($tab === 'coupons') {
     return $s && $e ? "$s → $e" : ($s ? "From $s" : ($e ? "Until $e" : '')); };
   $tbox = fn(string $name, string $v, string $whole) => '<div class="cpt2">' . date_box($name, substr($v, 0, 10), $name === 'starts' ? 'Starts on' : 'Ends on')
     . '<input type="time" name="' . $name . '_time" value="' . h(strlen($v) > 10 && substr($v, 11) !== $whole ? substr($v, 11, 5) : '') . '" aria-label="' . ($name === 'starts' ? 'Start time' : 'End time') . '"></div>';
-  /* a free product's choices: every product and size, at ₹0 in the order (gift sets are left out, they need fragrances picked) */
-  $freeOpts = fn(?array $E) => '<option value="">Choose the free product</option>' . implode('', array_map(function ($id, $p) use ($E) {
-      if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) return '';
-      return implode('', array_map(fn($opt, $pr) => '<option value="' . h("$id|$opt") . '"' . (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt ? ' selected' : '') . '>'
-        . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
-    }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products']));
-  /* the free product picker: type a few letters to narrow the list, then pick the product and size (admin.js) */
-  $freePick = fn(string $name, ?array $E) => '<span class="fpick"><input type="search" data-ffind placeholder="Type to find" aria-label="Find a product" autocomplete="off">'
-    . '<select name="' . $name . '" aria-label="Free product">' . $freeOpts($E) . '</select></span>';
+  /* the free product picker: one box to type in or pick from its dropdown (every product and size, at ₹0 in the order; gift sets are
+     left out, they need fragrances picked). The hidden input carries "id|size"; admin.js fills it when a line is picked. */
+  $freePick = function (string $name, ?array $E) {
+    $li = ''; $pick = '';
+    foreach (fomaxo_catalog()['products'] as $id => $p) {
+      if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) continue;
+      foreach ($p['prices'] as $opt => $pr) {
+        $t = $p['name'] . ' ' . opt_label($p, (string)$opt) . ' · ' . rupees((int)round($pr * 100));
+        if (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt) $pick = $t;
+        $li .= '<li data-v="' . h("$id|$opt") . '">' . h($t) . '</li>';
+      }
+    }
+    return '<span class="fpick"><input type="text" data-ffind value="' . h($pick) . '" placeholder="Type or pick" aria-label="Free product" autocomplete="off">'
+      . '<input type="hidden" name="' . $name . '" value="' . h($pick !== '' ? $E['free_id'] . '|' . $E['free_opt'] : '') . '"><ul class="fplist" hidden>' . $li . '</ul></span>';
+  };
   $num = fn($p) => $p % 100 ? number_format($p / 100, 2, '.', '') : (string)intdiv($p, 100);
   $panes = ['list' => 'Your coupons', 'add' => $E ? 'Edit ' . h($E['code']) : 'Add a coupon'];
   $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
