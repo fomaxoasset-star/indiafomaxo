@@ -418,7 +418,7 @@ function make_goodwill_coupon(): array {
 /* the WhatsApp link that sends a goodwill coupon to its customer, with a short ready message */
 function goodwill_wa(array $c): string {
   return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode('Hi, this is FOMAXO. As a goodwill gesture for your last order, here is ' . (int)$c['value'] . '% off your next order with the code '
-    . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time and has no end date. 🙏');
+    . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time and has no end date.');
 }
 
 /* ---------------- members (repeat customers) ---------------- */
