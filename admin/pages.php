@@ -725,7 +725,7 @@ if ($tab === 'reviews') {
       . ($r['body'] !== '' ? '<p>' . nl2br(h($r['body'])) . '</p>' : '')
       . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')
-      . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
+      . ($r['phone'] && $r['verified'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
       . (($r['reply'] ?? '') !== '' ? '<div class="rvr"><b>Reply from FOMAXO</b><p>' . nl2br(h($r['reply'])) . '</p></div>' : '')
       . '<input type="checkbox" class="rvr-tg" id="rvr' . (int)$r['id'] . '" hidden>'
       . '<div class="rvr-acts">' . $rvWa . '<label for="rvr' . (int)$r['id'] . '" class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</label>'

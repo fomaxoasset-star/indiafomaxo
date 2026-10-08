@@ -48,6 +48,7 @@ function db(): PDO {
   if (!in_array('city', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN city TEXT NOT NULL DEFAULT ''");
   if (!in_array('country', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN country TEXT NOT NULL DEFAULT ''");
   if (!in_array('reply', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN reply TEXT NOT NULL DEFAULT ''");          // FOMAXO's answer, written in Admin → Reviews
+  if (!in_array('mobile', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN mobile TEXT NOT NULL DEFAULT ''");        // optional, private: only Admin → Reviews sees it (WhatsApp)
   return $db;
 }
 
@@ -182,6 +183,7 @@ try {
       $country = cap(str($in['country'] ?? '', 40));                                 // optional, picked from the form's list
       if ($anon) { $city = ''; $country = ''; }
       if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
+      $mobile = substr(preg_replace('/\D/', '', (string)($in['mobile'] ?? '')) ?? '', -10); if (!preg_match('/^[6-9]\d{9}$/', $mobile)) $mobile = '';   // a 10-digit Indian mobile, or nothing
 
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
@@ -196,8 +198,8 @@ try {
 
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
-      db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        ->execute([$product, $rating, $text, $rawName, $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country]);
+      db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country, mobile) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        ->execute([$product, $rating, $text, $rawName, $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country, $mobile]);
       out(['ok' => true, 'pending' => $status === 'pending']);
     }
 

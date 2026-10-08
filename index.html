@@ -404,7 +404,7 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-form .rv-check input{width:18px;height:18px;padding:0;accent-color:var(--gold)}
 .rv-loc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media(max-width:620px){.rv-loc{grid-template-columns:minmax(0,1fr)}}
-.rv-loc label i{font-style:normal;text-transform:none;letter-spacing:.04em;color:var(--muted)}
+.rv-loc label i,.rv-form label>span>i{font-style:normal;text-transform:none;letter-spacing:.04em;color:var(--muted)}
 .rv-city{position:relative}
 .rv-form input[name=name],.rv-form input[name=city],.rv-form input[name=country]{text-transform:capitalize}
 .rv-form input[name=name]::placeholder,.rv-form input[name=city]::placeholder,.rv-form input[name=country]::placeholder{text-transform:none}
@@ -4195,6 +4195,7 @@ function rvForm(p, token, customer){
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
     <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
+    ${token ? '' : '<label><span>Mobile <i>(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label>'}
     <div class="rv-loc">
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
       <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
@@ -4248,6 +4249,7 @@ function bindRvForm(form, p, token, done){
     const fd = new FormData(); fd.append('product', p.id); fd.append('rating', rating); fd.append('text', form.elements.text.value);
     fd.append('name', anon.checked ? '' : rvCap(name.value)); fd.append('anonymous', anon.checked ? '1' : ''); fd.append('website', form.elements.website.value);
     if (!anon.checked) { fd.append('city', rvCap(city.value)); fd.append('country', (rvNation(nation.value) || [rvCap(nation.value)])[0]); }
+    if (form.elements.mobile) fd.append('mobile', form.elements.mobile.value);
     if (token) fd.append('token', token); files.forEach(f => fd.append('photos[]', f));
     const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
     try { const d = await rvPost('submit', fd); done(d); }

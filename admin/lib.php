@@ -609,7 +609,7 @@ function reviews_db(): ?PDO {
   $db->exec('PRAGMA busy_timeout=4000;');
   return $db;
 }
-/* reviews with the mobile of the order they came from (verified purchasers). $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone, from and to (written in those days) */
+/* reviews with the mobile of the order they came from (verified purchasers), or the optional one typed with the review. $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone, from and to (written in those days) */
 function reviews_list(array $f = []): array {
   $db = reviews_db(); if (!$db) return [];
   try {
@@ -618,7 +618,7 @@ function reviews_list(array $f = []): array {
   $q = mb_strtolower(trim((string)($f['q'] ?? ''))); $qd = preg_replace('/\D/', '', $q);
   $out = [];
   foreach ($rows as $r) {
-    $r['phone'] = substr(preg_replace('/\D/', '', (string)$r['phone']), -10);
+    $r['phone'] = substr(preg_replace('/\D/', '', (string)$r['phone']), -10) ?: (string)($r['mobile'] ?? '');   // the order's mobile, else the one typed in the review form
     if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
     if (isset($f['product']) && $r['product'] !== $f['product']) continue;
