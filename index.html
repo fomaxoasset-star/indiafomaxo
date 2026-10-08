@@ -1905,6 +1905,48 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .gf-pick select{width:100%;appearance:none;-webkit-appearance:none;background-color:transparent;border:1px solid var(--line-2);border-radius:0;padding:12px 40px 12px 14px;font:inherit;font-size:14px;color:var(--ivory);cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat}
 .gf-pick select:focus{outline:none;border-color:var(--gold)}
 .gf-pick option{background:var(--black);color:var(--ivory)}
+/* combo cards: each product is a "Change" row that opens a picture window instead of a dropdown */
+.gf-set,.gf-body,.gf-pick{min-width:0}
+.cb-slot{display:flex;align-items:center;gap:14px;width:100%;padding:10px 14px 10px 10px;border:1px solid var(--line-2);background:transparent;color:var(--ivory);font:inherit;text-align:left;cursor:pointer;transition:border-color .3s}
+.cb-slot:hover,.cb-slot:focus-visible{border-color:var(--gold);outline:none}
+.cb-slot img,.cb-slot .ph0{width:58px;height:58px;object-fit:cover;flex:none;background:#000;border:1px solid var(--line)}
+.cb-slot .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.cb-slot b{font-weight:400;font-size:14.5px;letter-spacing:.03em;line-height:1.3}
+.cb-slot small{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.cb-slot .go{flex:none;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);white-space:nowrap}
+.cb-sheet{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .3s}
+.cb-sheet.show{opacity:1}
+.cb-sheet .in{width:min(780px,100%);max-height:min(88svh,900px);display:flex;flex-direction:column;background:var(--black);border:1px solid var(--gold)}
+.cb-sheet .hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:26px 28px 16px}
+.cb-sheet h3{font-size:20px;letter-spacing:.14em}
+.cb-sheet .hd p{font-size:13px;color:var(--muted);margin-top:6px}
+.cb-sheet .x{background:none;border:0;color:var(--ivory);font-size:22px;line-height:1;padding:4px;cursor:pointer}
+.cb-sheet .g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:4px 28px 8px;overflow-y:auto;overscroll-behavior:contain}
+.cb-card{position:relative;display:flex;flex-direction:column;border:1px solid var(--line-2);background:transparent;color:var(--ivory);font:inherit;text-align:left;cursor:pointer;padding:0;transition:border-color .3s}
+.cb-card:hover{border-color:var(--gold)}
+.cb-card.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.cb-card.on::after{content:"✓";position:absolute;right:8px;top:8px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#0a0805;font-size:12px;line-height:22px;text-align:center}
+.cb-card img,.cb-card .ph0{width:100%;aspect-ratio:4/3;object-fit:cover;background:#000;display:block}
+.cb-card .ph0{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:28px}
+.cb-card .t{display:flex;flex-direction:column;gap:4px;padding:10px 12px 12px}
+.cb-card b{font-weight:400;font-size:13.5px;letter-spacing:.08em;text-transform:uppercase;line-height:1.3}
+.cb-card small{font-size:11.5px;color:var(--muted);line-height:1.4}
+.cb-card .sz{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.cb-card .sz span{font-size:11px;letter-spacing:.06em;padding:5px 9px;border:1px solid var(--line-2);color:var(--muted)}
+.cb-card .sz span.on{border-color:var(--gold);color:var(--gold-hi)}
+.cb-sheet .ft{padding:16px 28px 24px;border-top:1px solid var(--line)}
+.cb-sheet .ft .btn{width:100%}
+html.cb-lock,html.cb-lock body{overflow:hidden}
+@media(max-width:700px){
+  .cb-sheet{align-items:flex-end;padding:0}
+  .cb-sheet .in{max-height:90svh;border-width:1px 0 0;transform:translateY(30px);transition:transform .35s var(--ease)}
+  .cb-sheet.show .in{transform:none}
+  .cb-sheet .hd{padding:20px 16px 12px}
+  .cb-sheet h3{font-size:17px}
+  .cb-sheet .g{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 16px 8px}
+  .cb-card img,.cb-card .ph0{aspect-ratio:1}
+  .cb-sheet .ft{padding:12px 16px calc(16px + env(safe-area-inset-bottom))}
+}
 .gf-set .ctas .btn{padding:0 12px}
 .gf-occ{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;background:var(--line)}
 .gf-occ a{position:relative;min-height:440px;overflow:hidden;background:#000;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:clamp(22px,2.4vw,36px);color:#f2ebdd}
@@ -3448,10 +3490,17 @@ const giftOptions = (selId, selSize, only, none) => (only && !none ? '' : `<opti
 const waLink = text => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(text)}`;
 const WA_SVG = () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${SOC_ICON.whatsapp.replace(/^<g transform="[^"]*">/, '<g>')}</svg>`;
 /* one gift set or combo card: pictures, words, product dropdowns and the WhatsApp button */
+/* combo cards: short scent words under each parfum, and the "Change" row that stands in for the dropdown */
+const MOOD = {gold: 'Strong · Seductive', dollar: 'Fresh · Zesty', oldmoney: 'Quiet luxury', royalcandy: 'Sweet · Bold', matchacoco: 'Matcha · Coconut', passionsin: 'Warm · Magnetic'};
+const cbName = (p, sz) => p.kind ? p.name : `${p.name} · ${sz}ml`;
+const cbSub = p => p.kind === 'car' ? 'Car fragrance' : p.kind ? (p.vol || 'Personal care') : (MOOD[p.id] || p.family || '');
+const cbSlot = (id, sz) => { const p = P[id]; return p
+  ? `<img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
+  : `<span class="ph0"></span><span class="t"><b>No product</b><small>Tap to add one</small></span><span class="go">Add ›</span>`; };
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
     <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${IMG(imgFor(P[id], s))}"${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-      <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, g.none)}</select>`).join('')}</div>
+      <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, g.none)}</select>${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button></div>
     </div></article>`;
 function giftPage(){
@@ -3585,9 +3634,36 @@ function bindGift(){
   $$('[data-gpers]').forEach(b => b.onclick = () => { const g = [...GIFT_SETS, ...COMBO_SETS].find(x => x.id === b.dataset.gpers); if (!g) return;
     const picks = $$(`[data-gpick="${g.id}"]`).filter(sel => sel.value).map(sel => { const [id, sz] = sel.value.split('|'); const p = P[id]; return p ? `- ${p.kind ? p.name : `${p.name} ${sz}ml`}` : ''; }).filter(Boolean);
     const a = document.createElement('a'); a.href = waLink(g.combo ? `Hello FOMAXO, I would like to order the "${g.name}" combo with these products:\n${picks.join('\n')}\n\nPlease share the price and delivery details.` : `Hello FOMAXO, I am interested in the "${g.name}" gift set with these products:\n${picks.join('\n')}\n\nPlease help me personalise it.`); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); });
-  $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|'); if (!im) return;
+  $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|');
+    const row = $(`[data-cbslot="${sel.dataset.gpick}|${sel.dataset.gslot}"]`); if (row) row.innerHTML = cbSlot(id, sz); if (!im) return;
     im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG(imgFor(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
+  $$('[data-cbslot]').forEach(b => b.onclick = () => cbPicker(b));
+}
+/* combo picture window: every product the slot's (hidden) dropdown offers, one card per product with its sizes;
+   picking one sets the dropdown, so the card pictures and the WhatsApp message follow it */
+function cbPicker(btn){
+  const [gid, k] = btn.dataset.cbslot.split('|'), sel = $(`[data-gpick="${gid}"][data-gslot="${k}"]`), g = COMBO_SETS.find(x => x.id === gid); if (!sel || !g) return;
+  const groups = new Map(); let none = false;
+  [...sel.options].forEach(o => { if (!o.value) { none = true; return; } const [id, sz] = o.value.split('|'); if (P[id]) groups.has(id) ? groups.get(id).push(sz) : groups.set(id, [sz]); });
+  let [cur, curSz] = sel.value.split('|');
+  const allParfum = [...groups.keys()].every(id => !P[id].kind);
+  const card = id => { const p = P[id], szs = groups.get(id), sz = id === cur ? curSz : szs[0];
+    return `<button type="button" class="cb-card${id === cur ? ' on' : ''}" data-cbp="${id}"><img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(p.name)}</b><small>${esc(cbSub(p))}</small>${p.kind ? '' : `<span class="sz">${szs.map(s => `<span data-cbs="${s}"${id === cur && s === curSz ? ' class="on"' : ''}>${s}ml</span>`).join('')}</span>`}</span></button>`; };
+  const d = document.createElement('div'); d.className = 'cb-sheet';
+  d.innerHTML = `<div class="in" role="dialog" aria-modal="true" aria-label="Choose a product"><div class="hd"><div><h3>Choose ${allParfum ? 'your parfum' : 'a product'}</h3><p>${esc(g.name)} · ${allParfum ? 'tap a parfum, then pick the size' : 'tap a product to put it in your combo'}</p></div><button type="button" class="x" data-cbx aria-label="Close">✕</button></div>
+    <div class="g">${[...groups.keys()].map(card).join('')}${none ? `<button type="button" class="cb-card${cur ? '' : ' on'}" data-cbp=""><span class="ph0">—</span><span class="t"><b>No product</b><small>Leave this one empty</small></span></button>` : ''}</div>
+    <div class="ft"><button type="button" class="btn" data-cbx>Done</button></div></div>`;
+  const close = () => { d.classList.remove('show'); document.documentElement.classList.remove('cb-lock'); removeEventListener('keydown', esc_); setTimeout(() => d.remove(), 300); btn.focus(); };
+  const esc_ = e => { if (e.key === 'Escape') close(); };
+  const set = (id, sz) => { cur = id; curSz = sz; sel.value = id ? `${id}|${sz}` : ''; sel.dispatchEvent(new Event('change'));
+    $$('.cb-card', d).forEach(c => { const on = c.dataset.cbp === id; c.classList.toggle('on', on); $$('[data-cbs]', c).forEach(s => s.classList.toggle('on', on && s.dataset.cbs === sz));
+      const im = $('img', c); if (on && im) im.src = IMG(imgFor(P[id], sz)); }); };
+  d.onclick = e => { if (e.target === d || e.target.closest('[data-cbx]')) return close();
+    const c = e.target.closest('[data-cbp]'); if (!c) return; const id = c.dataset.cbp, s = e.target.closest('[data-cbs]');
+    set(id, s ? s.dataset.cbs : id === cur ? curSz : (groups.get(id) || [''])[0]); };
+  document.body.appendChild(d); document.documentElement.classList.add('cb-lock'); addEventListener('keydown', esc_);
+  requestAnimationFrame(() => { d.classList.add('show'); const on = $('.cb-card.on', d); (on || $('.cb-card', d)).focus({preventScroll: true}); on && on.scrollIntoView({block: 'nearest'}); });
 }
 function pcBadges(p, size){
   const pct = pctOff(p, size), isNew = /new/i.test(p.badge || p.tag || '');
@@ -4371,7 +4447,7 @@ function route(){
   app.innerHTML = `<div class="page-fade">${html}</div>`;
   const navKey = seg[0] === 'collections' && seg[1] === 'name' ? 'gift' : seg[0];
   $$('#menu a').forEach(a => a.classList.toggle('on', a.dataset.r === navKey || (seg[0] === 'product' && a.dataset.r === (P[seg[1]] && P[seg[1]].kind === 'care' ? 'personal-care' : 'fragrances'))));
-  closePanels();
+  closePanels(); $$('.cb-sheet').forEach(x => x.remove()); document.documentElement.classList.remove('cb-lock');   // a combo picture window left open
   window.scrollTo({top: 0, left: 0, behavior: 'instant'});
   after && after();
   bindCommon();
