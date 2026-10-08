@@ -19,7 +19,7 @@ $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
 $order = fomaxo_price_order($in);
 if (isset($order['error'])) fail($order['error']);
-$cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : '', 'phone' => is_string($in['phone'] ?? null) ? $in['phone'] : ''], $order['subtotal']);   // phone: for sorry coupons
+$cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : '', 'phone' => is_string($in['phone'] ?? null) ? $in['phone'] : ''], $order['subtotal']);   // phone: for goodwill coupons
 if (!$cp) fail('Please type your coupon code.');
 if (isset($cp['error'])) fail($cp['error']);
 /* discount = the coupon, offer = the multi-buy discount kept with it ("Use both", or a bigger offer); stack = the coupon's choice */
