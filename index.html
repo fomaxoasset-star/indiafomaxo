@@ -1911,17 +1911,8 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-free{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);margin-top:6px}
 .gf-sets.cb-wide{grid-template-columns:minmax(0,1fr)}
 @media(min-width:901px){.cb-wide .gf-set{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}.cb-wide .gf-pics{aspect-ratio:auto;height:100%;min-height:440px}.cb-wide .gf-body{padding:34px 36px}}
-.cb-fhead{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;margin-bottom:34px}
-.cb-fhead h2{font-size:clamp(30px,3.6vw,52px)}
-.cb-fhead h2::after{content:"";display:block;width:70px;height:1px;background:var(--gold);margin:22px auto 0}
-.cb-tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:34px}
-.cb-tab{display:flex;align-items:center;gap:10px;padding:13px 24px;border:1px solid var(--line-2);border-radius:999px;background:transparent;color:var(--ivory);font:inherit;font-size:14px;letter-spacing:.06em;cursor:pointer;transition:background .3s,border-color .3s,color .3s}
-.cb-tab svg{width:20px;height:20px;color:var(--gold)}
-.cb-tab:hover{border-color:var(--gold)}
-.cb-tab.on{background:linear-gradient(135deg,#b8894a,#e3c08a 55%,#c99a5b);border-color:transparent;color:#0a0805;font-weight:500;box-shadow:0 10px 30px rgba(184,137,74,.25)}
-.cb-tab.on svg{color:#0a0805}
 .gf-sets.cb-two{grid-template-columns:repeat(2,minmax(0,1fr));max-width:1000px;margin:0 auto}
-@media(max-width:700px){.cb-tabs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--pad)) 26px;padding:4px var(--pad)}.cb-tabs::-webkit-scrollbar{display:none}.cb-tab{flex:none;padding:11px 18px;font-size:13px}.gf-sets.cb-two{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:700px){.gf-sets.cb-two{grid-template-columns:minmax(0,1fr)}}
 .cb-tag{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);margin-bottom:-6px}
 .cb-price{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 22px;border-top:1px solid var(--line);padding-top:14px;margin-top:auto}
 .cb-price div{display:flex;flex-direction:column;gap:2px}
@@ -3495,6 +3486,8 @@ const PARFUM = (p, sz) => !p.kind && p.tier !== 'elite' && sz != 10;   // 50ml a
 const CARE = cat => p => p.kind === 'care' && p.cat === cat, MINI = (p, sz) => !p.kind && sz == 10, CARF = p => p.kind === 'car';
 const GIFTF = (p, sz) => MINI(p, sz) || CARE('lips')(p) || CARF(p);   // free gift: a 10ml parfum, a lip balm or a car fragrance
 /* offer: shown on its own above the combos. free: the slots given free, so their value is the saving */
+/* combos shown in the main list (the rest stay ready to bring back); festival combos show for the coming festival only */
+const COMBO_SHOW = ['morning-midnight', 'discovery-four', 'date-night'];
 const COMBO_SETS = [
   {id: 'onam-sadya', combo: true, fest: 'onam', tag: 'Onam', name: 'Onam Sadya Box', save: 314, v: 'Coconut-fresh Matcha Coco with body care and a lip balm, for the day of the feast.', slots: 3, live: true, only: [PARFUM, CARE('body'), CARE('lips')], items: [['matchacoco', 50], ['pc-radiant-gel', 'one'], ['pc-kissberry', 'one']]},
   {id: 'onam-pookalam', combo: true, fest: 'onam', tag: 'Onam', name: 'Pookalam Duo', save: 501, v: 'Two flower-bright parfums, as colourful as the pookalam at the door.', slots: 2, live: true, only: PARFUM, items: [['royalcandy', 50], ['passionsin', 50]]},
@@ -3519,7 +3512,7 @@ const COMBO_SETS = [
   {id: 'big-three', combo: true, tag: 'Parfum wardrobe', name: 'The Big Three', badge: 'Best value', save: 751, v: 'A strong, a fresh and a classic parfum. One for every mood.', slots: 3, live: true, only: PARFUM, items: [['gold', 100], ['dollar', 100], ['oldmoney', 50]]},
   {id: 'festive-hamper', combo: true, tag: 'Diwali and weddings', name: 'Festive Hamper', badge: 'Festive', save: 617, v: 'Parfum, body care, a lip balm and a car fragrance in one gift box.', slots: 5, live: true, only: [PARFUM, PARFUM, CARE('body'), CARE('lips'), CARF], items: [['gold', 100], ['matchacoco', 50], ['pc-passionsin-gel', 'one'], ['pc-kissberry', 'one'], ['carrush', 'one']]}
 ];
-/* festival tabs on the Combo page; the tab open first is the festival coming up by month */
+/* festivals on the Combo page: only the one coming up by month shows, with its combos */
 const FI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const FESTS = [
   {key: 'onam', name: 'Onam', when: [8], icon: FI('<circle cx="12" cy="12" r="2.5"/><path d="M12 3c1.6 2.2 1.6 4.2 0 6.5C10.4 7.2 10.4 5.2 12 3zm0 18c-1.6-2.2-1.6-4.2 0-6.5 1.6 2.3 1.6 4.3 0 6.5zM3 12c2.2-1.6 4.2-1.6 6.5 0C7.2 13.6 5.2 13.6 3 12zm18 0c-2.2 1.6-4.2 1.6-6.5 0 2.3-1.6 4.3-1.6 6.5 0z"/>')},
@@ -3637,8 +3630,8 @@ function giftPage(){
 }
 function comboPage(){
   document.title = 'Combos — FOMAXO';
-  const all = buildSets(COMBO_SETS), sets = all.filter(g => !g.offer && !g.fest), offers = all.filter(g => g.offer);
-  const m = new Date().getMonth(), fests = FESTS.map(f => ({...f, sets: all.filter(g => g.fest === f.key)})).filter(f => f.sets.length), open = (fests.find(f => f.when.includes(m)) || fests[0] || {}).key;
+  const all = buildSets(COMBO_SETS), sets = all.filter(g => !g.offer && !g.fest && COMBO_SHOW.includes(g.id)), offers = all.filter(g => g.offer);
+  const m = new Date().getMonth(), fests = FESTS.map(f => ({...f, sets: all.filter(g => g.fest === f.key)})).filter(f => f.sets.length), fest = fests.find(f => f.when.includes(m)) || fests[0];
   return `
   <section class="gf-hero">
     <div class="gf-copy">
@@ -3660,13 +3653,12 @@ function comboPage(){
     ${secHead('Offer', 'Buy 2, get <em class="metal">1 gift</em>', '<p class="lead">Choose any two parfums and we add a gift of your choice for free.</p>')}
     <div class="gf-sets cb-wide">${offers.map((g, i) => gfCard(g, i, 'Order offer')).join('')}</div>
   </div></section>` : ''}
-  ${fests.length ? `<section class="sec" id="cb-fest" style="padding-top:0"><div class="wrap">
-    <div class="cb-fhead"><span class="eyebrow">Festive celebrations</span><h2>Festive <em class="metal">combos</em></h2><p class="lead">Combos made for the festivals we celebrate across India and Kerala.</p></div>
-    <div class="cb-tabs" role="tablist" aria-label="Festivals">${fests.map(f => `<button type="button" role="tab" class="cb-tab${f.key === open ? ' on' : ''}" data-cbfest="${f.key}" aria-selected="${f.key === open}">${f.icon}${esc(f.name)}</button>`).join('')}</div>
-    ${fests.map(f => `<div class="gf-sets cb-two" role="tabpanel" data-cbpanel="${f.key}"${f.key === open ? '' : ' hidden'}>${f.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>`).join('')}
+  ${fest ? `<section class="sec" id="cb-fest" style="padding-top:0"><div class="wrap">
+    ${secHead('Festive', `${esc(fest.name)} <em class="metal">combos</em>`, `<p class="lead">Made for ${esc(fest.name)}, ready to give.</p>`)}
+    <div class="gf-sets cb-two">${fest.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>
   </div></section>` : ''}
   <section class="sec" id="cb-sets" style="padding-top:0"><div class="wrap">
-    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Nine combos from the FOMAXO house, each priced below its products. Tap Change to swap any product, then tap Order combo to send it to us on WhatsApp.</p>')}
+    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Our favourite combos, each priced below its products. Tap Change to swap any product, then tap Order combo to send it to us on WhatsApp.</p>')}
     <div class="gf-sets">${sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
@@ -3709,9 +3701,6 @@ function bindGift(){
     im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG(imgFor(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
   $$('[data-cbslot]').forEach(b => b.onclick = () => cbPicker(b));
-  $$('[data-cbfest]').forEach(b => b.onclick = () => { const k = b.dataset.cbfest;
-    $$('[data-cbfest]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); });
-    $$('[data-cbpanel]').forEach(p => p.hidden = p.dataset.cbpanel !== k); });
 }
 /* combo picture window: every product the slot's (hidden) dropdown offers, one card per product with its sizes;
    picking one sets the dropdown, so the card pictures and the WhatsApp message follow it */
