@@ -592,3 +592,38 @@ document.addEventListener('click', function (e) {
   for (var i = 0; i < 4; i++) c += abc[Math.floor(Math.random() * abc.length)];
   var inp = b.parentNode.querySelector('input'); inp.value = c; inp.dispatchEvent(new Event('input', {bubbles: true}));
 });
+
+/* Coupons: the free product box. Typing narrows its dropdown, a tap (or Enter, or the arrow keys) picks a line,
+   and the hidden input next to it takes that line's "id|size" for the form */
+(function () {
+  function parts(f) { var w = f.parentNode; return {hid: w.querySelector('input[type=hidden]'), ul: w.querySelector('.fplist')}; }
+  function shown(ul) { return Array.prototype.filter.call(ul.children, function (li) { return !li.hidden; }); }
+  function filter(f, all) {
+    var x = parts(f), q = all ? '' : f.value.trim().toLowerCase();   // matched from the start of a word: "old" finds Old Money, not Gold
+    Array.prototype.forEach.call(x.ul.children, function (li) { li.hidden = q !== '' && (' ' + li.textContent.toLowerCase()).indexOf(' ' + q) < 0; li.classList.remove('on'); });
+    x.ul.hidden = !shown(x.ul).length;
+  }
+  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; }
+  document.addEventListener('focusin', function (e) { if (e.target.matches && e.target.matches('[data-ffind]')) { e.target.select(); filter(e.target, true); } });
+  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; filter(f); } });
+  document.addEventListener('focusout', function (e) {
+    var f = e.target; if (!f.matches || !f.matches('[data-ffind]')) return;
+    var x = parts(f); x.ul.hidden = true;
+    if (!x.hid.value) { var m = shown(x.ul); if (f.value.trim() && m.length) pick(f, m[0]); }   // left with words typed: the first match
+  });
+  document.addEventListener('mousedown', function (e) {   // mousedown, before the box loses focus
+    var li = e.target.closest && e.target.closest('.fplist li');
+    if (li) { e.preventDefault(); pick(li.parentNode.parentNode.querySelector('[data-ffind]'), li); }
+  });
+  document.addEventListener('keydown', function (e) {
+    var f = e.target; if (!f.matches || !f.matches('[data-ffind]')) return;
+    var ul = parts(f).ul, m = shown(ul), i = m.findIndex(function (li) { return li.classList.contains('on'); });
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); if (ul.hidden) filter(f); if (!m.length) return;
+      if (i > -1) m[i].classList.remove('on');
+      i = e.key === 'ArrowDown' ? (i + 1) % m.length : (i < 1 ? m.length - 1 : i - 1);
+      m[i].classList.add('on'); m[i].scrollIntoView({block: 'nearest'});
+    } else if (e.key === 'Enter' && !ul.hidden && m.length) { e.preventDefault(); pick(f, m[i > -1 ? i : 0]); }
+    else if (e.key === 'Escape') ul.hidden = true;
+  });
+})();
