@@ -145,24 +145,24 @@ if ($tab === 'coupons') {
     . '<div class="cpv"><label>Takes off<span class="seg ck">'
     . '<label class="' . (($E['kind'] ?? 'pct') === 'pct' ? 'on' : '') . '"><input type="radio" name="kind" value="pct"' . (($E['kind'] ?? 'pct') === 'pct' ? ' checked' : '') . '>% off</label>'
     . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label>'
-    . '<label class="' . (($E['kind'] ?? '') === 'free' ? 'on' : '') . '"><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label>'
-    . '<label class="cpamt">Amount<input type="number" name="value" min="1" step="any" inputmode="decimal" value="' . h($E && $E['kind'] !== 'free' ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label></div>'
+    . '<label class="' . (($E['kind'] ?? '') === 'free' ? 'on' : '') . '"><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label></div>'
+    . '<div class="cp2"><label class="cpamt">Amount<input type="number" name="value" min="1" step="any" inputmode="decimal" value="' . h($E && $E['kind'] !== 'free' ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label>'
     /* a free product coupon: the product and size added to the order at ₹0 (gift sets are left out, they need fragrances picked) */
     . '<label class="cpfree">Free product<select name="free">' . '<option value="">Choose the free product</option>' . implode('', array_map(function ($id, $p) use ($E) {
         if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) return '';
         return implode('', array_map(fn($opt, $pr) => '<option value="' . h("$id|$opt") . '"' . (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt ? ' selected' : '') . '>'
           . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
       }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products'])) . '</select></label>'
-    . '<label><span class="cpmin">Minimum order ₹ <small>(optional)</small></span><span class="cpspend">Spend at least ₹ <small>(optional; empty = free with any order)</small></span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="No minimum"></label>'
+    . '<label><span class="cpmin">Minimum order ₹</span><span class="cpspend">Spend at least ₹</span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="None"></label></div>'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
     . '<div class="cpst" role="radiogroup" aria-label="With the website offer">'
-    . '<label><input type="radio" name="stack" value="0"' . (empty($E['stack']) ? ' checked' : '') . ' required><span><b>Use the bigger offer</b>Coupon or website offer, whichever saves more</span></label>'
-    . '<label><input type="radio" name="stack" value="1"' . (!empty($E['stack']) ? ' checked' : '') . '><span><b>Use both</b>Website offer first, then the coupon on top</span></label></div>'
-    . '<div class="cptl"><b>Time limit</b> <small class="muted">(optional)</small></div>'
-    . '<label>Starts <small>(date, and a time if you want one)</small>' . $tbox('starts', $E ? coupon_starts($E) : '', '00:00') . '</label>'
-    . '<label>Ends <small>(no time = till the end of that day)</small>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
-    . '<label>Usage limit <small>(optional, total orders)</small><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit"></label>'
-    . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label>'
+    . '<label><input type="radio" name="stack" value="0"' . (empty($E['stack']) ? ' checked' : '') . ' required><span><b>Use the bigger offer</b><i>Coupon or website offer, whichever saves more</i></span></label>'
+    . '<label><input type="radio" name="stack" value="1"' . (!empty($E['stack']) ? ' checked' : '') . '><span><b>Use both</b><i>Website offer first, then the coupon on top</i></span></label></div>'
+    . '<div class="cptl"><b>Time limit</b> <small class="muted">(optional; no time = the whole day)</small></div>'
+    . '<label class="cprow"><span>Starts</span>' . $tbox('starts', $E ? coupon_starts($E) : '', '00:00') . '</label>'
+    . '<label class="cprow"><span>Ends</span>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
+    . '<div class="cp2 cpend"><label>Usage limit<input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit"></label>'
+    . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label></div>'
     . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'
     . '<p class="muted small" style="margin:0">Shoppers type the code in “Have a coupon code?” at checkout. It works for cash on delivery and online payment, and the discount is worked out on the server.</p></div></form>'
     . '<div class="box' . ($E ? '' : ' on') . '" data-pane="list"><div class="bh"><h3>Your coupons · ' . count($CP) . '</h3></div>';
