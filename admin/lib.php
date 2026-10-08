@@ -559,6 +559,10 @@ function review_delete(int $id): void {
 }
 /* tap-to-add emoji under the review reply box, in this order */
 const REPLY_EMOJI = ['🙏', '❤️', '😊', '✨', '🎁', '👍', '😍', '🥰', '🌸', '💐', '🤗', '😢'];
+function review_has_reply(int $id): bool {
+  if (!($db = reviews_db()) || !in_array('reply', array_column($db->query('PRAGMA table_info(reviews)')->fetchAll(), 'name'), true)) return false;
+  $s = $db->prepare('SELECT reply FROM reviews WHERE id = ?'); $s->execute([$id]); return trim((string)$s->fetchColumn()) !== '';
+}
 /* FOMAXO's public answer under a review; an empty text removes it */
 function review_reply(int $id, string $text): void {
   if (!($db = reviews_db())) return;
