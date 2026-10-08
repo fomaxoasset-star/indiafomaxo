@@ -294,7 +294,7 @@ function fomaxo_price_order(array $in): array {
     /* a stock number set on the admin page wins over soldOut in index.html; a product hidden on the admin page can't be bought */
     if (!$p || !isset($p['prices'][$opt]) || !empty($p['hidden']) || ($p['soldOut'] && !isset($STOCK[$id][$opt])) || $qty < 1 || $qty > 99)
       return ['error' => 'An item in your bag is no longer available. Please refresh and try again.'];
-    $size = $p['kind'] === 'set' ? "Set of $opt" : ($p['kind'] === 'care' ? $p['vol'] : ($p['kind'] === 'car' ? 'Car perfume' : "{$opt}ml"));
+    $size = fomaxo_size_label($p, $opt);
     $desc = '';
     if ($p['kind'] === 'set') {
       $picks = array_values(array_filter((array)($l['picks'] ?? []), fn($x) => is_string($x) && isset($CAT[$x]) && $CAT[$x]['kind'] === ''));
@@ -317,6 +317,31 @@ function fomaxo_price_order(array $in): array {
   if ($total < 100) return ['error' => 'This order cannot be paid online. Please order on WhatsApp.'];
   $rows = array_map(fn($it) => "• {$it['qty']} x {$it['name']}" . ($it['desc'] ? " ({$it['desc']})" : '') . ' — ' . rupees($it['unit'] * $it['qty']), $items);
   return ['items' => $items, 'rows' => $rows, 'subtotal' => $total];
+}
+
+/* "10ml", "Set of 3", a care product's volume or "Car perfume" */
+function fomaxo_size_label(array $p, string $opt): string {
+  return $p['kind'] === 'set' ? "Set of $opt" : ($p['kind'] === 'care' ? $p['vol'] : ($p['kind'] === 'car' ? 'Car perfume' : "{$opt}ml"));
+}
+
+/* A free product coupon (Admin → Coupons): adds its product and size to the priced order at ₹0, so it shows in Orders, emails and Excel
+   and comes off the stock with the rest. Returns '' or why it can't be given. */
+function fomaxo_add_free(array &$order, array $cp): string {
+  if (empty($cp['free'])) return '';
+  ['id' => $id, 'opt' => $opt] = $cp['free'];
+  $p = fomaxo_catalog()['products'][$id] ?? null;
+  try { $have = shop_stock()[$id][$opt] ?? null; $cost = shop_costs()[$id][$opt] ?? null; } catch (Throwable $e) { $have = $cost = null; }
+  if (!$p || !isset($p['prices'][$opt]) || !empty($p['hidden']) || $p['kind'] === 'set' || ($p['soldOut'] && $have === null))
+    return "The free product for coupon {$cp['code']} is not available right now. Please remove the code, or WhatsApp us.";
+  $inBag = array_sum(array_map(fn($it) => $it['id'] === $id && (string)$it['opt'] === $opt ? (int)$it['qty'] : 0, $order['items']));
+  $size = fomaxo_size_label($p, $opt); $name = 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : '');
+  if ($have !== null && $have < $inBag + 1) return "The free $name for coupon {$cp['code']} is out of stock right now. Please remove the code, or WhatsApp us.";
+  $was = (int)round($p['prices'][$opt] * 100);
+  $order['items'][] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => "Free with coupon {$cp['code']}", 'unit' => 0, 'qty' => 1, 'free' => 1, 'was' => $was]
+    + ($cost !== null ? ['cost' => $cost] : []);
+  $order['rows'][] = "• 1 x $name (Free with coupon {$cp['code']}) — Free";
+  $order['free'] = ['id' => $id, 'opt' => $opt, 'name' => $p['name'], 'size' => $size, 'worth' => $was];
+  return '';
 }
 
 /* What the website offer (multi-buy) takes off a bag of $subtotal paise. fomaxo.in has no multi-buy offer yet, so 0;

@@ -575,3 +575,20 @@ document.addEventListener('click', function (e) {
   }
   a.classList.add('line');
 });
+
+/* Coupons: picking Free product on a new coupon ticks One use per customer */
+document.addEventListener('change', function (e) {
+  var r = e.target;
+  if (r.name !== 'kind' || r.value !== 'free' || !r.checked) return;
+  var f = r.form, u = f && f.elements.per_cust;
+  if (u && !f.elements.editing) u.checked = true;
+});
+
+/* Coupons: Make code fills the code box with one like FOMAXO-7K2Q (no 0/O or 1/I, so it is easy to read out) */
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-mkcode]');
+  if (!b) return;
+  var abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ', c = 'FOMAXO-';
+  for (var i = 0; i < 4; i++) c += abc[Math.floor(Math.random() * abc.length)];
+  var inp = b.parentNode.querySelector('input'); inp.value = c; inp.dispatchEvent(new Event('input', {bubbles: true}));
+});

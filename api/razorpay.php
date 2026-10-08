@@ -50,6 +50,7 @@ function mark_paid(string $orderId, string $paymentId, string $via): ?array {
       shop_take_stock($db, $rec['items'], false);   // the money is taken, so stock goes down even if it was short
       $db->prepare("UPDATE orders SET no = ?, created = ?, paid_at = ?, payment_id = ?, status = 'paid', stock_taken = 1, closed_at = NULL, updated = ? WHERE ref = ?")
         ->execute([$rec['no'], $rec['created'], $rec['paid'], $paymentId, shop_now(), $orderId]);
+      shop_coupon_spent($db, (string)$rec['coupon']);   // a one-use coupon deletes itself now
       return [$rec, true];
     });
   } catch (Throwable $e) { error_log('FOMAXO Razorpay mark paid: ' . $e->getMessage()); return null; }
@@ -86,6 +87,7 @@ if ($action === 'create') {
   if (isset($cust['error'])) fail($cust['error']);
   $cp = fomaxo_coupon($in, $order['subtotal']);
   if (isset($cp['error'])) fail($cp['error']);
+  if (($e = fomaxo_add_free($order, $cp)) !== '') fail($e);   // a free product coupon: its item joins the order at ₹0
   $amount = $order['subtotal'] - ($cp['off'] ?? 0);   // what Razorpay charges: worked out here, never taken from the browser
   /* the order number (FMX-IN-…) is given once the payment is confirmed, so unfinished payments leave no gaps */
   $ref = 'web-' . date('ymd') . '-' . bin2hex(random_bytes(4));

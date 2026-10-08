@@ -266,7 +266,8 @@ function order_coupon_counts(array $F): array {
 function order_coupon_tag(array $o): string {
   if ((string)$o['coupon'] === '') return '';
   $gw = preg_match('/^(GOODWILL|SORRY)-/', $o['coupon']);
-  return '<span class="ctag' . ($gw ? ' gw' : '') . '" title="' . ($gw ? 'Goodwill coupon' : 'Used a coupon') . '"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm6 1v2h2V8H9Zm0 3v2h2v-2H9Zm0 3v2h2v-2H9Z"/></svg><b>' . h($o['coupon']) . '</b>' . ((int)$o['discount'] ? '<i>−' . rupees((int)$o['discount']) . '</i>' : '') . '</span>';
+  return '<span class="ctag' . ($gw ? ' gw' : '') . '" title="' . ($gw ? 'Goodwill coupon' : 'Used a coupon') . '"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm6 1v2h2V8H9Zm0 3v2h2v-2H9Zm0 3v2h2v-2H9Z"/></svg><b>' . h($o['coupon']) . '</b>' . ((int)$o['discount'] ? '<i>−' . rupees((int)$o['discount']) . '</i>' : '')
+    . (str_contains((string)($o['items'] ?? ''), '"free":1') ? '<i>Free gift</i>' : '') . '</span>';   // a free product coupon
 }
 /* the tracking chips: how many orders are pending, unpaid cash, delivered, cancelled and refunded, with every other filter applied */
 function order_track_counts(array $F): array {
@@ -398,9 +399,15 @@ function offer_left(int $secs): string {
 function save_coupon(): string {
   $code = coupon_clean((string)($_POST['code'] ?? '')); $editing = !empty($_POST['editing']);
   if (strlen($code) < 3 || strlen($code) > 20) return '!Please write a code of 3 to 20 letters or numbers, like WELCOME10.';
-  $kind = ($_POST['kind'] ?? '') === 'amt' ? 'amt' : 'pct'; $v = trim((string)($_POST['value'] ?? ''));
-  if (!is_numeric($v) || $v <= 0) return '!Please write how much the coupon takes off.';
-  if ($kind === 'pct' && ($v > 99 || (float)$v != (int)$v)) return '!A % coupon can take off 1 to 99%, in whole numbers.';
+  $kind = in_array($_POST['kind'] ?? '', ['amt', 'free'], true) ? $_POST['kind'] : 'pct'; $v = trim((string)($_POST['value'] ?? ''));
+  $free = ['', ''];
+  if ($kind === 'free') {   // a free product coupon: the product and size it adds at ₹0; nothing is taken off
+    $free = coupon_free_pick('free'); if (!$free) return '!Please choose the free product.';
+    $v = '0';
+  } else {
+    if (!is_numeric($v) || $v <= 0) return '!Please write how much the coupon takes off.';
+    if ($kind === 'pct' && ($v > 99 || (float)$v != (int)$v)) return '!A % coupon can take off 1 to 99%, in whole numbers.';
+  }
   $value = $kind === 'pct' ? (int)$v : (int)round((float)$v * 100);
   $min = trim((string)($_POST['min_order'] ?? '')); if ($min !== '' && (!is_numeric($min) || $min < 0)) return '!Please write the minimum order in rupees, or leave it empty.';
   /* the time limit: a date (dd/mm/yyyy) and an hour for each end; no hour = from the start of the day / to the end of it */
@@ -414,31 +421,75 @@ function save_coupon(): string {
   $ends = $when('ends', '23:59'); if ($ends === null) return '!Please type the end date as dd/mm/yyyy (and a time if you want one), or leave it empty.';
   if ($starts !== '' && $ends !== '' && $ends <= $starts) return '!The coupon has to end after it starts.';
   $uses = trim((string)($_POST['max_uses'] ?? '')); if ($uses !== '' && (!ctype_digit($uses))) return '!Please write the usage limit as a number, or leave it empty.';
-  $s = shop_db()->prepare('SELECT created FROM coupons WHERE code = ?'); $s->execute([$code]); $was = $s->fetchColumn();
+  $s = shop_db()->prepare('SELECT created, active FROM coupons WHERE code = ?'); $s->execute([$code]); $row = $s->fetch() ?: null; $was = $row ? $row['created'] : false;
+  $on = $row ? (int)$row['active'] : 1;   // a new coupon is on; an edited one stays on or off (Turn off / Turn on in the list)
   if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
   shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
     'starts' => $starts, 'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses),
-    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
-  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (empty($_POST['active']) ? ' It is off until you switch it on.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
+    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'per_cust' => !empty($_POST['per_cust']) ? 1 : 0, 'active' => $on, 'created' => $was ?: shop_now()]);
+  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (!$on ? ' It is off until you turn it on in the list.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
 }
 
 /* A goodwill coupon for a customer who had a late delivery or a faulty product: a new code like GOODWILL-7K2Q, % off,
    for their one mobile number (last 10 digits), one use, no end date. Returns [the code or '', the message to show]. */
+/* the free product picked on a coupon form ("id|size"), as [id, size]; null when it is missing, a gift set or not sold */
+function coupon_free_pick(string $field): ?array {
+  [$id, $opt] = explode('|', (string)($_POST[$field] ?? ''), 2) + ['', ''];
+  $p = fomaxo_catalog()['products'][$id] ?? null;
+  return $p && $p['kind'] !== 'set' && isset($p['prices'][$opt]) ? [$id, $opt] : null;
+}
 function make_goodwill_coupon(): array {
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
+  $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
-  if (!ctype_digit($v) || (int)$v < 1 || (int)$v > 99) return ['', '!Please write the % off, from 1 to 99.'];
+  $free = ['', ''];
+  if ($kind === 'free') {
+    $free = coupon_free_pick('gfree'); if (!$free) return ['', '!Please choose the free product.'];
+    $value = 0;
+  } elseif ($kind === 'amt') {
+    if (!ctype_digit($v) || (int)$v < 1) return ['', '!Please write the ₹ off, like 200.'];
+    $value = (int)$v * 100;
+  } else {
+    if (!ctype_digit($v) || (int)$v < 1 || (int)$v > 99) return ['', '!Please write the % off, from 1 to 99.'];
+    $value = (int)$v;
+  }
+  $end = trim((string)($_POST['ends'] ?? '')); $end = $end === '' ? '' : parse_day($end);   // optional: works until the end of that day
+  if ($end === '' && trim((string)($_POST['ends'] ?? '')) !== '') return ['', '!Please type the end date as dd/mm/yyyy, or leave it empty.'];
+  if ($end !== '' && $end < date('Y-m-d')) return ['', '!The end date has already passed. Please pick today or a later day.'];
   $abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';   // no 0/O or 1/I, so it is easy to read out
   $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?');
   do { $code = 'GOODWILL-'; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
-  shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => (int)$v, 'min_order' => 0, 'starts' => '', 'ends' => '',
-    'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $phone, 'created' => shop_now()]);
-  return [$code, "$code is ready: " . (int)$v . '% off for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
+  $c = ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => 0, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
+    'max_uses' => 1, 'stack' => 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'active' => 1, 'phone' => $phone, 'created' => shop_now()];
+  shop_upsert('coupons', ['code'], $c);
+  return [$code, "$code is ready: " . coupon_label($c) . ' for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
 }
-/* the WhatsApp link that sends a goodwill coupon to its customer, with a short ready message */
+/* A coupon's WhatsApp message, laid out like the refill reminder: short lines, a blank line between parts, the offer and code in *bold*
+   (WhatsApp shows *text* as bold). No emoji: wa.me shows them as "?". $intro = the opening line, $extra = more lines for the details part. */
+function coupon_wa_text(array $c, string $intro, array $extra = []): string {
+  $n2 = "\n\n";
+  $min = (int)$c['min_order'];
+  $details = array_filter(array_merge([
+    $min && $c['kind'] !== 'free' ? 'Minimum order: *' . rupees($min) . '*' : '',   // a free product's minimum is already in the opening line
+    coupon_ends($c) !== '' ? 'Valid till: *' . date('j M Y', strtotime(coupon_ends($c))) . '*' : '',
+  ], $extra));
+  return "Hi,$n2$intro{$n2}Your code:\n*{$c['code']}*" . ($details ? $n2 . implode("\n", $details) : '')
+    . "{$n2}Type the code at checkout on our website:\nhttps://fomaxo.in{$n2}Thank you,\n*FOMAXO*";
+}
+/* the WhatsApp link that sends a goodwill coupon to its customer, with a ready message */
 function goodwill_wa(array $c): string {
-  return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode('Hi, this is FOMAXO. As a goodwill gesture for your last order, here is ' . (int)$c['value'] . '% off your next order with the code '
-    . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time and has no end date.');
+  return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode(coupon_wa_text($c,
+    'We are sorry about your last order. As a goodwill gesture, here is ' . ($c['kind'] === 'free' ? 'a *free ' . coupon_free_name($c) . '* with your next order.' : '*' . coupon_label($c) . '* your next order.'),
+    ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]));
+}
+
+/* the WhatsApp message that shares a coupon: WhatsApp opens and the owner picks the customer */
+function coupon_wa(array $c): string {
+  $min = (int)$c['min_order'];
+  $intro = $c['kind'] === 'free'
+    ? ($min ? 'Shop for *' . rupees($min) . '* or more and get a *free ' . coupon_free_name($c) . '* with your order.' : 'Here is a *free ' . coupon_free_name($c) . '* with your next order.')
+    : 'Here is *' . coupon_label($c) . '* your next order.';
+  return 'https://wa.me/?text=' . rawurlencode(coupon_wa_text($c, $intro, [!empty($c['per_cust']) ? 'One use per customer.' : '']));
 }
 
 /* ---------------- members (repeat customers) ---------------- */

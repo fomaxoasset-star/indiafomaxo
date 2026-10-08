@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '59';
+const ASSET_V = '60';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -220,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ->execute([$day, $cat, mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['note'] ?? ''))), 0, 200), (int)round((float)$amt * 100), shop_now()]);
     go($back, 'Expense added: ' . rupees((int)round((float)$amt * 100)) . ' on ' . date('d M Y', strtotime($day)) . '.');
   }
-  if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' && !empty($_POST['editing']) ? ['edit' => $code] : []), $msg); }
+  if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' ? (!empty($_POST['editing']) ? ['edit' => $code] : []) : ['made' => $code]), $msg); }   // made: the saved coupon shows on top with Send on WhatsApp
   if ($a === 'coupon_goodwill') { [$code, $msg] = make_goodwill_coupon(); go(['tab' => 'coupons'] + ($code !== '' ? ['made' => $code] : []), $msg); }
   if ($a === 'coupon_on') {
     $code = coupon_clean((string)($_POST['code'] ?? '')); $on = ($_POST['on'] ?? '') === '1';
