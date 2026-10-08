@@ -155,8 +155,7 @@ if ($tab === 'coupons') {
           . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
       }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products'])) . '</select></label>'
     . '<label><span class="cpmin">Minimum order ₹</span><span class="cpspend">Spend at least ₹</span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="None"></label></div>'
-    /* the extras most coupons don't need sit folded under More options; they open when the coupon being edited uses one */
-    . '<details class="cpmore"' . ($E && (!empty($E['stack']) || coupon_starts($E) !== '' || coupon_ends($E) !== '' || (int)$E['max_uses']) ? ' open' : '') . '><summary>More options <small class="muted">time limit, usage limit, website offer</small></summary><div class="cpf">'
+    . '<div class="cpf cpx">'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
     . '<div class="cpst" role="radiogroup" aria-label="With the website offer">'
     . '<label><input type="radio" name="stack" value="0"' . (empty($E['stack']) ? ' checked' : '') . ' required><span><b>Use the bigger offer</b><i>Coupon or website offer, whichever saves more</i></span></label>'
@@ -164,7 +163,7 @@ if ($tab === 'coupons') {
     . '<div class="cptl"><b>Time limit</b> <small class="muted">(optional; no time = the whole day)</small></div>'
     . '<label class="cprow"><span>Starts</span>' . $tbox('starts', $E ? coupon_starts($E) : '', '00:00') . '</label>'
     . '<label class="cprow"><span>Ends</span>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
-    . '<label class="cprow cpuse"><span>Usage limit</span><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit (total orders)"></label></div></details>'
+    . '<label class="cprow cpuse"><span>Usage limit</span><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit (total orders)"></label></div>'
     . '<label class="cpon"><input type="checkbox" name="per_cust" value="1"' . (!empty($E['per_cust']) ? ' checked' : '') . '> One use per customer (mobile number)</label>'
     . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label>'
     . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'

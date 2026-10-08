@@ -378,14 +378,13 @@ body.zooming{overflow:hidden}
 .sry-done .btn,.sry-wa{gap:6px}.sry-done svg,.sry-wa svg{flex:none}
 .cfree{color:#2fa863;font-weight:600}
 /* Add a coupon fits one laptop screen: pairs side by side, the offer ring dots in one row, a wider form column */
-@media (min-width:821px){#cpPanes{grid-template-columns:400px 1fr}}#cpPanes .cpf{gap:10px}
+@media (min-width:821px){#cpPanes{grid-template-columns:400px 1fr}}#cpPanes .cpf{gap:10px}#cpPanes .cpf label{margin-bottom:0}
 .cp2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:end}.cp2 select{min-width:0}.cpend .cpon{padding-bottom:10px}
 .cpf .cpst{flex-direction:row}.cpf .cpst label{flex:1 1 0;padding:7px 9px}.cpf .cpst span{font-size:11.5px}.cpf .cpst b{font-size:13px}
 .cpf .cpst i{font-style:normal}.cp2:has(.cpfree){grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
 @media (max-width:820px){.cpf .cpst i{display:none}.cpf .cpst label{align-items:center}.cpend .cpon{padding-bottom:12px}}
 .cpcode{display:flex;gap:8px}.cpcode input{flex:1;min-width:0}.cpcode .btn{flex:none}
-.cpmore{border:1px solid var(--line);border-radius:8px;padding:0 10px}.cpmore summary{cursor:pointer;padding:9px 0;font-size:13px;color:var(--text);list-style-position:inside}.cpmore summary small{margin-left:4px}.cpmore[open]>.cpf{padding-bottom:10px}
-.cpuse{grid-template-columns:80px minmax(0,1fr)!important}.cpmade{margin:10px 14px 0}
+.cpx{display:contents}.cpuse{grid-template-columns:80px minmax(0,1fr)!important}.cpmade{margin:10px 14px 0}
 .seg.ck label.on:not(:has(input:checked)){background:none;color:var(--muted)}   /* the kind picked on the page wins over the saved one */
 .cprow{display:grid!important;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px!important}
 .cpstag.free{border-color:#2fa863;color:#2fa863}
@@ -552,3 +551,4 @@ body.zooming{overflow:hidden}
   .cpbox.on{background:#fbf3e2}.ctag{background:#fbf3e2;border-color:#e2cfa6}
   .rfst.on,.rfsw input:checked+span{color:#fff}
 }
+@media (min-width:821px){#cpPanes .cpf{gap:14px}}   /* laptops: Add a coupon spreads into the free space of its box */
