@@ -2274,6 +2274,7 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
       <a href="#/fragrances" data-r="fragrances">Fragrance</a>
       <a href="#/personal-care" data-r="personal-care">Personal Care</a>
       <a href="#/gift" data-r="gift">Gift</a>
+      <a href="#/combo" data-r="combo">Combo</a>
       <a href="#/collections" data-r="collections">Collections</a>
       <a href="#/about" data-r="about">About FOMAXO</a>
       <a href="#/contact" data-r="contact">Contact</a>
@@ -2292,7 +2293,7 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 <div class="mnav" id="mnav" aria-hidden="true">
   <div class="top"><a class="brand" href="#/"><svg class="em" aria-hidden="true"><use href="#emblem"/></svg><svg class="wm" viewBox="0 0 3196 481" role="img" aria-label="FOMAXO"><use href="#wordmark"/></svg><sup class="tm">™</sup></a><button class="icon" data-close aria-label="Close menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M5 5l14 14M19 5 5 19"/></svg></button></div>
   <nav>
-    <a href="#/fragrances">Fragrance</a><a href="#/personal-care">Personal Care</a><a href="#/gift">Gift</a><a href="#/collections">Collections</a><a href="#/about">About FOMAXO</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a class="dubai" href="https://fomaxo.com" target="_blank" rel="noopener" aria-label="Visit Dubai (FOMAXO UAE website, opens in a new tab)">Visit Dubai</a>
+    <a href="#/fragrances">Fragrance</a><a href="#/personal-care">Personal Care</a><a href="#/gift">Gift</a><a href="#/combo">Combo</a><a href="#/collections">Collections</a><a href="#/about">About FOMAXO</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a class="dubai" href="https://fomaxo.com" target="_blank" rel="noopener" aria-label="Visit Dubai (FOMAXO UAE website, opens in a new tab)">Visit Dubai</a>
   </nav>
   <div class="foot" id="mnavFoot"></div>
 </div>
@@ -2309,7 +2310,7 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
         <form class="notify" id="footNotify" style="margin-top:26px"><input type="email" required placeholder="Your email for launches &amp; previews" aria-label="Email"><button class="btn sm" type="submit">Join</button></form>
       </div>
       <div><h5>Shop</h5><div id="footShop"></div></div>
-      <div><h5>Discover</h5><a href="#/collections/fragrance">Fragrance Collection</a><a href="#/collections/mini">Mini Collection</a><a href="#/collections/personal-care">Personal Care Collection</a><a href="#/collections/name">Personalized Gifting</a><a href="#/collections/gifting">Bespoke Gifting</a></div>
+      <div><h5>Discover</h5><a href="#/collections/fragrance">Fragrance Collection</a><a href="#/collections/mini">Mini Collection</a><a href="#/collections/personal-care">Personal Care Collection</a><a href="#/collections/name">Personalized Gifting</a><a href="#/collections/gifting">Bespoke Gifting</a><a href="#/combo">Combos</a></div>
       <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
     </div>
     <div class="fbase"><span>© 2026 FOMAXO™. All rights reserved.</span><span>Inspire greatness</span></div>
@@ -3423,10 +3424,22 @@ const GIFT_SETS = [
   {id: 'ritual-box', name: 'Care Box', v: 'Everyday luxury for hair, body, face and lips.', none: true, live: true, only: p => p.kind === 'care', items: [['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one'], ['pc-radiant-wash', 'one'], ['pc-kissberry', 'one']]},
   {id: 'lip-love', name: 'Lip Love', v: 'Two balms, beautifully boxed. A sweet little thank-you.', slots: 2, live: true, only: p => p.kind === 'care' && p.cat === 'lips', items: [['pc-kissberry', 'one'], ['pc-avokiss', 'one']]}
 ];
-const giftSets = () => GIFT_SETS.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
-  .filter(g => g.items.length === GIFT_SETS.find(x => x.id === g.id).items.length);
+/* COMBO page — combos are built the same way as the gift sets; combo: true words the WhatsApp message as a combo order.
+   only can also be a list, one filter per dropdown, so a combo can mix a parfum with personal care */
+const PARFUM = (p, sz) => !p.kind && p.tier !== 'elite' && sz != 10;   // 50ml and 100ml parfums
+const COMBO_SETS = [
+  {id: 'sin-trio', combo: true, name: 'Passion Sin Trio', badge: 'Most loved', v: 'The Passion Sin parfum with its matching shower gel and shampoo. One scent from the shower to the evening.', slots: 3, live: true, only: [PARFUM, p => p.kind === 'care' && p.cat === 'body', p => p.kind === 'care' && p.cat === 'hair'], items: [['passionsin', 50], ['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one']]},
+  {id: 'scent-shower', combo: true, name: 'Scent & Shower', v: 'A parfum and a shower gel. Soft skin first, then the scent that lasts all day.', slots: 2, live: true, only: [PARFUM, p => p.kind === 'care' && p.cat === 'body'], items: [['oldmoney', 50], ['pc-radiant-gel', 'one']]},
+  {id: 'for-two', combo: true, name: 'For Two', badge: 'Couples', v: 'Two parfums, one for each of you. Pick the pair that suits you both.', slots: 2, live: true, only: PARFUM, items: [['gold', 100], ['royalcandy', 50]]},
+  {id: 'radiant-ritual', combo: true, name: 'Radiant Bloom Ritual', v: 'Face wash, shower gel, shampoo and conditioner. The full Radiant Bloom routine.', slots: 4, none: true, live: true, only: p => p.kind === 'care', items: [['pc-radiant-wash', 'one'], ['pc-radiant-gel', 'one'], ['pc-radiant-shampoo', 'one'], ['pc-radiant-conditioner', 'one']]},
+  {id: 'hair-day', combo: true, name: 'Hair Day', v: 'Shampoo, conditioner and a hair mist for clean, soft and scented hair.', slots: 3, none: true, live: true, only: p => p.kind === 'care' && p.cat === 'hair', items: [['pc-radiant-shampoo', 'one'], ['pc-radiant-conditioner', 'one'], ['pc-melondrip', 'one']]},
+  {id: 'on-the-move', combo: true, name: 'On the Move', badge: 'Travel', v: 'A 10ml pocket parfum, a car fragrance and a lip balm. Everything you need out of the house.', slots: 3, live: true, only: [(p, sz) => !p.kind && sz == 10, p => p.kind === 'car', p => p.kind === 'care' && p.cat === 'lips'], items: [['passionsin', 10], ['passiondrive', 'one'], ['pc-kissberry', 'one']]}
+];
+const buildSets = list => list.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
+  .filter(g => g.items.length === list.find(x => x.id === g.id).items.length);
+const giftSets = () => buildSets(GIFT_SETS);
 /* every product that can be chosen in a gift set dropdown, one option per size */
-const GIFT_SLOTS = Math.max(...GIFT_SETS.map(g => g.items.length));   // every set shows this many dropdowns
+const GIFT_SLOTS = Math.max(...GIFT_SETS.map(g => g.items.length));   // every gift set without its own slots shows this many dropdowns
 /* only: limit a set's dropdown to some products/sizes (no "No product" choice then, unless none is set) */
 const giftOptions = (selId, selSize, only, none) => (only && !none ? '' : `<option value=""${selId ? '' : ' selected'}>No product</option>`) + [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.filter(sz => !sizeOut(p, sz) && (!only || only(p, sz))).map(sz => {
   const v = `${p.id}|${sz}`, label = p.kind ? p.name : `${p.name} · ${sz}ml`;
@@ -3434,15 +3447,17 @@ const giftOptions = (selId, selSize, only, none) => (only && !none ? '' : `<opti
 })).join('');
 const waLink = text => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(text)}`;
 const WA_SVG = () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${SOC_ICON.whatsapp.replace(/^<g transform="[^"]*">/, '<g>')}</svg>`;
+/* one gift set or combo card: pictures, words, product dropdowns and the WhatsApp button */
+const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
+    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${IMG(imgFor(P[id], s))}"${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
+    <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
+      <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, g.none)}</select>`).join('')}</div>
+      <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button></div>
+    </div></article>`;
 function giftPage(){
   document.title = 'Personalized Gifting — FOMAXO';
   const sets = giftSets();
-  const setCard = (g, i) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-      <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${IMG(imgFor(P[id], s))}"${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
-      <div class="gf-body"><h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-        <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}">${giftOptions(id, s, g.only, g.none)}</select>`).join('')}</div>
-        <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}Personalise</button></div>
-      </div></article>`;
+  const setCard = (g, i) => gfCard(g, i, 'Personalise');
   const occ = [
     ['Festive', 'Diwali', 'Hampers that glow brighter than the diyas. Bulk orders for family and clients.', 'gift-set-3'],
     ['Shaadi', 'Weddings', 'Favours, trousseau and couple gifts in custom boxes made for your wedding theme.', 'gift-set-7'],
@@ -3513,10 +3528,63 @@ function giftPage(){
     <p class="small">${esc((S.contact.phones[0] || {}).number || '')} · ${esc(S.contact.email)}</p>
   </div></div></section>` + finalCTA();
 }
+function comboPage(){
+  document.title = 'Combos — FOMAXO';
+  const sets = buildSets(COMBO_SETS);
+  return `
+  <section class="gf-hero">
+    <div class="gf-copy">
+      <div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; Combo</div>
+      <span class="eyebrow rv-up">Fragrance · Personal care · One box</span>
+      <h1 class="rv-up d1"><small>Better together</small><span class="metal">FOMAXO</span><br><span class="metal">Combos</span></h1>
+      <p class="lead rv-up d1">Parfums and personal care, paired the way you use them. Pick a combo, change any product in it, and order it on WhatsApp. Packed together and delivered free across India.</p>
+      <div class="ctas rv-up d2"><a class="btn" href="#cb-sets" data-gjump="cb-sets">Shop combos</a><a class="btn line" href="${waLink('Hello FOMAXO, I would like to build my own combo.')}" target="_blank" rel="noopener">Build your own combo</a></div>
+    </div>
+    <div class="gf-media"><img src="${IMG('personal-care')}" alt="FOMAXO parfums, shower gels, shampoos, face washes and lip balms together" fetchpriority="high" style="object-position:center 40%"></div>
+  </section>
+  <div class="gf-promise">
+    <div>${ICON.gift}<p><b>One box</b><span>Every combo is packed together, ready to give or keep.</span></p></div>
+    <div>${ICON.drop}<p><b>Made to match</b><span>Parfum and care chosen to go together.</span></p></div>
+    <div>${ICON.lasting}<p><b>Your choice</b><span>Change any product in a combo.</span></p></div>
+    <div>${ICON.truck}<p><b>Free delivery</b><span>Across India, on every order.</span></p></div>
+  </div>
+  <section class="sec" id="cb-sets"><div class="wrap">
+    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Every combo is made from FOMAXO products. Change any product with the dropdowns, tap Order combo and send it to us on WhatsApp.</p>')}
+    <div class="gf-sets">${sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>
+  </div></section>
+  <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
+    <div class="img rv-up"><img src="${IMG('gift-1')}" alt="An open FOMAXO box with a parfum and pocket parfums" loading="lazy"></div>
+    <div class="prose rv-up d1"><span class="eyebrow">Your own combo</span><h2>Build your <em class="metal">own</em></h2>
+      <p>Want something different? Mix any FOMAXO parfums, personal care and car fragrance into one combo. Tell us what you would like inside and we put it together for you.</p>
+      <div class="gf-opts">
+        <div><b>Parfums</b><span>Any 10ml, 50ml or 100ml FOMAXO parfum.</span></div>
+        <div><b>Personal care</b><span>Shower gels, shampoos, face washes and lip balms.</span></div>
+        <div><b>Car fragrance</b><span>Take your favourite scent on the road.</span></div>
+        <div><b>Quantity</b><span>One combo for you or many for an event.</span></div>
+      </div>
+      <div><a class="btn line" href="${waLink('Hello FOMAXO, I would like to build my own combo.')}" target="_blank" rel="noopener">Build your own combo</a></div></div>
+  </div></div></section>
+  <section class="sec" style="padding-top:0"><div class="wrap">
+    ${secHead('How it works', 'Four steps to <em class="metal">your combo</em>')}
+    <div class="gf-steps">
+      <div class="rv-up"><b>Pick</b><span>Choose a combo you like from the list above.</span></div>
+      <div class="rv-up d1"><b>Change</b><span>Swap any product with the dropdowns until it is just right.</span></div>
+      <div class="rv-up d2"><b>Order</b><span>Tap Order combo and send it on WhatsApp. We reply with the price.</span></div>
+      <div class="rv-up d3"><b>Delivered</b><span>Packed together and delivered free across India.</span></div>
+    </div>
+  </div></section>
+  <section class="sec" style="padding-top:0"><div class="wrap"><div class="gf-enq rv-up">
+    <span class="eyebrow">Bulk &amp; event orders</span>
+    <h2>Combos for <span class="metal">every guest</span></h2>
+    <p class="lead">Weddings, festivals, teams or return gifts. Tell us how many combos you need and we will reply with ideas and a quote.</p>
+    <div class="ctas"><a class="btn" href="${waLink('Hello FOMAXO, I would like to order combos in bulk.')}" target="_blank" rel="noopener">${WA_SVG()}Chat on WhatsApp</a><a class="btn line" href="#/contact">Send an enquiry</a></div>
+    <p class="small">${esc((S.contact.phones[0] || {}).number || '')} · ${esc(S.contact.email)}</p>
+  </div></div></section>` + finalCTA();
+}
 function bindGift(){
-  $$('[data-gpers]').forEach(b => b.onclick = () => { const g = GIFT_SETS.find(x => x.id === b.dataset.gpers); if (!g) return;
+  $$('[data-gpers]').forEach(b => b.onclick = () => { const g = [...GIFT_SETS, ...COMBO_SETS].find(x => x.id === b.dataset.gpers); if (!g) return;
     const picks = $$(`[data-gpick="${g.id}"]`).filter(sel => sel.value).map(sel => { const [id, sz] = sel.value.split('|'); const p = P[id]; return p ? `- ${p.kind ? p.name : `${p.name} ${sz}ml`}` : ''; }).filter(Boolean);
-    const a = document.createElement('a'); a.href = waLink(`Hello FOMAXO, I am interested in the "${g.name}" gift set with these products:\n${picks.join('\n')}\n\nPlease help me personalise it.`); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); });
+    const a = document.createElement('a'); a.href = waLink(g.combo ? `Hello FOMAXO, I would like to order the "${g.name}" combo with these products:\n${picks.join('\n')}\n\nPlease share the price and delivery details.` : `Hello FOMAXO, I am interested in the "${g.name}" gift set with these products:\n${picks.join('\n')}\n\nPlease help me personalise it.`); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); });
   $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|'); if (!im) return;
     im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG(imgFor(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
@@ -4285,6 +4353,7 @@ function route(){
     case 'collections': html = collections(seg[1]); if (seg[1] === 'fragrance') after = bindFragColl; if (seg[1] === 'name') after = bindGift; break;
     case 'personal-care': html = personalCare(q); break;
     case 'gift': html = giftPage(); after = bindGift; break;
+    case 'combo': html = comboPage(); after = bindGift; break;
     case 'about': html = about(); break;
     case 'contact': html = contact(q); after = bindContact; break;
     case 'partnership': html = partnership(); after = bindPartner; break;
