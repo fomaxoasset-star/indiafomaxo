@@ -710,11 +710,15 @@ if ($tab === 'reviews') {
     . implode('', array_map(fn($n) => '<a class="chip' . ($rs === (string)$n ? ' on' : '') . '" href="' . h(self_url(['s' => $rs === (string)$n ? '' : (string)$n] + $keep)) . '" title="Show only ' . $n . '-star reviews">' . $n . '★ <b>' . count(array_filter($ALL, fn($r) => (int)round((float)$r['rating']) === $n)) . '</b></a>', [5, 4, 3, 2, 1])) . '</form>';
   $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars By Product', 'top' => 'Top Reviewers']) . '<div class="revs panes" id="rvPanes">';
   /* every review */
-  $body .= '<div class="box on" data-pane="list"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . ($D['r'] === 'all' ? '' : ' · ' . h(period_label($D))) . '. Hidden reviews leave the website and the star rating; Show puts them back. Delete removes a review for good.</span></div><div class="bb">';
+  $body .= '<div class="box on" data-pane="list" data-csrf="' . h($CSRF) . '"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . ($D['r'] === 'all' ? '' : ' · ' . h(period_label($D))) . '. Hidden reviews leave the website and the star rating; Show puts them back. Delete removes a review for good.</span></div><div class="bb">';
   if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
   elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' || $rs !== '' ? ' match this search.' : ' yet.') . '</p>';
+  $rvSent = json_decode((string)shop_setting('review_wa'), true) ?: [];   // review id => day its customer got a WhatsApp
   foreach ($list as $r) {
     $live = $r['status'] === 'live';
+    /* a 1–3 star review from a customer whose mobile we have: WhatsApp them an apology, with a coupon or not (the WhatsApp box, admin.js) */
+    $rvWa = (int)round((float)$r['rating']) <= 3 && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? (isset($rvSent[$r['id']]) ? '<span class="rsent">WhatsApp sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) . '</span>' : '')
+      . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(preg_split('/\s+/u', trim((string)$r['name']))[0] ?? '') . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
       . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Hidden</span>' : '')) . '</div>'
@@ -724,7 +728,7 @@ if ($tab === 'reviews') {
       . ($r['phone'] ? ' · <a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . $r['phone']])) . '">Customer page</a>' : '') . '</small>'
       . (($r['reply'] ?? '') !== '' ? '<div class="rvr"><b>Reply from FOMAXO</b><p>' . nl2br(h($r['reply'])) . '</p></div>' : '')
       . '<input type="checkbox" class="rvr-tg" id="rvr' . (int)$r['id'] . '" hidden>'
-      . '<div class="rvr-acts"><label for="rvr' . (int)$r['id'] . '" class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</label>'
+      . '<div class="rvr-acts">' . $rvWa . '<label for="rvr' . (int)$r['id'] . '" class="btn line sm">' . (($r['reply'] ?? '') === '' ? 'Reply' : 'Edit reply') . '</label>'
       . (($r['reply'] ?? '') !== '' ? '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review_reply"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '"><button class="btn line sm danger" name="delete" value="1" data-confirm="Remove your reply from the website?">Delete reply</button></form>' : '')
       . '<form method="post">' . $csrfField . '<input type="hidden" name="action" value="review"><input type="hidden" name="id" value="' . (int)$r['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . ($live ? '<input type="hidden" name="status" value="hidden"><button class="btn line sm" data-confirm="Hide this review from the website? It stays here and Show brings it back.">Hide</button>' : '<input type="hidden" name="status" value="live"><button class="btn sm">' . ($r['status'] === 'pending' ? 'Publish' : 'Show') . '</button>') . '</form>'
@@ -734,7 +738,7 @@ if ($tab === 'reviews') {
       . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
       . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button><button type="button" class="btn line sm" data-sg-clear title="Empty the box to write your own reply">✕ Clear</button></div></form></div>';
   }
-  $body .= '</div></div>';
+  $body .= '</div></div>' . wa_box('rvWa', 'gfree', 'pct', 10, 0, 'A new GOODWILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
   /* stars by product (live reviews only, as on the website) */
   $by = [];
   foreach ($ALL as $r) if ($r['status'] === 'live') { $by[$r['product']]['n'] = ($by[$r['product']]['n'] ?? 0) + 1; $by[$r['product']]['sum'] = ($by[$r['product']]['sum'] ?? 0) + (int)$r['rating']; }

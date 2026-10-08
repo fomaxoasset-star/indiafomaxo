@@ -181,6 +181,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review hidden from the website.' : 'Review is on the website.');
   }
   if ($a === 'review_delete') { review_delete((int)($_POST['id'] ?? 0)); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Review deleted.'); }
+  if ($a === 'review_wa') {   // WhatsApp on a 1–3 star review (admin.js asks without reloading): notes the day, and with a coupon makes a GOODWILL- code for that mobile
+    $id = (int)($_POST['id'] ?? 0); $ph = '';
+    foreach (reviews_list() as $r) if ((int)$r['id'] === $id) $ph = (string)$r['phone'];
+    header('Content-Type: application/json');
+    if (!preg_match('/^[6-9]\d{9}$/', $ph)) { echo json_encode(['error' => 'This review has no mobile number.']); exit; }
+    $code = '';
+    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
+      $_POST['phone'] = $ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon();
+      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
+    }
+    $sent = json_decode((string)shop_setting('review_wa'), true) ?: []; $sent[$id] = date('Y-m-d'); shop_set('review_wa', json_encode($sent));
+    echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
+  }
   if ($a === 'review_reply') {
     $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? '');
     /* Save reply with an empty box changes nothing: a reply already there stays (only Delete reply removes it), and no reply is added */

@@ -628,6 +628,22 @@ waBox('rfWa', '[data-rf]', {
   }
 });
 
+/* Reviews: a 1–3 star review's customer gets an apology; % off is picked first. The review then shows WhatsApp sent. */
+waBox('rvWa', '[data-rvwa]', {
+  action: 'review_wa', always: true,
+  fields: function (d) { return {id: d.rvwa}; },
+  text: function (d, c) {
+    var n2 = '\n\n';
+    return 'Hi ' + (d.first || 'there') + ',' + n2 + 'Thank you for your review' + (d.product ? ' of ' + d.product : '') + '. We are sorry it was not what you hoped for.'
+      + (c ? n2 + 'As an apology, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' + n2 + 'Type the code at checkout on our website:\nhttps://fomaxo.in' : '')
+      + n2 + 'Just reply here if there is anything we can do to put it right.' + n2 + 'Thank you,\nFOMAXO';
+  },
+  done: function (d, btn) {
+    if (!btn.parentNode.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'WhatsApp sent ' + d.day; btn.parentNode.insertBefore(s, btn); }
+    btn.classList.add('line');
+  }
+});
+
 /* Left at checkout: the opening (data-hi) comes from the page; No coupon is picked first */
 waBox('ltWa', '[data-ltwa]', {
   action: 'lead_coupon',
