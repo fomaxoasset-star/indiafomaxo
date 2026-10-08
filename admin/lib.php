@@ -402,8 +402,7 @@ function save_coupon(): string {
   $kind = in_array($_POST['kind'] ?? '', ['amt', 'free'], true) ? $_POST['kind'] : 'pct'; $v = trim((string)($_POST['value'] ?? ''));
   $free = ['', ''];
   if ($kind === 'free') {   // a free product coupon: the product and size it adds at ₹0; nothing is taken off
-    $free = explode('|', (string)($_POST['free'] ?? '') . '|', 3); $p = fomaxo_catalog()['products'][$free[0]] ?? null;
-    if (!$p || $p['kind'] === 'set' || !isset($p['prices'][$free[1]])) return '!Please choose the free product.';
+    $free = coupon_free_pick('free'); if (!$free) return '!Please choose the free product.';
     $v = '0';
   } else {
     if (!is_numeric($v) || $v <= 0) return '!Please write how much the coupon takes off.';
@@ -433,15 +432,19 @@ function save_coupon(): string {
 
 /* A goodwill coupon for a customer who had a late delivery or a faulty product: a new code like GOODWILL-7K2Q, % off,
    for their one mobile number (last 10 digits), one use, no end date. Returns [the code or '', the message to show]. */
+/* the free product picked on a coupon form ("id|size"), as [id, size]; null when it is missing, a gift set or not sold */
+function coupon_free_pick(string $field): ?array {
+  [$id, $opt] = explode('|', (string)($_POST[$field] ?? ''), 2) + ['', ''];
+  $p = fomaxo_catalog()['products'][$id] ?? null;
+  return $p && $p['kind'] !== 'set' && isset($p['prices'][$opt]) ? [$id, $opt] : null;
+}
 function make_goodwill_coupon(): array {
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
   $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
   $free = ['', ''];
   if ($kind === 'free') {
-    $free = explode('|', (string)($_POST['gfree'] ?? ''), 2) + ['', ''];
-    $p = fomaxo_catalog()['products'][$free[0]] ?? null;
-    if (!$p || $p['kind'] === 'set' || !isset($p['prices'][$free[1]])) return ['', '!Please choose the free product.'];
+    $free = coupon_free_pick('gfree'); if (!$free) return ['', '!Please choose the free product.'];
     $value = 0;
   } elseif ($kind === 'amt') {
     if (!ctype_digit($v) || (int)$v < 1) return ['', '!Please write the ₹ off, like 200.'];

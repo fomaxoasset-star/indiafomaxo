@@ -340,7 +340,7 @@ function fomaxo_add_free(array &$order, array $cp): string {
   $order['items'][] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => "Free with coupon {$cp['code']}", 'unit' => 0, 'qty' => 1, 'free' => 1, 'was' => $was]
     + ($cost !== null ? ['cost' => $cost] : []);
   $order['rows'][] = "• 1 x $name (Free with coupon {$cp['code']}) — Free";
-  $order['free'] = ['id' => $id, 'opt' => $opt, 'name' => $p['name'], 'size' => $size, 'worth' => $was, 'img' => $p['img']];
+  $order['free'] = ['id' => $id, 'opt' => $opt, 'name' => $p['name'], 'size' => $size, 'worth' => $was];
   return '';
 }
 
