@@ -220,10 +220,11 @@ function fomaxo_fest_open(string $key): bool {
   foreach ((array)($fd[$key] ?? []) as $d) { $at = strtotime((string)($d[0] ?? '')); if ($at && $today >= strtotime('-1 month', $at) && $today <= $at) return true; }
   return false;
 }
-/* may product $p in size $opt go in a combo slot with this rule (parfum = 50/100ml parfum, mini = 10ml, car, gift, care:<cat>) */
+/* may product $p in size $opt go in a combo slot with this rule (parfum = 50/100ml parfum, mini = 10ml, car, gift, care:<cat>, any = any of these) */
 function fomaxo_combo_fits(string $rule, array $p, string $opt): bool {
   $parfum = $p['kind'] === '' && ($p['tier'] ?? '') !== 'elite' && $opt !== '10';
   $mini = $p['kind'] === '' && $opt === '10';
+  if ($rule === 'any') return $parfum || $mini || $p['kind'] === 'car' || $p['kind'] === 'care';   // the 4th slot of a flex combo
   if ($rule === 'parfum') return $parfum;
   if ($rule === 'mini') return $mini;
   if ($rule === 'car') return $p['kind'] === 'car';
@@ -255,7 +256,7 @@ function fomaxo_combo_offs(array $lines, array $CAT): array {
       if (in_array($k, (array)($g['free'] ?? []), true)) $free += $price($id, $opt);
     }
     $offer = !empty($g['offer']);
-    if ($offer ? count($idx) !== $slots : (count($idx) < 2 || !isset($seen[0]))) return $bad;
+    if ($offer ? count($idx) !== $slots : (count($idx) < 2 || (empty($g['flex']) && !isset($seen[0])))) return $bad;
     if ($offer) $save = $free;
     else {
       $base = array_sum(array_map(fn($it) => $price((string)$it[0], (string)$it[1]), $g['items']));

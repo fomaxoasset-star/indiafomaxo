@@ -1881,6 +1881,8 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .gf-set .gf-pics{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;aspect-ratio:4/3;background:var(--line);overflow:hidden}
 .gf-set .gf-pics img{width:100%;height:100%;object-fit:cover;background:#0b0a08}
 .gf-set .gf-pics img.none{background:#000}  /* No product chosen: plain black tile */
+#cb-sets .gf-pics img.none{display:none}   /* Made to Match: an empty slot drops its picture, the rest fill the row */
+#cb-sets .gf-pick > small.cb-hint{letter-spacing:.08em;text-transform:none;font-size:12px;color:var(--gold-hi)}
 .gf-set .gf-pics.photo{display:block;background:#0b0a08}
 .gf-set .gf-pics.photo img{position:absolute;inset:0;width:100%;height:100%}
 .gf-set .gf-pics.photo img.bg{object-fit:cover;filter:blur(18px) brightness(.55);transform:scale(1.15)}
@@ -1939,7 +1941,7 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-fit .cb-two .gf-pics{aspect-ratio:auto;height:100%;min-height:0;contain:size;grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr)}   /* contain: the pictures take the card's height, never set it */
 .cb-fit .cb-wide .gf-set{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cb-fit .cb-wide .gf-pics{min-height:0;aspect-ratio:auto;height:100%}
 .cb-fit .cb-two .gf-pics img:nth-child(odd):last-child{grid-column:span 2}
-.cb-fit .gf-pics{aspect-ratio:2/1}#cb-sets .gf-pics{aspect-ratio:auto;height:120px}.cb-fit .cb-fhead .lead,.cb-fit .cb-fhead h2::after{display:none}
+.cb-fit .gf-pics{aspect-ratio:2/1}#cb-sets .gf-pics{aspect-ratio:auto;height:min(150px,13.5vh)}#cb-sets .gf-set .gf-body{gap:8px}#cb-sets .sec-head{margin-bottom:14px}@media(max-width:1500px){#cb-sets .gf-pics{height:min(118px,13.5vh)}#cb-sets .gf-set .gf-body{padding-top:16px;padding-bottom:16px}#cb-sets .cb-slot{padding-top:4px;padding-bottom:4px}#cb-sets .cb-slot img,#cb-sets .cb-slot .ph0{width:36px;height:36px}}#cb-sets .gf-pics img.none{display:none}#cb-sets .gf-pick > small.cb-hint{display:block;letter-spacing:.08em;text-transform:none;font-size:12px;color:var(--gold-hi)}.cb-fit .cb-fhead .lead,.cb-fit .cb-fhead h2::after{display:none}
 .cb-fit .gf-set .gf-body{gap:10px;padding:20px 22px}.cb-fit .gf-set h3{font-size:18px}.cb-fit .gf-set .v{font-size:15px;line-height:1.35}
 .cb-fit .gf-pick{gap:6px;padding-top:10px;padding-bottom:0}.cb-fit .cb-two .gf-body{display:flex;flex-direction:column}.cb-fit .cb-two .gf-pick{flex:1;min-height:0;gap:8px}.cb-fit .cb-two .cb-slot{flex:1 1 0;min-height:50px;max-height:104px}.gf-set .ctas .btn.cb-soon{padding-top:9px;padding-bottom:9px;line-height:1.3}.cb-fit .cb-two .cb-slot img,.cb-fit .cb-two .cb-slot .ph0{width:auto;height:min(100%,64px);aspect-ratio:1;max-height:64px;min-height:40px}.cb-fit .gf-pick > small:first-child{display:none}
 .cb-fit .cb-slot{gap:10px;padding:5px 12px 5px 5px}.cb-fit .cb-slot img,.cb-fit .cb-slot .ph0{width:40px;height:40px}.cb-fit .cb-slot b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cb-fit .cb-slot small{font-size:9.5px}
@@ -1962,6 +1964,7 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .gf-set .ctas.cb-ctas{grid-template-columns:1fr 1fr}.gf-set .ctas .cb-soon{grid-column:1/-1;opacity:.7;cursor:default;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px}.cb-soon .cb-soon-t{font-variant-numeric:tabular-nums;font-size:.92em;color:var(--gold-hi)}.cb-tab .cb-left{font-weight:500;font-variant-numeric:tabular-nums;opacity:1;color:var(--gold-hi)}.cb-tab.on .cb-left{color:#0a0805}.cb-tab > svg:last-child{transform:scaleX(-1)}.cb-tab .cb-live{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--gold-hi);opacity:1}.cb-tab.on .cb-live{color:#0a0805}.cb-tab.cb-open:not(.on){border-color:var(--gold-hi);box-shadow:inset 0 0 0 1px var(--gold-hi)}.cb-live i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 currentColor;animation:cbLive 1.8s ease-out infinite}@keyframes cbLive{0%{box-shadow:0 0 0 0 rgba(212,175,95,.7)}100%{box-shadow:0 0 0 7px rgba(212,175,95,0)}}@media(prefers-reduced-motion:reduce){.cb-live i{animation:none}}.cb-in{color:var(--gold-hi)!important;letter-spacing:.14em;text-transform:uppercase;font-size:10px}
 .cb-slot:hover,.cb-slot:focus-visible{border-color:var(--gold);outline:none}
 .cb-slot img,.cb-slot .ph0{width:58px;height:58px;object-fit:cover;flex:none;background:#000;border:1px solid var(--line)}
+.cb-slot .ph0{display:grid;place-items:center;background:transparent;border:1px dashed var(--gold-hi)}.cb-slot .ph0::after{content:"+";color:var(--gold-hi);font-size:22px;line-height:1}   /* empty slot: a gold + to add a product */
 .cb-slot .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .cb-slot b{font-weight:400;font-size:14.5px;letter-spacing:.03em;line-height:1.3}
 .cb-slot small{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
@@ -2470,9 +2473,9 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 {"id": "dad-signature", "fest": "father", "tag": "Father's Day", "name": "Dad's Signature", "save": 351, "v": "Fresh Dollar for the office, a car fragrance for the drive and a face wash for the morning.", "slots": 3, "only": ["parfum", "car", "care:face"], "items": [["dollar", 100], ["drivenoir", "one"], ["pc-radiant-wash", "one"]]},
 {"id": "dad-move", "fest": "father", "tag": "Father's Day", "name": "Dad on the Move", "save": 151, "v": "A 10ml Old Money for his pocket and two car fragrances for every trip.", "slots": 3, "only": ["mini", "car", "car"], "items": [["oldmoney", 10], ["drivenoir", "one"], ["carrush", "one"]]},
 {"id": "buy2-gift", "offer": true, "tag": "Offer", "name": "Buy 2, Get 1 Gift", "badge": "Free gift", "free": [2], "v": "Pick any two parfums and choose a free gift to go with them: a 10ml parfum, a lip balm or a car fragrance.", "slots": 3, "only": ["parfum", "parfum", "gift"], "items": [["gold", 100], ["oldmoney", 50], ["passionsin", 10]]},
-{"id": "morning-midnight", "tag": "Scent layering", "name": "Morning to Midnight", "badge": "Signature", "save": 307, "v": "One scent from the shower to the evening. The body care builds a base, the parfum lasts longer on top.", "slots": 3, "only": ["parfum", "care:body", "care:hair"], "items": [["passionsin", 50], ["pc-passionsin-gel", "one"], ["pc-passionsin-shampoo", "one"]]},
-{"id": "discovery-four", "tag": "Try before the big bottle", "name": "The Discovery Four", "badge": "First order", "save": 301, "v": "Four 10ml parfums to find your favourite. A great first order and great to share.", "slots": 4, "only": ["mini", "mini", "mini", "mini"], "items": [["oldmoney", 10], ["royalcandy", 10], ["matchacoco", 10], ["passionsin", 10]]},
-{"id": "date-night", "tag": "For two", "name": "Date Night", "badge": "Couples", "save": 489, "v": "A strong parfum, a sweet parfum and a lip balm for the evening out.", "slots": 3, "only": ["parfum", "parfum", "care:lips"], "items": [["gold", 100], ["royalcandy", 50], ["pc-kissberry", "one"]]},
+{"id": "morning-midnight", "tag": "Scent layering", "name": "Morning to Midnight", "badge": "Signature", "flex": true, "save": 307, "v": "One scent from the shower to the evening. The body care builds a base, the parfum lasts longer on top.", "slots": 4, "only": ["parfum", "care:body", "care:hair", "any"], "items": [["passionsin", 50], ["pc-passionsin-gel", "one"], ["pc-passionsin-shampoo", "one"]]},
+{"id": "discovery-four", "tag": "Try before the big bottle", "name": "The Discovery Four", "badge": "First order", "flex": true, "save": 301, "v": "Four 10ml parfums to find your favourite. A great first order and great to share.", "slots": 4, "only": ["mini", "mini", "mini", "mini"], "items": [["oldmoney", 10], ["royalcandy", 10], ["matchacoco", 10], ["passionsin", 10]]},
+{"id": "date-night", "tag": "For two", "name": "Date Night", "badge": "Couples", "flex": true, "save": 489, "v": "A strong parfum, a sweet parfum and a lip balm for the evening out.", "slots": 4, "only": ["parfum", "parfum", "care:lips", "any"], "items": [["gold", 100], ["royalcandy", 50], ["pc-kissberry", "one"]]},
 {"id": "glow-up", "tag": "Face, body and lips", "name": "Glow Up Kit", "save": 164, "v": "Two face washes for day and night, a shower gel and a lip balm.", "slots": 4, "only": ["care:face", "care:face", "care:body", "care:lips"], "items": [["pc-radiant-wash", "one"], ["pc-aloevita-wash", "one"], ["pc-radiant-gel", "one"], ["pc-avokiss", "one"]]},
 {"id": "salon-hair", "tag": "Hair care", "name": "Salon Hair at Home", "save": 106, "v": "Shampoo, conditioner and a hair mist for soft, scented hair.", "slots": 3, "only": ["care:hair", "care:hair", "care:hair"], "items": [["pc-radiant-shampoo", "one"], ["pc-radiant-conditioner", "one"], ["pc-melondrip", "one"]]},
 {"id": "road-trip", "tag": "Car and pocket", "name": "Road Trip", "save": 201, "v": "All three car fragrances and a 10ml parfum to keep in the car.", "slots": 4, "only": ["car", "car", "car", "mini"], "items": [["carrush", "one"], ["passiondrive", "one"], ["drivenoir", "one"], ["passionsin", 10]]},
@@ -3592,11 +3595,11 @@ const GIFTF = (p, sz) => MINI(p, sz) || CARE('lips')(p) || CARF(p);   // free gi
 /* combos shown in the main list (the rest stay ready to bring back); festival combos show for the coming festival only */
 const COMBO_SHOW = ['morning-midnight', 'discovery-four', 'date-night'];
 /* slot rules in the combo list (the checkout prices combos on the server with the same list and rules, api/store-lib.php fomaxo_combo_lines) */
-const CB_RULE = {parfum: PARFUM, mini: MINI, car: CARF, gift: GIFTF, 'care:body': CARE('body'), 'care:hair': CARE('hair'), 'care:face': CARE('face'), 'care:lips': CARE('lips')};
+const CB_RULE = {any: (p, sz) => PARFUM(p, sz) || MINI(p, sz) || p.kind === 'care' || CARF(p), parfum: PARFUM, mini: MINI, car: CARF, gift: GIFTF, 'care:body': CARE('body'), 'care:hair': CARE('hair'), 'care:face': CARE('face'), 'care:lips': CARE('lips')};
 const COMBO_SETS = JSON.parse(document.getElementById('combo-data').textContent).map(g => ({...g, combo: true, live: true, rules: g.only, only: g.only.map(r => CB_RULE[r])}));
 /* combos of 3 or more products (not the offer): every product after the first can be left out ("No product");
    the saving then shrinks with what is left (see cbPrices), and with under 2 products it is no longer a combo */
-COMBO_SETS.forEach(g => { if (!g.offer && g.slots >= 3) g.none = [...Array(g.slots).keys()].slice(1); });
+COMBO_SETS.forEach(g => { if (!g.offer && g.slots >= 3) g.none = [...Array(g.slots).keys()].slice(g.flex ? 0 : 1); });   // flex: any slot can be left out, the 4th takes any product
 /* festival tabs on the Combo page, nearest festival first. dates: the day of each festival (check them each year);
    a festival counts as coming up until the day after it. when: months used once the dates run out */
 const FI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -3652,7 +3655,7 @@ const CB = Object.fromEntries(COMBO_SETS.map(g => [g.id, g]));
 const cbGroup = (lines, tok) => lines.filter(l => l.cb === tok);
 const cbValid = (g, ls) => { if (!g || !ls.length || (g.fest && !festOpen(FESTS.find(f => f.key === g.fest) || {}))) return false; const seen = new Set();
   for (const l of ls) { const k = l.cs; if (!(k >= 0 && k < g.slots) || seen.has(k) || !P[l.id] || !hasPrice(P[l.id].prices[l.opt]) || !g.only[k](P[l.id], l.opt) || l.qty !== ls[0].qty) return false; seen.add(k); }
-  return g.offer ? ls.length === g.slots : ls.length >= 2 && seen.has(0); };
+  return g.offer ? ls.length === g.slots : ls.length >= 2 && (g.flex || seen.has(0)); };
 function cbOffs(lines){
   const offs = new Map();
   for (const tok of new Set(lines.filter(l => l.cb).map(l => l.cb))) {
@@ -3680,7 +3683,7 @@ const cbInfo = (lines, l, offs) => { const ls = cbGroup(lines, l.cb), g = CB[l.c
 function cbAdd(gid, buy){
   const g = CB[gid]; if (!g) return;
   const ls = $$(`[data-gpick="${gid}"]`).filter(s => s.value).map(s => { const [id, o] = s.value.split('|'); return {id, opt: P[id].sizes.find(z => String(z) === o) ?? o, qty: 1, cs: +s.dataset.gslot}; });
-  if (!cbValid(g, ls)) { toast(g.offer ? 'Please choose all three products' : 'Please choose at least two products, including the first one'); return; }
+  if (!cbValid(g, ls)) { toast(g.offer ? 'Please choose all three products' : g.flex ? 'Please choose at least two products' : 'Please choose at least two products, including the first one'); return; }
   const out = ls.find(l => isOut(P[l.id]) || sizeOut(P[l.id], l.opt) || cartQty(l.id, l.opt) + 1 > (stockLeft(P[l.id], l.opt) ?? 99));
   if (out) { toast(`${P[out.id].name} · ${optLabel(P[out.id], out.opt)} is out of stock. Please change it`); return; }
   const tok = gid + '~' + Date.now().toString(36);
@@ -3707,9 +3710,9 @@ const cbSlot = (id, sz) => { const p = P[id]; return p
   ? `<img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
   : `<span class="ph0"></span><span class="t"><b>No product</b><small>Tap to add one</small></span><span class="go">Add ›</span>`; };
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
+    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : (g.flex ? Array.from({length: g.slots}, (_, k) => g.items[k] || []) : g.items.slice(0, 4)).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
-      <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
+      <div class="gf-pick"><small${g.flex ? ' class="cb-hint"' : ''}>${g.flex ? `Add or remove products, up to ${g.slots}` : 'Choose your products'}</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items.filter(x => x.length))}</div>` : ''}
       <div class="ctas${g.combo ? ' cb-ctas' : ''}">${g.closed ? `<button class="btn line sm cb-soon" type="button" disabled><span>Opens ${esc(g.closed)}</span>${g.opensAt ? `<span class="cb-soon-t" data-cbleft="${g.opensAt}">${festLeft(g.opensAt)}</span>` : ''}</button>` : g.combo ? `<button class="btn line sm" type="button" data-cbadd="${g.id}">Add to bag</button><button class="btn sm" type="button" data-cbbuy="${g.id}">Buy now</button>` : `<button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button>`}</div>
     </div></article>`;
@@ -3821,7 +3824,7 @@ function comboPage(){
     ${fests.map(f => `<div role="tabpanel" data-cbpanel="${f.key}"${f.key === open ? '' : ' hidden'}>${f.next ? `<p class="cb-when">${festWhen(f)}</p>` : ''}<div class="gf-sets cb-two">${f.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div></div>`).join('')}
   </div></section>` : ''}
   <section class="sec cb-fit" id="cb-sets" style="padding-top:0"><div class="wrap">
-    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Our favourite combos, each priced below its products. Tap Change to swap any product.</p>')}
+    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Our favourite combos, each priced below its products. Swap, add or remove products, up to 4 in each.</p>')}
     <div class="gf-sets">${sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
@@ -3840,7 +3843,7 @@ function comboPage(){
     ${secHead('How it works', 'Four steps to <em class="metal">your combo</em>')}
     <div class="gf-steps">
       <div class="rv-up"><b>Pick</b><span>Choose a combo you like from the list above.</span></div>
-      <div class="rv-up d1"><b>Change</b><span>Tap Change to swap any product. The price updates as you go.</span></div>
+      <div class="rv-up d1"><b>Change</b><span>Tap Change to swap any product, or add and remove products up to 4. The price updates as you go.</span></div>
       <div class="rv-up d2"><b>Order</b><span>Tap Add to bag or Buy now and pay at checkout. The combo price is taken off there.</span></div>
       <div class="rv-up d3"><b>Delivered</b><span>Delivered free across India.</span></div>
     </div>
