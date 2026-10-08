@@ -1927,6 +1927,24 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-when b{font-weight:500;color:var(--gold-hi)}
 .gf-sets.cb-two{grid-template-columns:repeat(2,minmax(0,1fr));max-width:1000px;margin:0 auto}
 @media(max-width:700px){.gf-sets.cb-two{grid-template-columns:minmax(0,1fr)}}
+/* laptop: each combo section (offer, festivals, favourites) fits one screen with its title, so a customer sees
+   every combo of a section at once. Festival and offer combos are side-by-side cards (pictures left, products right) */
+@media(min-width:901px){
+.cb-fit .sec-head{margin-bottom:22px}.cb-fit .sec-head .t{gap:8px;max-width:900px}.cb-fit .sec-head h2,.cb-fit .cb-fhead h2{font-size:clamp(28px,2.6vw,40px)}.cb-fit .sec-head .lead{font-size:15px;max-width:none}
+.cb-fit .cb-fhead{gap:8px;margin-bottom:18px}.cb-fit .cb-fhead h2::after{margin-top:12px}.cb-fit .cb-fhead .lead{font-size:15px}
+.cb-fit .cb-tabs{flex-wrap:nowrap;gap:8px;margin-bottom:14px}.cb-fit .cb-tab{flex:0 1 auto;gap:8px;padding:8px 14px;font-size:13px;white-space:nowrap}.cb-fit .cb-tab svg{width:16px;height:16px;flex:none}.cb-fit .cb-tab small{font-size:9.5px}
+.cb-fit .cb-when{margin:0 0 14px;font-size:12px}
+.cb-fit .gf-sets{gap:20px}.cb-fit .gf-sets.cb-two{max-width:none}
+.cb-fit .cb-two .gf-set{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1fr)}
+.cb-fit .cb-two .gf-pics{aspect-ratio:auto;height:100%;grid-auto-flow:row;grid-template-columns:1fr 1fr;grid-auto-rows:1fr}
+.cb-fit .cb-wide .gf-set{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cb-fit .cb-wide .gf-pics{min-height:0;aspect-ratio:auto;height:100%}
+.cb-fit .cb-two .gf-pics img:nth-child(odd):last-child{grid-column:span 2}
+.cb-fit .gf-pics{aspect-ratio:2/1}#cb-sets .gf-pics{aspect-ratio:10/3}.cb-fit .cb-fhead .lead,.cb-fit .cb-fhead h2::after{display:none}
+.cb-fit .gf-set .gf-body{gap:10px;padding:20px 22px}.cb-fit .gf-set h3{font-size:18px}.cb-fit .gf-set .v{font-size:15px;line-height:1.35}
+.cb-fit .gf-pick{gap:6px;padding-top:10px;padding-bottom:0}.cb-fit .gf-pick > small:first-child{display:none}
+.cb-fit .cb-slot{gap:10px;padding:5px 12px 5px 5px}.cb-fit .cb-slot img,.cb-fit .cb-slot .ph0{width:40px;height:40px}.cb-fit .cb-slot b{font-size:13.5px}.cb-fit .cb-slot small{font-size:9.5px}
+.cb-fit .cb-price{padding-top:10px}.cb-fit .cb-price b{font-size:24px}.cb-fit .ctas .btn{padding-top:12px;padding-bottom:12px}
+}
 .cb-tag{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);margin-bottom:-6px}
 .cb-price{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 22px;border-top:1px solid var(--line);padding-top:14px;margin-top:auto}
 .cb-price div{display:flex;flex-direction:column;gap:2px}
@@ -3515,6 +3533,12 @@ const COMBO_SETS = [
   {id: 'xmas-santa', combo: true, fest: 'christmas', tag: 'Christmas', name: 'Secret Santa', save: 156, v: 'A 10ml parfum, a hair mist and a car fragrance. The perfect Secret Santa under ₹800.', slots: 3, live: true, only: [MINI, CARE('hair'), CARF], items: [['matchacoco', 10], ['pc-melondrip', 'one'], ['drivenoir', 'one']]},
   {id: 'rakhi-brother', combo: true, fest: 'rakhi', tag: 'Raksha Bandhan', name: 'Rakhi for Brother', save: 351, v: 'Fresh Dollar, a car fragrance and a face wash. For the brother who has everything.', slots: 3, live: true, only: [PARFUM, CARF, CARE('face')], items: [['dollar', 100], ['drivenoir', 'one'], ['pc-radiant-wash', 'one']]},
   {id: 'rakhi-sister', combo: true, fest: 'rakhi', tag: 'Raksha Bandhan', name: 'Rakhi for Sister', save: 294, v: 'Royal Candy, a lip balm and a hair mist. A thank-you she will use every day.', slots: 3, live: true, only: [PARFUM, CARE('lips'), CARE('hair')], items: [['royalcandy', 50], ['pc-kissberry', 'one'], ['pc-melondrip', 'one']]},
+  {id: 'val-bemine', combo: true, fest: 'valentine', tag: "Valentine's Day", name: 'Be Mine', save: 589, v: 'Warm Passion Sin for him, sweet Royal Candy for her, and a Kissberry lip balm to seal it.', slots: 3, live: true, only: [PARFUM, PARFUM, CARE('lips')], items: [['passionsin', 50], ['royalcandy', 50], ['pc-kissberry', 'one']]},
+  {id: 'val-minis', combo: true, fest: 'valentine', tag: "Valentine's Day", name: 'Sweetheart Minis', save: 227, v: 'Two 10ml parfums and both lip balms. A little love note in a box.', slots: 4, live: true, only: [MINI, MINI, CARE('lips'), CARE('lips')], items: [['passionsin', 10], ['royalcandy', 10], ['pc-kissberry', 'one'], ['pc-avokiss', 'one']]},
+  {id: 'mom-love', combo: true, fest: 'mother', tag: "Mother's Day", name: 'For Mom, With Love', save: 314, v: 'Quiet, elegant Old Money with a shower gel and a lip balm. A thank-you she will wear every day.', slots: 3, live: true, only: [PARFUM, CARE('body'), CARE('lips')], items: [['oldmoney', 50], ['pc-radiant-gel', 'one'], ['pc-avokiss', 'one']]},
+  {id: 'mom-spa', combo: true, fest: 'mother', tag: "Mother's Day", name: "Mom's Spa Day", save: 156, v: 'Face wash, shampoo, conditioner and a hair mist. A day of pampering at home.', slots: 4, live: true, only: [CARE('face'), CARE('hair'), CARE('hair'), CARE('hair')], items: [['pc-radiant-wash', 'one'], ['pc-radiant-shampoo', 'one'], ['pc-radiant-conditioner', 'one'], ['pc-melondrip', 'one']]},
+  {id: 'dad-signature', combo: true, fest: 'father', tag: "Father's Day", name: "Dad's Signature", save: 351, v: 'Fresh Dollar for the office, a car fragrance for the drive and a face wash for the morning.', slots: 3, live: true, only: [PARFUM, CARF, CARE('face')], items: [['dollar', 100], ['drivenoir', 'one'], ['pc-radiant-wash', 'one']]},
+  {id: 'dad-move', combo: true, fest: 'father', tag: "Father's Day", name: 'Dad on the Move', save: 151, v: 'A 10ml Old Money for his pocket and two car fragrances for every trip.', slots: 3, live: true, only: [MINI, CARF, CARF], items: [['oldmoney', 10], ['drivenoir', 'one'], ['carrush', 'one']]},
   {id: 'buy2-gift', combo: true, offer: true, tag: 'Offer', name: 'Buy 2, Get 1 Gift', badge: 'Free gift', free: [2], v: 'Pick any two parfums and choose a free gift to go with them: a 10ml parfum, a lip balm or a car fragrance.', slots: 3, live: true, only: [PARFUM, PARFUM, GIFTF], items: [['gold', 100], ['oldmoney', 50], ['passionsin', 10]]},
   {id: 'morning-midnight', combo: true, tag: 'Scent layering', name: 'Morning to Midnight', badge: 'Signature', save: 307, v: 'One scent from the shower to the evening. The body care builds a base, the parfum lasts longer on top.', slots: 3, live: true, only: [PARFUM, CARE('body'), CARE('hair')], items: [['passionsin', 50], ['pc-passionsin-gel', 'one'], ['pc-passionsin-shampoo', 'one']]},
   {id: 'discovery-four', combo: true, tag: 'Try before the big bottle', name: 'The Discovery Four', badge: 'First order', save: 301, v: 'Four 10ml parfums to find your favourite. A great first order and great to share.', slots: 4, live: true, only: MINI, items: [['oldmoney', 10], ['royalcandy', 10], ['matchacoco', 10], ['passionsin', 10]]},
@@ -3538,6 +3562,9 @@ const FESTS = [
   {key: 'diwali', name: 'Diwali', dates: [['2026-11-08'], ['2027-10-29'], ['2028-10-17']], when: [9, 10], icon: FI('<path d="M12 4c2 2.5 2 4.5 0 6.5-2-2-2-4 0-6.5z"/><path d="M4 14h16c-1 3.5-4.2 6-8 6s-7-2.5-8-6z"/>')},
   {key: 'eid', name: 'Eid', dates: [['2026-03-20', 'Eid ul-Fitr'], ['2026-05-27', 'Eid al-Adha'], ['2027-03-10', 'Eid ul-Fitr'], ['2027-05-17', 'Eid al-Adha'], ['2028-02-27', 'Eid ul-Fitr'], ['2028-05-05', 'Eid al-Adha']], when: [4, 5, 6], icon: FI('<path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z"/><path d="M18 6l.6 1.4L20 8l-1.4.6L18 10l-.6-1.4L16 8l1.4-.6z"/>')},
   {key: 'christmas', name: 'Christmas', dates: [['2026-12-25'], ['2027-12-25'], ['2028-12-25']], when: [11, 0, 1], icon: FI('<path d="M12 3l5 7h-3l4 6H6l4-6H7z"/><path d="M12 16v4"/>')},
+  {key: 'valentine', name: "Valentine's Day", dates: [['2026-02-14'], ['2027-02-14'], ['2028-02-14']], when: [0, 1], icon: FI('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>')},
+  {key: 'mother', name: "Mother's Day", dates: [['2026-05-10'], ['2027-05-09'], ['2028-05-14']], when: [4], icon: FI('<circle cx="12" cy="9" r="2.5"/><path d="M12 4.5c1.5-2 4-1 3.6 1.3M12 4.5c-1.5-2-4-1-3.6 1.3M14.4 8c2.4-.4 3.4 2.2 1.3 3.4M9.6 8c-2.4-.4-3.4 2.2-1.3 3.4M12 11.5V21M12 17c2-2.5 4.5-2.5 5-2M12 17c-2-2.5-4.5-2.5-5-2"/>')},
+  {key: 'father', name: "Father's Day", dates: [['2026-06-21'], ['2027-06-20'], ['2028-06-18']], when: [5], icon: FI('<path d="M9 3h6l-1.5 3h-3z"/><path d="M10.5 6 8 17l4 4 4-4-2.5-11"/>')},
   {key: 'rakhi', name: 'Raksha Bandhan', dates: [['2026-08-28'], ['2027-08-17'], ['2028-08-05']], when: [7], icon: FI('<circle cx="12" cy="12" r="3"/><path d="M2 12h7M15 12h7M9.5 9.5 7 7m7.5 2.5L17 7m-7.5 7.5L7 17m7.5-2.5L17 17"/>')}
 ];
 const DAY = 864e5, today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -3549,13 +3576,22 @@ const festWhen = f => { const n = f.next; if (!n) return ''; const day = new Dat
 const cbVal = ([id, sz]) => P[id] ? +P[id].prices[sz] || 0 : 0;
 const cbSum = picks => picks.reduce((a, x) => a + cbVal(x), 0);
 /* products left out or swapped: same % off as the full combo, price rounded to end in 9 */
-const cbSave = (g, picks, worth) => { if (picks.length < 2) return 0; const base = cbSum(g.items); if (worth === base) return g.save || 0;
+const cbSave = (g, picks, worth) => { if (picks.length < 2) return 0; const base = g.base || cbSum(g.items); if (worth === base) return g.save || 0;
   const price = Math.round(worth * (1 - (g.save || 0) / base) / 10) * 10 - 1; return Math.max(0, worth - price); };
 const cbPrices = (g, picks) => { const worth = cbSum(picks), save = Math.min(g.free ? g.free.reduce((a, k) => a + (picks[k] ? cbVal(picks[k]) : 0), 0) : cbSave(g, picks, worth), worth); return {worth, save, price: worth - save}; };
 const cbPriceHTML = (g, picks) => { const c = cbPrices(g, picks), one = !g.free && picks.length < 2; return `${one ? '' : `<div><small>Worth</small><s>${money(c.worth, '₹')}</s></div>`}<div><small>${g.free ? 'You pay' : one ? 'Price' : 'Combo price'}</small><b>${money(c.price, '₹')}</b></div>${one ? '<span class="cb-save">Add one more product to get the combo price</span>' : c.save ? `<span class="cb-save">${g.free ? `Gift worth ${money(c.save, '₹')} free` : `Save ${money(c.save, '₹')} · ${Math.round(c.save / c.worth * 100)}%`}</span>` : ''}`; };
 const cbPicks = gid => $$(`[data-gpick="${gid}"]`).filter(sel => sel.value).map(sel => sel.value.split('|'));
-const buildSets = list => list.map(g => ({...g, items: g.items.filter(([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]))}))
-  .filter(g => g.items.length === list.find(x => x.id === g.id).items.length);
+const inStock = ([id, s]) => P[id] && !sizeOut(P[id], s) && hasPrice(P[id].prices[s]);
+/* combos: a product that is sold out is swapped for the in-stock product its slot allows that is closest in price
+   (not already in the combo); base = what the combo was planned at, so the price keeps the same % off */
+const cbSwap = g => { const only = k => Array.isArray(g.only) ? g.only[k] : g.only, used = new Set(g.items.filter(inStock).map(([id]) => id));
+  const items = g.items.map((it, k) => { if (inStock(it)) return it; const was = cbVal(it), f = only(k);
+    const pick = [...FRAG, ...PC, ...CAR].flatMap(p => p.sizes.map(sz => [p.id, sz])).filter(x => inStock(x) && !used.has(x[0]) && (!f || f(P[x[0]], x[1])))
+      .sort((a, b) => Math.abs(cbVal(a) - was) - Math.abs(cbVal(b) - was))[0];
+    if (pick) used.add(pick[0]); return pick || (g.none && g.none.includes(k) ? [] : null); });   // nothing to swap in: leave the slot empty when it may be
+  return items.every(Boolean) ? {...g, items, base: cbSum(g.items)} : null; };
+const buildSets = list => list.map(g => g.combo ? cbSwap(g) : {...g, items: g.items.filter(inStock)})
+  .filter(g => g && g.items.length === list.find(x => x.id === g.id).items.length);
 const giftSets = () => buildSets(GIFT_SETS);
 /* every product that can be chosen in a gift set dropdown, one option per size */
 const GIFT_SLOTS = Math.max(...GIFT_SETS.map(g => g.items.length));   // every gift set without its own slots shows this many dropdowns
@@ -3575,10 +3611,10 @@ const cbSlot = (id, sz) => { const p = P[id]; return p
   ? `<img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
   : `<span class="ph0"></span><span class="t"><b>No product</b><small>Tap to add one</small></span><span class="go">Add ›</span>`; };
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${IMG(imgFor(P[id], s))}"${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
+    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : g.items.slice(0, 4).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
       <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
-      ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items)}</div>` : ''}
+      ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items.filter(x => x.length))}</div>` : ''}
       <div class="ctas"><button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button></div>
     </div></article>`;
 function giftPage(){
@@ -3677,17 +3713,17 @@ function comboPage(){
     <div>${ICON.lasting}<p><b>Your choice</b><span>Change any product in a combo.</span></p></div>
     <div>${ICON.truck}<p><b>Free delivery</b><span>Across India, on every order.</span></p></div>
   </div>
-  ${offers.length ? `<section class="sec" id="cb-offer"><div class="wrap">
+  ${offers.length ? `<section class="sec cb-fit" id="cb-offer"><div class="wrap">
     ${secHead('Offer', 'Buy 2, get <em class="metal">1 gift</em>', '<p class="lead">Choose any two parfums and we add a gift of your choice for free.</p>')}
     <div class="gf-sets cb-wide">${offers.map((g, i) => gfCard(g, i, 'Order offer')).join('')}</div>
   </div></section>` : ''}
-  ${fests.length ? `<section class="sec" id="cb-fest" style="padding-top:0"><div class="wrap">
+  ${fests.length ? `<section class="sec cb-fit" id="cb-fest" style="padding-top:0"><div class="wrap">
     <div class="cb-fhead"><span class="eyebrow">Festive celebrations</span><h2>Festive <em class="metal">combos</em></h2><p class="lead">Combos made for the festivals we celebrate across India and Kerala.</p></div>
     <div class="cb-tabs" role="tablist" aria-label="Festivals">${fests.map(f => `<button type="button" role="tab" class="cb-tab${f.key === open ? ' on' : ''}" data-cbfest="${f.key}" aria-selected="${f.key === open}">${f.icon}<span>${esc(f.name)}${f.next ? `<small>${new Date(f.next.at).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}</small>` : ''}</span></button>`).join('')}</div>
     ${fests.map(f => `<div role="tabpanel" data-cbpanel="${f.key}"${f.key === open ? '' : ' hidden'}>${f.next ? `<p class="cb-when">${festWhen(f)}</p>` : ''}<div class="gf-sets cb-two">${f.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div></div>`).join('')}
   </div></section>` : ''}
-  <section class="sec" id="cb-sets" style="padding-top:0"><div class="wrap">
-    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Our favourite combos, each priced below its products. Tap Change to swap any product, then tap Order combo to send it to us on WhatsApp.</p>')}
+  <section class="sec cb-fit" id="cb-sets" style="padding-top:0"><div class="wrap">
+    ${secHead('Combos', 'Made to <em class="metal">match</em>', '<p class="lead">Our favourite combos, each priced below its products. Tap Change to swap any product.</p>')}
     <div class="gf-sets">${sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
