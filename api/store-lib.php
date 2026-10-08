@@ -254,7 +254,9 @@ function fomaxo_multibuy(int $subtotal): int { return 0; }
 function fomaxo_coupon(array $in, int $subtotal, ?PDO $db = null): array {
   $code = is_string($in['coupon'] ?? null) ? trim($in['coupon']) : '';
   if ($code === '') return [];
-  try { $cp = shop_coupon_apply($code, $subtotal, $db, fomaxo_multibuy($subtotal)); return isset($cp['error']) ? $cp : $cp + ['off' => $cp['discount'] + $cp['offer']]; }
+  /* the shopper's mobile number: from the delivery details when the order is placed, or sent with the code at checkout (api/coupon.php) */
+  $phone = is_string($in['customer']['phone'] ?? null) ? $in['customer']['phone'] : (is_string($in['phone'] ?? null) ? $in['phone'] : '');
+  try { $cp = shop_coupon_apply($code, $subtotal, $db, fomaxo_multibuy($subtotal), $phone); return isset($cp['error']) ? $cp : $cp + ['off' => $cp['discount'] + $cp['offer']]; }
   catch (Throwable $e) { error_log('FOMAXO coupon: ' . $e->getMessage()); return ['error' => 'Coupon codes cannot be checked right now. Please try again, or remove the code.']; }
 }
 

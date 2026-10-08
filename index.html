@@ -4150,7 +4150,7 @@ function bindCheckout(q){
     code = String(code || '').replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
     if (!code) { cpnShow('Please type your coupon code.'); return; }
     const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
-    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines}); const cp = Number(d.discount), offer = Number(d.offer || 0);
+    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines, phone: E.phone.value.replace(/\D/g, '')}); const cp = Number(d.discount), offer = Number(d.offer || 0);
       cpn = {code: d.code, cp, offer, off: cp + offer, ends: d.ends || ''}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {}
       !cp && offer > 0 ? cpnShow('Your multi-buy discount saves more, so we kept it.', true) : cpnShow(''); }
     catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message); }
