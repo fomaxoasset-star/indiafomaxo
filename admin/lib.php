@@ -266,7 +266,8 @@ function order_coupon_counts(array $F): array {
 function order_coupon_tag(array $o): string {
   if ((string)$o['coupon'] === '') return '';
   $gw = preg_match('/^(GOODWILL|SORRY)-/', $o['coupon']);
-  return '<span class="ctag' . ($gw ? ' gw' : '') . '" title="' . ($gw ? 'Goodwill coupon' : 'Used a coupon') . '"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm6 1v2h2V8H9Zm0 3v2h2v-2H9Zm0 3v2h2v-2H9Z"/></svg><b>' . h($o['coupon']) . '</b>' . ((int)$o['discount'] ? '<i>−' . rupees((int)$o['discount']) . '</i>' : '') . '</span>';
+  return '<span class="ctag' . ($gw ? ' gw' : '') . '" title="' . ($gw ? 'Goodwill coupon' : 'Used a coupon') . '"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6V7Zm6 1v2h2V8H9Zm0 3v2h2v-2H9Zm0 3v2h2v-2H9Z"/></svg><b>' . h($o['coupon']) . '</b>' . ((int)$o['discount'] ? '<i>−' . rupees((int)$o['discount']) . '</i>' : '')
+    . (str_contains((string)($o['items'] ?? ''), '"free":1') ? '<i>Free gift</i>' : '') . '</span>';   // a free product coupon
 }
 /* the tracking chips: how many orders are pending, unpaid cash, delivered, cancelled and refunded, with every other filter applied */
 function order_track_counts(array $F): array {
@@ -398,9 +399,16 @@ function offer_left(int $secs): string {
 function save_coupon(): string {
   $code = coupon_clean((string)($_POST['code'] ?? '')); $editing = !empty($_POST['editing']);
   if (strlen($code) < 3 || strlen($code) > 20) return '!Please write a code of 3 to 20 letters or numbers, like WELCOME10.';
-  $kind = ($_POST['kind'] ?? '') === 'amt' ? 'amt' : 'pct'; $v = trim((string)($_POST['value'] ?? ''));
-  if (!is_numeric($v) || $v <= 0) return '!Please write how much the coupon takes off.';
-  if ($kind === 'pct' && ($v > 99 || (float)$v != (int)$v)) return '!A % coupon can take off 1 to 99%, in whole numbers.';
+  $kind = in_array($_POST['kind'] ?? '', ['amt', 'free'], true) ? $_POST['kind'] : 'pct'; $v = trim((string)($_POST['value'] ?? ''));
+  $free = ['', ''];
+  if ($kind === 'free') {   // a free product coupon: the product and size it adds at ₹0; nothing is taken off
+    $free = explode('|', (string)($_POST['free'] ?? '') . '|', 3); $p = fomaxo_catalog()['products'][$free[0]] ?? null;
+    if (!$p || $p['kind'] === 'set' || !isset($p['prices'][$free[1]])) return '!Please choose the free product.';
+    $v = '0';
+  } else {
+    if (!is_numeric($v) || $v <= 0) return '!Please write how much the coupon takes off.';
+    if ($kind === 'pct' && ($v > 99 || (float)$v != (int)$v)) return '!A % coupon can take off 1 to 99%, in whole numbers.';
+  }
   $value = $kind === 'pct' ? (int)$v : (int)round((float)$v * 100);
   $min = trim((string)($_POST['min_order'] ?? '')); if ($min !== '' && (!is_numeric($min) || $min < 0)) return '!Please write the minimum order in rupees, or leave it empty.';
   /* the time limit: a date (dd/mm/yyyy) and an hour for each end; no hour = from the start of the day / to the end of it */
@@ -418,7 +426,7 @@ function save_coupon(): string {
   if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
   shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
     'starts' => $starts, 'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses),
-    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
+    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
   return $code . ($was !== false ? ' is saved.' : ' is ready.') . (empty($_POST['active']) ? ' It is off until you switch it on.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
 }
 

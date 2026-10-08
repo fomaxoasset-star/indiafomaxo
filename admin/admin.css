@@ -354,7 +354,7 @@ body.zooming{overflow:hidden}
 @media (min-width:821px){.filters .dfl{min-width:0;flex:0 0 136px}.filters .grow{min-width:150px}.filters label.fx:not(.dfl){min-width:0;flex:0 1 150px}}
 .emo{display:flex;flex-wrap:wrap;gap:6px}.emo button{width:44px;height:44px;padding:0;border:1px solid var(--line,#3a3326);border-radius:10px;background:transparent;font-size:22px;line-height:1;cursor:pointer;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}.emo button:hover,.emo button:focus-visible{border-color:var(--gold,#b8892f);background:rgba(184,137,47,.12)}.emo button:active{transform:scale(.92)}
 /* Coupons page */
-.cpf{display:flex;flex-direction:column;gap:12px}.cpf label{margin-bottom:0}.cpv{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:end}
+.cpf{display:flex;flex-direction:column;gap:12px}.cpf label{margin-bottom:0}.cpv{display:grid;grid-template-columns:1fr;gap:12px;align-items:end}
 .seg.ck{display:flex;margin-top:4px}.seg.ck label{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;margin:0;white-space:nowrap}.seg.ck label+label{border-left:1px solid var(--line)}
 .seg.ck input{position:absolute;opacity:0;pointer-events:none}.seg.ck label:has(input:checked){background:#2a2416;color:var(--gold2)}
 /* Coupons: "Use the bigger offer" / "Use both" — two gold ring dots, one short line each */
@@ -375,6 +375,11 @@ body.zooming{overflow:hidden}
 .sry .sry-pct{flex-direction:row;align-items:center;gap:6px;margin:0;color:var(--text);font-size:13px;white-space:nowrap}.sry-pct input{width:58px;text-align:center}
 .sry-done{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--gold);border-radius:8px;font-size:13px}
 .sry-done .btn,.sry-wa{gap:6px}.sry-done svg,.sry-wa svg{flex:none}
+.cfree{color:#2fa863;font-weight:600}
+.cpstag.free{border-color:#2fa863;color:#2fa863}
+/* Free product coupon: the product picker and "Spend at least" take the place of Amount, minimum order and the offer ring dots */
+.cpf .cpfree,.cpf .cpspend{display:none}.cpf:has(input[name=kind][value=free]:checked) .cpfree{display:flex}.cpf:has(input[name=kind][value=free]:checked) .cpspend{display:inline}
+.cpf:has(input[name=kind][value=free]:checked) :is(.cpamt,.cpmin,.cpst){display:none}.cpfree select{width:100%}
 .cpstag.goodwill{border-color:var(--gold);background:var(--gold);color:var(--panel);font-weight:600}
 .cpt .cpn{white-space:nowrap}.cpt td small.sry-ph{display:block;font-size:12px;color:var(--muted);margin-top:2px}.cb-used{color:var(--muted)}.cpt tr.cs-used td{opacity:.75}
 @media (max-width:820px){.sry{padding:10px 12px}.sry-h small{display:none}.sry-f{grid-template-columns:minmax(0,1fr) auto auto}.sry-pct input{width:52px}.sry-pct span{font-size:12px}

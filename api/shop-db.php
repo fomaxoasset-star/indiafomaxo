@@ -63,6 +63,11 @@ function shop_db(): PDO {
     try { $SHOP_DB->exec("ALTER TABLE coupons ADD phone VARCHAR(10) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '10');
   }
+  if (shop_setting('schema') === '10') {   // free product coupons: kind 'free' adds this product (id) in this size (opt) to the order at ₹0
+    foreach (["coupons ADD free_id VARCHAR(48) NOT NULL DEFAULT ''", "coupons ADD free_opt VARCHAR(16) NOT NULL DEFAULT ''"] as $alter)
+      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    shop_set('schema', '11');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -117,11 +122,12 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS visits(sid VARCHAR(16) NOT NULL PRIMARY KEY, vid VARCHAR(16) NOT NULL, started INT NOT NULL, last INT NOT NULL,
       source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0,
       country VARCHAR(2) NOT NULL DEFAULT '', region VARCHAR(60) NOT NULL DEFAULT '')$tail",
-    /* coupon codes made on the admin page: kind 'pct' (value = % off) or 'amt' (value = paise off); min_order in paise, starts and ends 'Y-m-d H:i' ('' = no limit; an old end of only 'Y-m-d' lasts the whole day),
+    /* coupon codes made on the admin page: kind 'pct' (value = % off), 'amt' (value = paise off) or 'free' (free_id in size free_opt added free, value 0); min_order in paise, starts and ends 'Y-m-d H:i' ('' = no limit; an old end of only 'Y-m-d' lasts the whole day),
        max_uses 0 = no limit. Uses are counted from the orders that carry the code. phone = a goodwill coupon's one mobile number (last 10 digits, '' = anyone). */
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
-      starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '')$tail",
+      starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '',
+      free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '')$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
@@ -361,14 +367,22 @@ function coupon_time(array $c): string {
 }
 /* "10 Oct 2026, 6:00 pm" */
 function coupon_when(string $ymdhi): string { return date('j M Y, g:i a', strtotime($ymdhi)); }
-function coupon_label(array $c): string { return $c['kind'] === 'pct' ? (int)$c['value'] . '% off' : rupees((int)$c['value']) . ' off'; }
+function coupon_label(array $c): string {
+  if ($c['kind'] === 'free') return ((int)$c['min_order'] ? 'Spend ' . rupees((int)$c['min_order']) . ', get ' : 'Free ') . coupon_free_name($c) . ((int)$c['min_order'] ? ' free' : '');
+  return $c['kind'] === 'pct' ? (int)$c['value'] . '% off' : rupees((int)$c['value']) . ' off';
+}
+/* a free product coupon's product and size, like "Gold 10ml" */
+function coupon_free_name(array $c): string {
+  $p = fomaxo_catalog()['products'][(string)($c['free_id'] ?? '')] ?? null;
+  return $p ? trim($p['name'] . ' ' . fomaxo_size_label($p, (string)$c['free_opt'])) : 'a product';
+}
 /* how the coupon mixes with the website offer (multi-buy), set with the two ring dots on Admin → Coupons */
 function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Use both' : 'Bigger offer'; }
 /* the last 10 digits of a mobile number ('' when it has fewer), so +91 98765 43210, 098765 43210 and 9876543210 all match */
 function coupon_phone(string $phone): string { $d = preg_replace('/\D/', '', $phone) ?? ''; return strlen($d) >= 10 ? substr($d, -10) : ''; }
 /* Checks a code for a bag of $subtotal paise. $offer = what the website offer (multi-buy) takes off this bag, in paise.
    $phone = the shopper's mobile number, which a goodwill coupon (one mobile number, one use) must match.
-   Returns ['error' => …] or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'stack', 'label'].
+   Returns ['error' => …] or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'stack', 'label'], plus 'free' => [id, opt] for a free product coupon.
    "Use the bigger offer": the coupon or the offer, whichever saves more. "Use both": the offer first, then the coupon off the rest.
    The minimum order counts the bag before any discount. The bag always keeps at least ₹1 to pay, so online payment still works. */
 function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null, int $offer = 0, string $phone = ''): array {
@@ -384,6 +398,11 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null, int $of
     if (shop_coupon_uses($db, $code) >= max(1, (int)$c['max_uses'])) return ['error' => "Coupon $code has already been used. It works one time only."];
   }
   if ((int)$c['max_uses'] > 0 && shop_coupon_uses($db, $code) >= (int)$c['max_uses']) return ['error' => "Coupon $code has been fully used."];
+  if ($c['kind'] === 'free') {   // a free product: added to the order at ₹0 (fomaxo_add_free), nothing taken off, the website offer kept
+    if ($subtotal < (int)$c['min_order']) return ['error' => 'Spend ' . rupees((int)$c['min_order']) . ' to get your free ' . coupon_free_name($c) . '. Add ' . rupees((int)$c['min_order'] - $subtotal) . ' more to your bag.'];
+    return ['code' => $code, 'discount' => 0, 'offer' => max(0, min($offer, $subtotal - 100)), 'stack' => true, 'label' => coupon_label($c), 'ends' => coupon_ends($c),
+      'free' => ['id' => (string)$c['free_id'], 'opt' => (string)$c['free_opt']]];
+  }
   if ($subtotal < (int)$c['min_order']) return ['error' => "Coupon $code is for orders of " . rupees((int)$c['min_order']) . ' and above. Add ' . rupees((int)$c['min_order'] - $subtotal) . ' more to use it.'];
   $stack = !empty($c['stack']); $offer = max(0, min($offer, $subtotal - 100));
   $base = $stack ? $subtotal - $offer : $subtotal;

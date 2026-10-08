@@ -2172,6 +2172,8 @@ html[data-mode="light"] .co-cpn-msg:not(.info){color:#a8322a}
 .co-cpn-saved[hidden]{display:none}
 html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
 .co-rows .co-cpnrow b{color:var(--gold)}
+.co-gift .co-gift-tag{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#2fa863}
+html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
 @media(max-width:980px){
   .co-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "sum" "form"}
   .co-sum{position:static;margin-bottom:36px}
@@ -4435,6 +4437,7 @@ function checkoutPage(q){
       <div class="co-cpn-form" id="coCpnForm"><input id="coCpnIn" placeholder="Have a coupon?" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
       <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
       <p class="co-cpn-saved" id="coCpnSaved" hidden>You saved <b id="coCpnOff"></b> after coupon</p>
+      <p class="co-cpn-saved" id="coCpnFree" hidden>Free gift added <b id="coCpnFreeOff"></b></p>
       <p class="co-cpn-msg" id="coCpnMsg" role="status" aria-live="polite" hidden></p>
     </div>` : ''}
   </aside>
@@ -4518,7 +4521,7 @@ function bindCheckout(q){
     if (locked) $('#coChips').innerHTML = miss.map(([k, l]) => `<button type="button" data-need="${k}">${l}</button>`).join('');
     if (fr) fr.hidden = !isCod;
     $('#coTotal').textContent = inr(total());
-    const sv = $('#coSave'), saved = Number(sv.dataset.was) + (cpn ? cpn.off : 0); sv.hidden = saved <= 0; sv.textContent = `You save ${inr(saved)} on this order`;
+    const sv = $('#coSave'), saved = Number(sv.dataset.was) + (cpn ? cpn.off + (cpn.free ? cpn.free.worth : 0) : 0); sv.hidden = saved <= 0; sv.textContent = `You save ${inr(saved)} on this order`;
     const cr2 = $('#coCpnRow'), mb = $('#coMbRow'); if (cr2) { cr2.hidden = !(cpn && cpn.cp > 0); mb.hidden = !(cpn && cpn.offer > 0);
       if (cpn) { $('#coCpnRowCode').textContent = cpn.code; $('#coCpnRowOff').textContent = '−' + inr(cpn.cp); $('#coMbRowOff').textContent = '−' + inr(cpn.offer); } }
     btn.disabled = locked;
@@ -4581,6 +4584,13 @@ function bindCheckout(q){
     $('#coCpnOn').hidden = !cpn; $('#coCpnSaved').hidden = !(cpn && cpn.cp > 0);
     $('#coCpnForm').hidden = !!cpn;
     if (cpn) { $('#coCpnCode').textContent = cpn.code; $('#coCpnOff').textContent = inr(cpn.cp); }
+    /* a free product coupon: its product joins the order summary at ₹0 (api/cod.php and api/razorpay.php add it to the order) */
+    const fv = cpn && cpn.free, fp = fv && P[fv.id], old = $('#coFreeIt'); if (old) old.remove();
+    $('#coCpnFree').hidden = !fv; if (fv) $('#coCpnFreeOff').textContent = `worth ${inr(fv.worth)}`;
+    if (fv) $('.co-items').insertAdjacentHTML('beforeend', `<div class="co-item co-gift" id="coFreeIt">
+      <div class="co-img">${fp ? `<img src="${IMG(imgFor(fp, fv.opt))}" alt="">` : ''}<i>1</i></div>
+      <div class="co-it"><b>${esc(fp ? (fp.kind === 'care' ? fp.title : fp.name) : fv.name)}</b><small>${esc(fp ? optLabel(fp, fv.opt) : fv.size)} · Free with ${esc(cpn.code)}</small></div>
+      <div class="co-ip"><s>${inr(fv.worth)}</s><span class="co-gift-tag">Free</span></div></div>`);
     cpnEnd(); upd();
   };
   /* a coupon with a time limit: "Ends in 2h 15m" in its last two days, else the day it ends */
@@ -4599,9 +4609,9 @@ function bindCheckout(q){
     if (!code) { cpnShow('Please type your coupon code.'); return; }
     const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
     try { const d = await post('api/coupon.php', {code, lines: payload({}).lines, phone: E.phone.value.replace(/\D/g, '')}); const cp = Number(d.discount), offer = Number(d.offer || 0);
-      cpn = {code: d.code, cp, offer, off: cp + offer, ends: d.ends || ''}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {}
+      cpn = {code: d.code, cp, offer, off: cp + offer, ends: d.ends || '', free: d.free ? {...d.free, worth: Number(d.free.worth)} : null}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {}
       !cp && offer > 0 ? cpnShow('Your multi-buy discount saves more, so we kept it.', true) : cpnShow(''); }
-    catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message); }
+    catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message, /^Spend /.test(x.message)); }   // "Spend ₹999 to get your free …": a gold note
     finally { b.disabled = false; b.textContent = 'Apply'; }
   };
   if (cIn) {

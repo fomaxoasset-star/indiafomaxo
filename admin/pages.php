@@ -100,7 +100,7 @@ if ($tab === 'orders') {
       . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . '</span></summary>'
       . '<div class="otop">' . order_tracker($o) . '</div>'
       . '<div class="od"><div class="items"><h4>Items</h4>';
-    foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . rupees((int)($it['unit'] ?? 0)) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
+    foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . (!empty($it['free']) ? '<b class="cfree">Free</b>' : rupees((int)($it['unit'] ?? 0))) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
     $body .= ($o['coupon'] !== '' ? '<p class="small muted">Coupon <b class="cpn">' . h($o['coupon']) . '</b> −' . rupees((int)$o['discount']) . '</p>' : '')
       . ($o['cod_fee'] ? '<p class="small muted">Cash on delivery fee ' . rupees((int)$o['cod_fee']) . '</p>' : '') . '<p><b>Total ' . rupees((int)$o['total']) . '</b></p></div>'
       . '<div><h4>Delivery</h4><p>' . h($o['name']) . '<br>' . h($o['address']) . '</p><p><a href="tel:' . h(preg_replace('/[^0-9+]/', '', $o['phone'])) . '">' . h($o['phone']) . '</a> · <a href="https://wa.me/' . h(preg_replace('/\D/', '', $o['phone'])) . '" target="_blank" rel="noopener">WhatsApp</a><br><a href="mailto:' . h($o['email']) . '">' . h($o['email']) . '</a></p>'
@@ -142,9 +142,16 @@ if ($tab === 'coupons') {
     . '<label>Code<input name="code" maxlength="20" required value="' . h($E['code'] ?? '') . '" placeholder="WELCOME10" autocapitalize="characters" autocomplete="off" spellcheck="false"' . ($E ? ' readonly' : '') . '></label>'
     . '<div class="cpv"><label>Takes off<span class="seg ck">'
     . '<label class="' . (($E['kind'] ?? 'pct') === 'pct' ? 'on' : '') . '"><input type="radio" name="kind" value="pct"' . (($E['kind'] ?? 'pct') === 'pct' ? ' checked' : '') . '>% off</label>'
-    . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label></span></label>'
-    . '<label>Amount<input type="number" name="value" min="1" step="any" required inputmode="decimal" value="' . h($E ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label></div>'
-    . '<label>Minimum order ₹ <small>(optional)</small><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="No minimum"></label>'
+    . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label>'
+    . '<label class="' . (($E['kind'] ?? '') === 'free' ? 'on' : '') . '"><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label>'
+    . '<label class="cpamt">Amount<input type="number" name="value" min="1" step="any" inputmode="decimal" value="' . h($E && $E['kind'] !== 'free' ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label></div>'
+    /* a free product coupon: the product and size added to the order at ₹0 (gift sets are left out, they need fragrances picked) */
+    . '<label class="cpfree">Free product<select name="free">' . '<option value="">Choose the free product</option>' . implode('', array_map(function ($id, $p) use ($E) {
+        if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) return '';
+        return implode('', array_map(fn($opt, $pr) => '<option value="' . h("$id|$opt") . '"' . (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt ? ' selected' : '') . '>'
+          . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
+      }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products'])) . '</select></label>'
+    . '<label><span class="cpmin">Minimum order ₹ <small>(optional)</small></span><span class="cpspend">Spend at least ₹ <small>(optional; empty = free with any order)</small></span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="No minimum"></label>'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
     . '<div class="cpst" role="radiogroup" aria-label="With the website offer">'
     . '<label><input type="radio" name="stack" value="0"' . (empty($E['stack']) ? ' checked' : '') . ' required><span><b>Use the bigger offer</b>Coupon or website offer, whichever saves more</span></label>'
@@ -175,7 +182,7 @@ if ($tab === 'coupons') {
       $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
         . ($goodwill($c) ? '<td>' . h(coupon_label($c)) . ' <span class="cpstag goodwill">' . (str_starts_with($c['code'], 'REFILL-') ? 'Refill' : 'Goodwill') . '</span><small class="sry-ph">For ' . h(phone_fmt($c['phone'])) . '</small></td>'
           . '<td class="hide-m"><span class="muted">None</span></td><td class="hide-m"><span class="muted">No end date</span></td>'
-        : '<td>' . h(coupon_label($c)) . ' <span class="cpstag' . (!empty($c['stack']) ? ' both' : '') . '">' . coupon_stack_label($c) . '</span><small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
+        : '<td>' . h(coupon_label($c)) . ($c['kind'] === 'free' ? ' <span class="cpstag free">Free product</span>' : ' <span class="cpstag' . (!empty($c['stack']) ? ' both' : '') . '">' . coupon_stack_label($c) . '</span>') . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
           . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
           . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>')
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
@@ -358,7 +365,7 @@ if ($tab === 'members' && isset($_GET['refill'])) {
   foreach ($C['all'] as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $body .= '<a class="corder os-' . h($o['status']) . '" href="' . h(self_url(array_filter(['tab' => 'orders', 'q' => $o['no'] ?: $o['name']]))) . '"><div class="ch"><b>' . h($o['no'] ?: 'Not paid') . '</b><span class="muted small">' . h(date('d M Y', strtotime($o['created']))) . ' · ' . h(pay_label($o)) . '</span><span class="sp"></span><b>' . rupees((int)$o['total']) . '</b><span class="badge st-' . h($o['status']) . '">' . h(FOMAXO_STATUSES[$o['status']] ?? $o['status']) . '</span></div>';
-    foreach ($items as $it) $body .= '<div class="ci">' . $thumbOf((string)($it['id'] ?? ''), 'th xs') . '<span>' . (int)($it['qty'] ?? 0) . ' × ' . h($it['name'] ?? '') . '</span><span class="muted">' . rupees((int)($it['unit'] ?? 0)) . '</span></div>';
+    foreach ($items as $it) $body .= '<div class="ci">' . $thumbOf((string)($it['id'] ?? ''), 'th xs') . '<span>' . (int)($it['qty'] ?? 0) . ' × ' . h($it['name'] ?? '') . '</span><span class="muted">' . (!empty($it['free']) ? 'Free' : rupees((int)($it['unit'] ?? 0))) . '</span></div>';
     $body .= '</a>';
   }
   $body .= '</div></div>';

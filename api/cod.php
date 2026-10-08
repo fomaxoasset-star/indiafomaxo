@@ -23,6 +23,7 @@ if ($cod['onlyName'] !== '') { if (strtolower($cust['name']) !== strtolower(trim
 elseif ($order['subtotal'] < $cod['min']) fail('Cash on delivery is for orders of ' . rupees($cod['min']) . ' and above. Please pay online.');
 $cp = fomaxo_coupon($in, $order['subtotal']);   // a coupon typed at checkout: checked again inside the order below, so its usage limit holds
 if (isset($cp['error'])) fail($cp['error']);
+if (($e = fomaxo_add_free($order, $cp)) !== '') fail($e);   // a free product coupon: its item joins the order at ₹0 and its stock is taken below
 /* the hidden maximum: COD only for orders under it, counted after the coupon and before the COD fee */
 $codMax = fn(array $cp) => $cod['max'] > 0 && $order['subtotal'] - ($cp['off'] ?? 0) >= $cod['max'];
 $maxMsg = 'COD for orders under ' . rupees($cod['max']) . '. Please pay by card.';

@@ -86,6 +86,7 @@ if ($action === 'create') {
   if (isset($cust['error'])) fail($cust['error']);
   $cp = fomaxo_coupon($in, $order['subtotal']);
   if (isset($cp['error'])) fail($cp['error']);
+  if (($e = fomaxo_add_free($order, $cp)) !== '') fail($e);   // a free product coupon: its item joins the order at ₹0
   $amount = $order['subtotal'] - ($cp['off'] ?? 0);   // what Razorpay charges: worked out here, never taken from the browser
   /* the order number (FMX-IN-…) is given once the payment is confirmed, so unfinished payments leave no gaps */
   $ref = 'web-' . date('ymd') . '-' . bin2hex(random_bytes(4));

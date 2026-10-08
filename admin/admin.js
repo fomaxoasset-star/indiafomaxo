@@ -575,3 +575,11 @@ document.addEventListener('click', function (e) {
   }
   a.classList.add('line');
 });
+
+/* Coupons: picking Free product on a new coupon fills the usage limit with 1 (works one time, until it is used) */
+document.addEventListener('change', function (e) {
+  var r = e.target;
+  if (r.name !== 'kind' || r.value !== 'free' || !r.checked) return;
+  var f = r.form, u = f && f.elements.max_uses;
+  if (u && !u.value && !f.elements.editing) u.value = '1';
+});
