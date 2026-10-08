@@ -142,7 +142,7 @@ $LIVE = shop_products();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], '!Your session expired. Please try again.');
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
-  $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
+  $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'coupon', 'page']));
 
   if ($a === 'status') {
     $oid = (int)($_POST['id'] ?? 0); $ns = (string)($_POST['status'] ?? '');
