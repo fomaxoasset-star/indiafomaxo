@@ -63,8 +63,8 @@ function shop_db(): PDO {
     try { $SHOP_DB->exec("ALTER TABLE coupons ADD phone VARCHAR(10) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '10');
   }
-  if (shop_setting('schema') === '10') {   // free product coupons: kind 'free' adds this product (id) in this size (opt) to the order at ₹0
-    foreach (["coupons ADD free_id VARCHAR(48) NOT NULL DEFAULT ''", "coupons ADD free_opt VARCHAR(16) NOT NULL DEFAULT ''"] as $alter)
+  if (shop_setting('schema') === '10') {   // free product coupons: kind 'free' adds this product (id) in this size (opt) to the order at ₹0; per_cust 1 = one use per mobile number
+    foreach (["coupons ADD free_id VARCHAR(48) NOT NULL DEFAULT ''", "coupons ADD free_opt VARCHAR(16) NOT NULL DEFAULT ''", "coupons ADD per_cust INT NOT NULL DEFAULT 0"] as $alter)
       try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
     shop_set('schema', '11');
   }
@@ -123,11 +123,12 @@ function shop_schema(PDO $db): void {
       source VARCHAR(16) NOT NULL DEFAULT '', device VARCHAR(8) NOT NULL DEFAULT '', pages INT NOT NULL DEFAULT 0,
       country VARCHAR(2) NOT NULL DEFAULT '', region VARCHAR(60) NOT NULL DEFAULT '')$tail",
     /* coupon codes made on the admin page: kind 'pct' (value = % off), 'amt' (value = paise off) or 'free' (free_id in size free_opt added free, value 0); min_order in paise, starts and ends 'Y-m-d H:i' ('' = no limit; an old end of only 'Y-m-d' lasts the whole day),
-       max_uses 0 = no limit. Uses are counted from the orders that carry the code. phone = a goodwill coupon's one mobile number (last 10 digits, '' = anyone). */
+       max_uses 0 = no limit. Uses are counted from the orders that carry the code. phone = a goodwill coupon's one mobile number (last 10 digits, '' = anyone).
+       per_cust 1 = each mobile number can use the code once. */
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
       starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '',
-      free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '')$tail",
+      free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '', per_cust INT NOT NULL DEFAULT 0)$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
@@ -406,6 +407,11 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null, int $of
     if (shop_coupon_uses($db, $code) >= max(1, (int)$c['max_uses'])) return ['error' => "Coupon $code has already been used. It works one time only."];
   }
   if ((int)$c['max_uses'] > 0 && shop_coupon_uses($db, $code) >= (int)$c['max_uses']) return ['error' => "Coupon $code has been fully used."];
+  if (!empty($c['per_cust'])) {   // one use per customer: the mobile number must not have used it before
+    if (coupon_phone($phone) === '') return ['error' => "Coupon $code is one use per customer. Please type your mobile number in the delivery details first, then apply the code."];
+    $s = $db->prepare('SELECT phone FROM orders WHERE coupon = ? AND ' . COUPON_USED); $s->execute([$code]);
+    foreach ($s->fetchAll(PDO::FETCH_COLUMN) as $ph) if (coupon_phone((string)$ph) === coupon_phone($phone)) return ['error' => "Coupon $code has already been used with this mobile number. It works one time per customer."];
+  }
   if ($c['kind'] === 'free') {   // a free product: added to the order at ₹0 (fomaxo_add_free), nothing taken off, the website offer kept
     if ($subtotal < (int)$c['min_order']) return ['error' => 'Spend ' . rupees((int)$c['min_order']) . ' to get your free ' . coupon_free_name($c) . '. Add ' . rupees((int)$c['min_order'] - $subtotal) . ' more to your bag.'];
     return ['code' => $code, 'discount' => 0, 'offer' => max(0, min($offer, $subtotal - 100)), 'stack' => true, 'label' => coupon_label($c), 'ends' => coupon_ends($c),

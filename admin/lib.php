@@ -426,7 +426,7 @@ function save_coupon(): string {
   if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
   shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
     'starts' => $starts, 'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses),
-    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
+    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'per_cust' => !empty($_POST['per_cust']) ? 1 : 0, 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
   return $code . ($was !== false ? ' is saved.' : ' is ready.') . (empty($_POST['active']) ? ' It is off until you switch it on.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
 }
 
@@ -447,6 +447,14 @@ function make_goodwill_coupon(): array {
 function goodwill_wa(array $c): string {
   return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode('Hi, this is FOMAXO. As a goodwill gesture for your last order, here is ' . (int)$c['value'] . '% off your next order with the code '
     . $c['code'] . '. Type it at checkout on fomaxo.in with this mobile number. It works one time and has no end date.');
+}
+
+/* the WhatsApp message that shares a free product coupon: WhatsApp opens and the owner picks the customer (no emoji: wa.me shows them as "?") */
+function free_coupon_wa(array $c): string {
+  $min = (int)$c['min_order'];
+  return 'https://wa.me/?text=' . rawurlencode('Hi, this is FOMAXO. Here is a free ' . coupon_free_name($c) . ' for you' . ($min ? ' when you shop for ' . rupees($min) . ' or more' : ' with your next order')
+    . '. Use the code ' . $c['code'] . ' at checkout on fomaxo.in.' . (!empty($c['per_cust']) ? ' It works one time per customer.' : '')
+    . (coupon_ends($c) !== '' ? ' Valid till ' . coupon_when(coupon_ends($c)) . '.' : ''));
 }
 
 /* ---------------- members (repeat customers) ---------------- */
