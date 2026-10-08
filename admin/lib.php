@@ -438,7 +438,7 @@ function coupon_free_pick(string $field): ?array {
   $p = fomaxo_catalog()['products'][$id] ?? null;
   return $p && $p['kind'] !== 'set' && isset($p['prices'][$opt]) ? [$id, $opt] : null;
 }
-function make_goodwill_coupon(): array {
+function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // CART-: made from Left at checkout
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
   $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
@@ -458,11 +458,26 @@ function make_goodwill_coupon(): array {
   if ($end !== '' && $end < date('Y-m-d')) return ['', '!The end date has already passed. Please pick today or a later day.'];
   $abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';   // no 0/O or 1/I, so it is easy to read out
   $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?');
-  do { $code = 'GOODWILL-'; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
+  do { $code = $prefix; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
   $c = ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => 0, 'starts' => '', 'ends' => $end === '' ? '' : "$end 23:59",
     'max_uses' => 1, 'stack' => 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'active' => 1, 'phone' => $phone, 'created' => shop_now()];
   shop_upsert('coupons', ['code'], $c);
   return [$code, "$code is ready: " . coupon_label($c) . ' for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
+}
+/* the free product picker: one box to type in or pick from its dropdown (every product and size, at ₹0 in the order; gift sets are
+   left out, they need fragrances picked). The hidden input carries "id|size"; admin.js fills it when a line is picked. */
+function free_pick(string $name, ?array $E): string {
+  $li = ''; $pick = '';
+  foreach (fomaxo_catalog()['products'] as $id => $p) {
+    if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) continue;
+    foreach ($p['prices'] as $opt => $pr) {
+      $t = $p['name'] . ' ' . opt_label($p, (string)$opt) . ' · ' . rupees((int)round($pr * 100));
+      if (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt) $pick = $t;
+      $li .= '<li data-v="' . h("$id|$opt") . '">' . h($t) . '</li>';
+    }
+  }
+  return '<span class="fpick"><input type="text" data-ffind value="' . h($pick) . '" placeholder="Type or pick" aria-label="Free product" autocomplete="off">'
+    . '<input type="hidden" name="' . $name . '" value="' . h($pick !== '' ? $E['free_id'] . '|' . $E['free_opt'] : '') . '"><ul class="fplist" hidden>' . $li . '</ul></span>';
 }
 /* A coupon's WhatsApp message, laid out like the refill reminder: short lines, a blank line between parts, the offer and code in *bold*
    (WhatsApp shows *text* as bold). No emoji: wa.me shows them as "?". $intro = the opening line, $extra = more lines for the details part. */

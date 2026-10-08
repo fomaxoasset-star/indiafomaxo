@@ -136,21 +136,6 @@ if ($tab === 'coupons') {
     return $s && $e ? "$s → $e" : ($s ? "From $s" : ($e ? "Until $e" : '')); };
   $tbox = fn(string $name, string $v, string $whole) => '<div class="cpt2">' . date_box($name, substr($v, 0, 10), $name === 'starts' ? 'Starts on' : 'Ends on')
     . '<input type="time" name="' . $name . '_time" value="' . h(strlen($v) > 10 && substr($v, 11) !== $whole ? substr($v, 11, 5) : '') . '" aria-label="' . ($name === 'starts' ? 'Start time' : 'End time') . '"></div>';
-  /* the free product picker: one box to type in or pick from its dropdown (every product and size, at ₹0 in the order; gift sets are
-     left out, they need fragrances picked). The hidden input carries "id|size"; admin.js fills it when a line is picked. */
-  $freePick = function (string $name, ?array $E) {
-    $li = ''; $pick = '';
-    foreach (fomaxo_catalog()['products'] as $id => $p) {
-      if ($p['kind'] === 'set' || (!empty($p['hidden']) && ($E['free_id'] ?? '') !== $id)) continue;
-      foreach ($p['prices'] as $opt => $pr) {
-        $t = $p['name'] . ' ' . opt_label($p, (string)$opt) . ' · ' . rupees((int)round($pr * 100));
-        if (($E['free_id'] ?? '') === $id && (string)($E['free_opt'] ?? '') === (string)$opt) $pick = $t;
-        $li .= '<li data-v="' . h("$id|$opt") . '">' . h($t) . '</li>';
-      }
-    }
-    return '<span class="fpick"><input type="text" data-ffind value="' . h($pick) . '" placeholder="Type or pick" aria-label="Free product" autocomplete="off">'
-      . '<input type="hidden" name="' . $name . '" value="' . h($pick !== '' ? $E['free_id'] . '|' . $E['free_opt'] : '') . '"><ul class="fplist" hidden>' . $li . '</ul></span>';
-  };
   $num = fn($p) => $p % 100 ? number_format($p / 100, 2, '.', '') : (string)intdiv($p, 100);
   $panes = ['list' => 'Your coupons', 'add' => $E ? 'Edit ' . h($E['code']) : 'Add a coupon'];
   $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
@@ -163,7 +148,7 @@ if ($tab === 'coupons') {
     . '<label><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label>'
     . '<label><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label></div>'
     . '<div class="cp2"><label class="cpamt">Amount<input type="number" name="value" min="1" step="any" inputmode="decimal" value="' . h($E && $E['kind'] !== 'free' ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label>'
-    . '<label class="cpfree">Free product' . $freePick('free', $E) . '</label>'
+    . '<label class="cpfree">Free product' . free_pick('free', $E) . '</label>'
     . '<label><span class="cpmin">Minimum order ₹</span><span class="cpspend">Spend at least ₹</span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="None"></label></div>'
     . '<div class="cpf cpx">'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
@@ -185,7 +170,7 @@ if ($tab === 'coupons') {
     . '<div class="sry-f"><input name="phone" type="tel" inputmode="tel" maxlength="16" required placeholder="Mobile" aria-label="Customer mobile number" autocomplete="off">'
     . '<select name="gkind" class="sry-kind" aria-label="Coupon gives"><option value="pct">% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select>'
     . '<input name="pct" class="sry-val" type="number" min="1" step="1" inputmode="numeric" placeholder="10" aria-label="How much off">'
-    . str_replace('class="fpick"', 'class="fpick sry-free"', $freePick('gfree', null))
+    . str_replace('class="fpick"', 'class="fpick sry-free"', free_pick('gfree', null))
     . '<label class="sry-end">' . str_replace('placeholder="dd/mm/yyyy"', 'placeholder="Ends (optional)"', date_box('ends', '', 'End date (optional)')) . '</label>'
     . '<button class="btn">Make coupon</button></div>'
     . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . h(coupon_label($M)) . ' · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'
@@ -202,7 +187,7 @@ if ($tab === 'coupons') {
       $wa = $goodwill($c) ? (!$c['uses'] && !str_starts_with($c['code'], 'REFILL-') ? goodwill_wa($c) : '') : ((int)$c['active'] ? coupon_wa($c) : '');   // refill codes go out on their own
       $used = $c['uses'] . ((int)$c['max_uses'] ? ' / ' . (int)$c['max_uses'] : '');
       $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
-        . ($goodwill($c) ? '<td>' . h(coupon_label($c)) . ' <span class="cpstag goodwill">' . (str_starts_with($c['code'], 'REFILL-') ? 'Refill' : 'Goodwill') . '</span><small class="sry-ph">For ' . h(phone_fmt($c['phone'])) . '</small>' . ($limit($c) !== '' ? '<small class="show-m">' . h($limit($c)) . '</small>' : '') . '</td>'
+        . ($goodwill($c) ? '<td>' . h(coupon_label($c)) . ' <span class="cpstag goodwill">' . (str_starts_with($c['code'], 'REFILL-') ? 'Refill' : (str_starts_with($c['code'], 'CART-') ? 'Left cart' : 'Goodwill')) . '</span><small class="sry-ph">For ' . h(phone_fmt($c['phone'])) . '</small>' . ($limit($c) !== '' ? '<small class="show-m">' . h($limit($c)) . '</small>' : '') . '</td>'
           . '<td class="hide-m"><span class="muted">None</span></td><td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No end date</span>') . '</td>'
         : '<td>' . h(coupon_label($c)) . ($c['kind'] === 'free' ? ' <span class="cpstag free">Free product</span>' : (!empty($c['stack']) ? ' <span class="cpstag both">' . coupon_stack_label($c) . '</span>' : ''))   // only "Use both" is tagged; the bigger offer is the usual
           . (!empty($c['per_cust']) ? ' <span class="cpstag">1 per customer</span>' : '') . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
@@ -626,19 +611,20 @@ if ($tab === 'analytics' && !$cv) {
   $body .= '</tbody></table></div></div>';
   /* left at checkout: everyone who typed their details in these dates (all of them are kept for good) */
   $L = checkout_leads($from, $to);
+  $waSvg = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
   $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="lt-n muted nw">' . count($L) . (count($L) === 1 ? ' person' : ' people') . '</span><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts" data-csrf="' . h($CSRF) . '"><div class="lt-hd"><span></span><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span><span></span></div>';
   if (!$L) $body .= '<p class="empty">Nobody typed their details at checkout in these dates.</p>';
   /* one line per person (date, name, state, bag, where they stopped, ordered later); WhatsApp at the end only for an Indian mobile number (6–9 and 10 digits, what WhatsApp works on); tap the line to open mobile, email, address and products */
   foreach ($L as $l) {
     $names = lead_items($l);
-    $msg = 'Hi ' . ($l['name'] ?: 'there') . ', this is FOMAXO. We saw you were about to order ' . ($names ?: 'from our shop') . '. Can we help you finish your order?';
+    $hi = 'Hi ' . ($l['name'] ?: 'there') . ",\n\nWe saw you were about to order " . ($names !== '' ? "*$names*" : 'from our shop') . ' at FOMAXO.';   // the message's opening; admin.js adds the rest
     $later = $l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<span class="badge st-paid">' . h($l['later']) . '</span>');
     $body .= '<details class="lt' . ($l['later'] !== '' ? ' dim' : '') . '" data-sid="' . h($l['sid']) . '"><summary>'
       . '<span class="lt-x"><button type="button" class="xbtn" data-lead="' . h($l['sid']) . '" data-who="' . h($l['name'] ?: ($l['phone'] ? phone_fmt($l['phone']) : 'this person')) . '" title="Remove from this list" aria-label="Remove ' . h($l['name'] ?: 'this person') . ' from Left at checkout">✕</button></span>'
       . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
       . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
       . '<span class="lt-later">' . $later . '</span>'
-      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<a class="btn sm" href="https://wa.me/91' . h($l['phone']) . '?text=' . rawurlencode($msg) . '" target="_blank" rel="noopener" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . '"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg><span>WhatsApp</span></a>' : '') . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm" data-ltwa="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-hi="' . h($hi) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . '">' . $waSvg . '<span>WhatsApp</span></button>' : '') . '</span>'
       . '<span class="lt-chev" aria-hidden="true"></span></summary>'
       . '<div class="lt-more"><dl>'
       . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
@@ -649,6 +635,15 @@ if ($tab === 'analytics' && !$cv) {
       . '<dt>Ordered later</dt><dd>' . ($l['later'] !== '' && $l['later'] !== 'yes' ? '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '">Order ' . h($l['later']) . '</a>' : ($l['later'] === 'yes' ? 'Yes' : 'Not ordered')) . '</dd></dl>'
       . '</div></details>';
   }
+  /* WhatsApp from Left at checkout: a ready message, with or without a coupon made for that customer only (admin.js) */
+  $body .= '<dialog class="ltwa" id="ltWa"><div class="bh"><h3>WhatsApp <b class="ltwa-who"></b></h3></div><div class="bb cpf">'
+    . '<label>Coupon<select class="ltwa-kind"><option value="">No coupon</option><option value="pct">% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select></label>'
+    . '<label class="ltwa-val">How much<input type="number" min="1" step="1" inputmode="numeric" placeholder="10"></label>'
+    . '<label class="ltwa-free">Free product' . free_pick('ltfree', null) . '</label>'
+    . '<p class="muted small ltwa-note">A new code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.</p>'
+    . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="12"></textarea></label>'
+    . '<p class="err ltwa-err" hidden></p>'
+    . '<div class="row ltwa-btns"><button type="button" class="btn line" data-ltwa-close>Cancel</button><button type="button" class="btn" data-ltwa-send>' . $waSvg . '<span>Open WhatsApp</span></button></div></div></dialog>';
   $body .= '</div></div></div></div>';
 }
 
