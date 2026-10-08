@@ -411,23 +411,18 @@ function save_coupon(): string {
   }
   $value = $kind === 'pct' ? (int)$v : (int)round((float)$v * 100);
   $min = trim((string)($_POST['min_order'] ?? '')); if ($min !== '' && (!is_numeric($min) || $min < 0)) return '!Please write the minimum order in rupees, or leave it empty.';
-  /* the time limit: a date (dd/mm/yyyy) and an hour for each end; no hour = from the start of the day / to the end of it */
-  $when = function (string $k, string $whole) {
-    $d = trim((string)($_POST[$k] ?? '')); $t = trim((string)($_POST[$k . '_time'] ?? ''));
-    if ($d === '') return $t === '' ? '' : null;
-    $day = parse_day($d); if ($day === '' || ($t !== '' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t))) return null;
-    return $day . ' ' . ($t ?: $whole);
-  };
-  $starts = $when('starts', '00:00'); if ($starts === null) return '!Please type the start date as dd/mm/yyyy (and a time if you want one), or leave it empty.';
-  $ends = $when('ends', '23:59'); if ($ends === null) return '!Please type the end date as dd/mm/yyyy (and a time if you want one), or leave it empty.';
-  if ($starts !== '' && $ends !== '' && $ends <= $starts) return '!The coupon has to end after it starts.';
-  $uses = trim((string)($_POST['max_uses'] ?? '')); if ($uses !== '' && (!ctype_digit($uses))) return '!Please write the usage limit as a number, or leave it empty.';
-  $s = shop_db()->prepare('SELECT created FROM coupons WHERE code = ?'); $s->execute([$code]); $was = $s->fetchColumn();
-  if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
+  /* the simple form sends only an end date (works to the end of that day). Start, usage limit, the website offer choice and On
+     are not on it: a new coupon starts now, has no total limit, uses the bigger offer and is on; an edited one keeps what it had. */
+  $s = shop_db()->prepare('SELECT * FROM coupons WHERE code = ?'); $s->execute([$code]); $old = $s->fetch() ?: null;
+  if ($old && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
+  $d = trim((string)($_POST['ends'] ?? '')); $ends = $d === '' ? '' : parse_day($d);
+  if ($d !== '' && $ends === '') return '!Please type the end date as dd/mm/yyyy, or leave it empty.';
+  if ($ends !== '' && $ends < date('Y-m-d')) return '!The end date has already passed. Please pick today or a later day.';
+  $ends = $ends === '' ? '' : ($old && substr(coupon_ends($old), 0, 10) === $ends ? coupon_ends($old) : "$ends 23:59");   // an edited coupon keeps its end hour
   shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => $kind, 'value' => $value, 'min_order' => $min === '' ? 0 : (int)round((float)$min * 100),
-    'starts' => $starts, 'ends' => $ends, 'max_uses' => $uses === '' ? 0 : min(1000000, (int)$uses),
-    'stack' => ($_POST['stack'] ?? '') === '1' ? 1 : 0, 'free_id' => $free[0], 'free_opt' => $free[1], 'per_cust' => !empty($_POST['per_cust']) ? 1 : 0, 'active' => !empty($_POST['active']) ? 1 : 0, 'created' => $was ?: shop_now()]);
-  return $code . ($was !== false ? ' is saved.' : ' is ready.') . (empty($_POST['active']) ? ' It is off until you switch it on.' : ($starts > date('Y-m-d H:i') ? ' It works at checkout from ' . coupon_when($starts) . '.' : ' Shoppers can use it at checkout.'));
+    'starts' => (string)($old['starts'] ?? ''), 'ends' => $ends, 'max_uses' => (int)($old['max_uses'] ?? 0), 'stack' => (int)($old['stack'] ?? 0),
+    'free_id' => $free[0], 'free_opt' => $free[1], 'per_cust' => !empty($_POST['per_cust']) ? 1 : 0, 'active' => $old ? (int)$old['active'] : 1, 'created' => $old['created'] ?? shop_now()]);
+  return $code . ($old ? ' is saved.' : ' is ready.') . ($old && !(int)$old['active'] ? ' It is still off: tap Turn on in the list.' : ' Shoppers can use it at checkout.');
 }
 
 /* A goodwill coupon for a customer who had a late delivery or a faulty product: a new code like GOODWILL-7K2Q, % off,
