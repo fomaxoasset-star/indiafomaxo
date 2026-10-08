@@ -133,6 +133,10 @@ if ($tab === 'coupons') {
     . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label></span></label>'
     . '<label>Amount<input type="number" name="value" min="1" step="any" required inputmode="decimal" value="' . h($E ? ($E['kind'] === 'pct' ? (string)$E['value'] : $num((int)$E['value'])) : '') . '" placeholder="10"></label></div>'
     . '<label>Minimum order ₹ <small>(optional)</small><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="No minimum"></label>'
+    /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
+    . '<div class="cpst" role="radiogroup" aria-label="With the website offer">'
+    . '<label><input type="radio" name="stack" value="0"' . (empty($E['stack']) ? ' checked' : '') . ' required><span><b>Use the bigger offer</b>Coupon or website offer, whichever saves more</span></label>'
+    . '<label><input type="radio" name="stack" value="1"' . (!empty($E['stack']) ? ' checked' : '') . '><span><b>Use both</b>Website offer first, then the coupon on top</span></label></div>'
     . '<div class="cptl"><b>Time limit</b> <small class="muted">(optional)</small></div>'
     . '<label>Starts <small>(date, and a time if you want one)</small>' . $tbox('starts', $E ? coupon_starts($E) : '', '00:00') . '</label>'
     . '<label>Ends <small>(no time = till the end of that day)</small>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
@@ -147,7 +151,7 @@ if ($tab === 'coupons') {
     foreach ($CP as $c) {
       [$sk, $sl] = $state($c); $used = $c['uses'] . ((int)$c['max_uses'] ? ' / ' . (int)$c['max_uses'] : '');
       $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
-        . '<td>' . h(coupon_label($c)) . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
+        . '<td>' . h(coupon_label($c)) . ' <span class="cpstag' . (!empty($c['stack']) ? ' both' : '') . '">' . coupon_stack_label($c) . '</span><small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
         . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
         . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>'
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'q' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'

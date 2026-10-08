@@ -55,6 +55,10 @@ function shop_db(): PDO {
     if (shop_setting('conv_since') === null) shop_set('conv_since', date('Y-m-d'));
     shop_set('schema', '8');
   }
+  if (shop_setting('schema') === '8') {   // coupons: 0 = "Use the bigger offer" (coupon or website offer, whichever saves more), 1 = "Use both" (offer first, then the coupon)
+    try { $SHOP_DB->exec("ALTER TABLE coupons ADD stack INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
+    shop_set('schema', '9');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -113,7 +117,7 @@ function shop_schema(PDO $db): void {
        max_uses 0 = no limit. Uses are counted from the orders that carry the code. */
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
-      starts VARCHAR(16) NOT NULL DEFAULT '')$tail",
+      starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0)$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
@@ -354,9 +358,13 @@ function coupon_time(array $c): string {
 /* "10 Oct 2026, 6:00 pm" */
 function coupon_when(string $ymdhi): string { return date('j M Y, g:i a', strtotime($ymdhi)); }
 function coupon_label(array $c): string { return $c['kind'] === 'pct' ? (int)$c['value'] . '% off' : rupees((int)$c['value']) . ' off'; }
-/* Checks a code for a bag of $subtotal paise. Returns ['error' => …] or ['code', 'discount' (paise), 'label'].
-   The bag always keeps at least ₹1 to pay, so online payment still works. */
-function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null): array {
+/* how the coupon mixes with the website offer (multi-buy), set with the two ring dots on Admin → Coupons */
+function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Use both' : 'Bigger offer'; }
+/* Checks a code for a bag of $subtotal paise. $offer = what the website offer (multi-buy) takes off this bag, in paise.
+   Returns ['error' => …] or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'stack', 'label'].
+   "Use the bigger offer": the coupon or the offer, whichever saves more. "Use both": the offer first, then the coupon off the rest.
+   The minimum order counts the bag before any discount. The bag always keeps at least ₹1 to pay, so online payment still works. */
+function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null, int $offer = 0): array {
   $db = $db ?: shop_db(); $code = coupon_clean($code);
   if ($code === '') return ['error' => 'Please type your coupon code.'];
   $s = $db->prepare('SELECT * FROM coupons WHERE code = ?'); $s->execute([$code]); $c = $s->fetch();
@@ -365,9 +373,12 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null): array 
   if (coupon_time($c) === 'over') return ['error' => "Coupon $code has expired."];
   if ((int)$c['max_uses'] > 0 && shop_coupon_uses($db, $code) >= (int)$c['max_uses']) return ['error' => "Coupon $code has been fully used."];
   if ($subtotal < (int)$c['min_order']) return ['error' => "Coupon $code is for orders of " . rupees((int)$c['min_order']) . ' and above. Add ' . rupees((int)$c['min_order'] - $subtotal) . ' more to use it.'];
-  $off = $c['kind'] === 'pct' ? (int)round($subtotal * min(100, max(0, (int)$c['value'])) / 100) : (int)$c['value'];
-  $off = max(0, min($off, $subtotal - 100));
-  return ['code' => $code, 'discount' => $off, 'label' => coupon_label($c), 'ends' => coupon_ends($c)];
+  $stack = !empty($c['stack']); $offer = max(0, min($offer, $subtotal - 100));
+  $base = $stack ? $subtotal - $offer : $subtotal;
+  $off = $c['kind'] === 'pct' ? (int)round($base * min(100, max(0, (int)$c['value'])) / 100) : (int)$c['value'];
+  $off = max(0, min($off, $base - 100));
+  if (!$stack) { if ($off >= $offer) $offer = 0; else $off = 0; }   // the bigger saving wins; a tie goes to the coupon
+  return ['code' => $code, 'discount' => $off, 'offer' => $offer, 'stack' => $stack, 'label' => coupon_label($c), 'ends' => coupon_ends($c)];
 }
 
 /* ---------------- limited-time offer (Admin → Offer) ---------------- */

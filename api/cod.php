@@ -24,7 +24,7 @@ elseif ($order['subtotal'] < $cod['min']) fail('Cash on delivery is for orders o
 $cp = fomaxo_coupon($in, $order['subtotal']);   // a coupon typed at checkout: checked again inside the order below, so its usage limit holds
 if (isset($cp['error'])) fail($cp['error']);
 /* the hidden maximum: COD only for orders under it, counted after the coupon and before the COD fee */
-$codMax = fn(array $cp) => $cod['max'] > 0 && $order['subtotal'] - ($cp['discount'] ?? 0) >= $cod['max'];
+$codMax = fn(array $cp) => $cod['max'] > 0 && $order['subtotal'] - ($cp['off'] ?? 0) >= $cod['max'];
 $maxMsg = 'COD for orders under ' . rupees($cod['max']) . '. Please pay by card.';
 if ($codMax($cp)) fail($maxMsg);
 
@@ -42,10 +42,10 @@ try {
     if ($codMax($cp)) return ['error' => $maxMsg];
     $short = shop_take_stock($db, $order['items'], true);
     if ($short !== '') return ['error' => $short];
-    $total = $order['subtotal'] - ($cp['discount'] ?? 0) + $cod['fee'];
+    $total = $order['subtotal'] - ($cp['off'] ?? 0) + $cod['fee'];
     $rec = ['ref' => 'cod-' . bin2hex(random_bytes(8)), 'no' => shop_next_no($db), 'created' => shop_now(), 'method' => 'cod', 'status' => 'new',
       'total' => $total, 'codFee' => $cod['fee'], 'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'stock_taken' => true,
-      'coupon' => $cp['code'] ?? '', 'discount' => $cp['discount'] ?? 0];
+      'coupon' => $cp['code'] ?? '', 'discount' => $cp['off'] ?? 0];
     shop_insert_order($db, $rec);
     return $rec;
   });

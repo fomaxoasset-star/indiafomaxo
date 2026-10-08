@@ -347,6 +347,13 @@ body.zooming{overflow:hidden}
 .cpf{display:flex;flex-direction:column;gap:12px}.cpf label{margin-bottom:0}.cpv{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:end}
 .seg.ck{display:flex;margin-top:4px}.seg.ck label{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;margin:0;white-space:nowrap}.seg.ck label+label{border-left:1px solid var(--line)}
 .seg.ck input{position:absolute;opacity:0;pointer-events:none}.seg.ck label:has(input:checked){background:#2a2416;color:var(--gold2)}
+/* Coupons: "Use the bigger offer" / "Use both" — two gold ring dots, one short line each */
+.cpst{display:flex;flex-direction:column;gap:8px}.cpst label{flex-direction:row!important;align-items:flex-start;gap:10px!important;margin:0;cursor:pointer;padding:9px 11px;border:1px solid var(--line);border-radius:8px}
+.cpst label:has(input:checked){border-color:var(--gold)}
+.cpst input{appearance:none;-webkit-appearance:none;flex:none;box-sizing:border-box;width:18px!important;height:18px;min-height:0;padding:0;margin:1px 0 0;border:1.5px solid var(--gold);border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer}
+.cpst input::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gold);transform:scale(0);transition:transform .15s}.cpst input:checked::before{transform:scale(1)}
+.cpst span{display:flex;flex-direction:column;gap:1px;font-size:12.5px;color:var(--muted);line-height:1.35}.cpst b{font-size:14px;color:var(--text);font-weight:600}
+.cpstag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;vertical-align:1px;margin-left:4px}.cpstag.both{border-color:var(--gold);color:var(--gold2)}
 .cpon{flex-direction:row!important;align-items:center;gap:8px!important;font-size:14px}.cpon input{width:18px;height:18px}
 .wa-in{color:var(--green)}
 .cpn{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;color:var(--gold2)}
