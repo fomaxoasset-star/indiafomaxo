@@ -1953,7 +1953,13 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .cb-price b{font-family:var(--display);font-weight:400;font-size:28px;line-height:1.1;color:var(--gold-hi);letter-spacing:.04em}
 .cb-save{margin-left:auto;padding:6px 10px;border:1px solid var(--gold);color:var(--gold-hi);font-size:11px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
 .gf-set .cb-price + .ctas{margin-top:0}
-.gf-set .ctas.cb-ctas{grid-template-columns:1fr 1fr}.cb-in{color:var(--gold-hi)!important;letter-spacing:.14em;text-transform:uppercase;font-size:10px}
+.cb-col{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:1px;background:var(--line);border:1px solid var(--line);overflow:hidden}
+.cb-col img{width:100%!important;height:100%!important;aspect-ratio:auto!important;border:0!important;object-fit:cover;min-height:0}
+.cb-col.n2{grid-template-columns:1fr 1fr;grid-auto-rows:100%}.cb-col.n3 img:first-child{grid-row:span 2}
+.line-item .cb-col{width:78px;aspect-ratio:4/5}.co-img .cb-col{width:70px;height:70px}
+@media(max-width:820px){.line-item .cb-col{width:64px}.co-img .cb-col{width:58px;height:58px}}
+.line-item .cb-names{text-transform:none;letter-spacing:.02em;color:var(--champagne);line-height:1.5}
+.gf-set .ctas.cb-ctas{grid-template-columns:1fr 1fr}.gf-set .ctas .cb-soon{grid-column:1/-1;opacity:.7;cursor:default}.cb-tab small b{font-weight:500;font-variant-numeric:tabular-nums}.cb-in{color:var(--gold-hi)!important;letter-spacing:.14em;text-transform:uppercase;font-size:10px}
 .cb-slot:hover,.cb-slot:focus-visible{border-color:var(--gold);outline:none}
 .cb-slot img,.cb-slot .ph0{width:58px;height:58px;object-fit:cover;flex:none;background:#000;border:1px solid var(--line)}
 .cb-slot .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -2428,6 +2434,21 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 <!-- Combo page combos (#/combo): name, words, saving (rupees off the planned products), slots and what each slot may hold
      (parfum = 50/100ml parfum, mini = 10ml parfum, car, gift = mini/lip balm/car, care:body|hair|face|lips).
      fest: festival tab, offer + free: the free-gift offer. Read by index.html and by the checkout (api/store-lib.php) -->
+<!-- Festival days for the Combo page tabs (check the moving ones each year and keep 3 years ahead). A festival's combos can be
+     bought from one month before its day until the day itself; the checkout (api/store-lib.php) checks the same dates -->
+<script type="application/json" id="fest-dates">
+{
+  "onam": [["2026-08-26"], ["2027-09-12"], ["2028-08-31"]],
+  "vishu": [["2026-04-14"], ["2027-04-15"], ["2028-04-14"]],
+  "diwali": [["2026-11-08"], ["2027-10-29"], ["2028-10-17"]],
+  "eid": [["2026-03-20", "Eid ul-Fitr"], ["2026-05-27", "Eid al-Adha"], ["2027-03-10", "Eid ul-Fitr"], ["2027-05-17", "Eid al-Adha"], ["2028-02-27", "Eid ul-Fitr"], ["2028-05-05", "Eid al-Adha"]],
+  "christmas": [["2026-12-25"], ["2027-12-25"], ["2028-12-25"]],
+  "valentine": [["2026-02-14"], ["2027-02-14"], ["2028-02-14"]],
+  "mother": [["2026-05-10"], ["2027-05-09"], ["2028-05-14"]],
+  "father": [["2026-06-21"], ["2027-06-20"], ["2028-06-18"]],
+  "rakhi": [["2026-08-28"], ["2027-08-17"], ["2028-08-05"]]
+}
+</script>
 <script type="application/json" id="combo-data">
 [
 {"id": "onam-sadya", "fest": "onam", "tag": "Onam", "name": "Onam Sadya Combo", "save": 314, "v": "Coconut-fresh Matcha Coco with body care and a lip balm, for the day of the feast.", "slots": 3, "only": ["parfum", "care:body", "care:lips"], "items": [["matchacoco", 50], ["pc-radiant-gel", "one"], ["pc-kissberry", "one"]]},
@@ -3070,11 +3091,19 @@ function renderCart(){
     foot.innerHTML = ''; const r = $('.bl-row', body); if (r) r.scrollLeft = rowX; return;
   }
   const offs = cbOffs(cart);
-  body.innerHTML = cart.map((l, i) => { const p = P[l.id], off = offs.get(l); return `<div class="line-item">
+  const qtyHTML = (l, i) => `<div class="q"><button data-q="${i}" data-d="-1" aria-label="${l.qty === 1 ? 'Remove' : 'Decrease'}">${l.qty === 1 ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' : '−'}</button><span>${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Increase">+</button></div>`;
+  body.innerHTML = cbRows(cart, offs).map(({l, i}) => { const p = P[l.id], off = offs.get(l);
+    if (off !== undefined) { const c = cbInfo(cart, l, offs); return `<div class="line-item cb-line">
+      <a href="#/combo" data-close aria-label="${esc(c.g.name)}">${c.pics}</a>
+      <div><h4>${esc(c.g.name)}</h4><div class="o cb-in">Combo · ${c.ls.length} products</div><div class="o cb-names">${esc(c.names)}</div>
+        ${qtyHTML(l, i)}
+        <div style="margin-top:10px"><span class="price">${c.worth > c.price ? `<s class="was">${money(c.worth, '₹')}</s> ` : ''}${money(c.price, '₹')}</span></div>
+        <button class="rm" data-rm="${i}">Remove</button></div></div>`; }
+    return `<div class="line-item">
       <a href="#/product/${p.id}" data-close><img src="${IMG(lineImg(l))}" alt="${esc(p.name)}"></a>
       <div><h4>${esc(p.name)}</h4><div class="o">${optLabel(p, l.opt)} · ${esc(p.family.split('·')[0])}</div>${l.picks ? `<div class="o" style="text-transform:none;letter-spacing:.02em;color:var(--champagne)">${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</div>` : ''}
         <div class="q"><button data-q="${i}" data-d="-1" aria-label="${l.qty === 1 ? 'Remove' : 'Decrease'}">${l.qty === 1 ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' : '−'}</button><span>${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Increase">+</button></div>
-        <div style="margin-top:10px">${off !== undefined ? `${CB[l.cb.split('~')[0]] ? `<div class="o cb-in">Combo · ${esc(CB[l.cb.split('~')[0]].name)}</div>` : ''}<span class="price">${off > 0 ? `<s class="was">${money(p.prices[l.opt], '₹')}</s> ` : ''}${money(lineUnit(l, offs), '₹')}</span>` : priceHTML(p, l.opt)}${stockTag(p, l.opt)}</div>
+        <div style="margin-top:10px">${priceHTML(p, l.opt)}${stockTag(p, l.opt)}</div>
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
   const r = $('.bl-row', body); if (r) r.scrollLeft = rowX;
   const t = subtotal(cart);
@@ -3571,21 +3600,30 @@ COMBO_SETS.forEach(g => { if (!g.offer && g.slots >= 3) g.none = [...Array(g.slo
 /* festival tabs on the Combo page, nearest festival first. dates: the day of each festival (check them each year);
    a festival counts as coming up until the day after it. when: months used once the dates run out */
 const FI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const FD = JSON.parse(document.getElementById('fest-dates').textContent);   // festival days, kept 3 years ahead (also read by the checkout)
 const FESTS = [
-  {key: 'onam', name: 'Onam', dates: [['2026-08-26'], ['2027-09-12'], ['2028-08-31']], when: [8], icon: FI('<circle cx="12" cy="12" r="2.5"/><path d="M12 3c1.6 2.2 1.6 4.2 0 6.5C10.4 7.2 10.4 5.2 12 3zm0 18c-1.6-2.2-1.6-4.2 0-6.5 1.6 2.3 1.6 4.3 0 6.5zM3 12c2.2-1.6 4.2-1.6 6.5 0C7.2 13.6 5.2 13.6 3 12zm18 0c-2.2 1.6-4.2 1.6-6.5 0 2.3-1.6 4.3-1.6 6.5 0z"/>')},
-  {key: 'vishu', name: 'Vishu', dates: [['2026-04-14'], ['2027-04-15'], ['2028-04-14']], when: [2, 3], icon: FI('<path d="M12 3v6M8 5l4 4 4-4"/><circle cx="8" cy="14" r="2"/><circle cx="16" cy="14" r="2"/><circle cx="12" cy="18" r="2"/><path d="M12 9v7"/>')},
-  {key: 'diwali', name: 'Diwali', dates: [['2026-11-08'], ['2027-10-29'], ['2028-10-17']], when: [9, 10], icon: FI('<path d="M12 4c2 2.5 2 4.5 0 6.5-2-2-2-4 0-6.5z"/><path d="M4 14h16c-1 3.5-4.2 6-8 6s-7-2.5-8-6z"/>')},
-  {key: 'eid', name: 'Eid', dates: [['2026-03-20', 'Eid ul-Fitr'], ['2026-05-27', 'Eid al-Adha'], ['2027-03-10', 'Eid ul-Fitr'], ['2027-05-17', 'Eid al-Adha'], ['2028-02-27', 'Eid ul-Fitr'], ['2028-05-05', 'Eid al-Adha']], when: [4, 5, 6], icon: FI('<path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z"/><path d="M18 6l.6 1.4L20 8l-1.4.6L18 10l-.6-1.4L16 8l1.4-.6z"/>')},
-  {key: 'christmas', name: 'Christmas', dates: [['2026-12-25'], ['2027-12-25'], ['2028-12-25']], when: [11, 0, 1], icon: FI('<path d="M12 3l5 7h-3l4 6H6l4-6H7z"/><path d="M12 16v4"/>')},
-  {key: 'valentine', name: "Valentine's Day", dates: [['2026-02-14'], ['2027-02-14'], ['2028-02-14']], when: [0, 1], icon: FI('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>')},
-  {key: 'mother', name: "Mother's Day", dates: [['2026-05-10'], ['2027-05-09'], ['2028-05-14']], when: [4], icon: FI('<circle cx="12" cy="9" r="2.5"/><path d="M12 4.5c1.5-2 4-1 3.6 1.3M12 4.5c-1.5-2-4-1-3.6 1.3M14.4 8c2.4-.4 3.4 2.2 1.3 3.4M9.6 8c-2.4-.4-3.4 2.2-1.3 3.4M12 11.5V21M12 17c2-2.5 4.5-2.5 5-2M12 17c-2-2.5-4.5-2.5-5-2"/>')},
-  {key: 'father', name: "Father's Day", dates: [['2026-06-21'], ['2027-06-20'], ['2028-06-18']], when: [5], icon: FI('<path d="M9 3h6l-1.5 3h-3z"/><path d="M10.5 6 8 17l4 4 4-4-2.5-11"/>')},
-  {key: 'rakhi', name: 'Raksha Bandhan', dates: [['2026-08-28'], ['2027-08-17'], ['2028-08-05']], when: [7], icon: FI('<circle cx="12" cy="12" r="3"/><path d="M2 12h7M15 12h7M9.5 9.5 7 7m7.5 2.5L17 7m-7.5 7.5L7 17m7.5-2.5L17 17"/>')}
+  {key: 'onam', name: 'Onam', dates: FD.onam, when: [8], icon: FI('<circle cx="12" cy="12" r="2.5"/><path d="M12 3c1.6 2.2 1.6 4.2 0 6.5C10.4 7.2 10.4 5.2 12 3zm0 18c-1.6-2.2-1.6-4.2 0-6.5 1.6 2.3 1.6 4.3 0 6.5zM3 12c2.2-1.6 4.2-1.6 6.5 0C7.2 13.6 5.2 13.6 3 12zm18 0c-2.2 1.6-4.2 1.6-6.5 0 2.3-1.6 4.3-1.6 6.5 0z"/>')},
+  {key: 'vishu', name: 'Vishu', dates: FD.vishu, when: [2, 3], icon: FI('<path d="M12 3v6M8 5l4 4 4-4"/><circle cx="8" cy="14" r="2"/><circle cx="16" cy="14" r="2"/><circle cx="12" cy="18" r="2"/><path d="M12 9v7"/>')},
+  {key: 'diwali', name: 'Diwali', dates: FD.diwali, when: [9, 10], icon: FI('<path d="M12 4c2 2.5 2 4.5 0 6.5-2-2-2-4 0-6.5z"/><path d="M4 14h16c-1 3.5-4.2 6-8 6s-7-2.5-8-6z"/>')},
+  {key: 'eid', name: 'Eid', dates: FD.eid, when: [4, 5, 6], icon: FI('<path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z"/><path d="M18 6l.6 1.4L20 8l-1.4.6L18 10l-.6-1.4L16 8l1.4-.6z"/>')},
+  {key: 'christmas', name: 'Christmas', dates: FD.christmas, when: [11, 0, 1], icon: FI('<path d="M12 3l5 7h-3l4 6H6l4-6H7z"/><path d="M12 16v4"/>')},
+  {key: 'valentine', name: "Valentine's Day", dates: FD.valentine, when: [0, 1], icon: FI('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>')},
+  {key: 'mother', name: "Mother's Day", dates: FD.mother, when: [4], icon: FI('<circle cx="12" cy="9" r="2.5"/><path d="M12 4.5c1.5-2 4-1 3.6 1.3M12 4.5c-1.5-2-4-1-3.6 1.3M14.4 8c2.4-.4 3.4 2.2 1.3 3.4M9.6 8c-2.4-.4-3.4 2.2-1.3 3.4M12 11.5V21M12 17c2-2.5 4.5-2.5 5-2M12 17c-2-2.5-4.5-2.5-5-2"/>')},
+  {key: 'father', name: "Father's Day", dates: FD.father, when: [5], icon: FI('<path d="M9 3h6l-1.5 3h-3z"/><path d="M10.5 6 8 17l4 4 4-4-2.5-11"/>')},
+  {key: 'rakhi', name: 'Raksha Bandhan', dates: FD.rakhi, when: [7], icon: FI('<circle cx="12" cy="12" r="3"/><path d="M2 12h7M15 12h7M9.5 9.5 7 7m7.5 2.5L17 7m-7.5 7.5L7 17m7.5-2.5L17 17"/>')}
 ];
 const DAY = 864e5, today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const festNext = f => { const t = today0().getTime(); for (const [d, label] of f.dates || []) { const [y, mo, dd] = d.split('-').map(Number), at = new Date(y, mo - 1, dd).getTime();
   if (at >= t - DAY) return {at, label: label || f.name, days: Math.round((at - t) / DAY)}; } return null; };
+/* the festival day a combo can be bought for now (from one month before it until the day itself), or null */
+const festOpen = f => { const t = today0().getTime(); for (const [d] of f.dates || []) { const [y, mo, dd] = d.split('-').map(Number), at = new Date(y, mo - 1, dd).getTime();
+  if (t >= new Date(y, mo - 2, dd).getTime() && t <= at) return at; } return null; };
+const festOpens = f => { const n = f.next; if (!n) return null; const d = new Date(n.at); return new Date(d.getFullYear(), d.getMonth() - 1, d.getDate()); };
+/* time left to the festival day, for the tab: "31d 04h 12m" */
+const festLeft = at => { const ms = at - Date.now(); if (ms <= 0) return 'Today'; const d = Math.floor(ms / DAY), h = Math.floor(ms % DAY / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+  return `${d ? d + 'd ' : ''}${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`; };
 const festWhen = f => { const n = f.next; if (!n) return ''; const day = new Date(n.at).toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
+  if (!festOpen(f) && n.days > 0) return `${esc(n.label)} · ${day} · <b>Combos open ${festOpens(f).toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'})}</b>`;
   return `${esc(n.label)} · ${day} · <b>${n.days < 0 ? 'Happy ' + esc(n.label) : n.days === 0 ? 'Today' : n.days === 1 ? 'Tomorrow' : n.days + ' days to go'}</b>`; };
 /* worth = today's price of each product picked; combo price = worth less the combo's saving */
 const cbVal = ([id, sz]) => P[id] ? +P[id].prices[sz] || 0 : 0;
@@ -3612,7 +3650,7 @@ const buildSets = list => list.map(g => g.combo ? cbSwap(g) : {...g, items: g.it
    cbOffs: rupees off one of each line. The checkout works out the same sums on the server (api/store-lib.php fomaxo_combo_offs) */
 const CB = Object.fromEntries(COMBO_SETS.map(g => [g.id, g]));
 const cbGroup = (lines, tok) => lines.filter(l => l.cb === tok);
-const cbValid = (g, ls) => { if (!g || !ls.length) return false; const seen = new Set();
+const cbValid = (g, ls) => { if (!g || !ls.length || (g.fest && !festOpen(FESTS.find(f => f.key === g.fest) || {}))) return false; const seen = new Set();
   for (const l of ls) { const k = l.cs; if (!(k >= 0 && k < g.slots) || seen.has(k) || !P[l.id] || !hasPrice(P[l.id].prices[l.opt]) || !g.only[k](P[l.id], l.opt) || l.qty !== ls[0].qty) return false; seen.add(k); }
   return g.offer ? ls.length === g.slots : ls.length >= 2 && seen.has(0); };
 function cbOffs(lines){
@@ -3628,6 +3666,13 @@ function cbOffs(lines){
   return offs;
 }
 const lineUnit = (l, offs) => +P[l.id].prices[l.opt] - (offs.get(l) || 0);
+/* the bag and checkout show a combo as one row: its name, a collage of its products' pictures and its combo price.
+   cbRows: the lines to show (a combo's first line stands for the combo), with their place in the bag */
+const cbRows = (lines, offs) => { const seen = new Set(); return lines.map((l, i) => ({l, i})).filter(({l}) => !l.cb || !offs.has(l) || (!seen.has(l.cb) && seen.add(l.cb))); };
+const cbInfo = (lines, l, offs) => { const ls = cbGroup(lines, l.cb), g = CB[l.cb.split('~')[0]];
+  return {g, ls, worth: ls.reduce((a, x) => a + +P[x.id].prices[x.opt], 0), price: ls.reduce((a, x) => a + lineUnit(x, offs), 0),
+    pics: `<span class="cb-col n${Math.min(ls.length, 4)}">${ls.slice(0, 4).map(x => `<img src="${IMG(lineImg(x))}" alt="">`).join('')}</span>`,
+    names: ls.map(x => { const p = P[x.id]; return (p.kind ? p.name : `${p.name} ${optLabel(p, x.opt)}`) + (g.free && g.free.includes(x.cs) ? ' (free gift)' : ''); }).join(' · ')}; };
 /* a combo whose products changed (sold out, re-priced out of its slot) leaves the bag as a whole */
 { const bad = new Set(cart.filter(l => l.cb).map(l => l.cb).filter(t => !cbValid(CB[t.split('~')[0]], cbGroup(cart, t))));
   if (bad.size) { cart = cart.filter(l => !bad.has(l.cb)); try { localStorage.setItem('fomaxo_cart', JSON.stringify(cart)); } catch(e) {} } }
@@ -3666,7 +3711,7 @@ const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
       <div class="gf-pick"><small>Choose your products</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items.filter(x => x.length))}</div>` : ''}
-      <div class="ctas${g.combo ? ' cb-ctas' : ''}">${g.combo ? `<button class="btn line sm" type="button" data-cbadd="${g.id}">Add to bag</button><button class="btn sm" type="button" data-cbbuy="${g.id}">Buy now</button>` : `<button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button>`}</div>
+      <div class="ctas${g.combo ? ' cb-ctas' : ''}">${g.closed ? `<button class="btn line sm cb-soon" type="button" disabled>Opens ${esc(g.closed)}</button>` : g.combo ? `<button class="btn line sm" type="button" data-cbadd="${g.id}">Add to bag</button><button class="btn sm" type="button" data-cbbuy="${g.id}">Buy now</button>` : `<button class="btn sm" type="button" data-gpers="${g.id}">${WA_SVG()}${label}</button>`}</div>
     </div></article>`;
 function giftPage(){
   document.title = 'Personalized Gifting — FOMAXO';
@@ -3745,7 +3790,8 @@ function giftPage(){
 function comboPage(){
   document.title = 'Combos — FOMAXO';
   const all = buildSets(COMBO_SETS), sets = all.filter(g => !g.offer && !g.fest && COMBO_SHOW.includes(g.id)), offers = all.filter(g => g.offer);
-  const m = new Date().getMonth(), fests = FESTS.map(f => ({...f, next: festNext(f), sets: all.filter(g => g.fest === f.key)})).filter(f => f.sets.length)
+  const m = new Date().getMonth(), fests = FESTS.map(f => { const o = festOpen(f), x = {...f, next: festNext(f), open: o}, at = festOpens(x);
+      return {...x, sets: all.filter(g => g.fest === f.key).map(g => o ? g : {...g, closed: at ? at.toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}) : 'soon'})}; }).filter(f => f.sets.length)
     .sort((a, b) => (a.next ? a.next.at : 9e15) - (b.next ? b.next.at : 9e15)), open = ((fests[0] && fests[0].next ? fests[0] : fests.find(f => f.when.includes(m)) || fests[0]) || {}).key;
   return `
   <section class="gf-hero">
@@ -3770,7 +3816,7 @@ function comboPage(){
   </div></section>` : ''}
   ${fests.length ? `<section class="sec cb-fit" id="cb-fest" style="padding-top:0"><div class="wrap">
     <div class="cb-fhead"><span class="eyebrow">Festive celebrations</span><h2>Festive <em class="metal">combos</em></h2><p class="lead">Combos made for the festivals we celebrate across India and Kerala.</p></div>
-    <div class="cb-tabs" role="tablist" aria-label="Festivals">${fests.map(f => `<button type="button" role="tab" class="cb-tab${f.key === open ? ' on' : ''}" data-cbfest="${f.key}" aria-selected="${f.key === open}">${f.icon}<span>${esc(f.name)}${f.next ? `<small>${new Date(f.next.at).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}</small>` : ''}</span></button>`).join('')}</div>
+    <div class="cb-tabs" role="tablist" aria-label="Festivals">${fests.map(f => `<button type="button" role="tab" class="cb-tab${f.key === open ? ' on' : ''}" data-cbfest="${f.key}" aria-selected="${f.key === open}">${f.icon}<span>${esc(f.name)}${f.next ? `<small>${new Date(f.next.at).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}${f.open ? ` · <b data-cbleft="${f.open}">${festLeft(f.open)}</b>` : ''}</small>` : ''}</span></button>`).join('')}</div>
     ${fests.map(f => `<div role="tabpanel" data-cbpanel="${f.key}"${f.key === open ? '' : ' hidden'}>${f.next ? `<p class="cb-when">${festWhen(f)}</p>` : ''}<div class="gf-sets cb-two">${f.sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div></div>`).join('')}
   </div></section>` : ''}
   <section class="sec cb-fit" id="cb-sets" style="padding-top:0"><div class="wrap">
@@ -3819,6 +3865,7 @@ function bindGift(){
   $$('[data-cbslot]').forEach(b => b.onclick = () => cbPicker(b));
   $$('[data-cbadd]').forEach(b => b.onclick = () => cbAdd(b.dataset.cbadd));
   $$('[data-cbbuy]').forEach(b => b.onclick = () => cbAdd(b.dataset.cbbuy, true));
+  clearInterval(bindGift.t); if ($('[data-cbleft]')) bindGift.t = setInterval(() => { const e = $$('[data-cbleft]'); if (!e.length) return clearInterval(bindGift.t); e.forEach(x => x.textContent = festLeft(+x.dataset.cbleft)); }, 30000);   // the tabs' countdown
   $$('[data-cbfest]').forEach(b => b.onclick = () => { const k = b.dataset.cbfest;
     $$('[data-cbfest]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', on); });
     $$('[data-cbpanel]').forEach(p => p.hidden = p.dataset.cbpanel !== k); });
@@ -4351,9 +4398,14 @@ function checkoutPage(q){
   <h1 class="co-title">Checkout</h1>
   <aside class="co-sum fold" id="coSum" aria-label="Order summary">
     <div class="co-sum-head"><h2>Order summary</h2><button type="button" class="co-fold" id="coFold" aria-expanded="false">Show items (${lines.reduce((a, l) => a + l.qty, 0)})</button>${coBuy(q) ? `<a class="co-edit" href="#/product/${lines[0].id}">Edit</a>` : `<button type="button" class="co-edit" id="coEdit">Edit bag</button>`}</div>
-    <div class="co-items">${lines.map(l => { const p = P[l.id], off = offs.get(l) || 0, c = off ? p.prices[l.opt] : p.compareAt && p.compareAt[l.opt], u = lineUnit(l, offs); return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
+    <div class="co-items">${cbRows(lines, offs).map(({l}) => { const p = P[l.id], off = offs.get(l) || 0, c = off ? p.prices[l.opt] : p.compareAt && p.compareAt[l.opt], u = lineUnit(l, offs);
+      if (offs.has(l)) { const k = cbInfo(lines, l, offs); return `<div class="co-item cb-line"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
+      <div class="co-img">${k.pics}<i>${l.qty}</i></div>
+      <div class="co-it"><b>${esc(k.g.name)}</b><small class="cb-in">Combo · ${k.ls.length} products</small></div>
+      <div class="co-ip">${k.worth > k.price ? `<s>${inr(k.worth * l.qty)}</s>` : ''}<span>${inr(k.price * l.qty)}</span></div></div>`; }
+      return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
-      <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b>${l.cb && CB[l.cb.split('~')[0]] ? `<small class="cb-in">Combo · ${esc(CB[l.cb.split('~')[0]].name)}</small>` : ''}<small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
+      <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > u ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(u * l.qty)}</span></div></div>`; }).join('')}</div>
     <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coMbRow" hidden><span>Multi-buy discount</span><b id="coMbRowOff"></b></div><div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>

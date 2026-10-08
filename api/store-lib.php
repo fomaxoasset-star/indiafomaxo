@@ -212,6 +212,14 @@ function fomaxo_combos(): array {
   $c = preg_match('~<script type="application/json" id="combo-data">(.*?)</script>~s', $html, $m) ? (json_decode($m[1], true) ?: []) : [];
   return $c = array_column($c, null, 'id');
 }
+/* can a festival's combos be bought today (India time): from one month before one of its days until that day, as index.html festOpen */
+function fomaxo_fest_open(string $key): bool {
+  static $fd; if ($fd === null) { $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
+    $fd = preg_match('~<script type="application/json" id="fest-dates">(.*?)</script>~s', $html, $m) ? (json_decode($m[1], true) ?: []) : []; }
+  $today = strtotime('today');
+  foreach ((array)($fd[$key] ?? []) as $d) { $at = strtotime((string)($d[0] ?? '')); if ($at && $today >= strtotime('-1 month', $at) && $today <= $at) return true; }
+  return false;
+}
 /* may product $p in size $opt go in a combo slot with this rule (parfum = 50/100ml parfum, mini = 10ml, car, gift, care:<cat>) */
 function fomaxo_combo_fits(string $rule, array $p, string $opt): bool {
   $parfum = $p['kind'] === '' && ($p['tier'] ?? '') !== 'elite' && $opt !== '10';
@@ -237,6 +245,7 @@ function fomaxo_combo_offs(array $lines, array $CAT): array {
     $g = $COMBOS[explode('~', $tok)[0]] ?? null;
     $bad = ['error' => 'A combo in your bag has changed. Please remove it and add it again from the Combo page.'];
     if (!$g) return $bad;
+    if (!empty($g['fest']) && !fomaxo_fest_open((string)$g['fest'])) return ['error' => "The {$g['name']} combo can be bought from one month before the festival. Please remove it from your bag."];
     $slots = (int)$g['slots']; $seen = []; $qty = null; $worth = 0; $free = 0;
     foreach ($idx as $i) {
       $l = $lines[$i]; $k = (int)($l['cs'] ?? -1); $id = (string)($l['id'] ?? ''); $opt = (string)($l['opt'] ?? '');
