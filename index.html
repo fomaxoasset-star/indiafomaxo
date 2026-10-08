@@ -422,7 +422,7 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-sug .rv-flag{margin-right:10px}
 .rv-form input[type=file]{padding:12px;font-size:13px}
 .rv-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-.rv-err{color:#e08a7a;min-height:1em}
+.rv-err{color:#e08a7a;min-height:1em}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
 .rv-ok{border:1px solid var(--line-2);padding:24px;color:var(--champagne)}
 .rv-order{display:grid;grid-template-columns:120px minmax(0,1fr);gap:clamp(18px,3vw,40px);padding:40px 0;border-top:1px solid var(--line);align-items:start}
 .rv-order img{width:100%;aspect-ratio:4/5;object-fit:cover;border:1px solid var(--line)}
@@ -4191,6 +4191,8 @@ const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
     <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
+    <label>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
+    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp${token ? '' : ', so please add your mobile number'}<span class="rv-need-photo"> and a photo of the product</span>.</p>
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
     <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
@@ -4233,6 +4235,8 @@ function bindRvForm(form, p, token, done){
   const city = form.elements.city, nation = form.elements.country;
   rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
   rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : RV_NATIONS).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
+  const issue = form.elements.issue, note = $('.rv-issue', form);   // late delivery or a faulty product: mobile (no order link) and, if faulty, a photo are needed for the coupon
+  issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
     const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
@@ -4244,12 +4248,14 @@ function bindRvForm(form, p, token, done){
     const files = [...form.elements.photos.files];
     if (!rating) return err.textContent = 'Please choose a star rating.';
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
+    if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.';
+    if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';
     const fd = new FormData(); fd.append('product', p.id); fd.append('rating', rating); fd.append('text', form.elements.text.value);
     fd.append('name', anon.checked ? '' : rvCap(name.value)); fd.append('anonymous', anon.checked ? '1' : ''); fd.append('website', form.elements.website.value);
     if (!anon.checked) { fd.append('city', rvCap(city.value)); fd.append('country', (rvNation(nation.value) || [rvCap(nation.value)])[0]); }
-    if (form.elements.mobile) fd.append('mobile', form.elements.mobile.value);
+    if (form.elements.mobile) fd.append('mobile', form.elements.mobile.value); fd.append('issue', issue.value);
     if (token) fd.append('token', token); files.forEach(f => fd.append('photos[]', f));
     const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
     try { const d = await rvPost('submit', fd); done(d); }

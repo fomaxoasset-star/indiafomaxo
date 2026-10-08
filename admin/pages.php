@@ -697,31 +697,34 @@ if ($tab === 'reviews') {
   $rq = trim((string)($_GET['q'] ?? '')); $rv = (string)($_GET['v'] ?? ''); $rv = in_array($rv, ['1', '0'], true) ? $rv : '';
   $rp = (string)($_GET['p'] ?? ''); if (!preg_match('/^[\w-]{1,60}$/', $rp)) $rp = '';
   $rs = (string)($_GET['s'] ?? ''); $rs = in_array($rs, ['1', '2', '3', '4', '5'], true) ? $rs : '';
+  $ri = ($_GET['pr'] ?? '') === '1' ? '1' : '';   // Problem chip: late delivery / faulty product only
   /* the date bar: picking dates shows only the reviews written in them (the counts, stars and top reviewers too) */
   $D = pick_dates('reviews'); $dd = $D['r'] === 'all' ? [] : ['from' => $D['from'], 'to' => $D['to']];
-  $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []) + ($rs !== '' ? ['stars' => (int)$rs] : []));
+  $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []) + ($rs !== '' ? ['stars' => (int)$rs] : []) + ($ri !== '' ? ['issue' => 1] : []));
   $nv = count(array_filter($ALL, fn($r) => (int)$r['verified'] === 1)); $nu = count($ALL) - $nv;
-  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs], 'strlen'); $back = h(json_encode($keep));
-  $body .= date_bar($D, ['q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs]) . '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '') . ($rs !== '' ? '<input type="hidden" name="s" value="' . $rs . '">' : '')
+  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri], 'strlen'); $back = h(json_encode($keep));
+  $body .= date_bar($D, ['q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri]) . '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '') . ($rs !== '' ? '<input type="hidden" name="s" value="' . $rs . '">' : '') . ($ri !== '' ? '<input type="hidden" name="pr" value="1">' : '')
     . '<input type="search" name="q" value="' . h($rq) . '" placeholder="Words, name or mobile"><button class="btn line sm">Search</button>'
     . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
     . '<a class="chip' . ($rv === '0' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '0' ? '' : '0'] + $keep)) . '">Unverified <b>' . $nu . '</b></a>'
+    . '<a class="chip' . ($ri ? ' on' : '') . '" href="' . h(self_url(['pr' => $ri ? '' : '1'] + $keep)) . '" title="Late delivery or faulty product: a coupon is owed">Problem <b>' . count(array_filter($ALL, fn($r) => ($r['issue'] ?? '') !== '')) . '</b></a>'
     /* stars: tap one to see only the reviews with that many stars, tap again for all */
     . implode('', array_map(fn($n) => '<a class="chip' . ($rs === (string)$n ? ' on' : '') . '" href="' . h(self_url(['s' => $rs === (string)$n ? '' : (string)$n] + $keep)) . '" title="Show only ' . $n . '-star reviews">' . $n . '★ <b>' . count(array_filter($ALL, fn($r) => (int)round((float)$r['rating']) === $n)) . '</b></a>', [5, 4, 3, 2, 1])) . '</form>';
   $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars By Product', 'top' => 'Top Reviewers']) . '<div class="revs panes" id="rvPanes">';
   /* every review */
   $body .= '<div class="box on" data-pane="list" data-csrf="' . h($CSRF) . '"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . ($D['r'] === 'all' ? '' : ' · ' . h(period_label($D))) . '. Hidden reviews leave the website and the star rating; Show puts them back. Delete removes a review for good.</span></div><div class="bb">';
   if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
-  elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' || $rs !== '' ? ' match this search.' : ' yet.') . '</p>';
+  elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' || $rs !== '' || $ri !== '' ? ' match this search.' : ' yet.') . '</p>';
   $rvSent = json_decode((string)shop_setting('review_wa'), true) ?: [];   // review id => day its customer got a WhatsApp
   foreach ($list as $r) {
     $live = $r['status'] === 'live';
     /* a 1–3 star review from a customer whose mobile we have: WhatsApp them an apology, with a coupon or not (the WhatsApp box, admin.js) */
-    $rvWa = (int)round((float)$r['rating']) <= 3 && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? (isset($rvSent[$r['id']]) ? '<span class="rsent">WhatsApp sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) . '</span>' : '')
-      . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(preg_split('/\s+/u', trim((string)$r['name']))[0] ?? '') . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
+    $issue = ['late' => 'Late delivery', 'faulty' => 'Faulty product'][$r['issue'] ?? ''] ?? '';   // picked on the review form: a coupon is owed
+    $rvWa = ((int)round((float)$r['rating']) <= 3 || $issue !== '') && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? (isset($rvSent[$r['id']]) ? '<span class="rsent">WhatsApp sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) . '</span>' : '')
+      . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(preg_split('/\s+/u', trim((string)$r['name']))[0] ?? '') . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-issue="' . h($r['issue'] ?? '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
-      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Hidden</span>' : '')) . '</div>'
+      . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($issue !== '' ? '<span class="badge st-cancelled">' . $issue . '</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Hidden</span>' : '')) . '</div>'
       . ($r['body'] !== '' ? '<p>' . nl2br(h($r['body'])) . '</p>' : '')
       . ($photos ? '<div class="rvp">' . implode('', array_map(fn($f) => '<a href="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" target="_blank" rel="noopener"><img src="/api/reviews.php?action=photo&amp;f=' . rawurlencode($f) . '" alt="" loading="lazy"></a>', $photos)) . '</div>' : '')
       . '<small class="muted">' . h($r['anonymous'] ? 'Anonymous (' . $r['name'] . ')' : $r['name']) . ($r['phone'] ? ' · ' . h(phone_fmt($r['phone'])) : '') . ' · ' . h(date('d M Y', (int)$r['created'])) . ($r['helpful'] ? ' · ' . (int)$r['helpful'] . ' found it helpful' : '')

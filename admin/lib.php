@@ -622,6 +622,7 @@ function reviews_list(array $f = []): array {
     if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
     if (isset($f['product']) && $r['product'] !== $f['product']) continue;
+    if (!empty($f['issue']) && ($r['issue'] ?? '') === '') continue;   // only late delivery / faulty product
     if (isset($f['stars']) && (int)round((float)$r['rating']) !== (int)$f['stars']) continue;
     if (isset($f['from'], $f['to']) && ((int)$r['created'] < strtotime($f['from']) || (int)$r['created'] >= strtotime($f['to'] . ' +1 day'))) continue;
     if ($q !== '' && !str_contains(mb_strtolower($r['body'] . ' ' . $r['name'] . ' ' . $r['customer']), $q) && !(strlen($qd) >= 4 && str_contains($r['phone'], $qd))) continue;
