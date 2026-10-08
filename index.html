@@ -2204,8 +2204,14 @@ html[data-mode="light"] .co-cpn-saved{color:#1f7d45;box-shadow:inset 0 0 0 1.5px
 .ofp-name{margin-top:14px;font-family:var(--display);font-weight:500;font-size:30px;line-height:1.15;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-hi);overflow-wrap:anywhere}
 .ofl.box.nocd{justify-content:flex-start}
 .ofp-items{display:flex;gap:10px;margin:16px -6px 0;padding:2px 6px 6px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;justify-content:safe center}
-.ofp-item{flex:0 0 100px;display:flex;flex-direction:column;align-items:center;gap:5px;scroll-snap-align:start;text-align:center}
-.ofp-item img{width:100px;height:116px;object-fit:cover;border-radius:4px;box-shadow:0 0 0 1px var(--line-2)}
+/* product picture width: --ofw on a laptop, --ofwp on a phone (Admin → Offer → Preview); the box widens to fit them, up to the screen */
+.ofp-sale .ofp-box{max-width:max(380px,calc(var(--ofn,1) * (var(--ofw,150px) + 10px) + 52px))}
+.ofp-sale .ofp-k{font-size:calc(12px * var(--fk,1))}.ofp-sale .ofp-pct{font-size:calc(58px * var(--fp,1))}.ofp-sale .ofp-on{font-size:calc(15px * var(--fs,1))}
+.ofp-sale .ofp-go{min-height:calc(48px * var(--fb,1));font-size:calc(11px * var(--fb,1));white-space:normal;text-align:center}
+.ofp-new .ofp-k{font-size:calc(12px * var(--fk,1))}.ofp-new .ofp-img{width:calc(148px * var(--fi,1));height:calc(185px * var(--fi,1));max-width:100%;object-fit:cover}.ofp-new .ofp-name{font-size:calc(30px * var(--fn,1))}.ofp-new .ofp-on{font-size:calc(15px * var(--fl,1))}
+.ofp-new .ofp-go{min-height:calc(48px * var(--fb,1));font-size:calc(11px * var(--fb,1));white-space:normal;text-align:center}
+.ofp-item{flex:0 0 var(--ofw,150px);display:flex;flex-direction:column;align-items:center;gap:5px;scroll-snap-align:start;text-align:center}
+.ofp-item img{width:100%;height:auto;aspect-ratio:100/116;object-fit:cover;border-radius:4px;box-shadow:0 0 0 1px var(--line-2)}
 .ofp-item b{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;line-height:1.25;color:var(--ivory)}
 .ofp-item .price{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:0 5px;font-size:13px;line-height:1.3;color:var(--gold-hi)}.ofp-item .price .was{display:inline;margin:0;font-size:11px}
 .ofp-item:hover b{color:var(--gold-hi)}
@@ -2220,7 +2226,9 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 .ofp-go{margin-top:16px;min-height:48px}
 .ofp-no{margin-top:12px;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
 .ofp-no:hover{color:var(--ivory)}
-@media(max-width:600px){.ofp-box{max-width:340px;padding:26px 18px 16px}.ofp-pct{font-size:48px}.ofp-cd{gap:6px;margin-top:16px}.ofp-cd b{font-size:22px}.ofp-cd span{font-size:9px;letter-spacing:.1em}.ofp-img{width:120px;height:150px;margin-top:14px}.ofp-items{gap:8px;margin-top:12px}.ofp-item{flex-basis:88px}.ofp-item img{width:88px;height:100px}.ofp-name{font-size:24px}.ofp-hurry{margin-top:14px;font-size:15px}.ofp-go{margin-top:14px}}
+@media(max-width:600px){.ofp-box{max-width:340px;padding:26px 18px 16px}.ofp-pct{font-size:48px}.ofp-cd{gap:6px;margin-top:16px}.ofp-cd b{font-size:22px}.ofp-cd span{font-size:9px;letter-spacing:.1em}.ofp-img{width:120px;height:150px;margin-top:14px}.ofp-items{gap:8px;margin-top:12px}.ofp-sale .ofp-box{max-width:max(340px,calc(var(--ofn,1) * (var(--ofwp,120px) + 8px) + 36px))}.ofp-item{flex-basis:var(--ofwp,120px)}
+  .ofp-new .ofp-k{font-size:calc(12px * var(--fkp,1))}.ofp-new .ofp-img{width:calc(120px * var(--fip,1));height:calc(150px * var(--fip,1))}.ofp-new .ofp-name{font-size:calc(24px * var(--fnp,1))}.ofp-new .ofp-on{font-size:calc(15px * var(--flp,1))}.ofp-new .ofp-go{min-height:calc(48px * var(--fbp,1));font-size:calc(11px * var(--fbp,1))}
+  .ofp-sale .ofp-k{font-size:calc(12px * var(--fkp,1))}.ofp-sale .ofp-pct{font-size:calc(48px * var(--fpp,1))}.ofp-sale .ofp-on{font-size:calc(15px * var(--fsp,1))}.ofp-sale .ofp-go{min-height:calc(48px * var(--fbp,1));font-size:calc(11px * var(--fbp,1))}.ofp-name{font-size:24px}.ofp-hurry{margin-top:14px;font-size:15px}.ofp-go{margin-top:14px}}
 @media(prefers-reduced-motion:reduce){.ofp,.ofp-box{transition:none}}
 </style>
 </head><body>
@@ -2797,6 +2805,7 @@ const OFFER = (() => { const o = LIVE.offer; if (!o || (o.end && o.end <= Date.n
   /* the line by prices goes on the products picked for it (saved before that: the popup's products, or all with an old price) */
   const lines = o.lines ? o.lines.filter(id => P[id]) : !o.line ? [] : items.length ? items : pool.map(p => p.id);
   return {end: +o.end || 0, popup: !!o.popup && pct > 0, line: lines.length > 0, lines, pct, items,
+    size: Array.isArray(o.size) ? o.size.map(Number) : [150, 120], fs: Array.isArray(o.fs) ? o.fs : [{}, {}],
     title: o.title || 'Limited time offer', sub: (o.sub || 'on selected fragrances').toUpperCase(), btn: o.btn || 'Shop the offer'}; })();
 /* a product's size with the biggest saving, for its price in the popup */
 const bestSize = p => p.sizes.reduce((a, s) => pctOff(p, s) > pctOff(p, a) ? s : a, p.sizes[0]);
@@ -4383,7 +4392,12 @@ if (OFFER || NEWP) {
     due = false; put(sessionStorage, 'fx_offer', '1'); if (which === 'new') put(localStorage, 'fx_newp', NEWP.key);
     back = document.activeElement;
     pop = document.createElement('div'); pop.className = 'ofp ofp-' + which;
-    pop.innerHTML = `<div class="ofp-box" role="dialog" aria-modal="true" aria-labelledby="ofpK" tabindex="-1">
+    /* sizes set in Admin → Offer → Preview: product pictures in px, words in % (laptop, then phone) */
+    const fv = (f, n, ks, ls) => ks.map((k, i) => `--f${ls[i]}${n}:${(+(f || {})[k] || 100) / 100}`).join(';');
+    const sw = ['title', 'pct', 'sub', 'btn'], nw = ['title', 'img', 'name', 'line', 'btn'], nfs = Array.isArray(NEWP && NEWP.fs) ? NEWP.fs : [{}, {}];
+    const sz = which === 'sale' ? ` style="--ofw:${OFFER.size[0]}px;--ofwp:${OFFER.size[1]}px;--ofn:${OFFER.items.length || 1};${fv(OFFER.fs[0], '', sw, 'kpsb')};${fv(OFFER.fs[1], 'p', sw, 'kpsb')}"`
+      : ` style="${fv(nfs[0], '', nw, 'kinlb')};${fv(nfs[1], 'p', nw, 'kinlb')}"`;
+    pop.innerHTML = `<div class="ofp-box"${sz} role="dialog" aria-modal="true" aria-labelledby="ofpK" tabindex="-1">
       <button class="ofp-x" type="button" aria-label="Close">×</button>${which === 'new' ? newpHTML() : saleHTML()}</div>`;
     pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('.ofp-x,.ofp-no,.ofp-go,.ofp-item')) closePop(); });
     document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey);

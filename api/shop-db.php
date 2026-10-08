@@ -398,22 +398,41 @@ function shop_coupon_apply(string $code, int $subtotal, ?PDO $db = null, int $of
    `popup` and `line` say what the website shows. It never changes prices. */
 function shop_offer(): array {
   $o = json_decode((string)shop_setting('offer'), true);
-  $o = is_array($o) ? $o : [];
+  $o = is_array($o) ? $o : []; if (!is_array($o['fs'] ?? null)) $o['fs'] = [];
   $r = ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
     'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true), 'pct' => max(0, min(99, (int)($o['pct'] ?? 0))),
     'items' => array_values(array_map('strval', array_filter((array)($o['items'] ?? []), 'is_scalar'))),
     'lines' => array_values(array_map('strval', array_filter((array)($o['lines'] ?? []), 'is_scalar'))),
     /* the popup's words ('' = the standard ones: LIMITED TIME OFFER / on selected fragrances / Shop the offer) */
-    'title' => (string)($o['title'] ?? ''), 'sub' => (string)($o['sub'] ?? ''), 'btn' => (string)($o['btn'] ?? '')];   // items: products in the popup ([] = every product with an old price); lines: products with the line by prices
+    'title' => (string)($o['title'] ?? ''), 'sub' => (string)($o['sub'] ?? ''), 'btn' => (string)($o['btn'] ?? ''),
+    /* how wide each product picture is in the popup, in px, on a laptop and on a phone (set in the admin Preview) */
+    'sizeL' => shop_offer_size($o['sizeL'] ?? 0, 'L'), 'sizeP' => shop_offer_size($o['sizeP'] ?? 0, 'P'),
+    /* the popup's words size, in % of the standard, on a laptop (L) and a phone (P): top line, % off, under the %, button */
+    'fs' => ['L' => shop_offer_fs($o['fs']['L'] ?? []), 'P' => shop_offer_fs($o['fs']['P'] ?? [])]];   // items: products in the popup ([] = every product with an old price); lines: products with the line by prices
   /* saved before the line had its own products: it showed on the popup's products, or on every product with an old price */
   if (!array_key_exists('lines', $o) && $r['line']) $r['lines'] = $r['items'] ?: fomaxo_sale_ids();
   $r['line'] = (bool)$r['lines'];
   return $r;
 }
+/* the popup's product picture width: [smallest, default, biggest] in px, for laptop (L) and phone (P); anything else → the default */
+const SHOP_OFFER_SIZE = ['L' => [90, 150, 220], 'P' => [80, 120, 160]];
+function shop_offer_size($v, string $d): int {
+  [$lo, $def, $hi] = SHOP_OFFER_SIZE[$d]; $v = (int)$v;
+  return $v >= $lo && $v <= $hi ? $v : $def;
+}
+/* the popup's words size: [smallest, biggest] in % of the standard (100); anything else → 100 */
+const SHOP_OFFER_FS = ['title' => [80, 200], 'pct' => [60, 160], 'sub' => [70, 200], 'btn' => [80, 160]];
+/* the same for the New product popup: top line, picture, name, short line, button */
+const SHOP_NEWP_FS = ['title' => [80, 200], 'img' => [60, 200], 'name' => [60, 160], 'line' => [70, 200], 'btn' => [80, 160]];
+function shop_offer_fs($f, array $ranges = SHOP_OFFER_FS): array {
+  $f = is_array($f) ? $f : []; $r = [];
+  foreach ($ranges as $k => [$lo, $hi]) { $v = (int)($f[$k] ?? 0); $r[$k] = $v >= $lo && $v <= $hi ? $v : 100; }
+  return $r;
+}
 /* the New product popup (Admin → Offer): on, kind 'soon' (Coming soon) or 'new' (Just arrived), name, a short line, and a product id ('' = none) */
 function shop_newprod(): array {
-  $n = json_decode((string)shop_setting('newprod'), true); $n = is_array($n) ? $n : [];
-  return ['on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? ''),
+  $n = json_decode((string)shop_setting('newprod'), true); $n = is_array($n) ? $n : []; $fs = is_array($n['fs'] ?? null) ? $n['fs'] : [];
+  return ['fs' => ['L' => shop_offer_fs($fs['L'] ?? [], SHOP_NEWP_FS), 'P' => shop_offer_fs($fs['P'] ?? [], SHOP_NEWP_FS)], 'on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? ''),
     'label' => (string)($n['label'] ?? '') !== '' ? (string)$n['label'] : (($n['kind'] ?? '') === 'new' ? 'Just arrived' : 'Coming soon')];
 }
 /* what the website gets (STORE_LIVE.offer): null when nothing should show, also once the end has passed.
@@ -427,6 +446,8 @@ function shop_offer_live(): ?array {
   if ($o['items']) $live['items'] = $o['items'];
   if ($o['lines']) $live['lines'] = $o['lines'];
   foreach (['title', 'sub', 'btn'] as $k) if ($o[$k] !== '') $live[$k] = $o[$k];
+  $live['size'] = [$o['sizeL'], $o['sizeP']];   // the popup's product pictures: laptop and phone width in px
+  $live['fs'] = [$o['fs']['L'], $o['fs']['P']];   // the popup's words: laptop and phone size in %
   if ($o['pct'] > 0) $live['pct'] = min($o['pct'], fomaxo_best_pct($o['items'])[0]);   // a typed % never goes above the real biggest saving
   return $live;
 }
@@ -437,6 +458,7 @@ function shop_newprod_live(): ?array {
   $p = $n['id'] !== '' ? (fomaxo_catalog()['products'][$n['id']] ?? null) : null;
   $show = $p && empty($p['hidden']);   // a product on the website gets "Shop now"; otherwise "Explore FOMAXO"
   return ['kind' => $show ? 'new' : 'soon', 'label' => $n['label'], 'name' => $n['name'], 'line' => $n['line'], 'id' => $show ? $n['id'] : '', 'img' => $p['img'] ?? '',
+    'fs' => [$n['fs']['L'], $n['fs']['P']],   // sizes set in the admin Preview, in % (laptop, phone)
     'key' => substr(md5($n['label'] . '|' . $n['name'] . '|' . $n['id']), 0, 10)];
 }
 

@@ -231,6 +231,10 @@ if ($tab === 'offer') {
     . '<div class="box ofr on" data-pane="sale"><div class="bh"><h3>Sale offer</h3></div><div class="bb">'
     . '<p class="ofst ofst-' . $sk . '">' . h($status) . '</p>'
     . '<form method="post" class="cpf" id="offerForm" data-best="' . (int)fomaxo_best_pct()[0] . '">' . $csrfField . '<input type="hidden" name="action" value="offer_save">'
+    /* product picture size in the popup: changed with the sliders in Preview, saved with Save */
+    . '<input type="hidden" name="size_l" value="' . $O['sizeL'] . '" data-min="' . SHOP_OFFER_SIZE['L'][0] . '" data-def="' . SHOP_OFFER_SIZE['L'][1] . '" data-max="' . SHOP_OFFER_SIZE['L'][2] . '">'
+    . '<input type="hidden" name="size_p" value="' . $O['sizeP'] . '" data-min="' . SHOP_OFFER_SIZE['P'][0] . '" data-def="' . SHOP_OFFER_SIZE['P'][1] . '" data-max="' . SHOP_OFFER_SIZE['P'][2] . '">'
+    . implode('', array_map(fn($d) => implode('', array_map(fn($k) => '<input type="hidden" name="fs[' . $d . '][' . $k . ']" value="' . $O['fs'][strtoupper($d)][$k] . '" data-min="' . SHOP_OFFER_FS[$k][0] . '" data-def="100" data-max="' . SHOP_OFFER_FS[$k][1] . '">', array_keys(SHOP_OFFER_FS))), ['l', 'p']))
     . '<div class="ofrow"><b>Timer</b><span class="seg ck ofm">' . $radio('end', 'Countdown') . $radio('always', 'Always on') . $radio('off', 'Off') . '</span></div>'
     . '<div class="ofend"' . ($O['mode'] === 'end' ? '' : ' hidden') . '><b>Ends</b><div class="ofendin">'
     . '<span class="qbtns">' . implode('', array_map(fn($hh, $l) => '<button class="btn line sm" name="quick" value="' . $hh . '" title="Save, ending ' . $l . ' from now">' . $l . '</button>', [24, 48, 72, 168], ['24h', '48h', '3 days', '7 days'])) . '</span>'
@@ -251,6 +255,7 @@ if ($tab === 'offer') {
     . '<div class="box ofr" data-pane="new"><div class="bh"><h3>New product popup</h3><label class="cpon"><input type="checkbox" name="np_on" value="1" form="newpForm"' . ($N['on'] ? ' checked' : '') . '><span>On</span></label></div><div class="bb">'
     . '<p class="ofst ofst-' . $nsk . '">' . h($nstatus) . '</p>'
     . '<form method="post" class="cpf" id="newpForm">' . $csrfField . '<input type="hidden" name="action" value="newprod_save">'
+    . implode('', array_map(fn($d) => implode('', array_map(fn($k) => '<input type="hidden" name="nfs[' . $d . '][' . $k . ']" value="' . $N['fs'][strtoupper($d)][$k] . '" data-min="' . SHOP_NEWP_FS[$k][0] . '" data-def="100" data-max="' . SHOP_NEWP_FS[$k][1] . '">', array_keys(SHOP_NEWP_FS))), ['l', 'p']))
     . '<div class="npgrid"><label>Type<input name="np_label" maxlength="24" list="ofw-np_label" value="' . h($N['label']) . '" placeholder="Coming soon" autocomplete="off">'
     . '<datalist id="ofw-np_label">' . implode('', array_map(fn($v) => '<option value="' . h($v) . '">', ['Coming soon', 'Just arrived', 'New launch', 'Launching soon', 'Back in stock', 'Now available', 'Only at FOMAXO'])) . '</datalist></label>'
     . '<label>Product<select name="np_id">' . $opts . '</select></label></div><div class="npgrid">'

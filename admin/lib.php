@@ -327,7 +327,9 @@ function save_offer(): string {
     'sub' => mb_strtoupper(mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['sub'] ?? ''))), 0, 40)),
     'btn' => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['btn'] ?? ''))), 0, 24),
     'items' => array_values(array_intersect(array_map('strval', (array)($_POST['items'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products'])))),
-    'lines' => array_values(array_intersect(array_map('strval', (array)($_POST['lines'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products']))))];
+    'lines' => array_values(array_intersect(array_map('strval', (array)($_POST['lines'] ?? [])), array_map('strval', array_keys(fomaxo_catalog()['products'])))),
+    'sizeL' => shop_offer_size($_POST['size_l'] ?? 0, 'L'), 'sizeP' => shop_offer_size($_POST['size_p'] ?? 0, 'P'),
+    'fs' => ['L' => shop_offer_fs(is_array($_POST['fs'] ?? null) ? $_POST['fs']['l'] ?? [] : []), 'P' => shop_offer_fs(is_array($_POST['fs'] ?? null) ? $_POST['fs']['p'] ?? [] : [])]];
   $o['line'] = (bool)$o['lines'];
   /* the % in the popup: empty = the biggest real saving; never more than that */
   $pct = trim((string)($_POST['pct'] ?? '')); $note = '';
@@ -356,6 +358,8 @@ function save_offer(): string {
 function save_newprod(array $cat): string {
   $clean = fn(string $k) => trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? '')));
   $n = ['on' => !empty($_POST['np_on']), 'label' => $clean('np_label') ?: 'Coming soon', 'name' => $clean('np_name'), 'line' => $clean('np_line'), 'id' => (string)($_POST['np_id'] ?? '')];
+  $fs = is_array($_POST['nfs'] ?? null) ? $_POST['nfs'] : [];
+  $n['fs'] = ['L' => shop_offer_fs($fs['l'] ?? [], SHOP_NEWP_FS), 'P' => shop_offer_fs($fs['p'] ?? [], SHOP_NEWP_FS)];   // sizes from the Preview size bar
   if (mb_strlen($n['label']) > 24) return '!The type can have up to 24 characters.';
   if ($n['id'] !== '' && !isset($cat[$n['id']])) $n['id'] = '';
   if ($n['name'] === '' && $n['id'] !== '') $n['name'] = mb_substr($cat[$n['id']]['name'], 0, 40);
