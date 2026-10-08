@@ -160,7 +160,7 @@ function fomaxo_catalog(): array {
       if (preg_match('/\bcompareAt:\s*\{([^}]*)\}/', $o, $x)) { preg_match_all('/"?([\w]+)"?\s*:\s*([\d.]+)/', $x[1], $pp, PREG_SET_ORDER); foreach ($pp as [, $k, $v]) $was[$k] = (float)$v; }
       elseif (preg_match('/\bwas:\s*([\d.]+)/', $o, $x)) $was['one'] = (float)$x[1];
       $cat['products'][$id] = ['name' => $get('name') . ($kind === 'care' ? ' ' . explode(' — ', $get('type'))[0] : ''),
-        'kind' => $kind, 'vol' => $get('vol'), 'prices' => $prices, 'was' => $was, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o),
+        'kind' => $kind, 'vol' => $get('vol'), 'tier' => $get('tier'), 'cat' => $get('cat'), 'prices' => $prices, 'was' => $was, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o),
         'img' => preg_match('/\bimages?:\s*\[?\s*"([^"]+)"/', $o, $x) ? 'assets/img/' . $x[1] . '.webp' : '', 'hidden' => false, 'added' => false, 'lockMain' => (bool)preg_match('/\blockMain:\s*true/', $o)];
     }
   }
@@ -174,7 +174,7 @@ function fomaxo_catalog(): array {
       $kind = (string)($d['kind'] ?? '');
       $img = (string)(($d['site']['images'][0] ?? $d['site']['image'] ?? ''));
       $cat['products'][$id] = ['name' => (string)($d['name'] ?? $id) . ($kind === 'care' ? ' ' . explode(' — ', (string)($d['type'] ?? ''))[0] : ''),
-        'kind' => $kind, 'vol' => (string)($d['vol'] ?? ''), 'prices' => array_map('floatval', (array)($d['prices'] ?? [])),
+        'kind' => $kind, 'vol' => (string)($d['vol'] ?? ''), 'tier' => (string)($d['tier'] ?? ''), 'cat' => (string)($d['cat'] ?? $d['site']['cat'] ?? ''), 'prices' => array_map('floatval', (array)($d['prices'] ?? [])),
         'was' => array_map('floatval', (array)($d['compareAt'] ?? [])), 'soldOut' => false,
         'img' => str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : '', 'added' => true];
     } elseif (!isset($cat['products'][$id])) continue;
@@ -204,6 +204,76 @@ function fomaxo_catalog(): array {
   return $cat;
 }
 
+/* ---- combos (Combo page, #/combo) ---- */
+/* the combo list from index.html's <script id="combo-data"> block, by id */
+function fomaxo_combos(): array {
+  static $c; if ($c !== null) return $c;
+  $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
+  $c = preg_match('~<script type="application/json" id="combo-data">(.*?)</script>~s', $html, $m) ? (json_decode($m[1], true) ?: []) : [];
+  return $c = array_column($c, null, 'id');
+}
+/* can a festival's combos be bought today (India time): from one month before one of its days until that day, as index.html festOpen */
+function fomaxo_fest_open(string $key): bool {
+  static $fd; if ($fd === null) { $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
+    $fd = preg_match('~<script type="application/json" id="fest-dates">(.*?)</script>~s', $html, $m) ? (json_decode($m[1], true) ?: []) : []; }
+  $today = strtotime('today');
+  foreach ((array)($fd[$key] ?? []) as $d) { $at = strtotime((string)($d[0] ?? '')); if ($at && $today >= strtotime('-1 month', $at) && $today <= $at) return true; }
+  return false;
+}
+/* may product $p in size $opt go in a combo slot with this rule (parfum = 50/100ml parfum, mini = 10ml, car, gift, care:<cat>) */
+function fomaxo_combo_fits(string $rule, array $p, string $opt): bool {
+  $parfum = $p['kind'] === '' && ($p['tier'] ?? '') !== 'elite' && $opt !== '10';
+  $mini = $p['kind'] === '' && $opt === '10';
+  if ($rule === 'parfum') return $parfum;
+  if ($rule === 'mini') return $mini;
+  if ($rule === 'car') return $p['kind'] === 'car';
+  if ($rule === 'gift') return $mini || $p['kind'] === 'car' || ($p['kind'] === 'care' && ($p['cat'] ?? '') === 'lips');
+  if (str_starts_with($rule, 'care:')) return $p['kind'] === 'care' && ($p['cat'] ?? '') === substr($rule, 5);
+  return false;
+}
+/* Combo prices for the bag lines that belong to a combo (line cb = '<combo id>~<any>', cs = its slot): rupees off one of
+   each line, by line index. The same sums as index.html (cbSave / cbOffs): the combo's saving when its planned products
+   are picked, otherwise the same % off with the price ending in 9; the free-gift offer takes off the free slot's price.
+   The saving is shared over the lines by price, the rest of the rounding on the dearest. ['error' => …] when a combo is not valid. */
+function fomaxo_combo_offs(array $lines, array $CAT): array {
+  $groups = []; $offs = [];
+  foreach ($lines as $i => $l) if (is_string($l['cb'] ?? null) && $l['cb'] !== '') $groups[$l['cb']][] = $i;
+  if (!$groups) return [];
+  $COMBOS = fomaxo_combos();
+  $price = fn(string $id, string $opt): int => (int)round($CAT[$id]['prices'][$opt] ?? 0);
+  foreach ($groups as $tok => $idx) {
+    $g = $COMBOS[explode('~', $tok)[0]] ?? null;
+    $bad = ['error' => 'A combo in your bag has changed. Please remove it and add it again from the Combo page.'];
+    if (!$g) return $bad;
+    if (!empty($g['fest']) && !fomaxo_fest_open((string)$g['fest'])) return ['error' => "The {$g['name']} combo can be bought from one month before the festival. Please remove it from your bag."];
+    $slots = (int)$g['slots']; $seen = []; $qty = null; $worth = 0; $free = 0;
+    foreach ($idx as $i) {
+      $l = $lines[$i]; $k = (int)($l['cs'] ?? -1); $id = (string)($l['id'] ?? ''); $opt = (string)($l['opt'] ?? '');
+      if ($k < 0 || $k >= $slots || isset($seen[$k]) || !isset($CAT[$id]['prices'][$opt]) || !fomaxo_combo_fits((string)$g['only'][$k], $CAT[$id], $opt)) return $bad;
+      if ($qty !== null && (int)$l['qty'] !== $qty) return $bad;
+      $seen[$k] = true; $qty = (int)$l['qty']; $worth += $price($id, $opt);
+      if (in_array($k, (array)($g['free'] ?? []), true)) $free += $price($id, $opt);
+    }
+    $offer = !empty($g['offer']);
+    if ($offer ? count($idx) !== $slots : (count($idx) < 2 || !isset($seen[0]))) return $bad;
+    if ($offer) $save = $free;
+    else {
+      $base = array_sum(array_map(fn($it) => $price((string)$it[0], (string)$it[1]), $g['items']));
+      $save = (int)$g['save'];
+      if ($worth !== $base && $base > 0) $save = max(0, $worth - ((int)round($worth * (1 - $save / $base) / 10) * 10 - 1));
+    }
+    $save = min($save, $worth);
+    if ($offer) { foreach ($idx as $i) { $offs[$i] = in_array((int)$lines[$i]['cs'], (array)$g['free'], true) ? $price($lines[$i]['id'], (string)$lines[$i]['opt']) : 0; $offs["name$i"] = (string)$g['name']; } continue; }   // the free gift line is free
+    /* share: each line its part by price (rounded down), the dearest line (first of them) takes the rest */
+    $top = $idx[0]; foreach ($idx as $i) if ($price($lines[$i]['id'], (string)$lines[$i]['opt']) > $price($lines[$top]['id'], (string)$lines[$top]['opt'])) $top = $i;
+    $left = $save;
+    foreach ($idx as $i) if ($i !== $top) { $o = $worth ? intdiv($save * $price($lines[$i]['id'], (string)$lines[$i]['opt']), $worth) : 0; $offs[$i] = $o; $left -= $o; }
+    $offs[$top] = $left;
+    foreach ($idx as $i) $offs["name$i"] = (string)$g['name'];
+  }
+  return $offs;
+}
+
 /* Prices the bag on the server. Returns ['error'=>…] or the priced order (amounts in paise). */
 function fomaxo_price_order(array $in): array {
   $CAT = fomaxo_catalog()['products'];
@@ -213,7 +283,9 @@ function fomaxo_price_order(array $in): array {
   $items = []; $total = 0;
   try { $STOCK = shop_stock(); $COST = shop_costs(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.']; }
   $want = [];
-  foreach ($lines as $l) {
+  $OFFS = fomaxo_combo_offs($lines, $CAT);
+  if (isset($OFFS['error'])) return $OFFS;
+  foreach ($lines as $li => $l) {
     $id = is_string($l['id'] ?? null) ? $l['id'] : '';
     $opt = (string)($l['opt'] ?? '');
     $qty = (int)($l['qty'] ?? 0);
@@ -229,9 +301,10 @@ function fomaxo_price_order(array $in): array {
       $desc = 'Fragrances: ' . implode(', ', array_map(fn($x) => $CAT[$x]['name'], $picks));
     }
     $unit = (int)round($p['prices'][$opt] * 100);
+    $was = (int)round(($p['was'][$opt] ?? 0) * 100);
+    if (isset($OFFS[$li])) { $was = max($was, $unit); $unit -= $OFFS[$li] * 100; $desc = 'Combo: ' . $OFFS["name$li"]; }   // combo price
     $total += $unit * $qty;
     $name = 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : '');
-    $was = (int)round(($p['was'][$opt] ?? 0) * 100);
     $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty]
       + ($was > $unit ? ['was' => $was] : [])                                  // the crossed-out price, for discounts in Reports
       + (isset($COST[$id][$opt]) ? ['cost' => $COST[$id][$opt]] : []);       // cost at the time of the order, for profit & loss
