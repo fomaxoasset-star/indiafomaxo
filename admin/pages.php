@@ -323,14 +323,25 @@ if ($tab === 'members' && isset($_GET['refill'])) {
       $p = refill_parts($o); $ph = coupon_phone((string)$o['phone']);
       $act = $o['stopped'] ? '<span class="rstop" title="Replied STOP on WhatsApp">Stopped</span>'
         : ($o['sent'] ? '<span class="rsent">' . ($o['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($o['sent']))) . '</span>' : '')
-          . '<a class="btn sm' . ($o['sent'] ? ' line' : '') . '" data-rf="' . h($o['no']) . '" href="https://wa.me/91' . h($ph) . '?text=' . rawurlencode(refill_text($p)) . '" target="_blank" rel="noopener">WhatsApp</a>';
+          . '<button type="button" class="btn sm' . ($o['sent'] ? ' line' : '') . '" data-rf="' . h($o['no']) . '" data-phone="' . h($ph) . '" data-who="' . h($o['name'] ?: phone_fmt($ph)) . '"'
+          . ' data-first="' . h($p['first'] !== '' ? $p['first'] : 'there') . '" data-perfumes="' . h($p['perfumes']) . '" data-days="' . $p['days'] . '" data-review="' . h((string)$p['review']) . '">WhatsApp</button>';
       $body .= '<tr' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td><a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
         . '<small>' . h(phone_fmt($ph)) . ' · ' . h($p['perfumes']) . '</small></td>'
         . '<td class="nw"><b>' . $o['days'] . ' days</b><small>' . h(date('d/m/Y', strtotime((string)$o['created']))) . ' · ' . h($o['no']) . '</small></td><td class="r nw ra">' . $act . '</td></tr>';
     }
     $body .= '</tbody></table>';
   }
-  $body .= '<p class="muted small rfnote">Customers whose latest order was ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days ago. WhatsApp opens with a ready message and a ' . refill_pct() . '% REFILL- coupon for their mobile; after you tap it the customer shows Sent. With Automatic sending on, customers marked WhatsApp ✓ get it by itself ' . $tm['days'] . ' days after the order; the rest only when you tap. Once they order again they leave this list.</p></div></div>';
+  /* WhatsApp on a line: a ready message, with a coupon for that customer only (% off, ₹ off or a free product) or none (admin.js) */
+  $waSvg = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
+  $body .= '<dialog class="ltwa" id="rfWa" data-pct="' . refill_pct() . '"><div class="bh"><h3>WhatsApp <b class="ltwa-who"></b></h3></div><div class="bb cpf">'
+    . '<label>Coupon<select class="ltwa-kind"><option value="">No coupon</option><option value="pct" selected>% off</option><option value="amt">₹ off</option><option value="free">Free product</option></select></label>'
+    . '<label class="ltwa-val">How much<input type="number" min="1" step="1" inputmode="numeric" placeholder="' . refill_pct() . '"></label>'
+    . '<label class="ltwa-free">Free product' . free_pick('gfree', null) . '</label>'
+    . '<p class="muted small ltwa-note">A new REFILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.</p>'
+    . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="14"></textarea></label>'
+    . '<p class="err ltwa-err" hidden></p>'
+    . '<div class="row ltwa-btns"><button type="button" class="btn line" data-ltwa-close>Cancel</button><button type="button" class="btn" data-ltwa-send>' . $waSvg . '<span>Open WhatsApp</span></button></div></div></dialog>';
+  $body .= '<p class="muted small rfnote">Customers whose latest order was ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days ago. WhatsApp opens a ready message where you pick the coupon (No coupon, % off, ₹ off or a free product); after you send it the customer shows Sent. With Automatic sending on, customers marked WhatsApp ✓ get it by itself ' . $tm['days'] . ' days after the order; the rest only when you tap. Once they order again they leave this list.</p></div></div>';
 } elseif ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   /* the customer page */
   $W = $C['web']; $wa = $C['phone'] ? 'https://wa.me/91' . $C['phone'] . '?text=' . rawurlencode('Hi ' . $C['name'] . ', this is FOMAXO. ') : '';

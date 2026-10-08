@@ -26,14 +26,14 @@ function refill_code(string $no): string {
   return $c;
 }
 
-/* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself) and saves its coupon in Coupons
-   (single use, only with this customer's mobile, no end date) */
-function refill_mark(string $no, string $how = 'tap'): void {
+/* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself) and, with $coupon, saves the order's
+   REFILL- code in Coupons (the automatic message: single use, only with this customer's mobile, no end date). A tap makes its own code (admin). */
+function refill_mark(string $no, string $how = 'tap', bool $coupon = true): void {
   $sent = json_decode((string)shop_setting('refill_sent'), true) ?: [];
   if (isset($sent[$no])) return;   // one message per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());
-  if ($ph !== '') {
+  if ($coupon && $ph !== '') {
     $code = refill_code($no); $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?'); $s->execute([$code]);
     if (!$s->fetchColumn()) shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => refill_pct(), 'min_order' => 0, 'starts' => '', 'ends' => '',
       'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $ph, 'created' => shop_now()]);

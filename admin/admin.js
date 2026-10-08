@@ -558,23 +558,56 @@
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-preview]'); if (b) open(b.dataset.preview); });
 })();
 
-/* Refill reminders: tapping WhatsApp opens the ready message and notes the order as Sent (its REFILL- coupon is made then), without reloading */
-document.addEventListener('click', function (e) {
-  var a = e.target.closest && e.target.closest('[data-rf]');
-  if (!a) return;
-  var list = a.closest('[data-csrf]'), fd = new FormData();
-  fd.append('csrf', list ? list.dataset.csrf : ''); fd.append('action', 'refill_sent'); fd.append('no', a.dataset.rf);
-  fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'});
-  var cell = a.parentNode;
-  if (!cell.querySelector('.rsent')) {
-    var d = new Date(), s = document.createElement('span');
-    s.className = 'rsent'; s.textContent = 'Sent ' + ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
-    cell.insertBefore(s, a);
-    var todo = document.querySelector('[data-rfn="todo"]'), done = document.querySelector('[data-rfn="sent"]');
-    if (todo && !a.classList.contains('line')) { todo.textContent = Math.max(0, +todo.textContent - 1); done.textContent = +done.textContent + 1; }
+/* Refill reminders → WhatsApp: a ready message to that customer, laid out like the automatic one. The coupon: No coupon, or % off (the usual)
+   / ₹ off / a free product, for which a new REFILL- code is made (one use, only their mobile) when Open WhatsApp is tapped. The order then shows Sent. */
+(function () {
+  var dlg = document.getElementById('rfWa'); if (!dlg) return;
+  var q = function (s) { return dlg.querySelector(s); }, kind = q('.ltwa-kind'), val = q('.ltwa-val input'), free = q('.ltwa-free [data-ffind]'),
+    freeV = q('input[name=gfree]'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'), btn = null, PCT = dlg.dataset.pct || '10';
+  function build() {
+    var k = kind.value, v = parseInt(val.value, 10) || 0, d = btn.dataset, n2 = '\n\n';
+    dlg.dataset.kind = k;
+    var gift = k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || PCT) + '% off' : '₹' + (v || 200) + ' off') + '*';
+    text.value = 'Hi ' + d.first + ',' + n2 + 'I hope you are enjoying ' + d.perfumes + '. It has been ' + d.days + ' days since your order, so your bottle may be running low.'
+      + (k ? n2 + 'As a thank you, here is your personal code for ' + gift + ' your next order (single use):' + n2 + '*[CODE]*' : '')
+      + n2 + 'You can reorder anytime here:\nhttps://fomaxo.in'
+      + (d.review ? n2 + 'If you have a moment, we would love your honest review. It will show as Verified Purchaser:\n' + d.review : '')
+      + n2 + 'Just reply here if you would like help choosing your next scent. If you would rather not get these messages, reply STOP.' + n2 + 'Thank you,\nFOMAXO';
   }
-  a.classList.add('line');
-});
+  function wa(t) { return 'https://wa.me/91' + btn.dataset.phone + '?text=' + encodeURIComponent(t); }
+  function sent(day) {   // the line shows Sent with today's date (India time, from the server), and the counts move once
+    var cell = btn.parentNode;
+    if (!cell.querySelector('.rsent')) {
+      var s = document.createElement('span');
+      s.className = 'rsent'; s.textContent = 'Sent ' + day;
+      cell.insertBefore(s, btn);
+      var todo = document.querySelector('[data-rfn="todo"]'), done = document.querySelector('[data-rfn="sent"]');
+      if (todo && !btn.classList.contains('line')) { todo.textContent = Math.max(0, +todo.textContent - 1); done.textContent = +done.textContent + 1; }
+    }
+    btn.classList.add('line');
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-rf]'); if (!b) return;
+    e.preventDefault(); btn = b; q('.ltwa-who').textContent = b.dataset.who;
+    kind.value = 'pct'; val.value = ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+  });
+  kind.addEventListener('change', build); val.addEventListener('input', build); free.addEventListener('change', build);
+  q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
+  send.addEventListener('click', function () {
+    var k = kind.value, w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the code is made
+    var fd = new FormData(), list = btn.closest('[data-csrf]');
+    fd.append('csrf', list ? list.dataset.csrf : ''); fd.append('action', 'refill_sent'); fd.append('no', btn.dataset.rf); fd.append('gkind', k);
+    fd.append('pct', val.value || (k === 'pct' ? PCT : '200')); fd.append('gfree', freeV.value);
+    err.hidden = true; send.disabled = true;
+    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+      send.disabled = false;
+      if (!d.ok) throw new Error(d.error || 'Please try again.');
+      if (d.code) text.value = text.value.split('[CODE]').join(d.code);
+      if (w) w.location = wa(text.value); else location.href = wa(text.value);
+      sent(d.day); dlg.close();
+    }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
+  });
+})();
 
 /* Coupons: picking Free product on a new coupon ticks One use per customer */
 document.addEventListener('change', function (e) {

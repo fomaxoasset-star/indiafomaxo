@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '62';
+const ASSET_V = '63';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -266,11 +266,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ph = (string)($_POST['phone'] ?? '');
     go(['tab' => 'members', 'c' => 'm:' . coupon_phone($ph)], wa_stop($ph, 'admin') ? 'WhatsApp offers stopped for this customer. No more automatic messages.' : '!This customer has no mobile number.');
   }
-  if ($a === 'refill_sent') {   // tapped WhatsApp on Refill reminders (admin.js sends it without reloading): that order shows Sent and its coupon is made
-    require_once dirname(__DIR__) . '/api/refill-lib.php';
-    $no = (string)($_POST['no'] ?? '');
-    if (preg_match('/^FMX-IN-\d+$/', $no)) refill_mark($no);
-    http_response_code(204); exit;
+  if ($a === 'refill_sent') {   // Open WhatsApp on Refill reminders (admin.js asks without reloading): that order shows Sent; with a coupon picked, a new REFILL- code
+    require_once dirname(__DIR__) . '/api/refill-lib.php';   // is made for this customer only (one use, only their mobile), like Left at checkout
+    $no = (string)($_POST['no'] ?? ''); $code = '';
+    $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = $s->fetchColumn();
+    header('Content-Type: application/json');
+    if (!preg_match('/^FMX-IN-\d+$/', $no) || $ph === false) { echo json_encode(['error' => 'That order was not found.']); exit; }
+    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
+      $_POST['phone'] = (string)$ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('REFILL-');
+      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
+    }
+    refill_mark($no, 'tap', false);
+    echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
