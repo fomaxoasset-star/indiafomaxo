@@ -3795,7 +3795,7 @@ function comboPage(){
   const all = buildSets(COMBO_SETS), sets = all.filter(g => !g.offer && !g.fest && COMBO_SHOW.includes(g.id)), offers = all.filter(g => g.offer);
   const m = new Date().getMonth(), fests = FESTS.map(f => { const o = festOpen(f), x = {...f, next: festNext(f), open: o}, at = festOpens(x);
       return {...x, sets: all.filter(g => g.fest === f.key).map(g => o ? g : {...g, closed: at ? at.toLocaleDateString('en-IN', {day: 'numeric', month: 'short'}) : 'soon', opensAt: at ? at.getTime() : 0})}; }).filter(f => f.sets.length)
-    .sort((a, b) => (a.next ? a.next.at : 9e15) - (b.next ? b.next.at : 9e15)), open = ((fests[0] && fests[0].next ? fests[0] : fests.find(f => f.when.includes(m)) || fests[0]) || {}).key;
+    .sort((a, b) => (b.open ? 1 : 0) - (a.open ? 1 : 0) || (a.next ? a.next.at : 9e15) - (b.next ? b.next.at : 9e15)), open = ((fests.find(f => f.open) || (fests[0] && fests[0].next ? fests[0] : fests.find(f => f.when.includes(m))) || fests[0]) || {}).key;   /* a festival open for buying always comes first and is the tab the page opens on */
   return `
   <section class="gf-hero">
     <div class="gf-copy">
