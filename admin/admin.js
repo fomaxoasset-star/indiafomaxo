@@ -450,11 +450,15 @@
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
   var dark = true, which = 'sale', box = null, tick = null, phone = matchMedia('(max-width:820px)').matches;
   /* the popup's product picture size, laptop and phone: kept in the form's hidden size_l / size_p, so Save puts it on the website */
-  var part = 'img', FS = ['title', 'pct', 'sub', 'btn'];   // what the slider sizes: the product pictures, or one of the popup's words
-  var sizeIn = function (k, ph) { k = k || part; ph = ph === undefined ? phone : ph;
-    return sale && sale.querySelector(k === 'img' ? 'input[name="size_' + (ph ? 'p' : 'l') + '"]' : 'input[name="fs[' + (ph ? 'p' : 'l') + '][' + k + ']"]'); };
+  /* what the size bar can size in each popup: [key, button, CSS letter] (the sale popup's products are px, the rest % of standard) */
+  var PARTS = {sale: [['img', 'Products', ''], ['title', 'Top line', 'k'], ['pct', '% off', 'p'], ['sub', 'Under the %', 's'], ['btn', 'Button', 'b']],
+    'new': [['title', 'Top line', 'k'], ['img', 'Picture', 'i'], ['name', 'Name', 'n'], ['line', 'Short line', 's'], ['btn', 'Button', 'b']]};
+  var part = which === 'new' ? 'title' : 'img';
+  var sizeIn = function (k, ph) { k = k || part; ph = ph === undefined ? phone : ph; var d = ph ? 'p' : 'l';
+    if (which === 'new') return newp && newp.querySelector('input[name="nfs[' + d + '][' + k + ']"]');
+    return sale && sale.querySelector(k === 'img' ? 'input[name="size_' + d + '"]' : 'input[name="fs[' + d + '][' + k + ']"]'); };
   var sizeWord = function (i) { var lo = +i.dataset.min, hi = +i.dataset.max, f = (+i.value - lo) / (hi - lo);
-    if (part !== 'img') return +i.value === 100 ? 'Standard' : i.value + '%';
+    if (part !== 'img' || which === 'new') return +i.value === 100 ? 'Standard' : i.value + '%';
     return (+i.value === +i.dataset.def ? 'Standard' : f < .25 ? 'Small' : f < .5 ? 'Medium' : f < .75 ? 'Large' : 'Extra large'); };
   /* the end typed on the page (dd/mm/yyyy and a time, India time) as a moment, or 0 */
   var endAt = function () {
@@ -506,14 +510,19 @@
     var r = which === 'sale' ? saleHTML() : which === 'line' ? lineHTML() : newHTML();
     box.querySelector('.pv-note').textContent = r[0]; box.querySelector('.pv-note').hidden = !r[0];
     var site = box.querySelector('.pv-site'); site.classList.toggle('light', !dark);
-    /* the size bar shows only for the sale popup; the preview is drawn at laptop or phone width */
-    var sz = box.querySelector('.pv-size'), si = sizeIn();
-    if (sz) { sz.hidden = which !== 'sale'; var r0 = sz.querySelector('input[type=range]');
+    /* the size bar shows for both popups (not the line); the preview is drawn at laptop or phone width */
+    var P = PARTS[which], sized = !!P && (which === 'new' ? !!newp : !!sale), sz = box.querySelector('.pv-size');
+    if (sized && !P.some(function (x) { return x[0] === part; })) part = P[0][0];
+    var si = sized ? sizeIn() : null;
+    if (sz) sz.hidden = !sized;
+    if (sized) { var ps = sz.querySelector('.pv-parts');
+      if (ps.dataset.for !== which) { ps.dataset.for = which; ps.innerHTML = P.map(function (x) { return '<button type="button" data-pvpart="' + x[0] + '">' + x[1] + '</button>'; }).join(''); }
+      var r0 = sz.querySelector('input[type=range]');
       r0.min = si.dataset.min; r0.max = si.dataset.max; r0.value = si.value; sz.querySelector('.pv-sw').textContent = sizeWord(si);
       sz.querySelector('[data-pvreset]').disabled = +si.value === +si.dataset.def; }
-    site.classList.toggle('phone', which === 'sale' && phone); site.classList.toggle('laptop', which === 'sale' && !phone);
-    site.style.cssText = which === 'sale' && si ? '--ofw:' + sizeIn('img').value + 'px;--ofn:' + Math.max(1, sale.querySelectorAll('input[name="items[]"]:checked').length)
-      + FS.map(function (k, i) { return ';--f' + 'kpsb'[i] + ':' + sizeIn(k).value / 100; }).join('') : '';
+    site.classList.toggle('phone', sized && phone); site.classList.toggle('laptop', sized && !phone);
+    site.style.cssText = !sized ? '' : (which === 'sale' ? '--ofw:' + sizeIn('img').value + 'px;--ofn:' + Math.max(1, sale.querySelectorAll('input[name="items[]"]:checked').length) : '')
+      + P.filter(function (x) { return x[2]; }).map(function (x) { return ';--f' + x[2] + ':' + sizeIn(x[0]).value / 100; }).join('');
     box.querySelectorAll('[data-pvpart]').forEach(function (b) { b.classList.toggle('on', b.dataset.pvpart === part); });
     site.querySelector('.pv-box').classList.toggle('pv-plain', which === 'line');
     site.querySelector('.pv-box').innerHTML = (which === 'line' ? '' : '<span class="pv-x">×</span>') + r[1];
@@ -528,10 +537,10 @@
     box = document.createElement('div'); box.className = 'pvw';
     box.innerHTML = '<div class="pv-bar"><span class="seg">' + (sale ? '<button type="button" data-pvwhich="sale">Sale popup</button><button type="button" data-pvwhich="line">Line by prices</button>' : '') + (newp ? '<button type="button" data-pvwhich="new">New product popup</button>' : '')
       + '</span><span class="seg"><button type="button" data-pvmode="dark">Dark</button><button type="button" data-pvmode="light">Light</button></span><button type="button" class="btn sm" data-pvclose>Close preview</button></div>'
-      + (sale ? '<div class="pv-size"><span class="seg"><button type="button" data-pvdev="laptop">Laptop</button><button type="button" data-pvdev="phone">Phone</button></span>'
-        + '<span class="seg pv-parts"><button type="button" data-pvpart="img">Products</button><button type="button" data-pvpart="title">Top line</button><button type="button" data-pvpart="pct">% off</button><button type="button" data-pvpart="sub">Under the %</button><button type="button" data-pvpart="btn">Button</button></span>'
+      + '<div class="pv-size" hidden><span class="seg"><button type="button" data-pvdev="laptop">Laptop</button><button type="button" data-pvdev="phone">Phone</button></span>'
+        + '<span class="seg pv-parts"></span>'
         + '<label>Size<input type="range" step="5" aria-label="Size in the popup"></label><b class="pv-sw"></b>'
-        + '<button type="button" class="btn line sm" data-pvreset>Reset</button><button type="button" class="btn sm" data-pvsave>Save</button></div>' : '')
+        + '<button type="button" class="btn line sm" data-pvreset>Reset</button><button type="button" class="btn sm" data-pvsave>Save</button></div>'
       + '<p class="pv-note"></p><div class="pv-site"><div class="pv-box"></div></div><p class="muted small pv-foot">Preview only. Press Save on the page to put it on the website.</p>';
     box.addEventListener('click', function (e) {
       var t = e.target.closest('button'); if (e.target === box || (t && t.hasAttribute('data-pvclose'))) { close(); return; }
@@ -540,7 +549,7 @@
       if (t && t.dataset.pvdev) { phone = t.dataset.pvdev === 'phone'; draw(); }
       if (t && t.dataset.pvpart) { part = t.dataset.pvpart; draw(); }
       if (t && t.hasAttribute('data-pvreset')) { sizeIn().value = sizeIn().dataset.def; draw(); }
-      if (t && t.hasAttribute('data-pvsave')) sale.requestSubmit();
+      if (t && t.hasAttribute('data-pvsave')) (which === 'new' ? newp : sale).requestSubmit();
     });
     box.addEventListener('input', function (e) { if (e.target.type === 'range') { sizeIn().value = e.target.value; draw(); } });
     document.body.appendChild(box); document.addEventListener('keydown', key); draw();

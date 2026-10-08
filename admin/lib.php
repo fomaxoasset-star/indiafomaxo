@@ -358,6 +358,8 @@ function save_offer(): string {
 function save_newprod(array $cat): string {
   $clean = fn(string $k) => trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? '')));
   $n = ['on' => !empty($_POST['np_on']), 'label' => $clean('np_label') ?: 'Coming soon', 'name' => $clean('np_name'), 'line' => $clean('np_line'), 'id' => (string)($_POST['np_id'] ?? '')];
+  $fs = is_array($_POST['nfs'] ?? null) ? $_POST['nfs'] : [];
+  $n['fs'] = ['L' => shop_offer_fs($fs['l'] ?? [], SHOP_NEWP_FS), 'P' => shop_offer_fs($fs['p'] ?? [], SHOP_NEWP_FS)];   // sizes from the Preview size bar
   if (mb_strlen($n['label']) > 24) return '!The type can have up to 24 characters.';
   if ($n['id'] !== '' && !isset($cat[$n['id']])) $n['id'] = '';
   if ($n['name'] === '' && $n['id'] !== '') $n['name'] = mb_substr($cat[$n['id']]['name'], 0, 40);

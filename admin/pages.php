@@ -255,6 +255,7 @@ if ($tab === 'offer') {
     . '<div class="box ofr" data-pane="new"><div class="bh"><h3>New product popup</h3><label class="cpon"><input type="checkbox" name="np_on" value="1" form="newpForm"' . ($N['on'] ? ' checked' : '') . '><span>On</span></label></div><div class="bb">'
     . '<p class="ofst ofst-' . $nsk . '">' . h($nstatus) . '</p>'
     . '<form method="post" class="cpf" id="newpForm">' . $csrfField . '<input type="hidden" name="action" value="newprod_save">'
+    . implode('', array_map(fn($d) => implode('', array_map(fn($k) => '<input type="hidden" name="nfs[' . $d . '][' . $k . ']" value="' . $N['fs'][strtoupper($d)][$k] . '" data-min="' . SHOP_NEWP_FS[$k][0] . '" data-def="100" data-max="' . SHOP_NEWP_FS[$k][1] . '">', array_keys(SHOP_NEWP_FS))), ['l', 'p']))
     . '<div class="npgrid"><label>Type<input name="np_label" maxlength="24" list="ofw-np_label" value="' . h($N['label']) . '" placeholder="Coming soon" autocomplete="off">'
     . '<datalist id="ofw-np_label">' . implode('', array_map(fn($v) => '<option value="' . h($v) . '">', ['Coming soon', 'Just arrived', 'New launch', 'Launching soon', 'Back in stock', 'Now available', 'Only at FOMAXO'])) . '</datalist></label>'
     . '<label>Product<select name="np_id">' . $opts . '</select></label></div><div class="npgrid">'

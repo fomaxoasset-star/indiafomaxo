@@ -422,15 +422,17 @@ function shop_offer_size($v, string $d): int {
 }
 /* the popup's words size: [smallest, biggest] in % of the standard (100); anything else → 100 */
 const SHOP_OFFER_FS = ['title' => [80, 200], 'pct' => [60, 160], 'sub' => [70, 200], 'btn' => [80, 160]];
-function shop_offer_fs($f): array {
+/* the same for the New product popup: top line, picture, name, short line, button */
+const SHOP_NEWP_FS = ['title' => [80, 200], 'img' => [60, 200], 'name' => [60, 160], 'line' => [70, 200], 'btn' => [80, 160]];
+function shop_offer_fs($f, array $ranges = SHOP_OFFER_FS): array {
   $f = is_array($f) ? $f : []; $r = [];
-  foreach (SHOP_OFFER_FS as $k => [$lo, $hi]) { $v = (int)($f[$k] ?? 0); $r[$k] = $v >= $lo && $v <= $hi ? $v : 100; }
+  foreach ($ranges as $k => [$lo, $hi]) { $v = (int)($f[$k] ?? 0); $r[$k] = $v >= $lo && $v <= $hi ? $v : 100; }
   return $r;
 }
 /* the New product popup (Admin → Offer): on, kind 'soon' (Coming soon) or 'new' (Just arrived), name, a short line, and a product id ('' = none) */
 function shop_newprod(): array {
-  $n = json_decode((string)shop_setting('newprod'), true); $n = is_array($n) ? $n : [];
-  return ['on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? ''),
+  $n = json_decode((string)shop_setting('newprod'), true); $n = is_array($n) ? $n : []; $fs = is_array($n['fs'] ?? null) ? $n['fs'] : [];
+  return ['fs' => ['L' => shop_offer_fs($fs['L'] ?? [], SHOP_NEWP_FS), 'P' => shop_offer_fs($fs['P'] ?? [], SHOP_NEWP_FS)], 'on' => (bool)($n['on'] ?? false), 'kind' => ($n['kind'] ?? '') === 'new' ? 'new' : 'soon', 'name' => (string)($n['name'] ?? ''), 'line' => (string)($n['line'] ?? ''), 'id' => (string)($n['id'] ?? ''),
     'label' => (string)($n['label'] ?? '') !== '' ? (string)$n['label'] : (($n['kind'] ?? '') === 'new' ? 'Just arrived' : 'Coming soon')];
 }
 /* what the website gets (STORE_LIVE.offer): null when nothing should show, also once the end has passed.
@@ -456,6 +458,7 @@ function shop_newprod_live(): ?array {
   $p = $n['id'] !== '' ? (fomaxo_catalog()['products'][$n['id']] ?? null) : null;
   $show = $p && empty($p['hidden']);   // a product on the website gets "Shop now"; otherwise "Explore FOMAXO"
   return ['kind' => $show ? 'new' : 'soon', 'label' => $n['label'], 'name' => $n['name'], 'line' => $n['line'], 'id' => $show ? $n['id'] : '', 'img' => $p['img'] ?? '',
+    'fs' => [$n['fs']['L'], $n['fs']['P']],   // sizes set in the admin Preview, in % (laptop, phone)
     'key' => substr(md5($n['label'] . '|' . $n['name'] . '|' . $n['id']), 0, 10)];
 }
 
