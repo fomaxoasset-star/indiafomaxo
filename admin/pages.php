@@ -18,8 +18,8 @@ if ($tab === 'home') {
     . '<a class="kpi k-new" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'cod'])) . '"><span>COD orders to deliver</span><b>' . ($todo['cod'][0] ?? 0) . '</b><small>' . rupees($todo['cod'][1] ?? 0) . ' to collect</small></a>'
     . '<a class="kpi k-paid" href="' . h(self_url(['tab' => 'orders', 'status' => 'todo', 'method' => 'online'])) . '"><span>Online orders to deliver</span><b>' . ($todo['online'][0] ?? 0) . '</b><small>Paid online</small></a>'
     . '<div class="kpi wrap"><span>Sales · ' . h($PL) . '</span><b>' . rupees($tt) . '</b><small>' . $tn . ' order' . ($tn === 1 ? '' : 's') . '</small></div>'
-    . '<a class="kpi" href="' . h(self_url(['tab' => 'reports'])) . '"><span>Sales this month</span><b>' . rupees($m['sales']) . '</b><small>' . $m['orders'] . ' order' . ($m['orders'] === 1 ? '' : 's') . '</small></a>'
-    . '<a class="kpi ' . ($m['net'] < 0 ? 'bad' : 'good') . '" href="' . h(self_url(['tab' => 'reports'])) . '"><span>' . ($m['net'] < 0 ? 'Loss' : 'Profit') . ' this month</span><b>' . money($m['net']) . '</b><small>' . ($m['nocost'] ? $m['nocost'] . ' items with no cost set' : 'after costs and expenses') . '</small></a></div>';
+    . '<a class="kpi" href="' . h(self_url(['tab' => 'sales'])) . '"><span>Sales this month</span><b>' . rupees($m['sales']) . '</b><small>' . $m['orders'] . ' order' . ($m['orders'] === 1 ? '' : 's') . '</small></a>'
+    . '<a class="kpi ' . ($m['net'] < 0 ? 'bad' : 'good') . '" href="' . h(self_url(['tab' => 'sales'])) . '"><span>' . ($m['net'] < 0 ? 'Loss' : 'Profit') . ' this month</span><b>' . money($m['net']) . '</b><small>' . ($m['nocost'] ? $m['nocost'] . ' items with no cost set' : 'after costs and expenses') . '</small></a></div>';
   $body .= $sw('#dashCharts', ['sales' => 'Sales', 'visitors' => 'Visitors']) . '<div id="dashCharts" class="panes" style="display:contents">';
   foreach (['sales' => 'Sales', 'visitors' => 'Visitors'] as $k => $label)
     $body .= '<div class="box c-' . ($k === 'sales' ? 'sales on' : 'vis') . '" data-pane="' . $k . '" data-chart="' . $k . '" data-caption="' . h(($k === 'sales' ? '' : 'visitors · ') . $PL) . '"><div class="bh"><h3>' . $label . '</h3><span class="ctot"></span></div>'
@@ -361,7 +361,7 @@ if ($tab === 'stock') {
         . '<td><input type="number" min="0" step="0.01" name="cost[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($c === null ? '' : h((string)round($c / 100, 2))) . '" placeholder="—"></td><td class="hide-m">' . $state . '</td></tr>';
     }
   }
-  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="unsaved" hidden>Not saved yet</span><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Reports use it to work out your profit.</span></div></form>'
+  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="unsaved" hidden>Not saved yet</span><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Sales uses it to work out your profit.</span></div></form>'
     . '<script>(function(){var f=document.getElementById("stockFind"),rows=document.querySelectorAll("table.stock tbody tr"),none=document.getElementById("stockNone"),only="",note=document.querySelector(".sonly");'
     . 'function show(){var q=f.value.trim().toLowerCase(),n=0;rows.forEach(function(r){var on=(!q||r.dataset.name.indexOf(q)>-1)&&(!only||r.dataset.s===only);r.hidden=!on;if(on)n++});none.textContent=only&&!q?(only==="low"?"Nothing is running low.":"Nothing is out of stock."):"No product matches.";none.hidden=n>0;'
     . 'document.querySelectorAll(".sbox").forEach(function(b){var on=b.dataset.only===only;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});note.hidden=!only;note.firstChild.textContent=only?"Showing only "+(only==="low"?"sizes running low.":"sizes out of stock."):""}'
@@ -566,10 +566,10 @@ if ($tab === 'analytics' && !$cv) {
   $body .= '</div></div></div></div>';
 }
 
-/* ============ Reports ============ */
-if ($tab === 'reports') {
+/* ============ Sales (profit & loss; was Reports) ============ */
+if ($tab === 'sales') {
   /* the date bar picks the table: day by day up to 3 months, month by month for longer, by year for All */
-  $D = pick_dates('reports'); $V = report_view($D); $rows = $V['rows']; $t = report_sum($rows); $cur = date($V['unit'] === 'D' ? 'Y-m-d' : ($V['unit'] === 'M' ? 'Y-m' : 'Y'));
+  $D = pick_dates('sales'); $V = report_view($D); $rows = $V['rows']; $t = report_sum($rows); $cur = date($V['unit'] === 'D' ? 'Y-m-d' : ($V['unit'] === 'M' ? 'Y-m' : 'Y'));
   $m = fn($p) => '<span class="' . ($p < 0 ? 'neg' : '') . '">' . money($p) . '</span>';
   $g = in_array($_GET['g'] ?? '', ['sales', 'profit', 'orders', 'expenses'], true) ? $_GET['g'] : '';
   $kk = (string)($_GET['k'] ?? '');
@@ -582,12 +582,12 @@ if ($tab === 'reports') {
     'py' => ['Profit of this year', money($ct['net']), date('Y'), $yr, 'profit', $ct['net'] < 0 ? 'bad' : 'good']];
   $body .= date_bar($D) . '<div class="kpis n4 rk" style="--n:4">';
   foreach ($boxes as $k => [$label, $big, $small, $span, $gg, $cls])
-    $body .= '<a class="kpi ' . $cls . ($kk === $k && $D['r'] === 'custom' && [$D['from'], $D['to']] === $span ? ' on' : '') . '" href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $span[0], 'to' => $span[1], 'g' => $gg, 'k' => $k])) . '"><span>' . $label . '</span><b>' . $big . '</b><small>' . h($small) . '</small></a>';
+    $body .= '<a class="kpi ' . $cls . ($kk === $k && $D['r'] === 'custom' && [$D['from'], $D['to']] === $span ? ' on' : '') . '" href="' . h(self_url(['tab' => 'sales', 'r' => 'custom', 'from' => $span[0], 'to' => $span[1], 'g' => $gg, 'k' => $k])) . '"><span>' . $label . '</span><b>' . $big . '</b><small>' . h($small) . '</small></a>';
   $body .= '</div>';
   $lab = fn(string $k, bool $long) => match ($V['unit']) { 'D' => date($long ? 'D j M Y' : 'j M', strtotime($k)), 'M' => date($long ? 'F Y' : (substr($V['from'], 0, 4) === substr($V['to'], 0, 4) ? 'M' : "M 'y"), strtotime("$k-01")), default => (string)$k };
   /* the graph: only after a box (or a row, while it is open) is tapped; Sales / Profit / Orders / Expenses switch it */
   if ($g !== '') {
-    $close = self_url(['tab' => 'reports']);
+    $close = self_url(['tab' => 'sales']);
     $GD = ['labels' => [], 'full' => [], 'sales' => [], 'profit' => [], 'orders' => [], 'expenses' => []];
     foreach ($rows as $k => $r) { $GD['labels'][] = $lab((string)$k, false); $GD['full'][] = $lab((string)$k, true); $GD['sales'][] = $r['sales']; $GD['profit'][] = $r['net']; $GD['orders'][] = $r['orders']; $GD['expenses'][] = $r['expenses']; }
     $body .= '<div class="box rgraph" data-g="' . $g . '"><div class="bh"><span class="seg gm">' . implode('', array_map(fn($x, $l) => '<button type="button" data-g="' . $x . '"' . ($x === $g ? ' class="on"' : '') . ">$l</button>", ['sales', 'profit', 'orders', 'expenses'], ['Sales', 'Profit', 'Orders', 'Expenses'])) . '</span>'
@@ -604,8 +604,8 @@ if ($tab === 'reports') {
     $open = match ($V['unit']) { 'M' => ["$k-01", date('Y-m-t', strtotime("$k-01"))], 'Y' => ["$k-01-01", "$k-12-31"], default => null };
     $name = h($lab($k, $V['unit'] === 'M' && substr($V['from'], 0, 4) !== substr($V['to'], 0, 4)));
     if ($V['unit'] === 'D') $name = h(date('D', strtotime($k))) . ' <span class="muted">' . h(date('j M', strtotime($k))) . '</span>';
-    $body .= '<tr' . ($k > $cur ? ' class="dim"' : '') . ($open ? ' data-href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '"' : '') . '>'
-      . '<td>' . ($open ? '<a href="' . h(self_url(['tab' => 'reports', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '">' . $name . '</a>' : $name) . '</td>'
+    $body .= '<tr' . ($k > $cur ? ' class="dim"' : '') . ($open ? ' data-href="' . h(self_url(['tab' => 'sales', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '"' : '') . '>'
+      . '<td>' . ($open ? '<a href="' . h(self_url(['tab' => 'sales', 'r' => 'custom', 'from' => $open[0], 'to' => $open[1]] + ($g ? ['g' => $g] : []))) . '">' . $name . '</a>' : $name) . '</td>'
       . '<td class="r">' . $r['orders'] . '</td><td class="r">' . rupees($r['sales']) . '</td><td class="r">' . rupees($r['discounts']) . '</td><td class="r">' . rupees($r['coupons']) . '</td><td class="r">' . rupees($r['fees']) . '</td>'
       . '<td class="r">' . rupees($r['cost']) . ($r['nocost'] ? ' <small class="warn">+' . $r['nocost'] . ' no cost</small>' : '') . '</td><td class="r">' . $m($r['gross']) . '</td><td class="r">' . rupees($r['expenses']) . '</td><td class="r"><b>' . $m($r['net']) . '</b></td></tr>';
   }
@@ -713,7 +713,7 @@ if ($tab === 'settings') {
     . '<label>Send new order emails to<input type="email" name="notify_email" value="' . h($email) . '" placeholder="' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '"></label>'
     . '<p class="muted small" style="margin:0">Every new order is emailed here, and so is a password reset link if you forget your password. Empty uses ' . h(fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com') . '.</p>'
     . '<label>Card / UPI payment fee %<input type="number" name="pay_fee" min="0" max="10" step="0.01" value="' . h((string)pay_fee_pct()) . '"></label>'
-    . '<p class="muted small" style="margin:0">Razorpay’s fee on each online payment, used for Fees in Reports.</p><button class="btn">Save</button></div></form>'
+    . '<p class="muted small" style="margin:0">Razorpay’s fee on each online payment, used for Fees in Sales.</p><button class="btn">Save</button></div></form>'
     . '<form method="post" class="box' . ($codFirst ? ' on' : '') . '" data-pane="cod" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="cod"><div class="bh"><h3>Cash on delivery</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . ($COD ? '' : '<p class="small" style="margin:0;color:var(--red,#e5484d)">Cash on delivery is turned off in index.html, so these numbers are not used yet.</p>')
     . '<label>Minimum order (₹)<input type="number" name="cod_min" min="0" step="1" required value="' . h($rs((int)($COD['min'] ?? 100000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only from this amount.</p>'
