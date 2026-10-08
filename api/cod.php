@@ -48,6 +48,7 @@ try {
       'total' => $total, 'codFee' => $cod['fee'], 'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'stock_taken' => true,
       'coupon' => $cp['code'] ?? '', 'discount' => $cp['off'] ?? 0];
     shop_insert_order($db, $rec);
+    shop_coupon_spent($db, $rec['coupon']);   // a one-use coupon deletes itself now
     return $rec;
   });
 } catch (Throwable $e) { error_log('FOMAXO COD order: ' . $e->getMessage()); fail('We could not place your order right now. Please try again or WhatsApp us.', 500); }

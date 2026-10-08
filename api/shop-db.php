@@ -357,6 +357,14 @@ function shop_coupons(): array {
   return $out;
 }
 function shop_coupon_uses(PDO $db, string $code): int { $s = $db->prepare('SELECT COUNT(*) FROM orders WHERE coupon = ? AND ' . COUPON_USED); $s->execute([$code]); return (int)$s->fetchColumn(); }
+/* Once an order has used it up, a goodwill (or refill) coupon and a free product coupon with a usage limit delete themselves,
+   so the Coupons list keeps only codes still waiting to be used. The order keeps the code. Call inside shop_tx(), after the order is saved as placed or paid. */
+function shop_coupon_spent(PDO $db, string $code): void {
+  if ($code === '') return;
+  $s = $db->prepare('SELECT * FROM coupons WHERE code = ?'); $s->execute([$code]); $c = $s->fetch();
+  if (!$c || ((string)$c['phone'] === '' && ($c['kind'] !== 'free' || !(int)$c['max_uses']))) return;
+  if (shop_coupon_uses($db, $code) >= max(1, (int)$c['max_uses'])) $db->prepare('DELETE FROM coupons WHERE code = ?')->execute([$code]);
+}
 /* when a coupon starts and stops working, as 'Y-m-d H:i' ('' = no limit); the end minute still works */
 function coupon_starts(array $c): string { return (string)($c['starts'] ?? ''); }
 function coupon_ends(array $c): string { $e = (string)$c['ends']; return strlen($e) === 10 ? "$e 23:59" : $e; }

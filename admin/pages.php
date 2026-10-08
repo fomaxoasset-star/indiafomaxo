@@ -63,7 +63,7 @@ if ($tab === 'orders') {
   $body .= '</div>';
   /* who used a coupon: one gold box that shows only those orders, then a chip per code */
   $CC = order_coupon_counts(['coupon' => ''] + $F); $cOn = $F['coupon'] !== '';
-  $body .= '<div class="cpbar"><a class="cpbox' . ($F['coupon'] === 'yes' ? ' on' : '') . '" href="' . h(self_url(array_filter(['coupon' => $F['coupon'] === 'yes' ? '' : 'yes'] + $q))) . '"><span>Used a coupon</span><b>' . $CC['n'] . '</b><small>' . ($CC['off'] ? rupees($CC['off']) . ' off in all' : 'No coupon orders') . '</small></a>';
+  $body .= '<div class="cpbar"><a class="cpbox' . ($F['coupon'] === 'yes' ? ' on' : '') . '" href="' . h(self_url(array_filter(['coupon' => $F['coupon'] === 'yes' ? '' : 'yes'] + $q))) . '"><span>Used a coupon</span><b>' . $CC['n'] . '</b><small>' . ($CC['off'] ? rupees($CC['off']) . ' off in all' : ($CC['n'] ? 'Free gifts' : 'No coupon orders')) . '</small></a>';
   if ($CC['codes']) {
     $body .= '<div class="chips" aria-label="Orders by coupon code">';
     foreach ($CC['codes'] as $code => $n) $body .= '<a class="chip' . ($F['coupon'] === (string)$code ? ' on' : '') . '" href="' . h(self_url(array_filter(['coupon' => $F['coupon'] === (string)$code ? '' : $code] + $q))) . '"><span class="cpn">' . h($code) . '</span> <b>' . $n . '</b></a>';
@@ -123,6 +123,8 @@ if ($tab === 'orders') {
 
 /* ============ Coupons ============ */
 if ($tab === 'coupons') {
+  /* one-use coupons used before they deleted themselves (api/cod.php, api/razorpay.php) go now too */
+  foreach (shop_db()->query("SELECT code FROM coupons WHERE phone <> '' OR (kind = 'free' AND max_uses > 0)")->fetchAll(PDO::FETCH_COLUMN) as $cc) shop_tx(fn(PDO $db) => shop_coupon_spent($db, (string)$cc));
   $CP = shop_coupons(); $ed = coupon_clean((string)($_GET['edit'] ?? '')); $E = $CP[$ed] ?? null; $today = date('Y-m-d');
   if ($E && $E['phone'] !== '') $E = null;   // a goodwill coupon is made once and not edited
   $goodwill = fn(array $c) => (string)($c['phone'] ?? '') !== '';   // a goodwill coupon: one mobile number, one use, no end date
@@ -167,7 +169,7 @@ if ($tab === 'coupons') {
   /* Goodwill coupon: the owner types a customer's mobile number and the % off; a new one-use code for that number only, no end date */
   $M = $CP[coupon_clean((string)($_GET['made'] ?? ''))] ?? null; $M = $M && $goodwill($M) ? $M : null;
   $body .= '<form method="post" class="sry">' . $csrfField . '<input type="hidden" name="action" value="coupon_goodwill">'
-    . '<div class="sry-h"><b>Goodwill coupon</b><small class="muted">For a late delivery or a faulty product. One use, only this mobile number, no end date.</small></div>'
+    . '<div class="sry-h"><b>Goodwill coupon</b><small class="muted">For a late delivery or a faulty product. One use, only this mobile number, no end date. It deletes itself once used.</small></div>'
     . '<div class="sry-f"><input name="phone" type="tel" inputmode="tel" maxlength="16" required placeholder="Mobile" aria-label="Customer mobile number" autocomplete="off">'
     . '<label class="sry-pct"><input name="pct" type="number" min="1" max="99" step="1" inputmode="numeric" required placeholder="10" aria-label="% off"><span>% off</span></label>'
     . '<button class="btn">Make coupon</button></div>'
@@ -193,7 +195,7 @@ if ($tab === 'coupons') {
           : (!$c['uses'] && !str_starts_with($c['code'], 'REFILL-') ? '<a class="btn line sm sry-wa" href="' . h(goodwill_wa($c)) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . $waIc . '<span>WhatsApp</span></a>' : ''))
         . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';
     }
-    $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Used counts orders placed or paid with the code (cancelled and refunded orders give the use back). Tap the number to see those orders.</p>';
+    $body .= '</tbody></table><p class="muted small" style="padding:0 12px">Used counts orders placed or paid with the code (cancelled and refunded orders give the use back). Tap the number to see those orders. Goodwill coupons, and free product coupons with a usage limit, delete themselves once used up; their orders keep the code.</p>';
   }
   $body .= '</div></div></div>';
 }
