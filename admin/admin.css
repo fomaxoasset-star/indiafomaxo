@@ -486,6 +486,32 @@ body.zooming{overflow:hidden}
 .order .cu .ctag{display:inline-flex}
 @media (max-width:820px){.cpbar{gap:6px}.cpbox{display:grid;grid-template-columns:auto auto;column-gap:8px;align-items:baseline;padding:6px 11px}.cpbox small{grid-column:1/-1;font-size:11px}}
 
+/* Members → Refill reminders: the Automatic sending box (WhatsApp Business), the gold On / Off switch, and the list */
+.rfauto{display:block;flex:none;overflow:visible}.rfauto summary{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:10px 14px;cursor:pointer;list-style:none}.rfauto summary::-webkit-details-marker{display:none}
+.rfauto summary b{font:600 13px Cinzel,serif;letter-spacing:.08em;color:var(--gold)}.rfauto summary::after{content:"▾";margin-left:auto;color:var(--muted);font-size:12px}.rfauto[open] summary::after{content:"▴"}
+.rfst{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:1px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}.rfst.on{background:var(--gold);border-color:var(--gold);color:#17130b}
+.rff{display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;border-top:1px solid var(--line);max-height:62vh}
+.rfg{display:grid;gap:10px}.rfg.two{grid-template-columns:repeat(2,minmax(0,1fr))}.rfg.three{grid-template-columns:repeat(3,minmax(0,1fr));max-width:560px}
+.rfhook{margin:-4px 0 0}.rfhook .sel{user-select:all;word-break:break-all;color:var(--text);font-weight:600}
+.rfrow{display:flex;gap:12px;align-items:center}.rfrow .btn{width:auto;min-width:96px}
+.rfsw{display:inline-flex;border:1px solid var(--gold);border-radius:999px;overflow:hidden;flex:none}.rfsw label{display:block;cursor:pointer}.rfsw input{position:absolute;opacity:0;pointer-events:none}
+.rfsw span{display:block;padding:6px 22px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold2)}.rfsw input:checked+span{background:var(--gold);color:#17130b}.rfsw input:focus-visible+span{outline:2px solid var(--gold2);outline-offset:-3px}
+.rferr{color:var(--red);margin:0;font-weight:600}
+.rfk{flex:none;grid-template-columns:repeat(2,minmax(0,220px))}.rflist td{padding:8px 10px}.rflist th:first-child,.rflist td:first-child{padding-left:14px}.rflist th:last-child,.rflist td:last-child{padding-right:14px}.rflist .btn{width:auto;display:inline-flex}.rflist tr.dim2 td>*:not(.ra){opacity:.75}
+.rsent{font-size:12px;font-weight:600;color:var(--green);margin-right:10px}.rstop{font-size:12px;font-weight:700;color:var(--red)}
+.wtag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:1px 7px;margin-left:8px;border-radius:20px;border:1px solid color-mix(in srgb,var(--green) 45%,transparent);color:var(--green);background:color-mix(in srgb,var(--green) 10%,transparent);white-space:nowrap;vertical-align:1px}
+.wastop{display:inline;margin:0 0 0 10px}.btn.xs{height:auto;min-height:0;width:auto;padding:2px 10px;font-size:11px}
+.rfnote{padding:10px 14px;margin:0;border-top:1px solid var(--line2)}
+@media (max-width:820px){
+  .rfauto summary{padding:9px 10px}.rfsum{flex:1 1 100%;order:3}.rff{padding:10px;max-height:58vh;overflow:auto}.rfg.two{grid-template-columns:1fr}.rfg.three{gap:6px}
+  .rfsw span{padding:7px 20px}.rfk{grid-template-columns:1fr 1fr}.rfk>*{grid-column:auto!important}
+  .rflist,.rflist tbody{display:block}.rflist thead{display:none}
+  .rflist tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line2)}
+  .rflist td{display:block;padding:0!important;border:0!important;font-size:13px;min-width:0}.rflist td:nth-child(2){grid-row:2;margin-top:2px}.rflist td.ra{grid-column:2;grid-row:1/3}
+  .rflist td small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rflist td:nth-child(2) b,.rflist td:nth-child(2) small{display:inline;font-size:12px}.rflist td:nth-child(2) b::after{content:" · ";font-weight:400;color:var(--muted)}
+  .rflist .rsent{display:block;margin:0 0 4px;font-size:11px}.rflist .btn{padding:0 10px}.rfnote{padding:8px 10px}
+}
+
 /* light mode: the admin follows the phone or computer setting (black text, gold, cream background) */
 @media (prefers-color-scheme:light){
   :root{color-scheme:light;--bg:#f7f3ec;--panel:#fff;--panel2:#f3ede2;--line:#e3d9c8;--line2:#eee6d8;--text:#16130f;--muted:#5d554a;--gold:#8f6b37;--gold2:#7a5726;--red:#a12f2f;--green:#2f6b3a;--blue:#2f5d8f;--amber:#9a5b12}
@@ -505,4 +531,5 @@ body.zooming{overflow:hidden}
   .ofst-on{color:#2f6b3a;border-color:#b9d8c0}.ofst-end{color:#a12f2f;border-color:#e6b8b3}
   .cpt2 input[type=time]{color-scheme:light}
   .cpbox.on{background:#fbf3e2}.ctag{background:#fbf3e2;border-color:#e2cfa6}
+  .rfst.on,.rfsw input:checked+span{color:#fff}
 }
