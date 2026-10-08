@@ -141,8 +141,9 @@ if ($tab === 'coupons') {
   $body .= $sw('#cpPanes', $E ? array_reverse($panes, true) : $panes) . '<div class="exp panes" id="cpPanes">'
     . '<form method="post" class="box' . ($E ? ' on' : '') . '" data-pane="add">' . $csrfField . '<input type="hidden" name="action" value="coupon_save">' . ($E ? '<input type="hidden" name="editing" value="1">' : '')
     . '<div class="bh"><h3>' . ($E ? 'Edit ' . h($E['code']) : 'Add a coupon') . '</h3>' . ($E ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons'])) . '">New coupon</a>' : '') . '</div><div class="bb cpf" style="padding-top:12px">'
-    . '<label>Code<input name="code" maxlength="20" required value="' . h($E['code'] ?? '') . '" placeholder="WELCOME10" autocapitalize="characters" autocomplete="off" spellcheck="false"' . ($E ? ' readonly' : '') . '></label>'
-    . '<div class="cpv"><label>Takes off<span class="seg ck">'
+    . '<label>Code<span class="cpcode"><input name="code" maxlength="20" required value="' . h($E['code'] ?? '') . '" placeholder="WELCOME10" autocapitalize="characters" autocomplete="off" spellcheck="false"' . ($E ? ' readonly' : '') . '>'
+    . ($E ? '' : '<button type="button" class="btn line sm" data-mkcode title="Make a code for me">Make code</button>') . '</span></label>'   // Make code fills in one like FOMAXO-7K2Q (admin.js)
+    . '<div class="cpv"><label>Coupon gives<span class="seg ck">'
     . '<label class="' . (($E['kind'] ?? 'pct') === 'pct' ? 'on' : '') . '"><input type="radio" name="kind" value="pct"' . (($E['kind'] ?? 'pct') === 'pct' ? ' checked' : '') . '>% off</label>'
     . '<label class="' . (($E['kind'] ?? '') === 'amt' ? 'on' : '') . '"><input type="radio" name="kind" value="amt"' . (($E['kind'] ?? '') === 'amt' ? ' checked' : '') . '>₹ off</label>'
     . '<label class="' . (($E['kind'] ?? '') === 'free' ? 'on' : '') . '"><input type="radio" name="kind" value="free"' . (($E['kind'] ?? '') === 'free' ? ' checked' : '') . '>Free product</label></span></label></div>'
@@ -154,6 +155,8 @@ if ($tab === 'coupons') {
           . h($p['name'] . ' ' . opt_label($p, (string)$opt)) . ' · ' . rupees((int)round($pr * 100)) . '</option>', array_keys($p['prices']), $p['prices']));
       }, array_keys(fomaxo_catalog()['products']), fomaxo_catalog()['products'])) . '</select></label>'
     . '<label><span class="cpmin">Minimum order ₹</span><span class="cpspend">Spend at least ₹</span><input type="number" name="min_order" min="0" step="any" inputmode="decimal" value="' . h($E && $E['min_order'] ? $num((int)$E['min_order']) : '') . '" placeholder="None"></label></div>'
+    /* the extras most coupons don't need sit folded under More options; they open when the coupon being edited uses one */
+    . '<details class="cpmore"' . ($E && (!empty($E['stack']) || coupon_starts($E) !== '' || coupon_ends($E) !== '' || (int)$E['max_uses']) ? ' open' : '') . '><summary>More options <small class="muted">time limit, usage limit, website offer</small></summary><div class="cpf">'
     /* how the coupon mixes with the website offer (multi-buy): one ring dot must be picked; new and old coupons start on "Use the bigger offer" */
     . '<div class="cpst" role="radiogroup" aria-label="With the website offer">'
     . '<label><input type="radio" name="stack" value="0"' . (empty($E['stack']) ? ' checked' : '') . ' required><span><b>Use the bigger offer</b><i>Coupon or website offer, whichever saves more</i></span></label>'
@@ -161,14 +164,14 @@ if ($tab === 'coupons') {
     . '<div class="cptl"><b>Time limit</b> <small class="muted">(optional; no time = the whole day)</small></div>'
     . '<label class="cprow"><span>Starts</span>' . $tbox('starts', $E ? coupon_starts($E) : '', '00:00') . '</label>'
     . '<label class="cprow"><span>Ends</span>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
-    . '<div class="cp2 cpend"><label>Usage limit<input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit"></label>'
-    . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label></div>'
+    . '<label class="cprow cpuse"><span>Usage limit</span><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit (total orders)"></label></div></details>'
     . '<label class="cpon"><input type="checkbox" name="per_cust" value="1"' . (!empty($E['per_cust']) ? ' checked' : '') . '> One use per customer (mobile number)</label>'
+    . '<label class="cpon"><input type="checkbox" name="active" value="1"' . (!$E || (int)$E['active'] ? ' checked' : '') . '> On (works at checkout)</label>'
     . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'
     . '<p class="muted small" style="margin:0">Shoppers type the code in “Have a coupon code?” at checkout. It works for cash on delivery and online payment, and the discount is worked out on the server.</p></div></form>'
     . '<div class="box' . ($E ? '' : ' on') . '" data-pane="list"><div class="bh"><h3>Your coupons · ' . count($CP) . '</h3></div>';
   /* Goodwill coupon: the owner types a customer's mobile number and the % off; a new one-use code for that number only, no end date */
-  $M = $CP[coupon_clean((string)($_GET['made'] ?? ''))] ?? null; $M = $M && $goodwill($M) ? $M : null;
+  $M = $CP[coupon_clean((string)($_GET['made'] ?? ''))] ?? null; $N = $M && !$goodwill($M) && (int)$M['active'] ? $M : null; $M = $M && $goodwill($M) ? $M : null;
   $body .= '<form method="post" class="sry">' . $csrfField . '<input type="hidden" name="action" value="coupon_goodwill">'
     . '<div class="sry-h"><b>Goodwill coupon</b><small class="muted">For a late delivery or a faulty product. One use, only this mobile number. No end date unless you pick one. It deletes itself once used.</small></div>'
     . '<div class="sry-f"><input name="phone" type="tel" inputmode="tel" maxlength="16" required placeholder="Mobile" aria-label="Customer mobile number" autocomplete="off">'
@@ -177,7 +180,10 @@ if ($tab === 'coupons') {
     . '<button class="btn">Make coupon</button></div>'
     . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . (int)$M['value'] . '% off · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'
       . '<a class="btn sm" href="' . h(goodwill_wa($M)) . '" target="_blank" rel="noopener">' . $waIc . '<span>Send on WhatsApp</span></a></div>' : '')
-    . '</form><div class="bb np">';
+    . '</form>'
+    /* a coupon just added or saved: on top, ready to send on WhatsApp */
+    . ($N ? '<div class="sry-done cpmade"><span><b class="cpn">' . h($N['code']) . '</b> ' . h(coupon_label($N)) . ' is ready</span><a class="btn sm" href="' . h(coupon_wa($N)) . '" target="_blank" rel="noopener">' . $waIc . '<span>Send on WhatsApp</span></a></div>' : '')
+    . '<div class="bb np">';
   if (!$CP) $body .= '<p class="empty">No coupons yet. Add one, like WELCOME10 for 10% off.</p>';
   else {
     $body .= '<table class="grid cpt"><thead><tr><th>Code</th><th>Discount</th><th class="hide-m">Minimum</th><th class="hide-m">Time limit</th><th class="r">Used</th><th class="r hide-m">Sales</th><th class="r hide-m">Given off</th><th></th></tr></thead><tbody>';
@@ -186,7 +192,7 @@ if ($tab === 'coupons') {
       $body .= '<tr class="cs-' . $sk . '"><td><b class="cpn">' . h($c['code']) . '</b><small><span class="badge cb-' . $sk . '">' . $sl . '</span></small></td>'
         . ($goodwill($c) ? '<td>' . h(coupon_label($c)) . ' <span class="cpstag goodwill">' . (str_starts_with($c['code'], 'REFILL-') ? 'Refill' : 'Goodwill') . '</span><small class="sry-ph">For ' . h(phone_fmt($c['phone'])) . '</small>' . ($limit($c) !== '' ? '<small class="show-m">' . h($limit($c)) . '</small>' : '') . '</td>'
           . '<td class="hide-m"><span class="muted">None</span></td><td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No end date</span>') . '</td>'
-        : '<td>' . h(coupon_label($c)) . ($c['kind'] === 'free' ? ' <span class="cpstag free">Free product</span>' : ' <span class="cpstag' . (!empty($c['stack']) ? ' both' : '') . '">' . coupon_stack_label($c) . '</span>') . (!empty($c['per_cust']) ? ' <span class="cpstag">1 per customer</span>' : '') . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
+        : '<td>' . h(coupon_label($c)) . ($c['kind'] === 'free' ? ' <span class="cpstag free">Free product</span>' : (!empty($c['stack']) ? ' <span class="cpstag both">' . coupon_stack_label($c) . '</span>' : ''))   // only "Use both" is tagged; the bigger offer is the usual . (!empty($c['per_cust']) ? ' <span class="cpstag">1 per customer</span>' : '') . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
           . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
           . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>')
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
