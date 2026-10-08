@@ -710,11 +710,12 @@ if ($tab === 'stores') {
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
   $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
-  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $first = $adsFirst || $codFirst;
+  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $igFirst = $pane === 'ig'; $first = $adsFirst || $codFirst || $igFirst;
   $COD = fomaxo_catalog()['cod'] ?? null;
   $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
-  $setPanes = ['notify' => 'Emails', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  $setPanes = ['notify' => 'Emails', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'ig' => 'Instagram', 'pw' => 'Password', 'db' => 'Database'];
+  $IG = ig_settings(); $IGC = ig_cache(); $igOn = $IG['token'] !== '';
   if ($first) $setPanes = [$pane => $setPanes[$pane]] + $setPanes;
   $rs = fn(int $paise) => (string)intdiv($paise, 100);
   $body .= $sw('#setPanes', $setPanes) . '<div class="set panes" id="setPanes">'
@@ -737,6 +738,19 @@ if ($tab === 'settings') {
     . $adIn('gads', 'Google Ads ID', 'AW-123456789', 'Goals → Conversions → Tag setup. Starts with AW-.')
     . $adIn('gadsLabel', 'Google Ads purchase label', 'AbCdEfGhIjKlMnOp', 'What comes after AW-…/ in your Purchase conversion.')
     . '<button class="btn">Save</button></div></form>'
+    . '<form method="post" class="box' . ($igFirst ? ' on' : '') . '" data-pane="ig" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="instagram"><div class="bh"><h3>Instagram reels</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . ($igOn
+      ? '<p class="small" style="margin:0"><b class="gold">Connected' . ($IG['user'] !== '' ? ' as @' . h($IG['user']) : '') . '.</b> ' . count($IGC['reels']) . ' reel' . (count($IGC['reels']) === 1 ? '' : 's') . ($IGC['at'] ? ', checked ' . h(date('d/m/Y H:i', (int)$IGC['at'])) : '') . '. New reels appear on the home page by themselves within 30 minutes.</p>'
+        . ($IGC['error'] !== '' ? '<p class="small" style="margin:0;color:var(--red,#e5484d)">Instagram said: ' . h(mb_substr($IGC['error'], 0, 160)) . '</p>' : '')
+        . '<label class="chk"><input type="checkbox" name="show" value="1"' . ($IG['show'] ? ' checked' : '') . '> Show the reels on the home page</label>'
+        . '<label>How many reels<input type="number" name="count" min="4" max="12" value="' . (int)$IG['count'] . '"></label>'
+        . '<button class="btn">Save</button><div class="row"><button class="btn line sm" name="ig_do" value="refresh">Check now</button><button class="btn line sm danger" name="ig_do" value="off" data-confirm="Disconnect Instagram? The reels leave the home page.">Disconnect</button></div>'
+        . '<label>New access token <small>(only if Instagram asks again)</small><input type="password" name="token" placeholder="IGAA…" autocomplete="off" spellcheck="false"></label>'
+      : '<p class="muted small" style="margin:0">Your newest Instagram reels show on the home page and change by themselves when you post. Do this once:</p>'
+        . '<ol class="steps small"><li>In the Instagram app: Settings → Account type → switch to a <b>Business</b> or <b>Creator</b> account (free).</li><li>Open <b>developers.facebook.com</b>, Create app → <b>Instagram</b> use case.</li><li>Instagram → API setup with Instagram login → <b>Add account</b>, sign in as @' . h(fomaxo_store_data()['contact']['instagram'] ?? 'fomaxo_india') . ', then <b>Generate token</b>.</li><li>Copy the token and paste it here.</li></ol>'
+        . '<label>Instagram access token<input type="password" name="token" placeholder="IGAA…" required autocomplete="off" spellcheck="false"></label><input type="hidden" name="show" value="1"><input type="hidden" name="count" value="8"><button class="btn">Connect</button>'
+        . '<p class="muted small" style="margin:0"><a class="gold" href="/?reels=sample#/" target="_blank" rel="noopener">See how it looks →</a> (with sample pictures)</p>')
+    . '</div></form>'
     . '<form method="post" class="box" data-pane="pw" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="password"><div class="bh"><h3>Change your password</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Current password<input type="password" name="current" required autocomplete="current-password"></label>'
     . '<label>New password <small>(at least 8 characters)</small><input type="password" name="new" required minlength="8" autocomplete="new-password"></label>'

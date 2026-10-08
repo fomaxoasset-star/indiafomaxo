@@ -1459,6 +1459,40 @@ html[data-mode="light"].cur-dark .cur-link .cur-ring{border-color:#f0d3a0;backgr
 .hg-pager{display:flex;align-items:center;gap:14px;font-size:13px;letter-spacing:.14em;color:var(--muted)}
 .hg-pager button{width:44px;height:44px;border:1px solid var(--line-2);color:var(--gold-hi);font-size:16px;transition:border-color .3s,background .3s}
 .hg-pager button:hover{border-color:var(--gold);background:rgba(215,170,105,.08)}
+/* home: latest Instagram reels — a sideways row (swipe on phones, arrows on laptops) and a viewer */
+.rl-top{display:flex;align-items:center;gap:22px}
+.rl-top .link{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold-hi)}
+.rl-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.rl-row::-webkit-scrollbar{display:none}
+.rl-card{position:relative;flex:0 0 calc((100% - 56px) / 5);aspect-ratio:9/16;scroll-snap-align:start;overflow:hidden;background:#000;box-shadow:inset 0 0 0 1px var(--line);text-align:left;color:#f2ebdd}
+.rl-card img,.rl-card video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rl-card img{transition:transform 1.6s var(--ease)}
+.rl-card video{opacity:0;transition:opacity .6s}.rl-card.live video{opacity:1}
+.rl-card:hover img{transform:scale(1.05)}
+.rl-card.smp img{animation:rlDrift 14s ease-in-out infinite alternate}
+@keyframes rlDrift{from{transform:scale(1.02)}to{transform:scale(1.14) translateY(-2%)}}
+.rl-card::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25),transparent 22%,transparent 55%,rgba(0,0,0,.85));pointer-events:none;box-shadow:inset 0 0 0 1px var(--line)}
+.rl-card:hover::after{box-shadow:inset 0 0 0 1px var(--gold)}
+.rl-play{position:absolute;top:12px;right:12px;z-index:2;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.45);color:var(--gold-hi);box-shadow:inset 0 0 0 1px rgba(215,170,105,.55)}
+.rl-card.live .rl-play{opacity:0;transition:opacity .4s}
+.rl-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:14px;display:flex;flex-direction:column;gap:6px}
+.rl-cap span{font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rl-cap small{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#f0d3a0}
+.rl-cap small svg{fill:currentColor}
+.rl-box{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.88);padding:24px}
+.rl-box.on{display:flex}
+.rl-view{position:relative;height:min(86vh,820px);aspect-ratio:9/16;max-width:100%;background:#000;box-shadow:0 0 0 1px rgba(215,170,105,.44)}
+.rl-view video,.rl-view img{width:100%;height:100%;object-fit:cover;display:block}
+.rl-x,.rl-nav{position:absolute;width:44px;height:44px;display:grid;place-items:center;color:#f0d3a0;background:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(215,170,105,.44);font-size:16px}
+.rl-x{top:10px;right:10px}
+.rl-nav{top:50%;margin-top:-22px}.rl-nav.p{left:-64px}.rl-nav.n{right:-64px}
+.rl-foot{position:absolute;left:0;right:0;bottom:0;padding:16px 16px 64px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;background:linear-gradient(transparent,rgba(0,0,0,.85));pointer-events:none}
+.rl-foot>*{pointer-events:auto}.rl-foot p{color:#f2ebdd;font-size:14px;line-height:1.45}
+.rl-foot .btn.line{color:#e9d6b2;background:rgba(0,0,0,.4)}
+.rl-view video::-webkit-media-controls-panel{margin-bottom:0}
+@media(max-width:1100px){.rl-card{flex-basis:calc((100% - 42px) / 4)}}
+@media(max-width:760px){.rl-card{flex-basis:calc((100% - 14px) / 2.3)}.rl-row{gap:10px;margin:0 calc(var(--pad) * -1);padding:0 var(--pad);scroll-padding:0 var(--pad)}.rl-pager{display:none}.rl-top{width:100%}
+  .rl-box{padding:0}.rl-view{height:100%;width:100%;aspect-ratio:auto}.rl-nav{display:none}.rl-x{top:max(12px,env(safe-area-inset-top))}.rl-foot{padding-bottom:max(70px,calc(env(safe-area-inset-bottom) + 60px))}}
 .hg-grid{transition:opacity .28s ease}
 .hg-grid.swap{opacity:0}
 a.pc-add{display:flex;align-items:center;justify-content:center}
@@ -3105,6 +3139,12 @@ function home(){
       </div></div>`).join('')}
   </div></section>
 
+  <section class="sec reels-sec" style="padding-top:0" id="reelsSec" hidden><div class="wrap">
+    <div class="sec-head"><div class="t rv-up"><span class="eyebrow">On Instagram</span><h2>Latest <span class="metal">reels</span></h2></div>
+      <div class="rl-top"><a class="link" id="rlFollow" href="https://www.instagram.com/${esc(S.contact.instagram)}/" target="_blank" rel="noopener">Follow @${esc(S.contact.instagram)} →</a><div class="hg-pager rl-pager"><button type="button" data-rp="-1" aria-label="Earlier reels">←</button><button type="button" data-rp="1" aria-label="More reels">→</button></div></div></div>
+    <div class="rl-row" id="reelRow"></div>
+  </div></section>
+
   <section class="sec" style="padding-top:0"><div class="wrap">
     ${secHead('The FOMAXO experience', 'More than <span class="metal">luxury</span>', '<p class="lead">FOMAXO represents a modern approach to style — a world of gifting, personalisation and private access, designed around the people who wear it.</p>')}
     <div class="exp rv-up">
@@ -4328,7 +4368,54 @@ function bindHome(){
   wrap.addEventListener('touchend', e => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(dx) > 40) { show((i + (dx < 0 ? 1 : figs.length - 1)) % figs.length, dx > 0); start(); } });
   show(0); start();
   $$('[data-quickadd]').forEach(b => b.onclick = () => { const p = P[b.dataset.quickadd]; addToCart(p.id, defaultSize(p)); });
+  bindReels();
 }
+/* Latest Instagram reels (Admin → Settings → Instagram; api/instagram.php keeps them up to date by itself).
+   Hidden until Instagram is connected. fomaxo.in/?reels=sample shows how the row looks, with product photos. */
+let REELS = null;
+function bindReels(){
+  const sec = $('#reelsSec'), row = $('#reelRow'); if (!sec) return;
+  const sample = new URLSearchParams(location.search).get('reels') === 'sample';
+  if (!LIVE.reels && !sample) return;
+  const draw = list => {
+    if (!list.length || !document.body.contains(row)) return;
+    REELS = list;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches || (navigator.connection && navigator.connection.saveData);
+    row.innerHTML = list.map((r, i) => `<button type="button" class="rl-card${r.sample ? ' smp' : ''}" data-reel="${i}" aria-label="Watch reel${r.caption ? ': ' + esc(r.caption) : ''}">
+      <img src="${esc(r.poster)}" alt="" loading="lazy">${r.video && !still ? `<video muted loop playsinline preload="none" poster="${esc(r.poster)}" data-src="${esc(r.video)}"></video>` : ''}
+      <span class="rl-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
+      <span class="rl-cap">${r.caption ? `<span>${esc(r.caption)}</span>` : ''}<small><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">${SOC_ICON.instagram}</svg>@${esc(S.contact.instagram)}</small></span></button>`).join('');
+    sec.hidden = false;
+    /* only the reels on screen play, silently; the rest wait */
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(es => es.forEach(e => { const v = e.target.querySelector('video'); if (!v) return;
+        if (e.isIntersecting && e.intersectionRatio > .6) { if (v.dataset.src) { v.src = v.dataset.src; v.removeAttribute('data-src'); } v.play().then(() => e.target.classList.add('live')).catch(() => {}); }
+        else v.pause(); }), {threshold: [0, .6, 1]});
+      $$('.rl-card', row).forEach(c => io.observe(c));
+    }
+    row.onclick = e => { const c = e.target.closest('[data-reel]'); if (c) openReel(+c.dataset.reel); };
+    $$('#reelsSec [data-rp]').forEach(b => b.onclick = () => { const c = row.querySelector('.rl-card'); row.scrollBy({left: (+b.dataset.rp) * ((c ? c.offsetWidth : 240) + 14) * Math.max(1, Math.floor(row.clientWidth / ((c ? c.offsetWidth : 240) + 14))), behavior: 'smooth'}); });
+  };
+  if (sample) return draw(['couple', 'personal-care-poster', 'king-collection', 'elite-lounge', 'gift-set-3', 'atelier', 'couple-3', 'boutique'].map((k, i) => ({sample: true, poster: IMG(k), video: '', link: `https://www.instagram.com/${S.contact.instagram}/`, caption: ['A new FOMAXO ritual, made to last all day.', 'Behind the scenes at the FOMAXO studio.', '', 'Gift wrapped and ready for Diwali.', 'Customer favourite, now back in stock.', '', 'Luxury in 10ml. Try a mini.', 'Unboxing the new collection.'][i] || '' })));
+  if (REELS) return draw(REELS);
+  fetch('/api/instagram.php').then(r => r.ok ? r.json() : null).then(d => d && draw(d.reels || [])).catch(() => {});
+}
+function openReel(i){
+  const list = REELS || []; if (!list.length) return;
+  i = (i + list.length) % list.length; const r = list[i];
+  let box = $('#reelBox');
+  if (!box) { box = document.createElement('div'); box.id = 'reelBox'; box.className = 'rl-box'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Instagram reel'); document.body.appendChild(box);
+    box.addEventListener('click', e => { if (e.target === box || e.target.closest('[data-rx]')) closeReel(); const n = e.target.closest('[data-rn]'); if (n) openReel(+box.dataset.i + +n.dataset.rn); });
+    document.addEventListener('keydown', e => { if (!box.classList.contains('on')) return; if (e.key === 'Escape') closeReel(); if (e.key === 'ArrowRight') openReel(+box.dataset.i + 1); if (e.key === 'ArrowLeft') openReel(+box.dataset.i - 1); }); }
+  box.dataset.i = i;
+  box.innerHTML = `<div class="rl-view">${r.video ? `<video src="${esc(r.video)}" poster="${esc(r.poster)}" controls autoplay playsinline loop></video>` : `<img src="${esc(r.poster)}" alt="">`}
+    <button type="button" class="rl-x" data-rx aria-label="Close">✕</button>
+    ${list.length > 1 ? `<button type="button" class="rl-nav p" data-rn="-1" aria-label="Previous reel">←</button><button type="button" class="rl-nav n" data-rn="1" aria-label="Next reel">→</button>` : ''}
+    <div class="rl-foot">${r.caption ? `<p>${esc(r.caption)}</p>` : ''}${r.link ? `<a class="btn line sm" href="${esc(r.link)}" target="_blank" rel="noopener">${r.sample ? 'Follow on Instagram' : 'Open on Instagram'}</a>` : ''}</div></div>`;
+  box.classList.add('on'); document.body.classList.add('lock');
+  $$('#reelRow video').forEach(v => v.pause());
+}
+function closeReel(){ const box = $('#reelBox'); if (!box) return; box.classList.remove('on'); box.innerHTML = ''; document.body.classList.remove('lock'); }
 function bindHomeOld(){
   const imgs = $$('#arch img'), dots = $$('#heroDots button'), ids = ['king','oldmoney','royalcandy','matchacoco','passionsin','gold'];
   let i = 0;

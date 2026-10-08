@@ -9,6 +9,7 @@ declare(strict_types=1);
    can also be reset from the sign-in page: the link goes to the order notification email set in Settings. */
 require dirname(__DIR__) . '/api/store-lib.php';
 require dirname(__DIR__) . '/api/geo-lib.php';
+require dirname(__DIR__) . '/api/instagram-lib.php';
 require __DIR__ . '/lib.php';
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
@@ -18,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '56';
+const ASSET_V = '57';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -274,6 +275,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('ads', json_encode($ads));
     $on = array_keys(array_filter(['Meta' => $ads['meta'], 'TikTok' => $ads['tiktok'], 'Google' => $ads['ga4'] . $ads['gads']]));
     go(['tab' => 'settings', 'pane' => 'ads'], $on ? 'Saved. ' . implode(', ', $on) . ' tracking is now on the website.' : 'Saved. No ad tracking is on the website.');
+  }
+  if ($a === 'instagram') {
+    $ig = ig_settings(); $back = ['tab' => 'settings', 'pane' => 'ig']; $do = (string)($_POST['ig_do'] ?? '');
+    if ($do === 'off') { ig_save_settings(['token' => ''] + $ig); go($back, 'Instagram disconnected. The reels are off the home page.'); }
+    $token = preg_replace('/\s+/', '', (string)($_POST['token'] ?? '')) ?? '';
+    if ($token !== '') {
+      if (!preg_match('/^[A-Za-z0-9_|.-]{40,600}$/', $token)) go($back, '!That doesn’t look like an Instagram access token. Please copy it again.');
+      try { $user = ig_whoami($token); } catch (Throwable $e) { go($back, '!Instagram didn’t accept that token: ' . mb_substr($e->getMessage(), 0, 160)); }
+      $ig = ['token' => $token, 'user' => $user, 'renewed' => time()] + $ig;
+    }
+    if ($ig['token'] === '') go($back, '!Please paste your Instagram access token.');
+    $ig['show'] = ($_POST['show'] ?? '') === '1'; $ig['count'] = max(4, min(12, (int)($_POST['count'] ?? 8)));
+    ig_save_settings($ig);
+    if ($token !== '' || $do === 'refresh') { @unlink(ig_dir() . '/cache.json'); $c = ig_refresh(); }
+    else $c = ig_cache();
+    if ($c['error'] !== '') go($back, '!Saved, but Instagram said: ' . mb_substr($c['error'], 0, 160));
+    $n = count($c['reels']);
+    go($back, ($token !== '' ? 'Connected' . ($ig['user'] !== '' ? ' as @' . $ig['user'] : '') . '. ' : 'Saved. ')
+      . ($ig['show'] ? ($n ? "$n reel" . ($n === 1 ? '' : 's') . ' found; the newest ' . min($n, $ig['count']) . ' show on the home page.' : 'No reels found yet. Post a reel and it shows here within 30 minutes.') : 'The reels are hidden on the home page.'));
   }
   if (in_array($a, ['store_add', 'store_save', 'store_remove', 'stores_show'], true)) {
     $loc = stores_all(); $i = (int)($_POST['i'] ?? -1);

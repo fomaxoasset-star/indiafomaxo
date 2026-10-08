@@ -5,6 +5,7 @@ declare(strict_types=1);
                                added, hidden or edited on the admin page, and changed prices. index.html loads it before the shop.
    GET api/live.php?img=…    → a product photo uploaded on the admin page (kept in fomaxo-private/product-images). */
 require __DIR__ . '/store-lib.php';
+require __DIR__ . '/instagram-lib.php';
 header('X-Content-Type-Options: nosniff');
 
 if (isset($_GET['img'])) {
@@ -33,6 +34,7 @@ try {
   if (($offer = shop_offer_live()) !== null) $live['offer'] = $offer;   // the limited-time offer popup and countdown lines
   if (($np = shop_newprod_live()) !== null) $live['newProduct'] = $np;   // the Coming soon / Just arrived popup
   if ($ads = shop_ads()) $live['ads'] = $ads;
+  if (($ig = ig_settings())['token'] !== '' && $ig['show']) $live['reels'] = true;   // Admin → Settings → Instagram: the home page asks api/instagram.php for the reels
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {
