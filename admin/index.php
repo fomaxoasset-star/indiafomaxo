@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '56';
+const ASSET_V = '57';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -274,6 +274,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('ads', json_encode($ads));
     $on = array_keys(array_filter(['Meta' => $ads['meta'], 'TikTok' => $ads['tiktok'], 'Google' => $ads['ga4'] . $ads['gads']]));
     go(['tab' => 'settings', 'pane' => 'ads'], $on ? 'Saved. ' . implode(', ', $on) . ' tracking is now on the website.' : 'Saved. No ad tracking is on the website.');
+  }
+  if ($a === 'pages') {
+    $on = (array)($_POST['on'] ?? []);
+    $off = array_values(array_filter(array_keys(SHOP_PAGES), fn($k) => !in_array($k, $on, true)));
+    shop_set('pages_off', json_encode($off));
+    go(['tab' => 'settings', 'pane' => 'pages'], $off ? 'Saved. Hidden on the website: ' . implode(', ', array_map(fn($k) => SHOP_PAGES[$k], $off)) . '.' : 'Saved. Every page shows on the website.');
   }
   if (in_array($a, ['store_add', 'store_save', 'store_remove', 'stores_show'], true)) {
     $loc = stores_all(); $i = (int)($_POST['i'] ?? -1);

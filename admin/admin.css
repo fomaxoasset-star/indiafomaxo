@@ -140,7 +140,13 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .rep{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px;flex:1;min-height:0}.rep .yr{max-height:180px}
 .exp{display:grid;grid-template-columns:320px 1fr;gap:12px;flex:1;min-height:0}.exp form label{margin-bottom:10px}
 .cats{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}.cats b{color:var(--text);font-weight:500}
-.set{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;flex:1;min-height:0;align-items:start}.set .box{max-height:100%;overflow:auto}.set form{display:flex;flex-direction:column;gap:10px}
+.set{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;flex:1;min-height:0;align-items:start}.set .box{max-height:100%;overflow:auto}.set form{display:flex;flex-direction:column;gap:10px}
+/* Site pages: one row per page with an on/off switch */
+.pgs{display:flex;flex-direction:column}.pg{flex-direction:row;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2);cursor:pointer}.pg:last-child{border-bottom:0}
+.pg span{display:flex;flex-direction:column;gap:1px;min-width:0}.pg b{color:var(--text);font-weight:600;font-size:13px;letter-spacing:0}.pg small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+input.tgl{appearance:none;-webkit-appearance:none;flex:none;box-sizing:border-box;width:38px!important;height:22px!important;min-height:0;margin:0;border-radius:11px;background:var(--line);border:1px solid var(--line);position:relative;cursor:pointer;transition:background .2s,border-color .2s;padding:0}
+input.tgl::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
+input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:checked::after{transform:translateX(16px);background:#17130b}input.tgl:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
 .steps{padding-left:18px;line-height:1.8;margin:6px 0}
 .login label{margin:12px 0 14px}.login .btn{width:100%}.login h2{margin-bottom:6px}
 
@@ -237,6 +243,8 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
   .kpis.mq{display:grid;grid-template-columns:1fr 1fr;gap:6px}.kpis.mq>*{grid-column:auto}.kpis.mq .kpi b{font-size:17px}
   .exp{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr)}.exp>*{grid-row:1;grid-column:1}
   .set{grid-template-columns:1fr}.set>.box{grid-row:1;grid-column:1}
+  .sw[data-for="#setPanes"] .seg{display:grid;grid-template-columns:repeat(3,1fr)}.sw[data-for="#setPanes"] .seg button+button{border-left:1px solid var(--line)}.sw[data-for="#setPanes"] .seg button:nth-child(n+4){border-top:1px solid var(--line)}.sw[data-for="#setPanes"] .seg button:nth-child(4){border-left:0}
+  .pg{padding:11px 0}
   .ctot{font-size:11px}.ctot b{font-size:14px}[data-chart] .seg button{padding:4px 7px;font-size:11px}
   .p-left .bh .small{display:none}.p-left .pc small{max-width:100px!important}.p-left td,.p-left th{padding-left:5px;padding-right:5px}.p-left .btn{padding:5px 8px;font-size:11px}
   .mtool>form:first-child{gap:8px;flex-wrap:wrap}.mrule{font-size:13px}.mrule input{width:56px}.mrule input[name=member_spend]{width:86px}
@@ -486,6 +494,7 @@ body.zooming{overflow:hidden}
   .btn.line:hover,.dcal:hover{background:#f3ead8}.btn.danger:hover{background:#fbecea}
   .seg .on,.range .seg button.on,.seg.ck label:has(input:checked){background:#efe3c9;color:#5e4318}
   .changed,.ofit:has(input:checked){background:#fbf3e2!important}
+  input.tgl{background:var(--line)}input.tgl::after,input.tgl:checked::after{background:#fff;box-shadow:0 1px 2px #0003}
   .fun .bar,.geo .li span.bar,.srcs .li span.bar{background:#ece4d6}
   .lt summary:hover{background:#f6f0e4}.lt[open]{background:#faf6ee}
   .kpis.rk .kpi.on,.step.on{background:#fbf3e2}.kpi.zoomable:hover,.an>.box.zoomable:hover,.kpis.rk .kpi:hover{border-color:#c9b48c}
