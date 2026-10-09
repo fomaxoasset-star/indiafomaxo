@@ -478,5 +478,5 @@ if (str_contains($body, 'data-wabox')) $body .= '<div data-csrf="' . h($CSRF) . 
 /* opening Orders, Reviews or Analytics clears its rounds on the menu */
 if (isset(['orders' => 1, 'reviews' => 1, 'analytics' => 1][$tab])) admin_seen($tab === 'analytics' ? 'leads' : $tab, true);
 try { $BADGES = admin_badges(); } catch (Throwable $e) { $BADGES = []; }
-$body .= '<div id="orderAlerts" hidden data-now="' . h(shop_now()) . '" data-sound="' . (shop_setting('alert_sound') === '0' ? '0' : '1') . '" data-badges="' . h(json_encode($BADGES)) . '"></div>';   // new order pop-ups (admin.js)
+$body .= '<div id="orderAlerts" hidden data-now="' . h(shop_now()) . '" data-sound="' . (shop_setting('alert_sound') === '1' ? '1' : '0') . '" data-badges="' . h(json_encode($BADGES)) . '"></div>';   // new order pop-ups (admin.js)
 page(html_entity_decode($tabs[$tab]), $body, true, $tab, $tabs);
