@@ -41,7 +41,8 @@ function date_box(string $name, string $ymd, string $label = '', bool $required 
 }
 /* the date bar on each page: which quick buttons it has, and where it starts */
 const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
-  'sales' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all']];
+  'sales' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all'],
+  'rvreq' => [['today', 'd7', 'd30', 'all'], 'all']];   // Review requests (on the Orders tab): by order date
 const DATE_PRESETS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
 /* the first and last day of a quick button ('' for All); Year is the last 12 months */
 function preset_span(string $r): array {
@@ -72,7 +73,7 @@ function period_label(array $D): string {
 }
 /* the bar at the top of a page: quick buttons, From and To, Show. $keep: the page's other filters, kept when dates change */
 function date_bar(array $D, array $keep = [], string $note = ''): string {
-  $tab = $D['page']; [$presets] = DATE_BARS[$tab];
+  [$presets] = DATE_BARS[$D['page']]; $tab = $D['tab'] ?? $D['page'];   // 'tab': a date bar on a page inside another tab (Review requests is on Orders)
   $out = '<form class="dbar" method="get"><input type="hidden" name="tab" value="' . h($tab) . '">';
   foreach ($keep as $k => $v) if ((string)$v !== '') $out .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
   $out .= '<span class="seg">' . implode('', array_map(fn($k) => '<a href="' . h(self_url(['tab' => $tab, 'r' => $k] + array_filter($keep, 'strlen'))) . '"' . ($D['r'] === $k ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>', $presets)) . '</span>'

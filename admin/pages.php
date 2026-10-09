@@ -58,11 +58,14 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Review requests: each customer's latest order 7 days (setting) after it was placed, until 30 days after that, while nothing in it is reviewed.
      A tap on WhatsApp opens the ready message and marks the order Sent; Automatic sending does it by itself for customers who ticked WhatsApp offers. */
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';
-  $set = rq_set(); $due = rq_due(); $asked = rq_asked(); $waOk = wa_ready(); $autoOn = $waOk && $set['auto']; $err = (string)shop_setting('rvreq_auto_err');
+  $set = rq_set(); $due = rq_due(); $asked = rq_asked();
+  $D = pick_dates('rvreq') + ['tab' => 'orders'];   // Today / 7 days / 30 days / From–To: by the day the order was placed
+  if ($D['r'] !== 'all') { $inD = fn($o) => ($d = substr((string)$o['created'], 0, 10)) >= $D['from'] && $d <= $D['to']; $due = array_filter($due, $inD); $asked = array_filter($asked, $inD); } $waOk = wa_ready(); $autoOn = $waOk && $set['auto']; $err = (string)shop_setting('rvreq_auto_err');
   $open = count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
   $hsel = fn(string $nm, int $a, int $b, int $v) => '<select id="' . $nm . '" name="' . $nm . '">' . implode('', array_map(fn($x) => '<option value="' . $x . '"' . ($x === $v ? ' selected' : '') . '>' . refill_hour($x) . '</option>', range($a, $b))) . '</select>';
   $sw = fn(string $nm, bool $on, string $lbl) => '<div class="rfsw" role="radiogroup" aria-label="' . $lbl . '"><label><input type="radio" name="' . $nm . '" value="1"' . ($on ? ' checked' : '') . '><span>On</span></label><label><input type="radio" name="' . $nm . '" value=""' . ($on ? '' : ' checked') . '><span>Off</span></label></div>';
   $body .= $rqTabs('ask');
+  $body .= date_bar($D, ['ask' => 1]);
   $body .= '<details class="box rfauto"><summary><b>Settings</b><span class="rfst' . ($autoOn ? ' on' : '') . '">' . ($autoOn ? 'Auto on' : 'Auto off') . '</span><span class="muted small rfsum">'
     . $set['days'] . ' days after the order · coupon ' . ($set['coupon'] ? $set['pct'] . '% on' : 'off') . ' · automatic ' . ($autoOn ? 'on, ' . refill_hour($set['from']) . '–' . refill_hour($set['to']) : 'off') . ($set['drop'] ? ' · remove not reviewed after ' . $set['drop_days'] . ' days' : '') . '</span></summary>'
     . '<form method="post" class="bb rff" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="rq_set">'
@@ -103,7 +106,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     ['', 'rv', 'part', 'not', 'ask'], ['All', 'Reviewed ' . ($st['rv'] ?? 0), 'Partly ' . ($st['part'] ?? 0), 'Not reviewed ' . ($st['not'] ?? 0), 'To ask&nbsp;<span data-rqn="ask">' . $open . '</span>'])) . '</div>';
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bb np">'
     . ($rows ? '<table class="grid rflist rqlist"><thead><tr><th>Customer</th><th>Order</th><th class="r"></th></tr></thead><tbody>' . $rows . '</tbody></table>'
-      : '<p class="empty">Nobody to ask right now. Orders show here ' . $set['days'] . ' to ' . $set['list_to'] . ' days after they are placed, until the customer reviews them.</p>')
+      : '<p class="empty">' . ($D['r'] !== 'all' ? 'No orders placed on these dates are on this list. Tap All to see everyone.' : 'Nobody to ask right now. Orders show here ' . $set['days'] . ' to ' . $set['list_to'] . ' days after they are placed, until the customer reviews them.') . '</p>')
     . '<p class="muted small rfnote">Each customer’s latest order, ' . $set['days'] . ' to ' . $set['list_to'] . ' days after it was placed, while nothing in it is reviewed. WhatsApp opens with a ready message and the order’s private review link (Verified Purchaser); the order then shows Sent. Anyone who reviewed all or part of an order is never asked again for it, and their Refill reminder has no review request. Reviewed and partly reviewed orders leave this list ' . RQ_DONE_DAYS . ' days after their latest review; the customer’s next order shows here as usual.' . ($set['drop'] ? ' Orders asked but not reviewed leave this list ' . $set['drop_days'] . ' days after sending.' : '') . '</p></div></div>';
 } elseif ($tab === 'orders' && isset($_GET['refill'])) {
   /* Refill reminders: customers whose latest order was about 45 days ago (a bottle runs low around then), each with a ready WhatsApp message and a REFILL- coupon.
