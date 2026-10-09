@@ -978,7 +978,7 @@ function admin_badges(): array {
   $b = ['orders' => (int)$s->fetchColumn(), 'bad' => 0, 'faulty' => 0, 'late' => 0];
   $since = (int)admin_seen('reviews');
   foreach (reviews_list() as $r) if ((int)$r['created'] > $since && isset($b[$r['issue']])) $b[$r['issue']]++;   // only Bad product, Faulty product and Late delivery
-  $s = shop_db()->prepare('SELECT COUNT(*) FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?'); $s->execute([admin_seen('leads')]);
+  $s = shop_db()->prepare("SELECT COUNT(DISTINCT CASE WHEN phone <> '' THEN phone WHEN email <> '' THEN LOWER(email) ELSE sid END) FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?"); $s->execute([admin_seen('leads')]);
   $b['leads'] = (int)$s->fetchColumn();
   return $b;
 }
