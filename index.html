@@ -4948,14 +4948,6 @@ function bindHome(){
   show(0); start();
   $$('[data-quickadd]').forEach(b => b.onclick = () => { const p = P[b.dataset.quickadd]; addToCart(p.id, defaultSize(p)); });
 }
-function bindHomeOld(){
-  const imgs = $$('#arch img'), dots = $$('#heroDots button'), ids = ['king','oldmoney','royalcandy','matchacoco','passionsin','gold'];
-  let i = 0;
-  const show = n => { i = n; imgs.forEach((im,k) => im.classList.toggle('on', k === i)); dots.forEach((d,k) => d.classList.toggle('on', k === i)); $('#archName').textContent = P[ids[i]].name; $('#archLink').href = '#/product/' + ids[i]; };
-  dots.forEach(d => d.onclick = () => { show(+d.dataset.i); clearInterval(heroTimer); heroTimer = setInterval(() => show((i+1) % imgs.length), 5500); });
-  heroTimer = setInterval(() => show((i+1) % imgs.length), 5500);
-  $$('[data-quickadd]').forEach(b => b.onclick = () => { const p = P[b.dataset.quickadd]; addToCart(p.id, defaultSize(p)); });
-}
 app.addEventListener('click', e => { const b = e.target.closest('[data-quickbuy]'); if (!b) return; const p = P[b.dataset.quickbuy]; if (!p) return; if (p.kind === 'set') { location.hash = '#/product/' + p.id; return; } buyNow([{id:p.id, opt:defaultSize(p), qty:1}]); });
 function bindFragColl(){
   $$('[data-quickadd]').forEach(b => b.onclick = () => { const p = P[b.dataset.quickadd]; addToCart(p.id, defaultSize(p)); });

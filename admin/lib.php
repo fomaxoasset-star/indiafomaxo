@@ -510,7 +510,7 @@ function coupon_wa_text(array $c, string $intro, array $extra = []): string {
 }
 /* the WhatsApp link that sends a goodwill coupon to its customer, with a ready message */
 function goodwill_wa(array $c): string {
-  return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode(coupon_wa_text($c,
+  return wa_link((string)$c['phone'], coupon_wa_text($c,
     'We are sorry about your last order. As a goodwill gesture, here is ' . ($c['kind'] === 'free' ? 'a *free ' . coupon_free_name($c) . '* with your next order.' : '*' . coupon_label($c) . '* your next order.'),
     ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]));
 }
@@ -856,15 +856,11 @@ function lead_bag_code(array $l): string {
   return strlen($c) <= 600 ? $c : '';
 }
 /* the Left at checkout COMEBACK- code: always the same for that checkout, 10% off, one use, only with that mobile, ends after 7 days */
-function lead_code(array $l): string {
-  $abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; $hx = hash_hmac('sha256', 'left|' . $l['sid'], (string)shop_setting('admin_hash')); $c = 'COMEBACK-';
-  for ($i = 0; $i < 5; $i++) $c .= $abc[hexdec(substr($hx, $i * 2, 2)) % strlen($abc)];
-  return $c;
-}
+function lead_code(array $l): string { return fixed_code('COMEBACK-', 'left|' . $l['sid'], (string)shop_setting('admin_hash')); }
 /* the ready WhatsApp message for someone who left checkout: what they left (qty × product size, one per line), a link that refills their bag and opens checkout,
    the delivery line; $code adds the 10% COMEBACK- code before "Your bag is saved" */
 function lead_wa_text(array $l, string $code = ''): string {
-  $n2 = "\n\n"; $first = preg_split('/\s+/u', trim((string)$l['name']))[0] ?? ''; $bag = lead_bag_code($l);
+  $n2 = "\n\n"; $first = first_name((string)$l['name']); $bag = lead_bag_code($l);
   $items = implode("\n", array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));
   return 'Hi' . ($first !== '' ? ' ' . $first : '') . ','
     . $n2 . ($items !== '' ? "You left these in your FOMAXO bag:\n" . $items : 'We noticed you did not finish your FOMAXO order.')
@@ -874,7 +870,7 @@ function lead_wa_text(array $l, string $code = ''): string {
     . $n2 . 'Free delivery across India in 1–3 days.'
     . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO';
 }
-function lead_wa(array $l, string $code = ''): string { return 'https://wa.me/91' . $l['phone'] . '?text=' . rawurlencode(lead_wa_text($l, $code)); }
+function lead_wa(array $l, string $code = ''): string { return wa_link((string)$l['phone'], lead_wa_text($l, $code)); }
 
 /* chart series for the dashboard, for the dates picked: by hour for one day, by day up to 3 months, by month for longer */
 function series(string $from, string $to): array {

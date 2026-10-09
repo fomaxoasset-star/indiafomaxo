@@ -251,9 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'lead_code') {   // "WhatsApp + 10% code" on a Left at checkout line: saves its COMEBACK- code in Coupons, then opens WhatsApp (in a new tab) with the message and the code
     $s = shop_db()->prepare('SELECT * FROM leads WHERE sid = ?'); $s->execute([(string)($_POST['sid'] ?? '')]); $l = $s->fetch();
     if (!$l || !preg_match('/^[6-9]\d{9}$/', (string)$l['phone'])) go(['tab' => 'analytics'], '!This person has no mobile number.');
-    $code = lead_code($l); $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?'); $s->execute([$code]);
-    if (!$s->fetchColumn()) shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => 10, 'min_order' => 0, 'starts' => '', 'ends' => date('Y-m-d', strtotime('+7 days')) . ' 23:59',
-      'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $l['phone'], 'created' => shop_now()]);
+    $code = lead_code($l); phone_coupon($code, 10, (string)$l['phone'], 0, date('Y-m-d', strtotime('+7 days')) . ' 23:59');
     header('Location: ' . lead_wa($l, $code), true, 303); exit;
   }
   if ($a === 'lead_remove') {   // Left at checkout ✕: hide that line from the list (admin.js sends it without reloading the page)

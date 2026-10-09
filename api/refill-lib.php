@@ -24,11 +24,7 @@ function refill_offer(int $pct, int $min): string { return $pct . '% off your ne
 function refill_key(): string { $k = shop_setting('wa_key'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('wa_key', $k); } return $k; }
 
 /* the order's coupon: REFILL- + 5 letters, always the same for that order */
-function refill_code(string $no): string {
-  $abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; $hx = hash_hmac('sha256', 'refill|' . $no, refill_key()); $c = 'REFILL-';
-  for ($i = 0; $i < 5; $i++) $c .= $abc[hexdec(substr($hx, $i * 2, 2)) % strlen($abc)];
-  return $c;
-}
+function refill_code(string $no): string { return fixed_code('REFILL-', 'refill|' . $no, refill_key()); }
 
 /* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself). Sent by itself also saves the order's REFILL- code
    in Coupons with the % and minimum set on Automatic sending (single use, only with this customer's mobile, no end date); a tap makes its own code (admin). */
@@ -37,10 +33,7 @@ function refill_mark(string $no, string $how = 'tap'): void {
   if (isset($sent[$no])) return;   // one message per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());
-  if ($how === 'auto' && $ph !== '') {
-    shop_upsert('coupons', ['code'], ['code' => refill_code($no), 'kind' => 'pct', 'value' => refill_pct(), 'min_order' => refill_min() * 100, 'starts' => '', 'ends' => '',
-      'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $ph, 'created' => shop_now()]);
-  }
+  if ($how === 'auto' && $ph !== '') phone_coupon(refill_code($no), refill_pct(), $ph, refill_min() * 100);
   $keep = date('Y-m-d', strtotime('-' . (refill_time()['list_to'] + 30) . ' days'));   // forgotten only once the order has long left the list
   shop_set('refill_sent', json_encode(array_filter($sent, fn($d) => substr($d, 0, 10) >= $keep)));
 }
@@ -85,6 +78,6 @@ function refill_review(string $token): ?string {
 /* what the message says for one order: first name, perfumes, days, offer words, coupon, review link (null once anything is reviewed) */
 function refill_parts(array $o): array {
   $names = array_values(array_unique(array_filter(array_map(fn($i) => trim((string)($i['name'] ?? '')), json_decode((string)$o['items'], true) ?: []))));
-  return ['first' => preg_split('/\s+/u', trim((string)$o['name']))[0] ?? '', 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],
+  return ['first' => first_name((string)$o['name']), 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],
           'offer' => refill_offer(refill_pct(), refill_min()), 'code' => refill_code((string)$o['no']), 'review' => refill_review((string)$o['review'])];
 }

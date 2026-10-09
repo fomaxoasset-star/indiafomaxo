@@ -16,11 +16,7 @@ function rq_set(): array {
 }
 
 /* the customer's coupon: REVIEW- + 5 letters, always the same for that mobile, so each customer can only ever get (and use) one */
-function rq_code(string $phone): string {
-  $abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; $hx = hash_hmac('sha256', 'review|' . coupon_phone($phone), refill_key()); $c = 'REVIEW-';
-  for ($i = 0; $i < 5; $i++) $c .= $abc[hexdec(substr($hx, $i * 2, 2)) % strlen($abc)];
-  return $c;
-}
+function rq_code(string $phone): string { return fixed_code('REVIEW-', 'review|' . coupon_phone($phone), refill_key()); }
 
 /* marks the order's request as sent ('tap' or 'auto'); with the coupon on, saves the customer's REVIEW- code in Coupons
    (single use, only with this customer's mobile, no end date). A code already saved for them is left as it is. */
@@ -30,11 +26,7 @@ function rq_mark(string $no, string $how = 'tap'): void {
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $set = rq_set();
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());
-  if ($set['coupon'] && $ph !== '') {
-    $code = rq_code($ph); $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?'); $s->execute([$code]);
-    if (!$s->fetchColumn()) shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => $set['pct'], 'min_order' => 0, 'starts' => '', 'ends' => '',
-      'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $ph, 'created' => shop_now()]);
-  }
+  if ($set['coupon'] && $ph !== '') phone_coupon(rq_code($ph), $set['pct'], $ph);
   shop_set('rvreq_sent', json_encode($sent));
 }
 
@@ -127,4 +119,4 @@ function rq_text(array $p): string {
 }
 
 /* the wa.me link with the ready message, for the WhatsApp buttons */
-function rq_wa(array $o): string { return 'https://wa.me/91' . coupon_phone((string)$o['phone']) . '?text=' . rawurlencode(rq_text(rq_parts($o))); }
+function rq_wa(array $o): string { return wa_link((string)$o['phone'], rq_text(rq_parts($o))); }

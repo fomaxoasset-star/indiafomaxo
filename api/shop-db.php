@@ -389,6 +389,23 @@ function coupon_free_name(array $c): string {
 function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Use both' : 'Bigger offer'; }
 /* the last 10 digits of a mobile number ('' when it has fewer), so +91 98765 43210, 098765 43210 and 9876543210 all match */
 function coupon_phone(string $phone): string { $d = preg_replace('/\D/', '', $phone) ?? ''; return strlen($d) >= 10 ? substr($d, -10) : ''; }
+/* ---- shared by every WhatsApp button and customer code (Refill reminders, Review requests, Reviews, Left at checkout, goodwill coupons) ---- */
+/* a WhatsApp chat with an Indian mobile and a ready message (WhatsApp shows *text* as bold; no emoji, wa.me shows them as "?") */
+function wa_link(string $phone, string $text): string { return 'https://wa.me/91' . coupon_phone($phone) . '?text=' . rawurlencode($text); }
+/* the first word of a name, for "Hi Priya," */
+function first_name(string $name): string { return preg_split('/\s+/u', trim($name))[0] ?? ''; }
+/* a code that is always the same for the same $seed: $prefix + 5 letters (no 0/O, 1/I or L, so it is easy to read out) */
+function fixed_code(string $prefix, string $seed, string $key): string {
+  $abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; $hx = hash_hmac('sha256', $seed, $key);
+  for ($i = 0; $i < 5; $i++) $prefix .= $abc[hexdec(substr($hx, $i * 2, 2)) % strlen($abc)];
+  return $prefix;
+}
+/* saves a one-use % off coupon that works only with this mobile ($min paise, $ends 'Y-m-d H:i' or no end); one already saved is left as it is */
+function phone_coupon(string $code, int $pct, string $phone, int $min = 0, string $ends = ''): void {
+  $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?'); $s->execute([$code]);
+  if (!$s->fetchColumn()) shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => $pct, 'min_order' => $min, 'starts' => '', 'ends' => $ends,
+    'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => coupon_phone($phone), 'created' => shop_now()]);
+}
 /* Checks a code for a bag of $subtotal paise. $offer = what the website offer (multi-buy) takes off this bag, in paise.
    $phone = the shopper's mobile number, which a goodwill coupon (one mobile number, one use) must match.
    Returns ['error' => …] or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'stack', 'label'], plus 'free' => [id, opt] for a free product coupon.

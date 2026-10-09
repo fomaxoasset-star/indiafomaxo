@@ -1,4 +1,16 @@
 /* FOMAXO India admin: phone switches between boxes, dd/mm/yyyy date boxes, the Sales / Visitors bar charts on the dashboard and the Reports line graph. */
+/* posts one admin action without reloading the page (csrf from the nearest [data-csrf] box) and gives back the server's JSON answer */
+function postAction(el, fields) {
+  var box = el.closest('[data-csrf]'), fd = new FormData();
+  fd.append('csrf', box ? box.dataset.csrf : '');
+  for (var n in fields) fd.append(n, fields[n]);
+  return fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); });
+}
+/* a WhatsApp button whose message went: "Sent dd/mm" just before it (once), and the button turns outlined */
+function markSent(btn, day) {
+  if (!btn.parentNode.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'Sent ' + day; btn.parentNode.insertBefore(s, btn); }
+  btn.classList.add('line');
+}
 (function () {
   /* phones: keep the open tab in view in the scrolling tab strip */
   var tabOn = document.querySelector('.mtabs .on'); if (tabOn) { var bar = tabOn.parentNode, br = bar.getBoundingClientRect(), tr = tabOn.getBoundingClientRect(); bar.scrollLeft += tr.left - br.left - (br.width - tr.width) / 2; }
@@ -128,10 +140,8 @@
     if (!b) return;
     e.preventDefault(); e.stopPropagation();
     if (!confirm('Remove ' + b.dataset.who + ' from Left at checkout?')) return;
-    var lts = b.closest('[data-csrf]'), fd = new FormData();
-    fd.append('csrf', lts ? lts.dataset.csrf : ''); fd.append('action', 'lead_remove'); fd.append('sid', b.dataset.lead); fd.append('js', '1');
     b.disabled = true;
-    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+    postAction(b, {action: 'lead_remove', sid: b.dataset.lead, js: '1'}).then(function (j) {
       if (!j || !j.ok) throw 0;
       document.querySelectorAll('.lt[data-sid="' + b.dataset.lead + '"]').forEach(function (row) {
         var box = row.closest('.box'); row.classList.add('going');
@@ -586,12 +596,10 @@ function waBox(id, sel, o) {
     var k = kind.value; err.hidden = true;
     if (!k && !o.always) { window.open(wa(text.value), '_blank'); dlg.close(); return; }
     var w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
-    var fd = new FormData(), box = btn.closest('[data-csrf]'), f = o.fields(btn.dataset);
-    fd.append('csrf', box ? box.dataset.csrf : ''); fd.append('action', o.action); fd.append('gkind', k);
-    fd.append('pct', val.value || (k === 'pct' ? PCT : '200')); fd.append('gfree', freeV.value); fd.append('gmin', min.value);
-    for (var n in f) fd.append(n, f[n]);
+    var f = o.fields(btn.dataset);
+    f.action = o.action; f.gkind = k; f.pct = val.value || (k === 'pct' ? PCT : '200'); f.gfree = freeV.value; f.gmin = min.value;
     send.disabled = true;
-    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+    postAction(btn, f).then(function (d) {
       send.disabled = false;
       if (d.error || (k && !d.code)) throw new Error(d.error || 'The code could not be made.');
       if (d.code) text.value = text.value.split('[CODE]').join(d.code);
@@ -615,16 +623,13 @@ waBox('rfWa', '[data-rf]', {
       + n2 + 'Just reply here if you would like help choosing your next scent. If you would rather not get these messages, reply STOP.' + n2 + 'Thank you,\nFOMAXO';
   },
   done: function (d, btn) {   // the line shows Sent with today's date (India time, from the server), and the counts move once
-    var cell = btn.parentNode, due = cell.querySelector('.rdue');
+    var due = btn.parentNode.querySelector('.rdue');
     if (due) due.remove();
-    if (!cell.querySelector('.rsent')) {
-      var s = document.createElement('span');
-      s.className = 'rsent'; s.textContent = 'Sent ' + d.day;
-      cell.insertBefore(s, btn);
+    if (!btn.parentNode.querySelector('.rsent')) {
       var todo = document.querySelector('[data-rfn="todo"]'), done = document.querySelector('[data-rfn="sent"]');
       if (todo && !btn.classList.contains('line')) { todo.textContent = Math.max(0, +todo.textContent - 1); done.textContent = +done.textContent + 1; }
     }
-    btn.classList.add('line');
+    markSent(btn, d.day);
   }
 });
 
@@ -638,10 +643,7 @@ waBox('rvWa', '[data-rvwa]', {
       + (c ? n2 + 'As an apology, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' + n2 + 'Type the code at checkout on our website:\nhttps://fomaxo.in' : '')
       + n2 + 'Just reply here if there is anything we can do to put it right.' + n2 + 'Thank you,\nFOMAXO';
   },
-  done: function (d, btn) {
-    if (!btn.parentNode.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'Sent ' + d.day; btn.parentNode.insertBefore(s, btn); }
-    btn.classList.add('line');
-  }
+  done: function (d, btn) { markSent(btn, d.day); }
 });
 
 /* Coupons: picking Free product on a new coupon ticks One use per customer */
@@ -702,15 +704,11 @@ document.addEventListener('click', function (e) {
 document.addEventListener('click', function (e) {
   var a = e.target.closest && e.target.closest('[data-rq]'); if (!a) return;
   e.stopPropagation();
-  var box = a.closest('[data-csrf]'), fd = new FormData();
-  fd.append('csrf', box ? box.dataset.csrf : ''); fd.append('action', 'rq_sent'); fd.append('no', a.dataset.rq);
   var first = !a.classList.contains('line') && !a.classList.contains('done');
-  fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+  postAction(a, {action: 'rq_sent', no: a.dataset.rq}).then(function (d) {
     if (!d.ok) return;
     if (a.classList.contains('rqwa')) { a.classList.add('done'); a.lastChild.textContent = 'Sent ' + d.day; return; }
-    a.classList.add('line');
-    var cell = a.parentNode;
-    if (!cell.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'Sent ' + d.day; cell.insertBefore(s, a); }
+    markSent(a, d.day);
     if (first) {
       var tr = a.closest('tr'); if (tr) { tr.classList.add('dim2'); }
       [['todo', -1], ['ask', -1], ['sent', 1]].forEach(function (x) { var n = document.querySelector('[data-rqn="' + x[0] + '"]'); if (n) n.textContent = Math.max(0, +n.textContent + x[1]); });
