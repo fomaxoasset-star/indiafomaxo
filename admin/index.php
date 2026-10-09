@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '73';
+const ASSET_V = '75';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -235,6 +235,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' ? (!empty($_POST['editing']) ? ['edit' => $code] : []) : ['made' => $code]), $msg); }   // made: the saved coupon shows on top with Send on WhatsApp
   if ($a === 'coupon_goodwill') { [$code, $msg] = make_goodwill_coupon(); go(['tab' => 'coupons'] + ($code !== '' ? ['made' => $code] : []), $msg); }
+  if ($a === 'coupon_wa') {   // WhatsApp tapped on a coupon row (admin.js, without reloading): the row shows Sent dd/mm
+    $code = coupon_clean((string)($_POST['code'] ?? '')); $sent = json_decode((string)shop_setting('coupon_wa'), true) ?: [];
+    $sent = array_filter($sent, fn($d) => $d >= date('Y-m-d', strtotime('-400 days'))); $sent[$code] = date('Y-m-d'); shop_set('coupon_wa', json_encode($sent));
+    header('Content-Type: application/json'); echo json_encode(['ok' => true, 'day' => date('d/m')]); exit;
+  }
   if ($a === 'coupon_on') {
     $code = coupon_clean((string)($_POST['code'] ?? '')); $on = ($_POST['on'] ?? '') === '1';
     shop_db()->prepare('UPDATE coupons SET active = ? WHERE code = ?')->execute([$on ? 1 : 0, $code]);
