@@ -473,12 +473,13 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   $body .= '<div class="box fill"><div class="bh"><span class="muted small">' . count($list) . ' member' . (count($list) === 1 ? '' : 's') . ' with ' . $rule . ', most spent first. Cancelled and test orders are left out. An empty amount box turns that filter off. Tap a member to open their page.</span></div><div class="bb np">';
   if (!$list) $body .= '<p class="empty">' . ($mq !== '' ? 'No member matches “' . h($mq) . '”.' : 'No customer has ' . $rule . ' yet. Lower the numbers above to see more.') . '</p>';
   else {
-    $body .= '<table class="grid mlist"><thead><tr><th>Name</th><th>Mobile</th><th class="hide-m">Email</th><th class="hide-m">Address</th><th class="r">Orders</th><th class="r">Spent</th></tr></thead><tbody>';
+    $body .= '<table class="grid mlist"><thead><tr><th>Name</th><th class="hide-m">Mobile</th><th class="hide-m">Email</th><th class="hide-m">Address</th><th class="r">Orders</th><th class="r">Spent</th><th class="r"></th></tr></thead><tbody>';
     foreach ($list as $m) {
       $url = h(self_url(['tab' => 'members', 'c' => $m['key']]));
-      $body .= '<tr data-href="' . $url . '"><td><a href="' . $url . '"><b>' . h($m['name']) . '</b></a><small class="show-m">' . h($m['state']) . '</small></td>'
-        . '<td>' . ($m['phone'] ? h(phone_fmt($m['phone'])) . '<small><a href="' . h(wa_link($m['phone'], 'Hi ' . $m['name'] . ', thank you for being a FOMAXO regular!')) . '" target="_blank" rel="noopener">WhatsApp</a></small>' : '—') . '</td>'
-        . '<td class="hide-m">' . h($m['email']) . '</td><td class="hide-m"><span class="clip">' . h($m['address']) . '</span></td><td class="r">' . $m['count'] . '</td><td class="r"><b>' . rupees($m['spent']) . '</b></td></tr>';
+      $body .= '<tr data-href="' . $url . '"><td><a href="' . $url . '"><b>' . h($m['name']) . '</b></a><small class="show-m">' . h(implode(' · ', array_filter([$m['phone'] ? phone_fmt($m['phone']) : '', $m['state']]))) . '</small></td>'
+        . '<td class="hide-m">' . ($m['phone'] ? h(phone_fmt($m['phone'])) : '—') . '</td>'
+        . '<td class="hide-m">' . h($m['email']) . '</td><td class="hide-m"><span class="clip">' . h($m['address']) . '</span></td><td class="r">' . $m['count'] . '</td><td class="r"><b>' . rupees($m['spent']) . '</b></td>'
+        . '<td class="r">' . ($m['phone'] ? '<a class="btn sm wag mwa" href="' . h(wa_link($m['phone'], 'Hi' . (($f = first_name((string)$m['name'])) !== '' ? ' ' . $f : '') . ', This is FOMAXO. ')) . '" target="_blank" rel="noopener" aria-label="WhatsApp ' . h($m['name']) . '">' . WA_SVG . '<span>WhatsApp</span></a>' : '') . '</td></tr>';
     }
     $body .= '</tbody></table><script>document.querySelectorAll("tr[data-href]").forEach(function(r){r.onclick=function(e){if(!e.target.closest("a"))location.href=r.dataset.href}})</script>';
   }

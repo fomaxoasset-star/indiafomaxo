@@ -584,3 +584,6 @@ body.zooming{overflow:hidden}
 .rqtabs a.on{background:var(--gold);color:#17130b}.rqtabs i{font-style:normal;opacity:.75;margin-left:4px}.rqtabs a:focus-visible{outline:2px solid var(--gold2);outline-offset:-3px}
 @media (max-width:760px){.rqtop{flex-wrap:wrap}.rqtabs{flex:1 1 100%;display:flex}.rqtabs a{flex:1;text-align:center;padding:9px 6px;font-size:11px;letter-spacing:.06em}}
 @media (prefers-color-scheme:light){.rqtabs a.on{color:#fff}}
+/* Members: green WhatsApp button at the end of each customer row (icon only on phones) */
+.mlist .mwa{gap:6px;display:inline-flex;align-items:center}
+@media (max-width:760px){.mlist .mwa{padding:6px 9px}.mlist .mwa span{display:none}}
