@@ -111,11 +111,17 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Refill reminders: customers whose latest order was about 45 days ago (a bottle runs low around then), each with a ready WhatsApp message and a REFILL- coupon.
      Tapping WhatsApp notes Sent for that order, so nobody is reminded twice for the same order. Automatic sending (WhatsApp Business API) is set up in the box at the top. */
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
-  $due = refill_due(); $tm = refill_time(); $waOk = wa_ready(); $hookOk = trim((string)(wa_config()['app_secret'] ?? '')) !== '';
+  $due = refill_due(); $tm = refill_time(); $waOk = wa_ready(); $all = count($due);
+  $D = pick_dates('refill') + ['tab' => 'orders'];   // Today / 7 days / 30 days / From–To: by the reminder day (order date + Days after order)
+  $remDay = fn($o) => date('Y-m-d', strtotime(substr((string)$o['created'], 0, 10) . ' +' . $tm['days'] . ' days'));
+  if ($D['r'] !== 'all') $due = array_filter($due, fn($o) => ($d = $remDay($o)) >= $D['from'] && $d <= $D['to']);
+  $rq = trim(mb_substr((string)($_GET['q'] ?? ''), 0, 60));   // search: name, mobile, order no or perfume
+  if ($rq !== '') { $qd = preg_replace('/\D/', '', $rq); $qd = strlen($qd) >= 4 ? substr($qd, -10) : '';
+    $due = array_filter($due, fn($o) => mb_stripos((string)$o['name'] . ' ' . $o['no'] . ' ' . $o['items'], $rq) !== false || ($qd !== '' && str_contains(coupon_phone((string)$o['phone']), $qd))); } $hookOk = trim((string)(wa_config()['app_secret'] ?? '')) !== '';
   $autoOn = $waOk && shop_setting('refill_auto') === '1'; $err = (string)shop_setting('refill_auto_err'); $nStop = count(wa_stops());
   $hsel = fn(string $nm, int $a, int $b, int $v) => '<select id="' . $nm . '" name="' . $nm . '">' . implode('', array_map(fn($x) => '<option value="' . $x . '"' . ($x === $v ? ' selected' : '') . '>' . refill_hour($x) . '</option>', range($a, $b))) . '</select>';
   $open = count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
-  $body .= $rqTabs('refill');
+  $body .= $rqTabs('refill', date_bar($D, ['refill' => 1, 'q' => $rq]));
   $body .= '<details class="box rfauto"><summary><b>Automatic sending</b><span class="rfst' . ($autoOn ? ' on' : '') . '">' . ($autoOn ? 'On' : 'Off') . '</span><span class="muted small rfsum">'
     . ($autoOn ? 'sent by itself to customers who ticked WhatsApp offers, ' . $tm['days'] . ' days after the order, ' . refill_hour($tm['from']) . '–' . refill_hour($tm['to']) . ', ' . refill_pct() . '% off' . (refill_min() ? ' from ' . rupees(refill_min() * 100) : '') : 'messages are sent only when you tap WhatsApp') . '</span></summary>'
     . '<form method="post" class="bb rff" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="refill_auto">'
@@ -133,8 +139,13 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     . ($err !== '' && $autoOn ? '<p class="small rferr">Last problem: ' . h($err) . '</p>' : '')
     . '<p class="muted small" style="margin:0">India time. Only customers who ticked “Send me offers on WhatsApp” at checkout get it by itself, once per order, using your approved template refill_reminder.</p></form></details>';
   $body .= '<div class="kpis n2 rfk" style="--n:2"><div class="kpi"><span>To remind</span><b data-rfn="todo">' . $open . '</b></div><div class="kpi"><span>Sent</span><b data-rfn="sent">' . count(array_filter($due, fn($o) => (bool)$o['sent'])) . '</b></div></div>';
+  $body .= '<div class="rfbar"><form method="post" class="rfdays" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="refill_days"><span>Show</span>'
+    . '<input name="rf_lfrom" type="number" min="1" max="730" inputmode="numeric" required value="' . $tm['list_from'] . '" aria-label="From day">'
+    . '<span>to</span><input name="rf_lto" type="number" min="1" max="730" inputmode="numeric" required value="' . $tm['list_to'] . '" aria-label="To day">'
+    . '<span>days<i> after the latest order</i></span><button class="btn sm">Save</button></form>'
+    . '<form method="get" class="rfq"><input type="hidden" name="tab" value="orders"><input type="hidden" name="refill" value="1"><input type="search" name="q" value="' . h($rq) . '" placeholder="Name, mobile, order no or perfume" aria-label="Search refill reminders"><button class="btn line sm">Search</button></form></div>';
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bb np">';
-  if (!$due) $body .= '<p class="empty">Nobody is due right now. Customers show here ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days after their latest order.</p>';
+  if (!$due) $body .= '<p class="empty">' . ($all ? ($rq !== '' ? 'Nobody on this list matches “' . h($rq) . '”. ' : '') . ($D['r'] !== 'all' ? 'No reminders fall on these dates. ' : '') . 'Tap All or clear the search to see everyone.' : 'Nobody is due right now. Customers show here ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days after their latest order.') . '</p>';
   else {
     $body .= '<table class="grid rflist"><thead><tr><th>Customer</th><th>Last order</th><th class="r"></th></tr></thead><tbody>';
     foreach ($due as $k => $o) {
