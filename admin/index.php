@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '78';
+const ASSET_V = '79';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -254,8 +254,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'newprod_save') { go(['tab' => 'offer'], save_newprod($CAT)); }
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
   if ($a === 'lead_coupon') {   // Left at checkout WhatsApp box (admin.js asks without reloading): with a coupon, a new COMEBACK- code, one use, only this customer's mobile,
-    header('Content-Type: application/json');   // ends in 7 days; the line then shows Sent dd/mm
-    $code = box_code('COMEBACK-', (string)($_POST['phone'] ?? ''), date('d/m/Y', strtotime('+7 days')));
+    header('Content-Type: application/json');   // till the end date picked (7 days filled in); the line then shows Sent dd/mm
+    $code = box_code('COMEBACK-', (string)($_POST['phone'] ?? ''));
     day_mark('wa_sent', 'lt:' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($_POST['sid'] ?? '')));
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
