@@ -749,3 +749,127 @@ document.addEventListener('click', function (e) {
   document.querySelectorAll('[data-rqf]').forEach(function (x) { x.classList.toggle('on', x === b); });
   document.querySelectorAll('.rqlist tr[data-st]').forEach(function (r) { r.hidden = !!b.dataset.rqf && r.dataset.st !== b.dataset.rqf; });
 });
+
+/* new orders: while any admin page is open (laptop or phone) it asks every 30 seconds. A new order pops up at the top
+   (order number, amount, name) with a chime, and as a phone / laptop notification once those are turned on in Settings.
+   Cash orders show when placed, card orders only once paid. The last check time is kept on this device, so moving
+   between admin pages misses nothing and an order already shown in one tab is not shown again in another. */
+(function () {
+  var box = document.getElementById('orderAlerts');
+  if (!box) return;
+  var get = function (k) { try { return localStorage.getItem(k); } catch (x) { return null; } };
+  var put = function (k, v) { try { localStorage.setItem(k, v); } catch (x) { /* private window: this page still alerts */ } };
+  var ms = function (t) { return Date.parse(t.replace(' ', 'T')); };
+  var now = box.dataset.now, since = get('fxOrderSince') || '';
+  if (!since || since > now || ms(since) < ms(now) - 12 * 3600e3) since = now;   // first time, or away for long: start from now, not a pile of old orders
+  var seen = (get('fxOrderSeen') || '').split(',').filter(Boolean);
+  var swReg = null;
+  var sw = function () {
+    if (!swReg && 'serviceWorker' in navigator) swReg = navigator.serviceWorker.register('/admin/alert-sw.js', {scope: '/admin/'}).then(function () { return navigator.serviceWorker.ready; }).catch(function () { return null; });
+    return swReg || Promise.resolve(null);
+  };
+
+  /* the chime: two soft notes made in the browser (no sound file). Browsers allow sound only after a first tap or key on the page. */
+  var ac = null;
+  var unlock = function () {
+    var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+    if (!ac) ac = new A();
+    if (ac.state === 'suspended') ac.resume();
+  };
+  document.addEventListener('pointerdown', unlock, {once: true, capture: true});
+  document.addEventListener('keydown', unlock, {once: true, capture: true});
+  var chime = function () {
+    if (box.dataset.sound !== '1') return;
+    try {
+      unlock(); if (!ac) return;
+      [[880, 0], [1318.5, 0.18]].forEach(function (n) {
+        var o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + n[1];
+        o.type = 'sine'; o.frequency.value = n[0];
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.95);
+      });
+    } catch (x) { /* no sound on this browser */ }
+  };
+
+  /* the pop-up stack stays until closed, so an order is not missed when nobody was looking */
+  var stack = document.createElement('div'); stack.className = 'noa-stack'; stack.setAttribute('role', 'status'); stack.setAttribute('aria-live', 'polite');
+  document.body.appendChild(stack);
+  var title = document.title, unread = 0;
+  var showTitle = function () { document.title = unread ? '(' + unread + ') New order · ' + title : title; };
+  window.addEventListener('focus', function () { unread = 0; showTitle(); });
+  var popup = function (o) {
+    var d = document.createElement('div'); d.className = 'noa';
+    var a = document.createElement('a'); a.href = o.url;
+    var k = document.createElement('span'); k.className = 'noa-k'; k.textContent = 'New order';
+    var b = document.createElement('b'); b.textContent = o.no + ' · ' + o.total;
+    var s = document.createElement('small'); s.textContent = o.name + ' · ' + o.how;
+    a.append(k, b, s);
+    var x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.textContent = '✕';
+    x.onclick = function () { d.classList.add('gone'); setTimeout(function () { d.remove(); }, 250); };
+    d.append(a, x); stack.prepend(d);
+  };
+  var notify = function (o) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    var body = o.total + ' · ' + o.name + ' · ' + o.how, opt = {body: body, tag: o.no, icon: '/assets/img/link-preview-square.jpg', data: {url: o.url}};
+    sw().then(function (r) {
+      if (r) return r.showNotification('New order ' + o.no, opt);
+      var n = new Notification('New order ' + o.no, opt); n.onclick = function () { window.focus(); location.href = o.url; };
+    }).catch(function () { /* notifications not allowed here: the pop-up and chime still show */ });
+  };
+
+  /* count rounds on the menu (both the laptop tabs and the phone tabs): green = new orders; blue / red / amber = new
+     Bad product / Faulty product / Late delivery reviews (the Reviews chip colours); gold = new Left at checkout on Analytics */
+  var ROUNDS = {orders: [['orders', 'new order', 'new orders']], reviews: [['bad', 'new Bad product review', 'new Bad product reviews'], ['faulty', 'new Faulty product review', 'new Faulty product reviews'], ['late', 'new Late delivery review', 'new Late delivery reviews']], analytics: [['leads', 'new left at checkout', 'new left at checkout']]};
+  var rounds = function (b) {
+    if (!b) return;
+    Object.keys(ROUNDS).forEach(function (tab) {
+      document.querySelectorAll('.tabs a[href$="tab=' + tab + '"], .mtabs a[href$="tab=' + tab + '"]').forEach(function (a) {
+        var w = a.querySelector('.tb'); if (!w) { w = document.createElement('span'); w.className = 'tb'; a.appendChild(w); }
+        w.textContent = ''; var said = [];
+        ROUNDS[tab].forEach(function (r) {
+          var n = +b[r[0]] || 0; if (!n) return;
+          var i = document.createElement('i'); i.className = 'tb-' + r[0]; i.textContent = n > 99 ? '99+' : n; w.appendChild(i);
+          said.push(n + ' ' + (n === 1 ? r[1] : r[2]));
+        });
+        w.hidden = !said.length; if (said.length) a.title = said.join(', '); else a.removeAttribute('title');
+      });
+    });
+  };
+  try { rounds(JSON.parse(box.dataset.badges || '{}')); } catch (x) { /* no rounds */ }
+
+  var timer = null;
+  var check = function () {
+    fetch('/admin/?do=new_orders&since=' + encodeURIComponent(since), {credentials: 'same-origin', cache: 'no-store'})
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        since = j.now; put('fxOrderSince', since); rounds(j.badges);
+        seen = (get('fxOrderSeen') || '').split(',').filter(Boolean);   // another admin tab may have shown some already
+        var fresh = (j.orders || []).filter(function (o) { return seen.indexOf(o.no) < 0; }).reverse();
+        if (!fresh.length) return;
+        fresh.forEach(function (o) { seen.push(o.no); popup(o); notify(o); });
+        put('fxOrderSeen', seen.slice(-50).join(','));
+        chime(); if (!document.hasFocus()) { unread += fresh.length; showTitle(); }
+      })
+      .catch(function () { clearInterval(timer); });   // signed out (the answer is the sign-in page): stop asking
+  };
+  timer = setInterval(check, 30000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });   // back on the tab: check at once
+  if ('Notification' in window && Notification.permission === 'granted') sw();
+
+  /* Settings → New orders: turn on phone / laptop notifications for this device */
+  var on = document.querySelector('[data-notify-on]'), st = document.querySelector('[data-notify-state]');
+  if (!on) return;
+  var show = function () {
+    var p = 'Notification' in window ? Notification.permission : 'none';
+    on.hidden = p !== 'default';
+    st.textContent = p === 'granted' ? '✓ Pop-ups are on for this device' : p === 'denied' ? 'Pop-ups are blocked for this site in the browser settings. Allow notifications for fomaxo.in there.'
+      : p === 'none' ? 'This browser cannot show pop-ups. On iPhone, add fomaxo.in/admin to the Home Screen and open it from there.' : '';
+  };
+  on.addEventListener('click', function () {
+    Notification.requestPermission().then(function (p) {
+      show();
+      if (p === 'granted') sw().then(function (r) { var o = {body: 'New orders will show like this.', tag: 'fx-test', icon: '/assets/img/link-preview-square.jpg'}; if (r) r.showNotification('FOMAXO order pop-ups are on', o); else new Notification('FOMAXO order pop-ups are on', o); });
+    });
+  });
+  show();
+})();

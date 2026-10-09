@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '80';
+const ASSET_V = '82';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -129,6 +129,22 @@ if (empty($_SESSION['ok']) || ($_SESSION['hash'] ?? '') !== substr($hash, -12) |
     . ($msg ? '<p class="ok">' . h($msg) . '</p>' : '') . ($err ? '<p class="err">' . h($err) . '</p>' : '')
     . '<label>Password<input type="password" name="password" autofocus required autocomplete="current-password"></label><button class="btn">Sign in</button>'
     . '<p class="small"><a href="/admin/?forgot=1">Forgot password?</a></p></form>', false);
+}
+/* new order alerts: every open admin page asks here every 30 seconds (admin.js). Gives the numbered orders since the last ask:
+   cash orders when placed, card orders only once Razorpay confirms the payment (an unpaid card try has no number, so it never shows).
+   Asking does not keep the sign-in alive: an admin page left open still signs out after 8 hours. */
+if (($_GET['do'] ?? '') === 'new_orders') {
+  header('Content-Type: application/json');
+  $since = (string)($_GET['since'] ?? '');
+  $out = ['now' => shop_now(), 'orders' => []];
+  if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $since)) {
+    $s = shop_db()->prepare("SELECT * FROM orders WHERE no IS NOT NULL AND status <> 'awaiting' AND (CASE WHEN method = 'cod' THEN created ELSE COALESCE(paid_at, created) END) >= ? ORDER BY id DESC LIMIT 10");
+    $s->execute([$since]);
+    foreach ($s as $o) $out['orders'][] = ['no' => $o['no'], 'name' => $o['name'], 'total' => rupees((int)$o['total']), 'how' => $o['method'] === 'cod' ? 'Cash on delivery' : 'Paid online' . ((int)$o['test'] ? ' (test)' : ''),
+      'url' => self_url(['tab' => 'orders', 'q' => $o['no']])];
+  }
+  try { $out['badges'] = admin_badges(); } catch (Throwable $e) { /* rounds stay as they are */ }
+  echo json_encode($out); exit;
 }
 $_SESSION['seen'] = time();
 /* this browser is the owner's: analytics leave its visits to the shop out */
@@ -333,6 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim((string)($_POST['notify_email'] ?? ''));
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) go(['tab' => 'settings'], '!Please write a valid email address.');
     shop_set('notify_email', $email);
+    shop_set('alert_sound', empty($_POST['alert_sound']) ? '0' : '1');
     $fee = trim((string)($_POST['pay_fee'] ?? '2')); if (is_numeric($fee)) shop_set('pay_fee', (string)max(0, min(10, round((float)$fee, 2))));
     go(['tab' => 'settings'], 'Settings saved.');
   }
@@ -458,4 +475,8 @@ $thumbOf = fn(string $id, string $cls = 'th') => thumb($CAT[$id] ?? null, $cls);
 $orderThumb = function (array $o) use ($thumbOf) { $it = (json_decode((string)$o['items'], true) ?: [])[0] ?? []; return $thumbOf((string)($it['id'] ?? ''), 'th sm'); };
 require __DIR__ . '/pages.php';
 if (str_contains($body, 'data-wabox')) $body .= '<div data-csrf="' . h($CSRF) . '">' . wa_box('gWa', 'gwfree', '', 10, 0, 'A new THANKS- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.') . '</div>';   // the shared WhatsApp box
+/* opening Orders, Reviews or Analytics clears its rounds on the menu */
+if (isset(['orders' => 1, 'reviews' => 1, 'analytics' => 1][$tab])) admin_seen($tab === 'analytics' ? 'leads' : $tab, true);
+try { $BADGES = admin_badges(); } catch (Throwable $e) { $BADGES = []; }
+$body .= '<div id="orderAlerts" hidden data-now="' . h(shop_now()) . '" data-sound="' . (shop_setting('alert_sound') === '0' ? '0' : '1') . '" data-badges="' . h(json_encode($BADGES)) . '"></div>';   // new order pop-ups (admin.js)
 page(html_entity_decode($tabs[$tab]), $body, true, $tab, $tabs);
