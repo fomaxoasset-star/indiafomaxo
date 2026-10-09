@@ -3230,9 +3230,9 @@ function product(id, q){
           <p class="small" id="pickHint" style="margin-top:12px">Select ${size} fragrances to continue.</p></div>` : ''}
         <div class="qtyrow${isOut(p) ? ' oos-row' : ''}">
           <div class="qty"><button id="qm" aria-label="Decrease quantity">−</button><input id="qty" value="1" inputmode="numeric" aria-label="Quantity"><button id="qp" aria-label="Increase quantity">+</button></div>
-          ${isOut(p) ? OUT_BTN('btn') : '<button class="btn" id="addBtn">Add To Cart</button>'}
+          ${isOut(p) ? OUT_BTN('btn') : '<button class="btn line" id="addBtn">Add To Cart</button>'}
         </div>
-        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn line block" id="buyBtn">Buy Now</button>' + (S.checkout.razorpay ? `<p class="buy-trust">${LOCK_SVG}Secure checkout · UPI · Cards · Netbanking · Wallets</p>` : '')}
+        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block" id="buyBtn">Buy Now</button>' + (S.checkout.razorpay ? `<p class="buy-trust">${LOCK_SVG}Secure checkout · UPI · Cards · Netbanking · Wallets</p>` : '')}
         <a class="pshare" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}Share with a friend on WhatsApp</a>
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
