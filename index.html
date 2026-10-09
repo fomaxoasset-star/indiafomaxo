@@ -392,7 +392,34 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-arrow{width:46px;height:46px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--gold);background:transparent;color:var(--gold-hi);font-family:inherit;font-weight:300;font-size:26px;line-height:1;padding:0 0 3px;cursor:pointer;transition:background .2s,color .2s}
 .rv-arrow:hover:not(:disabled){background:var(--gold);color:#0a0805}
 .rv-arrow:disabled{border-color:var(--line-2);color:var(--dim);cursor:default}
-.rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px}
+.rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px;background:linear-gradient(180deg,rgba(215,170,105,.06),transparent 160px)}
+.rv-c1,.rv-c2{display:grid;gap:14px;align-content:start;min-width:0}
+.rv-fhead{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.rv-fhead span{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
+.rv-fhead b{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.04em;color:var(--ivory)}
+.rv-x{margin-left:auto;align-self:center;width:34px;height:34px;border:1px solid var(--line-2);border-radius:50%;color:var(--muted);font-size:20px;line-height:1;transition:color .2s,border-color .2s}
+.rv-x:hover{color:var(--gold-hi);border-color:var(--gold)}
+.rv-rate{display:flex;align-items:center;gap:14px}
+.rv-word{font-size:12px;letter-spacing:.2em;color:var(--gold-hi)}
+.rv-drop{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border:1px dashed var(--line-2);color:var(--gold-hi);letter-spacing:.2em;transition:border-color .2s,background .2s}
+.rv-drop:hover,.rv-drop:focus-within{border-color:var(--gold);background:rgba(215,170,105,.06)}
+.rv-drop svg{width:20px;height:20px}
+.form.rv-form .rv-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0}
+.rv-thumbs{display:flex;gap:6px}.rv-thumbs[hidden]{display:none}
+.rv-thumbs img{width:34px;height:34px;object-fit:cover;border:1px solid var(--line-2)}
+.rv-foot{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--line)}
+.rv-foot .rv-err{flex:1 1 220px;margin:0}
+.rv-btns{display:flex;gap:12px;flex-wrap:wrap;margin-left:auto}
+@media(max-width:620px){.rv-btns{width:100%}.rv-btns .btn{flex:1 1 0;justify-content:center}.rv-foot .rv-err:empty{display:none}}
+/* laptop: Write a review opens the form as a window over a darkened page */
+@media (min-width:900px){#rvFormBox.pop{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:rvPop .25s ease}
+  #rvFormBox.pop .rv-form{width:min(920px,100%);max-height:calc(100vh - 48px);overflow:auto;margin:0;background-color:var(--black);box-shadow:0 30px 80px rgba(0,0,0,.55)}}
+@keyframes rvPop{from{opacity:0}}
+/* laptop: two columns (rating, problem and words | name, mobile, place, photos), so the whole form fits on one screen */
+@media (min-width:900px){.rv-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:clamp(24px,3vw,40px)}.rv-form>*{grid-column:1/-1}.rv-form>.rv-c1{grid-column:1}.rv-form>.rv-c2{grid-column:2}.rv-form textarea{min-height:96px}
+  .rv-form{padding:18px 30px 20px;row-gap:12px}.rv-c1,.rv-c2{gap:11px}.rv-form .rv-issue{font-size:13px;line-height:1.55}.rv-foot{padding-top:14px}.rv-fhead b{font-size:22px}.form.rv-form input,.form.rv-form select{padding:11px 14px}.form.rv-form textarea{padding:12px 14px}.rv-form .rv-loc{grid-template-columns:1fr;gap:12px}
+  .rv-form .rv-emoji{flex-wrap:nowrap;gap:2px}.rv-form .rv-emoji button{flex:1 1 0;width:auto;max-width:34px;height:auto;aspect-ratio:1;font-size:17px;border-color:transparent}.rv-form .rv-emoji button:hover{border-color:var(--line-2)}
+  .rv-form .rv-pick button{font-size:28px}}
 .rv-pick{display:flex;gap:4px}
 .rv-emoji{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
 .rv-emoji button{font-size:20px;line-height:1;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;transition:border-color .2s,transform .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
@@ -420,7 +447,6 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 @font-face{font-family:"Twemoji Country Flags";unicode-range:U+1F1E6-1F1FF,U+1F3F4,U+E0062-E007F;src:url(https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1/dist/TwemojiCountryFlags.woff2) format("woff2");font-display:swap}
 .rv-flag{font-family:"Twemoji Country Flags","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:1.15em;line-height:1;vertical-align:-1px}
 .rv-sug .rv-flag{margin-right:10px}
-.rv-form input[type=file]{padding:12px;font-size:13px}
 .rv-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .rv-err{color:#e08a7a;min-height:1em}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
 .rv-ok{border:1px solid var(--line-2);padding:24px;color:var(--champagne)}
@@ -4187,26 +4213,29 @@ const RV_CITIES = 'Mumbai, Maharashtra|Pune, Maharashtra|Nagpur, Maharashtra|Nas
 const RV_NATIONS = 'India:in|United Arab Emirates:ae|Saudi Arabia:sa|Qatar:qa|Oman:om|Kuwait:kw|Bahrain:bh|United States:us|United Kingdom:gb|Canada:ca|Australia:au|Singapore:sg|Nepal:np|Bangladesh:bd|Sri Lanka:lk|Afghanistan:af|Albania:al|Algeria:dz|Andorra:ad|Angola:ao|Argentina:ar|Armenia:am|Austria:at|Azerbaijan:az|Bahamas:bs|Barbados:bb|Belarus:by|Belgium:be|Belize:bz|Benin:bj|Bhutan:bt|Bolivia:bo|Bosnia and Herzegovina:ba|Botswana:bw|Brazil:br|Brunei:bn|Bulgaria:bg|Burkina Faso:bf|Burundi:bi|Cambodia:kh|Cameroon:cm|Chad:td|Chile:cl|China:cn|Colombia:co|Costa Rica:cr|Croatia:hr|Cuba:cu|Cyprus:cy|Czechia:cz|Denmark:dk|Djibouti:dj|Dominican Republic:do|Ecuador:ec|Egypt:eg|El Salvador:sv|Eritrea:er|Estonia:ee|Eswatini:sz|Ethiopia:et|Fiji:fj|Finland:fi|France:fr|Gabon:ga|Georgia:ge|Germany:de|Ghana:gh|Greece:gr|Guatemala:gt|Guyana:gy|Haiti:ht|Honduras:hn|Hong Kong:hk|Hungary:hu|Iceland:is|Indonesia:id|Iran:ir|Iraq:iq|Ireland:ie|Israel:il|Italy:it|Ivory Coast:ci|Jamaica:jm|Japan:jp|Jordan:jo|Kazakhstan:kz|Kenya:ke|Kyrgyzstan:kg|Laos:la|Latvia:lv|Lebanon:lb|Libya:ly|Lithuania:lt|Luxembourg:lu|Madagascar:mg|Malawi:mw|Malaysia:my|Maldives:mv|Mali:ml|Malta:mt|Mauritius:mu|Mexico:mx|Moldova:md|Monaco:mc|Mongolia:mn|Montenegro:me|Morocco:ma|Mozambique:mz|Myanmar:mm|Namibia:na|Netherlands:nl|New Zealand:nz|Nicaragua:ni|Niger:ne|Nigeria:ng|North Macedonia:mk|Norway:no|Pakistan:pk|Palestine:ps|Panama:pa|Papua New Guinea:pg|Paraguay:py|Peru:pe|Philippines:ph|Poland:pl|Portugal:pt|Romania:ro|Russia:ru|Rwanda:rw|Senegal:sn|Serbia:rs|Seychelles:sc|Sierra Leone:sl|Slovakia:sk|Slovenia:si|Somalia:so|South Africa:za|South Korea:kr|Spain:es|Sudan:sd|Suriname:sr|Sweden:se|Switzerland:ch|Syria:sy|Taiwan:tw|Tajikistan:tj|Tanzania:tz|Thailand:th|Togo:tg|Trinidad and Tobago:tt|Tunisia:tn|Turkey:tr|Turkmenistan:tm|Uganda:ug|Ukraine:ua|Uruguay:uy|Uzbekistan:uz|Venezuela:ve|Vietnam:vn|Yemen:ye|Zambia:zm|Zimbabwe:zw'.split('|').map(x => x.split(':'));
 const rvFlag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 127397 + c.charCodeAt(0))) : '';
 const rvNation = n => RV_NATIONS.find(([c]) => c.toLowerCase() === String(n || '').trim().toLowerCase());
+/* words about a late delivery or a faulty / damaged product (English and Hinglish), the same list as api/reviews.php */
+const RV_PROBLEM = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|der(i|ee)? se|toot(a|i))\b/i;
+const RV_WORDS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
 const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
-    <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
-    <label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
-    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp${token ? '' : ', so please add your mobile number'}<span class="rv-need-photo"> and a photo of the product</span>.</p>
+    ${token ? '' : `<div class="rv-fhead"><span>Write a review</span><b>${esc(p.name)}</b><button type="button" class="rv-x" data-cancel aria-label="Close">&times;</button></div>`}
+    <div class="rv-c1"><label>Your rating<span class="rv-rate"><span class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</span><span class="rv-word"></span></span></label>
+    ${token ? '' : `<label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
+    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product</span>.</p>`}
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
-    <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
-    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
+    <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div></div>
+    <div class="rv-c2">    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
     ${token ? '' : '<label><span>Mobile <i>(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label>'}
     <div class="rv-loc">
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
       <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
     </div>
-    <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label>
+    <label><span>Photos <i>(optional, up to 3)</i></span><span class="rv-drop"><input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h3l2-3h8l2 3h3v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="rv-thumbs" hidden></span><span class="rv-drop-t">Add photos</span></span></label></div>
     <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     ${token ? '<p class="rv-ver">✓ This review will show as Verified Purchaser</p>' : ''}
-    <div style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn sm" type="submit">Post review</button>${token ? '' : '<button class="btn line sm" type="button" data-cancel>Cancel</button>'}</div>
-    <p class="small rv-err" role="alert"></p>
+    <div class="rv-foot"><p class="small rv-err" role="alert"></p><div class="rv-btns">${token ? '' : '<button class="btn line sm" type="button" data-cancel>Cancel</button>'}<button class="btn sm" type="submit">Post review</button></div></div>
   </form>`;
 }
 /* type-ahead list under an input: find(q) returns [value, html] pairs; onFocus also opens it while empty */
@@ -4228,19 +4257,23 @@ function rvSuggest(input, find, onFocus){
 }
 function bindRvForm(form, p, token, done){
   let rating = 0; const stars = $$('[data-star]', form), err = $('.rv-err', form);
-  const paint = n => stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); });
+  const word = $('.rv-word', form), paint = n => { word.textContent = RV_WORDS[n]; stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); }); };
   stars.forEach(b => { b.onclick = () => { rating = +b.dataset.star; paint(rating); }; b.onmouseenter = () => paint(+b.dataset.star); b.onmouseleave = () => paint(rating); });
   const anon = form.elements.anonymous, name = form.elements.name;
   anon.onchange = () => { name.disabled = form.elements.city.disabled = form.elements.country.disabled = anon.checked; };   // anonymous hides name, place and flag
   const city = form.elements.city, nation = form.elements.country;
   rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
   rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : RV_NATIONS).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
-  const issue = form.elements.issue, note = $('.rv-issue', form);   // late delivery or a faulty product: mobile (no order link) and, if faulty, a photo are needed for the coupon
-  issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
-  stars.forEach(b => b.addEventListener('click', () => {   // the problem box only for 1–3 stars
-    const low = rating <= 3; $('.rv-prob', form).hidden = !low;
-    if (!low && issue.value) { issue.value = ''; issue.onchange(); }
-  }));
+  /* reviews without an order link only (verified purchasers have their order and mobile already): for 1–3 stars, "Any problem with your order?"
+     Late delivery needs a mobile, a faulty product a mobile and a photo, for its coupon. No problem with words about one asks them to pick it. */
+  const issue = form.elements.issue || {value: ''}, note = $('.rv-issue', form);
+  if (note) {
+    issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
+    stars.forEach(b => b.addEventListener('click', () => {
+      const low = rating <= 3; $('.rv-prob', form).hidden = !low;
+      if (!low && issue.value) { issue.value = ''; issue.onchange(); }
+    }));
+  }
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
     const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
@@ -4252,6 +4285,7 @@ function bindRvForm(form, p, token, done){
     const files = [...form.elements.photos.files];
     if (!rating) return err.textContent = 'Please choose a star rating.';
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
+    if (note && rating <= 3 && !issue.value && RV_PROBLEM.test(form.elements.text.value)) { $('.rv-prob select', form).focus(); return err.textContent = 'It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.'; }
     if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.';
     if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';
@@ -4265,7 +4299,12 @@ function bindRvForm(form, p, token, done){
     try { const d = await rvPost('submit', fd); done(d); }
     catch(x){ err.textContent = x.message; btn.disabled = false; btn.textContent = 'Post review'; }
   };
-  const c = $('[data-cancel]', form); if (c) c.onclick = () => done(null);
+  /* chosen photos show as small pictures under the box */
+  const pics = form.elements.photos, thumbs = $('.rv-thumbs', form), dropT = $('.rv-drop-t', form);
+  pics.onchange = () => { const fs = [...pics.files]; thumbs.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
+    thumbs.innerHTML = fs.slice(0, 3).map(f => `<img src="${URL.createObjectURL(f)}" alt="">`).join(''); thumbs.hidden = !fs.length;
+    dropT.textContent = fs.length ? `${fs.length} photo${fs.length > 1 ? 's' : ''} added · change` : 'Add photos'; };
+  $$('[data-cancel]', form).forEach(c => c.onclick = () => done(null));
 }
 
 let rvVoted = []; try { rvVoted = JSON.parse(localStorage.getItem('fomaxo_rv_voted') || '[]'); } catch(e) {}
@@ -4322,11 +4361,17 @@ function bindReviews(p){
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
   }, {passive: true});
   sort.onchange = load;
+  /* laptop: the form opens as a window in the middle of the screen over a darkened page; phone: in the page */
+  const home = box.parentElement, next = box.nextElementSibling;   // the window sits on the page body so it covers the menu bar too
+  const pop = on => { box.classList.toggle('pop', on); document.body.classList.toggle('lock', on); if (on) document.body.append(box); else home.insertBefore(box, next); };
+  box.onmousedown = e => { if (e.target === box && box.classList.contains('pop')) $('[data-cancel]', box).click(); };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && box.isConnected && box.classList.contains('pop') && !$('.rv-sug:not([hidden])', box)) $('[data-cancel]', box).click(); });
   $('#rvWrite').onclick = () => {
-    if (box.firstElementChild) { box.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
+    const wide = matchMedia('(min-width:900px)').matches;
+    if (box.firstElementChild && $('form', box)) { if (wide) pop(true); else box.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
     box.innerHTML = rvForm(p); const f = $('form', box);
-    bindRvForm(f, p, '', d => { box.innerHTML = d ? `<div class="rv-ok">${d.pending ? 'Thank you. Your review will appear once it has been checked.' : 'Thank you. Your review is now live.'}</div>` : ''; if (d) { load(); refreshRvSummary(); } });
-    f.scrollIntoView({behavior: 'smooth', block: 'center'});
+    bindRvForm(f, p, '', d => { pop(false); box.innerHTML = d ? `<div class="rv-ok">${d.pending ? 'Thank you. Your review will appear once it has been checked.' : 'Thank you. Your review is now live.'}</div>` : ''; if (d) { load(); refreshRvSummary(); box.scrollIntoView({behavior: 'smooth', block: 'center'}); } });
+    if (wide) { pop(true); f.elements.text.focus({preventScroll: true}); } else f.scrollIntoView({behavior: 'smooth', block: 'center'});
   };
   list.onclick = async e => {
     const b = e.target.closest('[data-help]'); if (!b || b.disabled) return;
@@ -4697,6 +4742,7 @@ function route(){
   const [path, qs] = raw.split('?'); const q = new URLSearchParams(qs || '');
   const seg = path.split('/').filter(Boolean);
   if (PAGES_OFF.has(seg[0])) { location.replace('#/'); return; }   // turned off on the admin page
+  const rvPopEl = $('#rvFormBox.pop'); if (rvPopEl) { rvPopEl.remove(); document.body.classList.remove('lock'); }   // leaving with the review window open
   clearInterval(heroTimer); clearInterval(homeGridTimer); mobileBarCheck = null; $('#mbuy').classList.remove('show');
   document.title = 'FOMAXO — The House of Luxury Care';
   let html, after;
