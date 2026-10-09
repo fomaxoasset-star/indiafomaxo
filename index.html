@@ -4191,7 +4191,7 @@ const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
     <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
-    <label>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
+    <label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
     <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp${token ? '' : ', so please add your mobile number'}<span class="rv-need-photo"> and a photo of the product</span>.</p>
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
@@ -4237,6 +4237,10 @@ function bindRvForm(form, p, token, done){
   rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : RV_NATIONS).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
   const issue = form.elements.issue, note = $('.rv-issue', form);   // late delivery or a faulty product: mobile (no order link) and, if faulty, a photo are needed for the coupon
   issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
+  stars.forEach(b => b.addEventListener('click', () => {   // the problem box only for 1–3 stars
+    const low = rating <= 3; $('.rv-prob', form).hidden = !low;
+    if (!low && issue.value) { issue.value = ''; issue.onchange(); }
+  }));
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
     const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;

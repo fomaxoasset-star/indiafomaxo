@@ -186,7 +186,7 @@ try {
       if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
       $mobile = substr(preg_replace('/\D/', '', (string)($in['mobile'] ?? '')) ?? '', -10); if (!preg_match('/^[6-9]\d{9}$/', $mobile)) $mobile = '';   // a 10-digit Indian mobile, or nothing
 
-      $issue = in_array($in['issue'] ?? '', ['late', 'faulty'], true) ? $in['issue'] : '';
+      $issue = $rating <= 3 && in_array($in['issue'] ?? '', ['late', 'faulty'], true) ? $in['issue'] : '';   // the form offers it only for 1–3 stars
       if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.');
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
