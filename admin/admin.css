@@ -8,7 +8,7 @@ a{color:var(--gold2)}[hidden]{display:none!important}
 header{display:flex;align-items:center;gap:18px;padding:0 20px;height:54px;border-bottom:1px solid var(--line);background:#0a0907;flex:none}
 .brand{color:var(--gold);text-decoration:none;letter-spacing:.24em;font:600 17px Cinzel,serif;white-space:nowrap}.brand span{color:var(--muted);letter-spacing:.14em;font:400 11px Manrope,sans-serif;margin-left:6px;text-transform:uppercase}
 .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:0 1 auto;min-width:0;height:100%}.tabs::-webkit-scrollbar{display:none}
-.tabs a{display:flex;align-items:center;padding:0 12px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:14px}.tabs a.on{color:var(--gold2);border-color:var(--gold)}
+.tabs a{display:flex;align-items:center;padding:0 11px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:14px}.tabs a.on{color:var(--gold2);border-color:var(--gold)}
 .hlinks{display:flex;justify-content:flex-end;gap:14px;font-size:13px;white-space:nowrap;margin-left:auto}
 /* laptop: the logo and the links on each side take equal room, so the tabs sit in the middle of the bar */
 body.app header>.brand,body.app header>.hlinks{flex:1 1 0}.hlinks .short{display:none}.hlinks a{color:var(--muted)}
@@ -30,6 +30,9 @@ h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.14em;c
 .noa b{font-size:15px;color:var(--gold2)}.noa small{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .noa button{background:none;border:0;color:var(--muted);font-size:14px;padding:0 13px;cursor:pointer}.noa button:hover{color:var(--text)}
 @keyframes noaIn{from{opacity:0;transform:translateY(-12px)}}@keyframes noaDot{50%{opacity:.25}}
+/* count rounds on the menu tabs (admin.js) */
+.tb{display:inline-flex;margin-left:4px}.tb i{font:700 9.5px/1 Manrope,sans-serif;font-style:normal;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 0 1.5px #0a0907}.tb i+i{margin-left:-3px}
+.tb-orders{background:#2f9e55}.tb-bad{background:#4f7fc4}.tb-faulty{background:#d0644e}.tb-late{background:#e0a03a;color:#2a1c05!important}.tb-leads{background:#c9a45c;color:#17130b!important}
 .nalert{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nalert small{font-size:12px}
 .changed{border-color:var(--gold)!important;background:#1f1a0f!important}.unsaved{color:var(--amber);font-size:12px;font-weight:600}
 .qbtns{display:flex;gap:8px;flex-wrap:wrap}.show-m-i{display:none!important}
@@ -554,6 +557,7 @@ body.zooming{overflow:hidden}
   input.tgl{background:var(--line)}input.tgl::after,input.tgl:checked::after{background:#fff;box-shadow:0 1px 2px #0003}
   .fun .bar,.geo .li span.bar,.srcs .li span.bar{background:#ece4d6}
   .noa{box-shadow:0 10px 28px #0002}
+  .tb i{box-shadow:0 0 0 1.5px #fff}
   .lt summary:hover{background:#f6f0e4}.lt[open]{background:#faf6ee}
   .kpis.rk .kpi.on,.step.on{background:#fbf3e2}.kpi.zoomable:hover,.an>.box.zoomable:hover,.kpis.rk .kpi:hover{border-color:#c9b48c}
   .stars i{color:#d8ccb6}.btn.off,.btn.off:hover{border-color:#ddd3c2;color:#a59a88}.mbar button:disabled{color:#c9bda8}

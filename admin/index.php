@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '81';
+const ASSET_V = '82';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -143,6 +143,7 @@ if (($_GET['do'] ?? '') === 'new_orders') {
     foreach ($s as $o) $out['orders'][] = ['no' => $o['no'], 'name' => $o['name'], 'total' => rupees((int)$o['total']), 'how' => $o['method'] === 'cod' ? 'Cash on delivery' : 'Paid online' . ((int)$o['test'] ? ' (test)' : ''),
       'url' => self_url(['tab' => 'orders', 'q' => $o['no']])];
   }
+  try { $out['badges'] = admin_badges(); } catch (Throwable $e) { /* rounds stay as they are */ }
   echo json_encode($out); exit;
 }
 $_SESSION['seen'] = time();
@@ -474,5 +475,8 @@ $thumbOf = fn(string $id, string $cls = 'th') => thumb($CAT[$id] ?? null, $cls);
 $orderThumb = function (array $o) use ($thumbOf) { $it = (json_decode((string)$o['items'], true) ?: [])[0] ?? []; return $thumbOf((string)($it['id'] ?? ''), 'th sm'); };
 require __DIR__ . '/pages.php';
 if (str_contains($body, 'data-wabox')) $body .= '<div data-csrf="' . h($CSRF) . '">' . wa_box('gWa', 'gwfree', '', 10, 0, 'A new THANKS- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.') . '</div>';   // the shared WhatsApp box
-$body .= '<div id="orderAlerts" hidden data-now="' . h(shop_now()) . '" data-sound="' . (shop_setting('alert_sound') === '0' ? '0' : '1') . '"></div>';   // new order pop-ups (admin.js)
+/* opening Orders, Reviews or Analytics clears its rounds on the menu */
+if (isset(['orders' => 1, 'reviews' => 1, 'analytics' => 1][$tab])) admin_seen($tab === 'analytics' ? 'leads' : $tab, true);
+try { $BADGES = admin_badges(); } catch (Throwable $e) { $BADGES = []; }
+$body .= '<div id="orderAlerts" hidden data-now="' . h(shop_now()) . '" data-sound="' . (shop_setting('alert_sound') === '0' ? '0' : '1') . '" data-badges="' . h(json_encode($BADGES)) . '"></div>';   // new order pop-ups (admin.js)
 page(html_entity_decode($tabs[$tab]), $body, true, $tab, $tabs);

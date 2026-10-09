@@ -817,12 +817,32 @@ document.addEventListener('click', function (e) {
     }).catch(function () { /* notifications not allowed here: the pop-up and chime still show */ });
   };
 
+  /* count rounds on the menu (both the laptop tabs and the phone tabs): green = new orders; blue / red / amber = new
+     Bad product / Faulty product / Late delivery reviews (the Reviews chip colours); gold = new Left at checkout on Analytics */
+  var ROUNDS = {orders: [['orders', 'new order', 'new orders']], reviews: [['bad', 'new Bad product review', 'new Bad product reviews'], ['faulty', 'new Faulty product review', 'new Faulty product reviews'], ['late', 'new Late delivery review', 'new Late delivery reviews']], analytics: [['leads', 'new left at checkout', 'new left at checkout']]};
+  var rounds = function (b) {
+    if (!b) return;
+    Object.keys(ROUNDS).forEach(function (tab) {
+      document.querySelectorAll('.tabs a[href$="tab=' + tab + '"], .mtabs a[href$="tab=' + tab + '"]').forEach(function (a) {
+        var w = a.querySelector('.tb'); if (!w) { w = document.createElement('span'); w.className = 'tb'; a.appendChild(w); }
+        w.textContent = ''; var said = [];
+        ROUNDS[tab].forEach(function (r) {
+          var n = +b[r[0]] || 0; if (!n) return;
+          var i = document.createElement('i'); i.className = 'tb-' + r[0]; i.textContent = n > 99 ? '99+' : n; w.appendChild(i);
+          said.push(n + ' ' + (n === 1 ? r[1] : r[2]));
+        });
+        w.hidden = !said.length; if (said.length) a.title = said.join(', '); else a.removeAttribute('title');
+      });
+    });
+  };
+  try { rounds(JSON.parse(box.dataset.badges || '{}')); } catch (x) { /* no rounds */ }
+
   var timer = null;
   var check = function () {
     fetch('/admin/?do=new_orders&since=' + encodeURIComponent(since), {credentials: 'same-origin', cache: 'no-store'})
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        since = j.now; put('fxOrderSince', since);
+        since = j.now; put('fxOrderSince', since); rounds(j.badges);
         seen = (get('fxOrderSeen') || '').split(',').filter(Boolean);   // another admin tab may have shown some already
         var fresh = (j.orders || []).filter(function (o) { return seen.indexOf(o.no) < 0; }).reverse();
         if (!fresh.length) return;

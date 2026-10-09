@@ -954,3 +954,21 @@ function send_sheet(string $name, array $head, array $rows, string $sheetName = 
   header('Content-Length: ' . filesize($tmp));
   readfile($tmp); @unlink($tmp); exit;
 }
+
+/* ---------------- count rounds on the menu: new orders, new problem reviews, new Left at checkout ---------------- */
+/* Each tab remembers when it was last opened (settings seen_orders / seen_reviews / seen_leads). The very first time there is
+   nothing to catch up on, so it starts from now. Opening the tab sets it to now again, and its rounds go. */
+function admin_seen(string $k, bool $open = false): string {
+  $v = (string)shop_setting("seen_$k");
+  if ($v === '' || $open) { $v = $k === 'reviews' ? (string)time() : shop_now(); shop_set("seen_$k", $v); }
+  return $v;
+}
+function admin_badges(): array {
+  $s = shop_db()->prepare('SELECT COUNT(*) FROM orders WHERE ' . IS_ORDER . ' AND created > ?'); $s->execute([admin_seen('orders')]);
+  $b = ['orders' => (int)$s->fetchColumn(), 'bad' => 0, 'faulty' => 0, 'late' => 0];
+  $since = (int)admin_seen('reviews');
+  foreach (reviews_list() as $r) if ((int)$r['created'] > $since && isset($b[$r['issue']])) $b[$r['issue']]++;   // only Bad product, Faulty product and Late delivery
+  $s = shop_db()->prepare('SELECT COUNT(*) FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?'); $s->execute([admin_seen('leads')]);
+  $b['leads'] = (int)$s->fetchColumn();
+  return $b;
+}
