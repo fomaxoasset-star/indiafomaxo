@@ -448,7 +448,7 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-flag{font-family:"Twemoji Country Flags","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:1.15em;line-height:1;vertical-align:-1px}
 .rv-sug .rv-flag{margin-right:10px}
 .rv-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-.rv-err{color:#e08a7a;min-height:1em}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
+.rv-err{color:#e08a7a;min-height:1em}.rv-form .rv-hint{color:#d0644e;margin:-6px 0 0}.rv-hint[hidden]{display:none}.form .rv-need select{border-color:#d0644e;box-shadow:0 0 0 1px #d0644e}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
 .rv-ok{border:1px solid var(--line-2);padding:24px;color:var(--champagne)}
 .rv-order{display:grid;grid-template-columns:120px minmax(0,1fr);gap:clamp(18px,3vw,40px);padding:40px 0;border-top:1px solid var(--line);align-items:start}
 .rv-order img{width:100%;aspect-ratio:4/5;object-fit:cover;border:1px solid var(--line)}
@@ -4222,8 +4222,9 @@ function rvForm(p, token, customer){
     ${token ? '' : `<div class="rv-fhead"><span>Write a review</span><b>${esc(p.name)}</b><button type="button" class="rv-x" data-cancel aria-label="Close">&times;</button></div>`}
     <div class="rv-c1"><label>Your rating<span class="rv-rate"><span class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</span><span class="rv-word"></span></span></label>
     ${token ? '' : `<label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
-    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product</span>.</p>`}
+    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product for proof</span>.</p>`}
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
+    ${token ? '' : '<p class="small rv-hint" role="alert" hidden>It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?” above.</p>'}
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div></div>
     <div class="rv-c2">    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
@@ -4268,10 +4269,14 @@ function bindRvForm(form, p, token, done){
      Late delivery needs a mobile, a faulty product a mobile and a photo, for its coupon. No problem with words about one asks them to pick it. */
   const issue = form.elements.issue || {value: ''}, note = $('.rv-issue', form);
   if (note) {
-    issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
+    /* words about a late or faulty order with No problem picked: warned while typing, not only on Post review */
+    const prob = $('.rv-prob', form), hint = $('.rv-hint', form), words = form.elements.text;
+    const warn = () => { const hit = rating > 0 && rating <= 3 && !issue.value && RV_PROBLEM.test(words.value); hint.hidden = !hit; prob.classList.toggle('rv-need', hit); };
+    issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; warn(); };
+    words.addEventListener('input', warn);
     stars.forEach(b => b.addEventListener('click', () => {
-      const low = rating <= 3; $('.rv-prob', form).hidden = !low;
-      if (!low && issue.value) { issue.value = ''; issue.onchange(); }
+      const low = rating <= 3; prob.hidden = !low;
+      if (!low && issue.value) { issue.value = ''; issue.onchange(); } warn();
     }));
   }
   const ta = form.elements.text;
