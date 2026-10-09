@@ -38,6 +38,13 @@ function refill_mark(string $no, string $how = 'tap'): void {
   shop_set('refill_sent', json_encode(array_filter($sent, fn($d) => substr($d, 0, 10) >= $keep)));
 }
 
+/* orders taken off Review requests ('rvreq_sent') or Refill reminders ('refill_sent') with the ✕ in admin: order no → day removed */
+function list_hidden(string $sentKey): array { return json_decode((string)shop_setting($sentKey . '_hide'), true) ?: []; }
+function list_hide(string $sentKey, string $no): void {
+  $h = array_filter(list_hidden($sentKey), fn($d) => $d >= date('Y-m-d', strtotime('-400 days')));   // old ones are forgotten
+  $h[$no] = date('Y-m-d'); shop_set($sentKey . '_hide', json_encode($h));
+}
+
 /* each customer's (same mobile = one customer) latest real order (not cancelled, not an unpaid online try, not test) that is $from to $to days old,
    not yet sent first, then oldest first. 'sent' = date already sent (from the $sentKey setting), 'auto' = sent by itself, 'optin' = ticked WhatsApp offers
    at checkout on any order (only they get automatic messages), 'stopped' = replied STOP and has not ticked offers since. $skip($o) leaves an order out.
@@ -51,10 +58,11 @@ function latest_orders_due(int $from, int $to, string $sentKey, ?callable $skip 
   }
   $sent = json_decode((string)shop_setting($sentKey), true) ?: [];
   $stops = json_decode((string)shop_setting('wa_stop'), true) ?: [];
+  $hid = list_hidden($sentKey);   // ✕ in admin: that order is off the list (a new order brings the customer back)
   $due = [];
   foreach ($last as $k => $o) {
     $days = (int)floor((strtotime('today') - strtotime(substr((string)$o['created'], 0, 10))) / 86400);
-    if ($days < $from || $days > $to || ($skip && $skip($o))) continue;
+    if ($days < $from || $days > $to || isset($hid[$o['no']]) || ($skip && $skip($o))) continue;
     $sd = (string)($sent[$o['no']] ?? '');
     $due["m:$k"] = $o + ['days' => $days, 'sent' => $sd !== '' ? substr($sd, 0, 10) : null, 'auto' => str_ends_with($sd, 'auto'), 'stopped' => isset($stops[$k]) && !$o['optin']];
   }

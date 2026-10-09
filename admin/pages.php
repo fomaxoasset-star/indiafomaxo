@@ -44,23 +44,27 @@ if ($tab === 'home') {
 }
 
 /* ============ Orders ============ */
+/* ✕ in front of a name on Review requests / Refill reminders: takes that order off the list (admin.js asks first) */
+$rmX = fn(string $list, array $o) => '<button type="button" class="xbtn rmx" data-rmx="' . $list . '" data-no="' . h((string)$o['no']) . '" data-who="' . h($o['name'] ?: 'this customer') . '" title="Remove from this list" aria-label="Remove ' . h($o['name'] ?: 'this customer') . ' from this list">✕</button>';
 /* Review requests and Refill reminders: one switch at the top flips between the two lists (Refill reminders used to sit under Members) */
-$rqTabs = function (string $on): string {
+$rqTabs = function (string $on, string $right = ''): string {   // right: the date bar, at the right end of the same row
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';
   $n = fn(array $due) => count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
   $t = ['ask' => ['Review requests', $n(rq_due())], 'refill' => ['Refill reminders', $n(refill_due())]];
   return '<div class="row ctop rqtop"><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">← Orders</a><nav class="rqtabs" aria-label="WhatsApp lists">'
-    . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url(['tab' => 'orders', $k => 1])) . '"' . ($k === $on ? ' class="on" aria-current="page"' : '') . '>' . $v[0] . ($v[1] ? ' <i>' . $v[1] . '</i>' : '') . '</a>', array_keys($t), $t)) . '</nav></div>';
+    . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url(['tab' => 'orders', $k => 1])) . '"' . ($k === $on ? ' class="on" aria-current="page"' : '') . '>' . $v[0] . ($v[1] ? ' <i>' . $v[1] . '</i>' : '') . '</a>', array_keys($t), $t)) . '</nav>' . $right . '</div>';
 };
 if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Review requests: each customer's latest order 7 days (setting) after it was placed, until 30 days after that, while nothing in it is reviewed.
      A tap on WhatsApp opens the ready message and marks the order Sent; Automatic sending does it by itself for customers who ticked WhatsApp offers. */
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';
-  $set = rq_set(); $due = rq_due(); $asked = rq_asked(); $waOk = wa_ready(); $autoOn = $waOk && $set['auto']; $err = (string)shop_setting('rvreq_auto_err');
+  $set = rq_set(); $due = rq_due(); $asked = rq_asked();
+  $D = pick_dates('rvreq') + ['tab' => 'orders'];   // Today / 7 days / 30 days / From–To: by the day the order was placed
+  if ($D['r'] !== 'all') { $inD = fn($o) => ($d = substr((string)$o['created'], 0, 10)) >= $D['from'] && $d <= $D['to']; $due = array_filter($due, $inD); $asked = array_filter($asked, $inD); } $waOk = wa_ready(); $autoOn = $waOk && $set['auto']; $err = (string)shop_setting('rvreq_auto_err');
   $open = count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
   $hsel = fn(string $nm, int $a, int $b, int $v) => '<select id="' . $nm . '" name="' . $nm . '">' . implode('', array_map(fn($x) => '<option value="' . $x . '"' . ($x === $v ? ' selected' : '') . '>' . refill_hour($x) . '</option>', range($a, $b))) . '</select>';
   $sw = fn(string $nm, bool $on, string $lbl) => '<div class="rfsw" role="radiogroup" aria-label="' . $lbl . '"><label><input type="radio" name="' . $nm . '" value="1"' . ($on ? ' checked' : '') . '><span>On</span></label><label><input type="radio" name="' . $nm . '" value=""' . ($on ? '' : ' checked') . '><span>Off</span></label></div>';
-  $body .= $rqTabs('ask');
+  $body .= $rqTabs('ask', date_bar($D, ['ask' => 1]));
   $body .= '<details class="box rfauto"><summary><b>Settings</b><span class="rfst' . ($autoOn ? ' on' : '') . '">' . ($autoOn ? 'Auto on' : 'Auto off') . '</span><span class="muted small rfsum">'
     . $set['days'] . ' days after the order · coupon ' . ($set['coupon'] ? $set['pct'] . '% on' : 'off') . ' · automatic ' . ($autoOn ? 'on, ' . refill_hour($set['from']) . '–' . refill_hour($set['to']) : 'off') . ($set['drop'] ? ' · remove not reviewed after ' . $set['drop_days'] . ' days' : '') . '</span></summary>'
     . '<form method="post" class="bb rff" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="rq_set">'
@@ -84,7 +88,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     $act = $o['stopped'] ? '<span class="rstop" title="Replied STOP on WhatsApp">Stopped</span>'
       : ($a ? rq_badge($a) : '') . ($o['sent'] ? '<span class="rsent">' . ($o['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($o['sent']))) . '</span>' : '')
         . '<a class="btn sm wag' . ($o['sent'] ? ' line' : '') . '" data-rq="' . h($o['no']) . '" href="' . h(rq_wa($o)) . '" target="_blank" rel="noopener">' . WA_SVG . '<span>WhatsApp</span></a>';
-    $rows .= '<tr data-st="' . ($a ? rq_state($a) : 'ask') . '"' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td><a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
+    $rows .= '<tr data-st="' . ($a ? rq_state($a) : 'ask') . '"' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td>' . $rmX('ask', $o) . '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
       . '<small>' . h(phone_fmt($ph)) . ' · ' . h($p['perfumes']) . '</small></td>'
       . '<td class="nw"><b>' . $o['days'] . ' days</b><small>' . h(date('d/m/Y', strtotime((string)$o['created']))) . ' · ' . h($o['no']) . '</small></td><td class="r nw ra">' . $act . '</td></tr>';
   }
@@ -93,7 +97,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   foreach ($asked as $no => $a) {
     if (isset($inDue[$no])) continue;
     $p = rq_parts($a);
-    $rows .= '<tr data-st="' . rq_state($a) . '" class="dim2"><td><a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . coupon_phone((string)$a['phone'])])) . '"><b>' . h($a['name'] ?: 'No name') . '</b></a><small>' . h(phone_fmt(coupon_phone((string)$a['phone']))) . ' · ' . h($p['perfumes']) . '</small></td>'
+    $rows .= '<tr data-st="' . rq_state($a) . '" class="dim2"><td>' . $rmX('ask', $a) . '<a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . coupon_phone((string)$a['phone'])])) . '"><b>' . h($a['name'] ?: 'No name') . '</b></a><small>' . h(phone_fmt(coupon_phone((string)$a['phone']))) . ' · ' . h($p['perfumes']) . '</small></td>'
       . '<td class="nw"><b>' . h(date('d/m/Y', strtotime((string)$a['created']))) . '</b><small>' . h($no) . '</small></td>'
       . '<td class="r nw ra">' . rq_badge($a) . '<span class="rsent">' . ($a['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($a['sent']))) . '</span></td></tr>';
   }
@@ -101,7 +105,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     ['', 'rv', 'part', 'not', 'ask'], ['All', 'Reviewed ' . ($st['rv'] ?? 0), 'Partly ' . ($st['part'] ?? 0), 'Not reviewed ' . ($st['not'] ?? 0), 'To ask&nbsp;<span data-rqn="ask">' . $open . '</span>'])) . '</div>';
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bb np">'
     . ($rows ? '<table class="grid rflist rqlist"><thead><tr><th>Customer</th><th>Order</th><th class="r"></th></tr></thead><tbody>' . $rows . '</tbody></table>'
-      : '<p class="empty">Nobody to ask right now. Orders show here ' . $set['days'] . ' to ' . $set['list_to'] . ' days after they are placed, until the customer reviews them.</p>')
+      : '<p class="empty">' . ($D['r'] !== 'all' ? 'No orders placed on these dates are on this list. Tap All to see everyone.' : 'Nobody to ask right now. Orders show here ' . $set['days'] . ' to ' . $set['list_to'] . ' days after they are placed, until the customer reviews them.') . '</p>')
     . '<p class="muted small rfnote">Each customer’s latest order, ' . $set['days'] . ' to ' . $set['list_to'] . ' days after it was placed, while nothing in it is reviewed. WhatsApp opens with a ready message and the order’s private review link (Verified Purchaser); the order then shows Sent. Anyone who reviewed all or part of an order is never asked again for it, and their Refill reminder has no review request. Reviewed and partly reviewed orders leave this list ' . RQ_DONE_DAYS . ' days after their latest review; the customer’s next order shows here as usual.' . ($set['drop'] ? ' Orders asked but not reviewed leave this list ' . $set['drop_days'] . ' days after sending.' : '') . '</p></div></div>';
 } elseif ($tab === 'orders' && isset($_GET['refill'])) {
   /* Refill reminders: customers whose latest order was about 45 days ago (a bottle runs low around then), each with a ready WhatsApp message and a REFILL- coupon.
@@ -140,7 +144,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
           : '<span class="rdue" title="' . $tm['days'] . ' days after the order (Days after order)">' . ($o['days'] >= $tm['days'] ? 'Reminder due' : 'Reminder ' . h(date('d/m', strtotime(substr((string)$o['created'], 0, 10) . ' +' . $tm['days'] . ' days')))) . '</span>')
           . '<button type="button" class="btn sm' . ($o['sent'] ? ' line' : '') . '" data-rf="' . h($o['no']) . '" data-phone="' . h($ph) . '" data-who="' . h($o['name'] ?: phone_fmt($ph)) . '"'
           . ' data-first="' . h($p['first'] !== '' ? $p['first'] : 'there') . '" data-perfumes="' . h($p['perfumes']) . '" data-days="' . $p['days'] . '" data-review="' . h((string)$p['review']) . '">WhatsApp</button>';
-      $body .= '<tr' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td><a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
+      $body .= '<tr' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td>' . $rmX('refill', $o) . '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
         . '<small>' . h(phone_fmt($ph)) . ' · ' . h($p['perfumes']) . '</small></td>'
         . '<td class="nw"><b>' . $o['days'] . ' days</b><small>' . h(date('d/m/Y', strtotime((string)$o['created']))) . ' · ' . h($o['no']) . '</small></td><td class="r nw ra">' . $act . '</td></tr>';
     }

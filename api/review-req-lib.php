@@ -73,10 +73,11 @@ function rq_due(): array {
 function rq_asked(): array {
   $sent = json_decode((string)shop_setting('rvreq_sent'), true) ?: [];
   if (!$sent) return [];
-  $set = rq_set(); $out = [];
+  $set = rq_set(); $out = []; $hid = list_hidden('rvreq_sent');
   $s = shop_db()->prepare('SELECT id, no, created, name, phone, items, review FROM orders WHERE no IN (' . implode(',', array_fill(0, count($sent), '?')) . ')');
   $s->execute(array_map('strval', array_keys($sent)));
   foreach ($s->fetchAll() as $o) {
+    if (isset($hid[$o['no']])) continue;   // removed with ✕
     $sd = (string)$sent[$o['no']]; $a = $o + rq_info($o) + ['sent' => substr($sd, 0, 10), 'auto' => str_ends_with($sd, 'auto')];
     if ($set['drop'] && rq_state($a) === 'not' && strtotime($a['sent']) < strtotime('today -' . $set['drop_days'] . ' days')) continue;
     if (rq_state($a) !== 'not' && $a['last'] && $a['last'] < strtotime('today -' . RQ_DONE_DAYS . ' days')) continue;   // reviewed or partly: leaves the list 30 days after the latest review (reviews and orders stay)
