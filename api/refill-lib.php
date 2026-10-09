@@ -7,12 +7,15 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_co
 require_once __DIR__ . '/store-lib.php';
 
 /* timing, set on admin → Refill reminders → Automatic sending: days after the latest order, and the sending hours (India time).
-   The list shows customers from 5 days before that day until 15 days after it. */
+   The list shows customers list_from to list_to days after their latest order: typed in on the Refill reminders bar, else 5 days before that day until 15 days after it. */
 function refill_time(): array {
   $t = json_decode((string)shop_setting('refill_time'), true) ?: [];
   $d = max(1, min(365, (int)($t['days'] ?? 45))); $f = max(0, min(23, (int)($t['from'] ?? 11))); $to = max($f + 1, min(24, (int)($t['to'] ?? 20)));
-  return ['days' => $d, 'from' => $f, 'to' => $to, 'list_from' => max(1, $d - 5), 'list_to' => $d + 15];
+  $lf = max(1, min(730, (int)($t['list_from'] ?? $d - 5))); $lt = max($lf, min(730, (int)($t['list_to'] ?? $d + 15)));
+  return ['days' => $d, 'from' => $f, 'to' => $to, 'list_from' => $lf, 'list_to' => $lt];
 }
+/* the list days typed in on the Refill reminders bar (none saved = the default around Days after order), kept when Automatic sending is saved */
+function refill_time_saved(): array { return array_intersect_key(json_decode((string)shop_setting('refill_time'), true) ?: [], ['list_from' => 1, 'list_to' => 1]); }
 /* 11 → "11 AM", 20 → "8 PM", 0 and 24 → "12 AM" */
 function refill_hour(int $h): string { return (($h % 12) ?: 12) . ' ' . ($h % 24 < 12 ? 'AM' : 'PM'); }
 function refill_pct(): int { return max(1, min(99, (int)(shop_setting('refill_pct') ?? '10'))); }

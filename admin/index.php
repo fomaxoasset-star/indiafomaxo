@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '78';
+const ASSET_V = '79';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -271,6 +271,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['js'])) { header('Content-Type: application/json'); echo '{"ok":true}'; exit; }
     go(['tab' => 'analytics'], 'Removed from Left at checkout.');
   }
+  if ($a === 'refill_days') {   // Refill reminders bar: which customers the list shows, from day … to day after their latest order
+    require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
+    $back = ['tab' => 'orders', 'refill' => 1];
+    $d = fn(string $k) => trim((string)($_POST[$k] ?? ''));
+    $lf = $d('rf_lfrom'); $lt = $d('rf_lto');
+    if (!ctype_digit($lf) || !ctype_digit($lt) || (int)$lf < 1 || (int)$lt > 730) go($back, '!Type the days as numbers, from 1 to 730.');
+    if ((int)$lt < (int)$lf) go($back, '!The second day must be the same as the first or later.');
+    shop_set('refill_time', json_encode(['list_from' => (int)$lf, 'list_to' => (int)$lt] + (json_decode((string)shop_setting('refill_time'), true) ?: [])));
+    go($back, 'Saved. The list shows customers ' . (int)$lf . ' to ' . (int)$lt . ' days after their latest order.');
+  }
   if ($a === 'refill_auto') {   // Automatic sending box on Refill reminders: WhatsApp Business details (saved above public_html), timing, On / Off
     require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
     $back = ['tab' => 'orders', 'refill' => 1];
@@ -283,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $n = fn(string $k, int $lo, int $hi, int $def) => ctype_digit($x = trim((string)($_POST[$k] ?? ''))) ? max($lo, min($hi, (int)$x)) : $def;
     $tm = refill_time(); $tf = $n('rf_from', 0, 23, $tm['from']); $tt = $n('rf_to', 1, 24, $tm['to']);
     if ($tt <= $tf) go($back, '!The Until hour must be after the Send from hour.');
-    shop_set('refill_time', json_encode(['days' => $n('rf_days', 1, 365, $tm['days']), 'from' => $tf, 'to' => $tt]));
+    shop_set('refill_time', json_encode(['days' => $n('rf_days', 1, 365, $tm['days']), 'from' => $tf, 'to' => $tt] + refill_time_saved()));
     shop_set('refill_pct', (string)$n('rf_pct', 1, 99, refill_pct())); shop_set('refill_min', (string)$n('rf_min', 0, 1000000, 0));   // the automatic coupon; an empty minimum = none
     $want = ($_POST['auto_on'] ?? '') === '1'; $on = $want && wa_ready();
     shop_set('refill_auto', $on ? '1' : '0');
