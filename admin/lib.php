@@ -609,6 +609,14 @@ function reviews_db(): ?PDO {
   $db->exec('PRAGMA busy_timeout=4000;');
   return $db;
 }
+/* a 1–3 star review that talks about a late delivery or a faulty / damaged product (the words api/reviews.php checks, split in two):
+   verified purchasers get no problem box on the form, so their problem is read from the words */
+function review_issue_from_words(string $text, float $rating): string {
+  if ((int)round($rating) > 3) return '';
+  if (preg_match('/\b(faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|toot(a|i))\b/i', $text)) return 'faulty';
+  if (preg_match('/\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|der(i|ee)? se)\b/i', $text)) return 'late';
+  return '';
+}
 /* reviews with the mobile of the order they came from (verified purchasers), or the optional one typed with the review. $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone, from and to (written in those days) */
 function reviews_list(array $f = []): array {
   $db = reviews_db(); if (!$db) return [];
@@ -622,6 +630,7 @@ function reviews_list(array $f = []): array {
     if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
     if (isset($f['product']) && $r['product'] !== $f['product']) continue;
+    if (($r['issue'] ?? '') === '') $r['issue'] = review_issue_from_words((string)$r['body'], (float)$r['rating']);   // picked on the form, else read from the words
     if (!empty($f['issue']) && ($r['issue'] ?? '') === '') continue;   // only late delivery / faulty product
     if (isset($f['stars']) && (int)round((float)$r['rating']) !== (int)$f['stars']) continue;
     if (isset($f['from'], $f['to']) && ((int)$r['created'] < strtotime($f['from']) || (int)$r['created'] >= strtotime($f['to'] . ' +1 day'))) continue;
