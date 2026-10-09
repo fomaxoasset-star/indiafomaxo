@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '87';
+const ASSET_V = '88';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -174,6 +174,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'quick') {   // one-tap order buttons: back to the same filtered list
     [$act, $oid] = array_pad(explode(':', (string)($_POST['q'] ?? ''), 2), 2, '0');
     go($back, shop_order_action((int)$oid, $act));
+  }
+  /* the ✕ in front of an order: close it into Trash (as if it never existed); Trash → Put back (one, or the ticked ones) returns it as it was */
+  if ($a === 'trash') {
+    $no = shop_order_trash((int)($_POST['id'] ?? 0));
+    go($back, $no !== '' ? "$no is closed and kept in Trash. Put it back from there any time." : '!That order was not found, so nothing was closed.');
+  }
+  if ($a === 'untrash') {
+    $nos = isset($_POST['one']) ? [(string)$_POST['one']] : array_values(array_filter(array_map('strval', (array)($_POST['nos'] ?? [])), 'strlen'));   // a row's own Put back, or the ticked ones
+    $ok = count(array_filter($nos, 'shop_order_restore'));
+    go(['tab' => 'orders'] + (shop_trash_count() ? ['trash' => 1] : []), !$nos ? '!Please tick the orders to put back.'
+      : ($ok === count($nos) ? ($ok === 1 ? "$nos[0] is back in Orders." : "$ok orders are back in Orders.") : '!' . (count($nos) - $ok) . ' could not be put back. Please try again.'));
   }
   if ($a === 'stock') {
     foreach ((array)($_POST['stock'] ?? []) as $id => $opts) {
