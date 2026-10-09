@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '68';
+const ASSET_V = '69';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $d = $d ?? ['added' => false, 'hidden' => false, 'sort' => 0, 'prices' => $CAT[$id]['prices'], 'compareAt' => $CAT[$id]['was']];
     $hidden = empty($_POST['show']);
     shop_save_product($id, $d['added'], $hidden, array_diff_key($d, array_flip(['added', 'hidden', 'sort'])), $d['sort']);
-    go(['tab' => 'products'], $CAT[$id]['name'] . ($hidden ? ' is hidden from the website.' : ' is on the website.'));
+    go(['tab' => 'products'], $CAT[$id]['name'] . ($hidden ? ' is hidden from the website.' : ' is on the website. It shows within a minute.'));
   }
   if ($a === 'delete') {
     $id = (string)($_POST['id'] ?? '');
@@ -248,9 +248,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'offer_save') { $msg = save_offer(); go(['tab' => 'offer'], $msg); }
   if ($a === 'newprod_save') { go(['tab' => 'offer'], save_newprod($CAT)); }
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
-  if ($a === 'lead_coupon') {   // Left at checkout WhatsApp with a coupon: a new CART- code, one use, only this customer's mobile (admin.js asks without reloading)
-    $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('CART-');
-    header('Content-Type: application/json'); echo json_encode($code !== '' ? ['code' => $code] : ['error' => ltrim($msg, '!')]); exit;
+  if ($a === 'lead_code') {   // "WhatsApp + 10% code" on a Left at checkout line: saves its COMEBACK- code in Coupons, then opens WhatsApp (in a new tab) with the message and the code
+    $s = shop_db()->prepare('SELECT * FROM leads WHERE sid = ?'); $s->execute([(string)($_POST['sid'] ?? '')]); $l = $s->fetch();
+    if (!$l || !preg_match('/^[6-9]\d{9}$/', (string)$l['phone'])) go(['tab' => 'analytics'], '!This person has no mobile number.');
+    $code = lead_code($l); $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?'); $s->execute([$code]);
+    if (!$s->fetchColumn()) shop_upsert('coupons', ['code'], ['code' => $code, 'kind' => 'pct', 'value' => 10, 'min_order' => 0, 'starts' => '', 'ends' => date('Y-m-d', strtotime('+7 days')) . ' 23:59',
+      'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $l['phone'], 'created' => shop_now()]);
+    header('Location: ' . lead_wa($l, $code), true, 303); exit;
   }
   if ($a === 'lead_remove') {   // Left at checkout ✕: hide that line from the list (admin.js sends it without reloading the page)
     shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid = ?')->execute([(string)($_POST['sid'] ?? '')]);
@@ -274,6 +278,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $want = ($_POST['auto_on'] ?? '') === '1'; $on = $want && wa_ready();
     shop_set('refill_auto', $on ? '1' : '0');
     go($back, $on ? 'Saved. Automatic refill messages are on.' : ($want ? '!Saved, but it stays off until the access token and phone number ID are saved.' : 'Saved. Automatic refill messages are off.'));
+  }
+  if ($a === 'rq_set') {   // Settings box on Review requests: timing, coupon, automatic sending, remove not reviewed
+    require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';
+    $back = ['tab' => 'orders', 'ask' => 1]; $q0 = rq_set();
+    $n = fn(string $k, int $lo, int $hi, int $def) => ctype_digit($x = trim((string)($_POST[$k] ?? ''))) ? max($lo, min($hi, (int)$x)) : $def;
+    $tf = $n('rq_from', 0, 23, $q0['from']); $tt = $n('rq_to', 1, 24, $q0['to']);
+    if ($tt <= $tf) go($back, '!The Until hour must be after the Send from hour.');
+    $want = ($_POST['rq_auto'] ?? '') === '1'; $auto = $want && wa_ready();
+    shop_set('rvreq', json_encode(['days' => $n('rq_days', 1, 120, $q0['days']), 'from' => $tf, 'to' => $tt, 'coupon' => ($_POST['rq_coupon'] ?? '') === '1', 'pct' => $n('rq_pct', 1, 99, $q0['pct']),
+      'auto' => $auto, 'drop' => ($_POST['rq_drop'] ?? '') === '1', 'drop_days' => $n('rq_drop_days', 1, 365, $q0['drop_days'])]));
+    go($back, $want && !$auto ? '!Saved, but automatic sending stays off until the WhatsApp details are saved on Refill reminders.' : 'Saved.');
+  }
+  if ($a === 'rq_sent') {   // WhatsApp tapped on Review requests or on an order (admin.js, without reloading): the order shows Sent; with the coupon on, its REVIEW- code is saved
+    require_once dirname(__DIR__) . '/api/review-req-lib.php';
+    $no = (string)($_POST['no'] ?? ''); header('Content-Type: application/json');
+    if (!preg_match('/^FMX-IN-\d+$/', $no)) { echo json_encode(['error' => 'That order was not found.']); exit; }
+    rq_mark($no); echo json_encode(['ok' => true, 'day' => date('d/m')]); exit;
   }
   if ($a === 'wa_stop') {   // Stop on a customer's page: no more WhatsApp offers or automatic messages
     require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
@@ -417,7 +438,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stock', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offer', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stocks', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offers', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';

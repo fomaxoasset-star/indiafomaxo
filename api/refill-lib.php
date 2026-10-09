@@ -67,7 +67,8 @@ function refill_due(): array {
   return $due;
 }
 
-/* the review link of an order, or null when every perfume in it is already reviewed (reviews.sqlite, as api/reviews.php keeps it) */
+/* the review link of an order, or null once anything in it is reviewed (reviews.sqlite, as api/reviews.php keeps it): a customer who reviewed
+   all or part of the order gets the refill reminder without the review request */
 function refill_review(string $token): ?string {
   global $PRIV;
   if (!preg_match('/^[a-f0-9]{32}$/', $token) || !is_file("$PRIV/reviews.sqlite")) return null;
@@ -75,13 +76,13 @@ function refill_review(string $token): ?string {
     $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
     $s = $db->prepare('SELECT id, products FROM orders WHERE token = ?'); $s->execute([$token]); $r = $s->fetch();
     if (!$r) return null;
-    $s = $db->prepare('SELECT product FROM reviews WHERE order_id = ?'); $s->execute([$r['id']]);
-    if (!array_diff((array)json_decode((string)$r['products'], true), $s->fetchAll(PDO::FETCH_COLUMN))) return null;
+    $s = $db->prepare('SELECT 1 FROM reviews WHERE order_id = ? LIMIT 1'); $s->execute([$r['id']]);
+    if ($s->fetchColumn()) return null;
   } catch (Throwable $e) { return null; }
   return "https://fomaxo.in/#/review?t=$token";
 }
 
-/* what the message says for one order: first name, perfumes, days, offer words, coupon, review link (null once everything is reviewed) */
+/* what the message says for one order: first name, perfumes, days, offer words, coupon, review link (null once anything is reviewed) */
 function refill_parts(array $o): array {
   $names = array_values(array_unique(array_filter(array_map(fn($i) => trim((string)($i['name'] ?? '')), json_decode((string)$o['items'], true) ?: []))));
   return ['first' => preg_split('/\s+/u', trim((string)$o['name']))[0] ?? '', 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],

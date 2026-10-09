@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
-/* FOMAXO India — automatic WhatsApp refill reminders and STOP replies (see whatsapp-lib.php).
-   php whatsapp.php                     → Hostinger cron job every 30 minutes: sends the refill reminders that are due
+/* FOMAXO India — automatic WhatsApp refill reminders, review requests and STOP replies (see whatsapp-lib.php).
+   php whatsapp.php                     → Hostinger cron job every 30 minutes: sends the refill reminders and review requests that are due
    GET  whatsapp.php?hub_mode=subscribe → Meta checks the webhook once, with the Verify token shown in admin
    POST whatsapp.php                    → customers' WhatsApp replies (signed by Meta with the app secret): STOP switches their WhatsApp offers off */
 require __DIR__ . '/whatsapp-lib.php';
 
-if (PHP_SAPI === 'cli') { echo json_encode(wa_send_refills()) . "\n"; exit; }
+if (PHP_SAPI === 'cli') { echo json_encode(wa_send_refills() + wa_send_rvreqs()) . "\n"; exit; }
 
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex, nofollow');

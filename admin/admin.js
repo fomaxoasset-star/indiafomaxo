@@ -644,17 +644,6 @@ waBox('rvWa', '[data-rvwa]', {
   }
 });
 
-/* Left at checkout: the opening (data-hi) comes from the page; No coupon is picked first */
-waBox('ltWa', '[data-ltwa]', {
-  action: 'lead_coupon',
-  fields: function (d) { return {phone: d.phone}; },
-  text: function (d, c) {
-    return d.hi + (c ? '\n\nTo help you finish it, here is ' + c.gift + ' your order' + c.min + '.\n\nYour code:\n*[CODE]*\n\nWorks one time, only with this mobile number.'
-      + '\n\nType the code at checkout on our website:\nhttps://fomaxo.in' : '\n\nCan we help you finish your order? Just reply to this message.\n\nFinish your order on our website:\nhttps://fomaxo.in')
-      + '\n\nThank you,\n*FOMAXO*';
-  }
-});
-
 /* Coupons: picking Free product on a new coupon ticks One use per customer */
 document.addEventListener('change', function (e) {
   var r = e.target;
@@ -707,3 +696,30 @@ document.addEventListener('click', function (e) {
   });
 })();
 
+
+/* Review requests: the WhatsApp button (on Review requests, or the green Review button at the end of a due order) opens WhatsApp with the ready
+   message itself (a plain link); this marks the order Sent on the server without reloading, and never opens the order */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('[data-rq]'); if (!a) return;
+  e.stopPropagation();
+  var box = a.closest('[data-csrf]'), fd = new FormData();
+  fd.append('csrf', box ? box.dataset.csrf : ''); fd.append('action', 'rq_sent'); fd.append('no', a.dataset.rq);
+  var first = !a.classList.contains('line') && !a.classList.contains('done');
+  fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.ok) return;
+    if (a.classList.contains('rqwa')) { a.classList.add('done'); a.lastChild.textContent = 'Sent ' + d.day; return; }
+    a.classList.add('line');
+    var cell = a.parentNode;
+    if (!cell.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'Sent ' + d.day; cell.insertBefore(s, a); }
+    if (first) {
+      var tr = a.closest('tr'); if (tr) { tr.classList.add('dim2'); }
+      [['todo', -1], ['ask', -1], ['sent', 1]].forEach(function (x) { var n = document.querySelector('[data-rqn="' + x[0] + '"]'); if (n) n.textContent = Math.max(0, +n.textContent + x[1]); });
+    }
+  });
+});
+/* Review requests: All · Reviewed · Partly · Not reviewed · To ask filter the list at once */
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-rqf]'); if (!b) return;
+  document.querySelectorAll('[data-rqf]').forEach(function (x) { x.classList.toggle('on', x === b); });
+  document.querySelectorAll('.rqlist tr[data-st]').forEach(function (r) { r.hidden = !!b.dataset.rqf && r.dataset.st !== b.dataset.rqf; });
+});
