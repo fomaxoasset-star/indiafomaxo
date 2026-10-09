@@ -317,8 +317,8 @@ if ($tab === 'coupons') {
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
         . '<td class="r nw"><form method="post" class="cpa">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
+        . ($wa !== '' ? '<a class="btn sm wag sry-wa" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')
         . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'
-        . ($wa !== '' ? '<a class="btn line sm sry-wa" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')
         . (!$goodwill($c) ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons', 'edit' => $c['code']])) . '">Edit</a>' : '')
         . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';
     }
