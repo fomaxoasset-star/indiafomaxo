@@ -142,7 +142,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $back = h(json_encode($q + ['page' => $page]));
   $body .= '<form id="qa" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="quick"><input type="hidden" name="back" value="' . $back . '"></form>';
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . '. Tap a button to update an order, or tap the order to see it.' . '</span>'
-    . '<a class="btn xs rqbtn" href="' . h(self_url(['tab' => 'orders', 'ask' => 1])) . '">Review requests (' . count($rqAsk) . ')</a></div><div class="bb np olist' . ($rqAsk ? ' has-rq' : '') . '">';
+    . '<a class="btn xs rqbtn" href="' . h(self_url(['tab' => 'orders', 'ask' => 1])) . '">Review requests (' . count($rqAsk) . ')</a></div><div class="bb np olist has-rq">';
   if (!$orders) $body .= '<p class="empty">No orders' . (array_filter($F) ? ' for this filter' : ' yet') . '.</p>';
   foreach ($orders as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
@@ -151,7 +151,8 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small>' . order_coupon_tag($o) . '</span>'
       . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
-      . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . (isset($rqAsk[$o['no']]) ? '<a class="rqwa" data-rq="' . h($o['no']) . '" href="' . h(rq_wa($rqAsk[$o['no']])) . '" target="_blank" rel="noopener" title="Send the review request on WhatsApp">' . WA_SVG . '<span>Review</span></a>' : '') . '</span></summary>'
+      . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . (isset($rqAsk[$o['no']]) ? '<a class="rqwa" data-rq="' . h($o['no']) . '" href="' . h(rq_wa($rqAsk[$o['no']])) . '" target="_blank" rel="noopener" title="Send the review request on WhatsApp">' . WA_SVG . '<span>Review</span></a>'
+        : (coupon_phone((string)$o['phone']) !== '' ? '<a class="rqwa" href="' . h(wa_link((string)$o['phone'], order_hello($o))) . '" target="_blank" rel="noopener" title="Chat with the customer on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')) . '</span></summary>'
       . '<div class="otop">' . order_tracker($o) . '</div>'
       . '<div class="od"><div class="items"><h4>Items</h4>';
     foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . (!empty($it['free']) ? '<b class="cfree">Free</b>' : rupees((int)($it['unit'] ?? 0))) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
