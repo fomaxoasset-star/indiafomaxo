@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '71';
+const ASSET_V = '72';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -259,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'refill_auto') {   // Automatic sending box on Refill reminders: WhatsApp Business details (saved above public_html), timing, On / Off
     require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
-    $back = ['tab' => 'members', 'refill' => 1];
+    $back = ['tab' => 'orders', 'refill' => 1];
     $v = fn(string $k) => preg_replace('/\s+/', '', (string)($_POST[$k] ?? '')) ?? '';
     $tok = $v('wa_token'); $pid = $v('wa_phone_id'); $sec = $v('wa_secret');
     if ($tok !== '' && !preg_match('/^[A-Za-z0-9_\-]{20,600}$/', $tok)) go($back, '!Please check the access token. Copy it again from Meta.');
@@ -385,6 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /* ---------------- downloads ---------------- */
 if (($_GET['tab'] ?? '') === 'reports') $_GET['tab'] = 'sales';   // Sales was called Reports; old links still open it
+if (($_GET['tab'] ?? '') === 'members' && isset($_GET['refill'])) $_GET['tab'] = 'orders';   // Refill reminders moved from Members to Orders, next to Review requests; old links still open it
 $tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : '',
