@@ -207,7 +207,7 @@ try {
         if ($rawName === '') $rawName = displayName($o['customer']);   // left blank: the order name, shortened
       }
 
-      if (!empty($in['token']) && $rating <= 3 && preg_match(RV_FAULTY, $text) && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Your review is about a damaged or faulty product. Please add a photo of it for proof, then you can post your review.');   // verified purchasers: proof for a damaged product
+      if (!empty($in['token']) && $rating <= 3 && preg_match(RV_FAULTY, $text) && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Sorry about that. Your review is about a damaged or faulty product, so please add a photo of it for proof. We will check it and send you a coupon on WhatsApp.');   // verified purchasers: proof for a damaged product
       if ($issue === 'faulty' && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Please add a photo of the faulty or damaged product.');   // the proof for its coupon
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';

@@ -4219,7 +4219,7 @@ const RV_LATE = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|neve
   RV_PROBLEM = {test: t => RV_LATE.test(t) || RV_FAULTY.test(t)};
 /* the problem picked against the words: '' when they fit, else what to say (late picked but the words are about damage, or the other way round) */
 const RV_ASK = 'It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.';
-const RV_PROOF = 'Your review is about a damaged or faulty product. Please add a photo of it for proof, then you can post your review.';
+const RV_PROOF = 'Sorry about that. Your review is about a damaged or faulty product, so please add a photo of it for proof. We will check it and send you a coupon on WhatsApp.';
 const rvNeedsProof = (rating, text, photos) => rating > 0 && rating <= 3 && RV_FAULTY.test(text) && !photos;
 function rvMismatch(issue, text){
   if (issue === 'late' && RV_FAULTY.test(text) && !RV_LATE.test(text)) return 'Your review is about a faulty or damaged product. Please pick Faulty or damaged product instead of Late delivery.';
