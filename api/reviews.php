@@ -190,7 +190,8 @@ try {
     case 'order': {
       $o = orderByToken((string)($_GET['token'] ?? '')); if (!$o) fail('This review link is not valid.', 404);
       $s = db()->prepare('SELECT product FROM reviews WHERE order_id = ?'); $s->execute([$o['id']]);
-      out(['customer' => $o['customer'], 'products' => json_decode($o['products'], true), 'reviewed' => array_column($s->fetchAll(), 'product')]);
+      $no = explode(' · ', (string)$o['note'])[0];   // the order number is the first part of the note (store-lib.php)
+      out(['order' => preg_match('/^[A-Z]{2,5}(-[A-Z]{2})?-?\d{1,8}$/i', $no) ? $no : '', 'customer' => $o['customer'], 'products' => json_decode($o['products'], true), 'reviewed' => array_column($s->fetchAll(), 'product')]);
     }
 
     case 'submit': {
