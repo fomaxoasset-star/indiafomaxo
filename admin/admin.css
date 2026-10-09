@@ -249,13 +249,13 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
 .show-m{display:none}
 .revs .li{color:var(--text);text-decoration:none;border-radius:6px}.revs a.li:hover,.revs .li.on{background:var(--panel2)}.revs .li.on{box-shadow:inset 3px 0 var(--gold)}
 .rv .bh .chip,.revs .bh .chip{flex:none}
-/* Reviews: a faulty product review has a red edge, a late delivery an amber one; the chips and tags match */
-.revs .rv{padding-left:12px;border-left:3px solid transparent}.revs .rv.rv-faulty{border-left-color:#d0644e}.revs .rv.rv-late{border-left-color:#e0a03a}
-.rv .badge.ib-late{color:#e0a03a;border-color:#e0a03a}
+/* Reviews: a faulty product review has a red edge, a late delivery an amber one, any other bad (1–3 star) review a blue one; the chips and tags match */
+.revs .rv{padding-left:12px;border-left:3px solid transparent}.revs .rv.rv-faulty{border-left-color:#d0644e}.revs .rv.rv-late{border-left-color:#e0a03a}.revs .rv.rv-bad{border-left-color:var(--blue)}
+.rv .badge.ib-late{color:#e0a03a;border-color:#e0a03a}.rv .badge.ib-bad{color:var(--blue);border-color:var(--blue)}
 .rvwa{margin-left:auto;display:flex;align-items:center;gap:0}.rvwa .btn{height:32px;min-height:32px;background:var(--green);border-color:var(--green);color:var(--bg);cursor:pointer}.rvwa .btn:hover{opacity:.88}
 .rvwa .btn.line{background:transparent;color:var(--green);border-color:var(--green)}
 @media(max-width:620px){.rvwa .btn>span{display:none}.rvwa .btn{width:34px;padding:0}.rvwa .rsent{font-size:11px;margin-right:6px}}   /* phone: the green WhatsApp logo alone, so it stays on the stars line */
-.chip.ck-faulty::before,.chip.ck-late::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0644e;margin-right:6px;display:inline-block;vertical-align:1px}.chip.ck-late::before{background:#e0a03a}
+.chip.ck-bad::before,.chip.ck-faulty::before,.chip.ck-late::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0644e;margin-right:6px;display:inline-block;vertical-align:1px}.chip.ck-late::before{background:#e0a03a}.chip.ck-bad::before{background:var(--blue)}
 .mtabs{display:none;gap:2px;overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}.mtabs a{display:flex;align-items:center;padding:0 10px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:13px}.mtabs a.on{color:var(--gold2);border-color:var(--gold)}
 /* analytics: any tile or box opens big */
 .zoomable{cursor:zoom-in}.kpi.zoomable:hover,.an>.box.zoomable:hover{border-color:#5a4c2e}.kpi.zoomable:focus-visible{outline:2px solid var(--gold);outline-offset:2px}

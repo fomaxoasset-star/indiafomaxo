@@ -631,7 +631,8 @@ function reviews_list(array $f = []): array {
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
     if (isset($f['product']) && $r['product'] !== $f['product']) continue;
     if (($r['issue'] ?? '') === '') $r['issue'] = review_issue_from_words((string)$r['body'], (float)$r['rating']);   // picked on the form, else read from the words
-    if (!empty($f['issue']) && (($r['issue'] ?? '') === '' || (in_array($f['issue'], ['late', 'faulty'], true) && $r['issue'] !== $f['issue']))) continue;   // only faulty product / late delivery (or both)
+    if ($r['issue'] === '' && (int)round((float)$r['rating']) <= 3) $r['issue'] = 'bad';   // any other 1–3 star review: unhappy with the product itself (smell, lasting, quality)
+    if (!empty($f['issue']) && ($f['issue'] === '1' ? !in_array($r['issue'], ['late', 'faulty'], true) : $r['issue'] !== $f['issue'])) continue;   // only bad product / faulty product / late delivery (old ?pr=1: the last two)
     if (isset($f['stars']) && (int)round((float)$r['rating']) !== (int)$f['stars']) continue;
     if (isset($f['from'], $f['to']) && ((int)$r['created'] < strtotime($f['from']) || (int)$r['created'] >= strtotime($f['to'] . ' +1 day'))) continue;
     if ($q !== '' && !str_contains(mb_strtolower($r['body'] . ' ' . $r['name'] . ' ' . $r['customer']), $q) && !(strlen($qd) >= 4 && str_contains($r['phone'], $qd))) continue;
