@@ -862,7 +862,7 @@ function lead_wa_text(array $l, string $code = ''): string {
     . $n2 . 'Free delivery across India in 1–3 days.'
     . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO';
 }
-/* the opening of a WhatsApp chat about one order (the green WhatsApp button on Orders, before the order is due a review request) */
+/* the opening of a WhatsApp chat about one order (the green WhatsApp button on Orders, for an order without a review link) */
 function order_hello(array $o): string { $f = first_name((string)$o['name']); return 'Hi' . ($f !== '' ? ' ' . $f : '') . ",\n\nThis is FOMAXO about your order " . $o['no'] . '.'; }
 function lead_wa(array $l, string $code = ''): string { return wa_link((string)$l['phone'], lead_wa_text($l, $code)); }
 

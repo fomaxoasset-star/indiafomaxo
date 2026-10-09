@@ -98,6 +98,17 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
 } elseif ($tab === 'orders') {
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';   // orders due a review request get a green WhatsApp Review button
   $rqAsk = []; foreach (rq_due() as $x) if (!$x['sent'] && !$x['stopped']) $rqAsk[$x['no']] = $x;
+  /* every order's green WhatsApp button: the review request message with the order's Verified Purchaser link, whatever the day (FOMAXO can change
+     the words in WhatsApp before sending); tapping marks the order Sent dd/mm. An order without a review link opens a plain chat. */
+  $rqSent = json_decode((string)shop_setting('rvreq_sent'), true) ?: [];
+  $waBtn = function (array $o) use ($rqSent): string {
+    if (coupon_phone((string)$o['phone']) === '') return '';
+    if ($o['no'] === '' || !preg_match('/^[a-f0-9]{32}$/', (string)$o['review']))
+      return '<a class="rqwa" href="' . h(wa_link((string)$o['phone'], order_hello($o))) . '" target="_blank" rel="noopener" title="Chat with the customer on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>';
+    $sd = (string)($rqSent[$o['no']] ?? '');
+    return '<a class="rqwa' . ($sd !== '' ? ' done' : '') . '" data-rq="' . h($o['no']) . '" href="' . h(rq_wa($o)) . '" target="_blank" rel="noopener" title="Send the review request on WhatsApp">'
+      . WA_SVG . '<span>' . ($sd !== '' ? 'Sent ' . h(date('d/m', strtotime(substr($sd, 0, 10)))) : 'WhatsApp') . '</span></a>';
+  };
   $SUM = order_summary($F);
   $page = max(1, (int)($_GET['page'] ?? 1));
   [$where, $args] = order_where($F);
@@ -151,8 +162,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small>' . order_coupon_tag($o) . '</span>'
       . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
-      . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . (isset($rqAsk[$o['no']]) ? '<a class="rqwa" data-rq="' . h($o['no']) . '" href="' . h(rq_wa($rqAsk[$o['no']])) . '" target="_blank" rel="noopener" title="Send the review request on WhatsApp">' . WA_SVG . '<span>Review</span></a>'
-        : (coupon_phone((string)$o['phone']) !== '' ? '<a class="rqwa" href="' . h(wa_link((string)$o['phone'], order_hello($o))) . '" target="_blank" rel="noopener" title="Chat with the customer on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')) . '</span></summary>'
+      . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . $waBtn($o) . '</span></summary>'
       . '<div class="otop">' . order_tracker($o) . '</div>'
       . '<div class="od"><div class="items"><h4>Items</h4>';
     foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . (!empty($it['free']) ? '<b class="cfree">Free</b>' : rupees((int)($it['unit'] ?? 0))) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
