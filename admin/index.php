@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '72';
+const ASSET_V = '73';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -251,6 +251,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'lead_coupon') {   // Left at checkout WhatsApp box with a coupon: a new COMEBACK- code, one use, only this customer's mobile, ends in 7 days (admin.js asks without reloading)
     $_POST['ends'] = date('d/m/Y', strtotime('+7 days')); [$code, $msg] = make_goodwill_coupon('COMEBACK-');
     header('Content-Type: application/json'); echo json_encode($code !== '' ? ['code' => $code] : ['error' => ltrim($msg, '!')]); exit;
+  }
+  if ($a === 'list_remove') {   // ✕ on a Review requests or Refill reminders line (admin.js, without reloading): that order leaves the list and gets no automatic message
+    require_once dirname(__DIR__) . '/api/refill-lib.php';
+    $no = (string)($_POST['no'] ?? ''); $key = ['ask' => 'rvreq_sent', 'refill' => 'refill_sent'][(string)($_POST['list'] ?? '')] ?? '';
+    header('Content-Type: application/json');
+    if ($key === '' || !preg_match('/^FMX-IN-\d+$/', $no)) { echo json_encode(['error' => 'That order was not found.']); exit; }
+    list_hide($key, $no); echo '{"ok":true}'; exit;
   }
   if ($a === 'lead_remove') {   // Left at checkout ✕: hide that line from the list (admin.js sends it without reloading the page)
     shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid = ?')->execute([(string)($_POST['sid'] ?? '')]);

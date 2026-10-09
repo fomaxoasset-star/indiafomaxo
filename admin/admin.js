@@ -134,6 +134,20 @@ function markSent(btn, day) {
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
+  /* Review requests / Refill reminders: ✕ in front of a name asks first, then takes that order off the list without reloading */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-rmx]');
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!confirm('Remove ' + b.dataset.who + ' from ' + (b.dataset.rmx === 'ask' ? 'Review requests' : 'Refill reminders') + '? They come back with their next order.')) return;
+    b.disabled = true;
+    postAction(b, {action: 'list_remove', list: b.dataset.rmx, no: b.dataset.no}).then(function (j) {
+      if (!j || !j.ok) throw 0;
+      var row = b.closest('tr'); row.classList.add('going');
+      setTimeout(function () { row.remove(); }, 250);
+    }).catch(function () { b.disabled = false; alert('Could not remove it. Please reload the page and try again.'); });
+  }, true);
+
   /* Left at checkout: ✕ on a line asks first, then removes it from the list without reloading (and from a big copy, if one is open) */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-lead]');
