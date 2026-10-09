@@ -318,8 +318,7 @@ if ($tab === 'coupons') {
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
         . '<td class="r nw"><form method="post" class="cpa" data-csrf="' . h($CSRF) . '">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
-        . ($wa !== '' ? (($sd = $cpSent[$c['code']] ?? '') !== '' ? '<span class="rsent">Sent ' . h(date('d/m', strtotime($sd))) . '</span>' : '')
-          . '<a class="btn sm wag sry-wa' . ($sd !== '' ? ' line' : '') . '" data-cpwa="' . h($c['code']) . '" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')
+        . ($wa !== '' ? '<a class="btn sm wag sry-wa' . (($sd = $cpSent[$c['code']] ?? '') !== '' ? ' line' : '') . '" data-cpwa="' . h($c['code']) . '" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>' . ($sd !== '' ? 'Sent ' . h(date('d/m', strtotime($sd))) : 'WhatsApp') . '</span></a>' : '')   // once tapped, the button itself says Sent dd/mm
         . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'
         . (!$goodwill($c) ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons', 'edit' => $c['code']])) . '">Edit</a>' : '')
         . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';

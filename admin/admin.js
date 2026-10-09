@@ -134,11 +134,11 @@ function markSent(btn, day) {
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
-  /* Coupons: WhatsApp on a row opens the chat and notes the day, so the row shows Sent dd/mm */
+  /* Coupons: WhatsApp on a row opens the chat and notes the day; the button then says Sent dd/mm */
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('[data-cpwa]');
     if (!a) return;
-    postAction(a, {action: 'coupon_wa', code: a.dataset.cpwa}).then(function (j) { if (j && j.ok) markSent(a, j.day); }).catch(function () {});
+    postAction(a, {action: 'coupon_wa', code: a.dataset.cpwa}).then(function (j) { if (j && j.ok) { a.querySelector('span').textContent = 'Sent ' + j.day; a.classList.add('line'); } }).catch(function () {});
   });
 
   /* Review requests / Refill reminders: ✕ in front of a name asks first, then takes that order off the list without reloading */
