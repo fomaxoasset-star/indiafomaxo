@@ -633,6 +633,16 @@ waBox('rfWa', '[data-rf]', {
   }
 });
 
+/* Left at checkout: the ready message (what they left, the link back to their bag) to change if you like; No coupon is picked first, or % off / ₹ off /
+   a free product, for which a new COMEBACK- code is made (one use, only their mobile, ends in 7 days) when Open WhatsApp is tapped */
+waBox('ltWa', '[data-ltwa]', {
+  action: 'lead_coupon',
+  fields: function (d) { return {phone: d.phone}; },
+  text: function (d, c) {
+    return d.head + (c ? '\n\nAs a thank you, here is your personal code for ' + c.gift + ' your order' + c.min + ' (single use, valid 7 days, with this mobile number):\n\n*[CODE]*' : '') + d.tail;
+  }
+});
+
 /* Reviews: a 1–3 star review's customer, or one who picked Late delivery / Faulty product, gets an apology; % off is picked first. The review then shows Sent dd/mm by its green button. */
 waBox('rvWa', '[data-rvwa]', {
   action: 'review_wa', always: true,

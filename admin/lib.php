@@ -438,7 +438,7 @@ function coupon_free_pick(string $field): ?array {
   $p = fomaxo_catalog()['products'][$id] ?? null;
   return $p && $p['kind'] !== 'set' && isset($p['prices'][$opt]) ? [$id, $opt] : null;
 }
-function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // REFILL-: Refill reminders (their WhatsApp box); CART-: older Left at checkout codes
+function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // REFILL-: Refill reminders, COMEBACK-: Left at checkout (their WhatsApp boxes); CART-: older Left at checkout codes
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
   $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
@@ -847,24 +847,16 @@ function lead_bag_code(array $l): string {
   $c = implode('_', array_map(fn($b) => $b['id'] . '.' . $b['opt'] . '.' . (int)$b['qty'], array_filter(json_decode((string)$l['bag'], true) ?: [], fn($b) => preg_match('/^[a-z0-9-]{1,48}$/', (string)($b['id'] ?? '')) && preg_match('/^[a-z0-9]{1,16}$/', (string)($b['opt'] ?? '')))));
   return strlen($c) <= 600 ? $c : '';
 }
-/* the Left at checkout COMEBACK- code: always the same for that checkout, 10% off, one use, only with that mobile, ends after 7 days */
-function lead_code(array $l): string { return fixed_code('COMEBACK-', 'left|' . $l['sid'], (string)shop_setting('admin_hash')); }
-/* the ready WhatsApp message for someone who left checkout: what they left (qty × product size, one per line), a link that refills their bag and opens checkout,
-   the delivery line; $code adds the 10% COMEBACK- code before "Your bag is saved" */
-function lead_wa_text(array $l, string $code = ''): string {
+/* the ready WhatsApp message for someone who left checkout, in two parts: [what they left (qty × product size, one per line), the link that refills
+   their bag and opens checkout + the delivery line]. The WhatsApp box (admin.js) puts the coupon paragraph between them when a coupon is picked. */
+function lead_wa_parts(array $l): array {
   $n2 = "\n\n"; $first = first_name((string)$l['name']); $bag = lead_bag_code($l);
   $items = implode("\n", array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));
-  return 'Hi' . ($first !== '' ? ' ' . $first : '') . ','
-    . $n2 . ($items !== '' ? "You left these in your FOMAXO bag:\n" . $items : 'We noticed you did not finish your FOMAXO order.')
-    . ($code !== '' ? $n2 . 'As a thank you, here is your personal code for 10% off (single use, valid 7 days, with this mobile number):' . $n2 . '*' . $code . '*' : '')
-    . $n2 . ($bag !== '' ? "Your bag is saved. Tap here to finish your order:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout#/checkout?bag=" . $bag
-                         : "You can finish your order here:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout")
-    . $n2 . 'Free delivery across India in 1–3 days.'
-    . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO';
+  return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . ($items !== '' ? "You left these in your FOMAXO bag:\n" . $items : 'We noticed you did not finish your FOMAXO order.'),
+    $n2 . ($bag !== '' ? "Your bag is saved. Tap here to finish your order:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout#/checkout?bag=" . $bag
+                       : "You can finish your order here:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout")
+    . $n2 . 'Free delivery across India in 1–3 days.' . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO'];
 }
-/* the opening of a WhatsApp chat about one order (the green WhatsApp button on Orders, for an order without a review link) */
-function order_hello(array $o): string { $f = first_name((string)$o['name']); return 'Hi' . ($f !== '' ? ' ' . $f : '') . ",\n\nThis is FOMAXO about your order " . $o['no'] . '.'; }
-function lead_wa(array $l, string $code = ''): string { return wa_link((string)$l['phone'], lead_wa_text($l, $code)); }
 
 /* chart series for the dashboard, for the dates picked: by hour for one day, by day up to 3 months, by month for longer */
 function series(string $from, string $to): array {
