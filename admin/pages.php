@@ -47,12 +47,12 @@ if ($tab === 'home') {
 /* ✕ in front of a name on Review requests / Refill reminders: takes that order off the list (admin.js asks first) */
 $rmX = fn(string $list, array $o) => '<button type="button" class="xbtn rmx" data-rmx="' . $list . '" data-no="' . h((string)$o['no']) . '" data-who="' . h($o['name'] ?: 'this customer') . '" title="Remove from this list" aria-label="Remove ' . h($o['name'] ?: 'this customer') . ' from this list">✕</button>';
 /* Review requests and Refill reminders: one switch at the top flips between the two lists (Refill reminders used to sit under Members) */
-$rqTabs = function (string $on): string {
+$rqTabs = function (string $on, string $right = ''): string {   // right: the date bar, at the right end of the same row
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';
   $n = fn(array $due) => count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
   $t = ['ask' => ['Review requests', $n(rq_due())], 'refill' => ['Refill reminders', $n(refill_due())]];
   return '<div class="row ctop rqtop"><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">← Orders</a><nav class="rqtabs" aria-label="WhatsApp lists">'
-    . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url(['tab' => 'orders', $k => 1])) . '"' . ($k === $on ? ' class="on" aria-current="page"' : '') . '>' . $v[0] . ($v[1] ? ' <i>' . $v[1] . '</i>' : '') . '</a>', array_keys($t), $t)) . '</nav></div>';
+    . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url(['tab' => 'orders', $k => 1])) . '"' . ($k === $on ? ' class="on" aria-current="page"' : '') . '>' . $v[0] . ($v[1] ? ' <i>' . $v[1] . '</i>' : '') . '</a>', array_keys($t), $t)) . '</nav>' . $right . '</div>';
 };
 if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Review requests: each customer's latest order 7 days (setting) after it was placed, until 30 days after that, while nothing in it is reviewed.
@@ -64,8 +64,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $open = count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
   $hsel = fn(string $nm, int $a, int $b, int $v) => '<select id="' . $nm . '" name="' . $nm . '">' . implode('', array_map(fn($x) => '<option value="' . $x . '"' . ($x === $v ? ' selected' : '') . '>' . refill_hour($x) . '</option>', range($a, $b))) . '</select>';
   $sw = fn(string $nm, bool $on, string $lbl) => '<div class="rfsw" role="radiogroup" aria-label="' . $lbl . '"><label><input type="radio" name="' . $nm . '" value="1"' . ($on ? ' checked' : '') . '><span>On</span></label><label><input type="radio" name="' . $nm . '" value=""' . ($on ? '' : ' checked') . '><span>Off</span></label></div>';
-  $body .= $rqTabs('ask');
-  $body .= date_bar($D, ['ask' => 1]);
+  $body .= $rqTabs('ask', date_bar($D, ['ask' => 1]));
   $body .= '<details class="box rfauto"><summary><b>Settings</b><span class="rfst' . ($autoOn ? ' on' : '') . '">' . ($autoOn ? 'Auto on' : 'Auto off') . '</span><span class="muted small rfsum">'
     . $set['days'] . ' days after the order · coupon ' . ($set['coupon'] ? $set['pct'] . '% on' : 'off') . ' · automatic ' . ($autoOn ? 'on, ' . refill_hour($set['from']) . '–' . refill_hour($set['to']) : 'off') . ($set['drop'] ? ' · remove not reviewed after ' . $set['drop_days'] . ' days' : '') . '</span></summary>'
     . '<form method="post" class="bb rff" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="rq_set">'
