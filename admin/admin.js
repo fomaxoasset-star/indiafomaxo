@@ -628,7 +628,7 @@ waBox('rfWa', '[data-rf]', {
   }
 });
 
-/* Reviews: a 1–3 star review's customer, or one who picked Late delivery / Faulty product, gets an apology; % off is picked first. The review then shows WhatsApp sent. */
+/* Reviews: a 1–3 star review's customer, or one who picked Late delivery / Faulty product, gets an apology; % off is picked first. The review then shows Sent dd/mm by its green button. */
 waBox('rvWa', '[data-rvwa]', {
   action: 'review_wa', always: true,
   fields: function (d) { return {id: d.rvwa}; },
@@ -639,7 +639,7 @@ waBox('rvWa', '[data-rvwa]', {
       + n2 + 'Just reply here if there is anything we can do to put it right.' + n2 + 'Thank you,\nFOMAXO';
   },
   done: function (d, btn) {
-    if (!btn.parentNode.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'WhatsApp sent ' + d.day; btn.parentNode.insertBefore(s, btn); }
+    if (!btn.parentNode.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'Sent ' + d.day; btn.parentNode.insertBefore(s, btn); }
     btn.classList.add('line');
   }
 });
