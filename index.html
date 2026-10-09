@@ -393,6 +393,11 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-arrow:hover:not(:disabled){background:var(--gold);color:#0a0805}
 .rv-arrow:disabled{border-color:var(--line-2);color:var(--dim);cursor:default}
 .rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px}
+.rv-c1,.rv-c2{display:grid;gap:14px;align-content:start;min-width:0}
+/* laptop: two columns (rating, problem and words | name, mobile, place, photos), so the whole form fits on one screen */
+@media (min-width:900px){.rv-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:clamp(24px,3vw,40px)}.rv-form>*{grid-column:1/-1}.rv-form>.rv-c1{grid-column:1}.rv-form>.rv-c2{grid-column:2}.rv-form textarea{min-height:96px}
+  .rv-form{padding:24px 30px;row-gap:12px}.rv-c1,.rv-c2{gap:12px}.form.rv-form input,.form.rv-form select{padding:11px 14px}.form.rv-form textarea{padding:12px 14px}.rv-form .rv-loc{grid-template-columns:1fr;gap:12px}
+  .rv-form .rv-emoji button{width:34px;height:34px;font-size:17px}.rv-form .rv-pick button{font-size:26px}}
 .rv-pick{display:flex;gap:4px}
 .rv-emoji{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
 .rv-emoji button{font-size:20px;line-height:1;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;transition:border-color .2s,transform .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
@@ -4192,19 +4197,19 @@ const RV_PROBLEM = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|n
 const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
-    <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
+    <div class="rv-c1"><label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
     ${token ? '' : `<label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
     <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product</span>.</p>`}
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
-    <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
-    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
+    <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div></div>
+    <div class="rv-c2">    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
     ${token ? '' : '<label><span>Mobile <i>(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label>'}
     <div class="rv-loc">
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
       <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
     </div>
-    <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label>
+    <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label></div>
     <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     ${token ? '<p class="rv-ver">✓ This review will show as Verified Purchaser</p>' : ''}
     <div style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn sm" type="submit">Post review</button>${token ? '' : '<button class="btn line sm" type="button" data-cancel>Cancel</button>'}</div>
