@@ -226,16 +226,17 @@ function markSent(btn, day) {
   function sgReply(f, i) {
     var name = (f.dataset.sgName || '').trim().split(/\s+/)[0] || '', stars = +f.dataset.sgStars || 5, body = f.dataset.sgBody || '';
     if (name) name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-    var p = f.dataset.sgProduct ? 'FOMAXO ' + f.dataset.sgProduct : 'FOMAXO', good = stars >= 4;
+    /* a review tagged Bad product, Delivery delay or Faulty product is a complaint at any star rating: an apology and a coupon, never a happy thank-you */
+    var issue = f.dataset.sgIssue || '', p = f.dataset.sgProduct ? 'FOMAXO ' + f.dataset.sgProduct : 'FOMAXO', good = stars >= 4 && !issue;
     var fill = function (s) { return s.replace('{n}', name ? ', ' + name : '').replace('{h}', name ? 'Hi ' + name + ',' : 'Hi,').replace('{p}', p); };
     /* a good review uses only a topic it praises, a poor one only a topic it complains about */
     var hits = SG_TOPICS.filter(function (t) { return t.k.test(body) && (good ? t.good : t.bad).length && (good ? !t.nk.test(body) : t.nk.test(body)); });
-    var hit = (!good && hits.filter(function (t) { return t.chk; })[0]) || hits[0];
+    var hit = (issue === 'late' ? SG_TOPICS[2] : issue === 'faulty' ? SG_TOPICS[0] : null) || (issue === 'bad' ? hits.filter(function (t) { return !t.chk; })[0] : (!good && hits.filter(function (t) { return t.chk; })[0]) || hits[0]);   /* bad product: the scent, lasting or price, not a delivery or a damaged bottle */
     var bit = hit ? sgPick(good ? hit.good : hit.bad, i) : '';
     if (good) return fill(sgPick(SG_GOOD_OPEN, i)) + ' ' + (bit ? bit + sgPick(SG_EMO, i) : sgPick(SG_GOOD_END, i));
     /* late delivery or a faulty product: tell them we checked and they are right, then a coupon */
     if (hit && hit.chk) return fill(sgPick(hit.chk, i)) + ' ' + sgPick(hit.fix, i);
-    if (stars === 3) return fill(sgPick(SG_OK_OPEN, i)) + ', and ' + (bit || 'we are always working to make ' + p + ' better') + '. As a thank you, FOMAXO has sent a special coupon to your WhatsApp for your next order 🙏';
+    if (stars === 3 && !issue) return fill(sgPick(SG_OK_OPEN, i)) + ', and ' + (bit || 'we are always working to make ' + p + ' better') + '. As a thank you, FOMAXO has sent a special coupon to your WhatsApp for your next order 🙏';
     return (bit ? fill(sgPick(SG_BAD_OPEN, i)) + ', and ' + bit + '.' : fill(sgPick(SG_BAD_NOHIT, i))) + ' ' + sgPick(SG_BAD_END, i);
   }
   function sgFill(f, next) {
