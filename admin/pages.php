@@ -163,6 +163,28 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   }
   $body .= wa_box('rfWa', 'gfree', 'pct', refill_pct(), refill_min(), 'A new REFILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
   $body .= '<p class="muted small rfnote">Customers whose latest order was ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days ago. Each order gets one message: a tap or the automatic one. Once they order again they leave this list.</p></div></div>';
+} elseif ($tab === 'orders' && isset($_GET['trash'])) {
+  /* Trash: orders closed with the ✕ on Orders, newest closed first. Put back (one, or the ticked ones) returns an order as it was. */
+  $rows = shop_db()->query('SELECT no, closed, row_json FROM orders_trash ORDER BY closed DESC, no DESC')->fetchAll();
+  $body .= '<div class="row ctop trtop"><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">‹ Back to Orders</a><h2 class="trh">Trash <span class="trn">' . count($rows) . '</span></h2></div>'
+    . '<p class="muted small trnote">Closed orders are kept here. They do not count anywhere: not in Sales, the COD and online boxes, status counts, Members or Excel. Put back returns an order as it was.</p>';
+  $body .= '<form method="post" class="box fill trform">' . $csrfField . '<input type="hidden" name="action" value="untrash">';
+  if (!$rows) $body .= '<div class="bb"><p class="empty">Trash is empty.</p></div>';
+  else {
+    $body .= '<div class="bh trbar"><label class="trall"><input type="checkbox" data-trall> Select all</label><button class="btn sm" data-trsel disabled>Put back selected (0)</button></div>'
+      . '<div class="bb np"><table class="grid trlist"><thead><tr><th class="tck"></th><th>Order</th><th>Customer</th><th class="r">Total</th><th>Status · closed</th><th class="r"></th></tr></thead><tbody>';
+    foreach ($rows as $t) {
+      $o = (json_decode((string)$t['row_json'], true) ?: []) + ['no' => $t['no'], 'created' => '', 'name' => '', 'phone' => '', 'total' => 0, 'method' => '', 'status' => '', 'paid_at' => null];
+      $body .= '<tr><td class="tck"><input type="checkbox" name="nos[]" value="' . h($t['no']) . '" aria-label="Select ' . h($t['no']) . '"></td>'
+        . '<td class="nw"><b>' . h($t['no']) . '</b><small>' . h(date('d/m/Y, H:i', strtotime((string)$o['created']))) . '</small></td>'
+        . '<td><b>' . h($o['name'] ?: 'No name') . '</b><small>' . h((string)$o['phone']) . '</small></td>'
+        . '<td class="r nw"><b>' . rupees((int)$o['total']) . '</b><small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online (Razorpay)') . '</small></td>'
+        . '<td class="nw"><span class="tags">' . order_tags($o) . '</span><small>Closed ' . h(date('d/m/Y', strtotime((string)$t['closed']))) . '</small></td>'
+        . '<td class="r"><button class="btn sm line" name="one" value="' . h($t['no']) . '">Put back</button></td></tr>';
+    }
+    $body .= '</tbody></table></div>';
+  }
+  $body .= '</form>';
 } elseif ($tab === 'orders') {
   require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';   // orders due a review request get a green WhatsApp Review button
   $rqAsk = []; foreach (rq_due() as $x) if (!$x['sent'] && !$x['stopped']) $rqAsk[$x['no']] = $x;
@@ -219,14 +241,16 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     . '<button type="button" class="btn line show-m-i" data-open="#ordFilters">Filters' . ($nf ? ' (' . $nf . ')' : '') . '</button><button class="btn line">Show</button><a class="btn" href="' . h(self_url($q + ['do' => 'excel'])) . '">Excel</a></form>';
   $back = h(json_encode($q + ['page' => $page]));
   $body .= '<form id="qa" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="quick"><input type="hidden" name="back" value="' . $back . '"></form>';
-  $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . '. Tap a button to update an order, or tap the order to see it.' . '</span>'
-    . '<span class="ohb">' . sound_btn() . '<a class="btn xs rqbtn" href="' . h(self_url(['tab' => 'orders', 'ask' => 1])) . '">Review requests (' . count($rqAsk) . ')</a></span></div><div class="bb np olist has-rq">';
+  $body .= '<form id="trf" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="trash"><input type="hidden" name="back" value="' . $back . '"></form>';
+  $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bh obh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . '<span class="ohint">. Tap a button to update an order, or tap the order to see it.</span></span>'
+    . '<span class="ohb">' . sound_btn() . (($trN = shop_trash_count()) ? '<a class="btn xs line trbtn" href="' . h(self_url(['tab' => 'orders', 'trash' => 1])) . '">Trash (' . $trN . ')</a>' : '') . '<a class="btn xs rqbtn" href="' . h(self_url(['tab' => 'orders', 'ask' => 1])) . '">Review requests (' . count($rqAsk) . ')</a></span></div><div class="bb np olist has-rq">';
   if (!$orders) $body .= '<p class="empty">No orders' . (array_filter($F) ? ' for this filter' : ' yet') . '.</p>';
   $seenO = (string)shop_setting('seen_orders');   // orders placed since Orders was last opened get a red NEW tag (it goes on the next visit)
   foreach ($orders as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $btns = order_buttons($o);
-    $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary>' . $orderThumb($o)
+    $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary><span class="ox">'
+      . '<button class="xbtn" form="trf" name="id" value="' . (int)$o['id'] . '" data-confirm="Close ' . h($o['no']) . '? It leaves Sales, the boxes and every count, and is kept in Trash." title="Close this order (kept in Trash)" aria-label="Close ' . h($o['no']) . '">✕</button>' . $orderThumb($o) . '</span>'
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . ($seenO !== '' && $o['created'] > $seenO ? ' <span class="onew">NEW</span>' : '') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small>' . order_coupon_tag($o) . '</span>'
       . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
@@ -710,19 +734,20 @@ if ($tab === 'analytics' && !$cv) {
   $L = checkout_leads($from, $to);
   $body .= '<div class="box p-left" data-pane="left"><div class="bh"><h3>Left at checkout</h3><span class="lt-n muted nw">' . count($L) . (count($L) === 1 ? ' person' : ' people') . '</span><span class="muted small hide-m">Everyone who typed their details at checkout, ' . h(date_span($from, $to)) . '</span><span class="sp"></span><a class="btn sm" href="' . h(self_url(['do' => 'leads_excel', 'from' => $from, 'to' => $to])) . '">Excel</a></div><div class="bb np"><div class="lts" data-csrf="' . h($CSRF) . '"><div class="lt-hd"><span></span><span>Date</span><span>Name</span><span>State</span><span class="r">Bag</span><span>Left at</span><span>Ordered later</span><span></span><span></span></div>';
   if (!$L) $body .= '<p class="empty">Nobody typed their details at checkout in these dates.</p>';
-  /* one line per person (date, name, state, bag, where they stopped, ordered later); WhatsApp at the end only for an Indian mobile number (6–9 and 10 digits, what WhatsApp works on); tap the line to open mobile, email, address and products */
+  /* one line per customer per day, their latest visit that day, with ×N tries when they came back the same day (date, name, state, bag, where they stopped, ordered later); WhatsApp at the end only for an Indian mobile number (6–9 and 10 digits, what WhatsApp works on); tap the line to open mobile, email, address and products */
   foreach ($L as $l) {
     $names = lead_items($l);
     $later = $l['later'] === '' ? '<span class="muted">Not ordered</span>' : ($l['later'] === 'yes' ? '<span class="badge st-paid">Yes</span>' : '<span class="badge st-paid">' . h($l['later']) . '</span>');
     $body .= '<details class="lt' . ($l['later'] !== '' ? ' dim' : '') . '" data-sid="' . h($l['sid']) . '"><summary>'
-      . '<span class="lt-x"><button type="button" class="xbtn" data-lead="' . h($l['sid']) . '" data-who="' . h($l['name'] ?: ($l['phone'] ? phone_fmt($l['phone']) : 'this person')) . '" title="Remove from this list" aria-label="Remove ' . h($l['name'] ?: 'this person') . ' from Left at checkout">✕</button></span>'
-      . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
+      . '<span class="lt-x"><button type="button" class="xbtn" data-lead="' . h(implode(',', $l['sids'])) . '" data-who="' . h($l['name'] ?: ($l['phone'] ? phone_fmt($l['phone']) : 'this person')) . '" title="Remove from this list" aria-label="Remove ' . h($l['name'] ?: 'this person') . ' from Left at checkout">✕</button></span>'
+      . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name"><span>' . h($l['name'] ?: '—') . '</span>' . ($l['tries'] > 1 ? '<small class="lt-tries" title="Came to checkout ' . $l['tries'] . ' times">×' . $l['tries'] . '<span class="lt-tw"> tries</span></small>' : '') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
       . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
       . '<span class="lt-later">' . $later . '</span>'
-      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm' . (($ltd = wa_sent_day('lt:' . $l['sid'])) !== '' ? ' line' : '') . '" data-ltwa data-sid="' . h($l['sid']) . '" data-phone="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-head="' . h(lead_wa_parts($l)[0]) . '" data-tail="' . h(lead_wa_parts($l)[1]) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . ' with a link back to their bag">' . WA_SVG . '<span>' . ($ltd !== '' ? 'Sent ' . $ltd : 'WhatsApp') . '</span></button>' : '') . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm' . (($ltd = $l['sent'] !== '' ? date('d/m', strtotime($l['sent'])) : '') !== '' ? ' line' : '') . '" data-ltwa data-sid="' . h($l['sid']) . '" data-phone="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-head="' . h(lead_wa_parts($l)[0]) . '" data-tail="' . h(lead_wa_parts($l)[1]) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . ' with a link back to their bag">' . WA_SVG . '<span>' . ($ltd !== '' ? 'Sent ' . $ltd : 'WhatsApp') . '</span></button>' : '') . '</span>'
       . '<span class="lt-chev" aria-hidden="true"></span></summary>'
       . '<div class="lt-more"><dl>'
       . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
+      . ($l['tries'] > 1 ? '<dt>Tries</dt><dd>' . $l['tries'] . ' times: ' . h(implode(', ', array_map(fn($t) => date('d M H:i', strtotime($t)), $l['times']))) . '</dd>' : '')
       . '<dt>Mobile</dt><dd>' . h($l['phone'] ? phone_fmt($l['phone']) : 'No mobile') . '</dd>'
       . ($l['email'] ? '<dt>Email</dt><dd>' . h($l['email']) . '</dd>' : '')
       . '<dt>Address</dt><dd>' . h(trim($l['address'] . ($l['state'] ? ', ' . $l['state'] : ''), ', ') ?: '—') . '</dd>'

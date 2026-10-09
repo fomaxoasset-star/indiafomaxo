@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '85';
+const ASSET_V = '89';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -175,6 +175,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     [$act, $oid] = array_pad(explode(':', (string)($_POST['q'] ?? ''), 2), 2, '0');
     go($back, shop_order_action((int)$oid, $act));
   }
+  /* the ✕ in front of an order: close it into Trash (as if it never existed); Trash → Put back (one, or the ticked ones) returns it as it was */
+  if ($a === 'trash') {
+    $no = shop_order_trash((int)($_POST['id'] ?? 0));
+    go($back, $no !== '' ? "$no is closed and kept in Trash. Put it back from there any time." : '!That order was not found, so nothing was closed.');
+  }
+  if ($a === 'untrash') {
+    $nos = isset($_POST['one']) ? [(string)$_POST['one']] : array_values(array_filter(array_map('strval', (array)($_POST['nos'] ?? [])), 'strlen'));   // a row's own Put back, or the ticked ones
+    $ok = count(array_filter($nos, 'shop_order_restore'));
+    go(['tab' => 'orders'] + (shop_trash_count() ? ['trash' => 1] : []), !$nos ? '!Please tick the orders to put back.'
+      : ($ok === count($nos) ? ($ok === 1 ? "$nos[0] is back in Orders." : "$ok orders are back in Orders.") : '!' . (count($nos) - $ok) . ' could not be put back. Please try again.'));
+  }
   if ($a === 'stock') {
     foreach ((array)($_POST['stock'] ?? []) as $id => $opts) {
       if (!isset($CAT[$id])) continue;
@@ -283,7 +294,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     list_hide($key, $no); echo '{"ok":true}'; exit;
   }
   if ($a === 'lead_remove') {   // Left at checkout ✕: hide that line from the list (admin.js sends it without reloading the page)
-    shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid = ?')->execute([(string)($_POST['sid'] ?? '')]);
+    $sids = array_slice(array_values(array_filter(explode(',', (string)($_POST['sid'] ?? '')), fn($x) => $x !== '')), 0, 200);   // all of that customer's visits
+    if ($sids) shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid IN (' . implode(',', array_fill(0, count($sids), '?')) . ')')->execute($sids);
     if (!empty($_POST['js'])) { header('Content-Type: application/json'); echo '{"ok":true}'; exit; }
     go(['tab' => 'analytics'], 'Removed from Left at checkout.');
   }
@@ -461,8 +473,8 @@ if ($do === 'leads_excel') {
   $okDay = fn(string $d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $d);
   $dd = $okDay($F['from']) && $okDay($F['to']) ? [min($F['from'], $F['to']), max($F['from'], $F['to'])] : [];   // the dates picked on Analytics
   $rows = array_map(fn($l) => [substr($l['updated'], 0, 16), $l['name'], $l['phone'] ? phone_fmt($l['phone']) : '', $l['email'], $l['state'], $l['address'], lead_items($l), round($l['total'] / 100, 2),
-    $l['step'] === 'payment' ? 'Payment page' : 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later'])], checkout_leads(...$dd));
-  send_sheet('FOMAXO-left-at-checkout-' . ($dd ? implode('-to-', $dd) : date('Y-m-d')), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later'], $rows, 'Left at checkout');
+    $l['step'] === 'payment' ? 'Payment page' : 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later']), $l['tries']], checkout_leads(...$dd));
+  send_sheet('FOMAXO-left-at-checkout-' . ($dd ? implode('-to-', $dd) : date('Y-m-d')), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later', 'Tries'], $rows, 'Left at checkout');
 }
 if ($do === 'expenses_excel') {
   $D = pick_dates('expenses');

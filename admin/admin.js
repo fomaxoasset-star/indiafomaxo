@@ -135,6 +135,20 @@ function markSent(btn, day) {
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
+  /* Trash: Select all and the ticks light "Put back selected (N)", which asks before putting them back */
+  document.querySelectorAll('.trform').forEach(function (f) {
+    var all = f.querySelector('[data-trall]'), b = f.querySelector('[data-trsel]'), bx = [].slice.call(f.querySelectorAll('input[name="nos[]"]'));
+    if (!all || !b) return;
+    var up = function () {
+      var n = bx.filter(function (x) { return x.checked; }).length;
+      b.disabled = !n; b.textContent = 'Put back selected (' + n + ')'; b.dataset.confirm = 'Put back ' + n + ' order' + (n === 1 ? '' : 's') + '?';
+      all.checked = n > 0 && n === bx.length; all.indeterminate = n > 0 && n < bx.length;
+    };
+    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked; }); up(); });
+    bx.forEach(function (x) { x.addEventListener('change', up); });
+    up();
+  });
+
   /* Review requests / Refill reminders: ✕ in front of a name asks first, then takes that order off the list without reloading */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-rmx]');
@@ -158,7 +172,7 @@ function markSent(btn, day) {
     b.disabled = true;
     postAction(b, {action: 'lead_remove', sid: b.dataset.lead, js: '1'}).then(function (j) {
       if (!j || !j.ok) throw 0;
-      document.querySelectorAll('.lt[data-sid="' + b.dataset.lead + '"]').forEach(function (row) {
+      document.querySelectorAll('.lt[data-sid="' + b.closest('.lt').dataset.sid + '"]').forEach(function (row) {
         var box = row.closest('.box'); row.classList.add('going');
         setTimeout(function () {
           row.remove();
@@ -601,19 +615,33 @@ function waBox(id, sel, o) {
       till: e && M[+e[2] - 1] ? ', valid till ' + (+e[1]) + ' ' + M[+e[2] - 1] + ' ' + e[3] : ''} : null);   // the end date, if one is picked
   }
   function wa(t) { return 'https://wa.me/' + (btn.dataset.phone ? '91' + btn.dataset.phone : '') + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
+  /* On a phone the WhatsApp app opens straight away (whatsapp://, on Android an intent that falls back to wa.me when there's no app), in this tab;
+     a new tab opened from a script after the server answers only loads the wa.me website. If the app doesn't open, the box shows both links to tap. */
+  var PHONE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform)),
+    ANDROID = /Android/i.test(navigator.userAgent), go = q('.ltwa-go');
+  function app(t) {
+    var a = 'send?' + (btn.dataset.phone ? 'phone=91' + btn.dataset.phone + '&' : '') + 'text=' + encodeURIComponent(t);
+    return ANDROID ? 'intent://' + a + '#Intent;scheme=whatsapp;S.browser_fallback_url=' + encodeURIComponent(wa(t)) + ';end' : 'whatsapp://' + a;
+  }
+  function openApp(t) {
+    q('.ltwa-app').href = app(t); q('.ltwa-web').href = wa(t); send.disabled = true;   // one code per tap
+    var shown = setTimeout(function () { go.hidden = false; }, 1500);
+    document.addEventListener('visibilitychange', function gone() { if (document.hidden) { clearTimeout(shown); dlg.close(); document.removeEventListener('visibilitychange', gone); } });
+    location.href = app(t);
+  }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest(sel); if (!b) return;
     e.preventDefault(); e.stopPropagation();   // a Left at checkout button sits in the line's summary: don't open the line
     btn = b; q('.ltwa-who').textContent = b.dataset.who;
     var noc = b.hasAttribute('data-nocoupon'); dlg.classList.toggle('noc', noc);   // the message already carries its coupon: no choice
-    kind.value = noc ? '' : K0; val.value = ''; min.value = dlg.dataset.min || ''; end.value = dlg.dataset.ends || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+    kind.value = noc ? '' : K0; val.value = ''; min.value = dlg.dataset.min || ''; end.value = dlg.dataset.ends || ''; free.value = ''; freeV.value = ''; err.hidden = true; go.hidden = true; send.disabled = false; build(); dlg.showModal();
   });
   kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); end.addEventListener('input', build); free.addEventListener('change', build);
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
   send.addEventListener('click', function () {
     var k = kind.value; err.hidden = true;
-    if (!k && !o.always) { window.open(wa(text.value), '_blank'); dlg.close(); return; }
-    var w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
+    if (!k && !o.always) { if (PHONE) openApp(text.value); else { window.open(wa(text.value), '_blank'); dlg.close(); } return; }
+    var w = PHONE ? null : window.open('', '_blank');   // laptop: opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
     var f = o.fields(btn.dataset);
     f.action = o.action; f.gkind = k; f.pct = val.value || (k === 'pct' ? PCT : '200'); f.gfree = freeV.value; f.gmin = min.value; f.gend = end.value.trim();
     send.disabled = true;
@@ -621,8 +649,9 @@ function waBox(id, sel, o) {
       send.disabled = false;
       if (d.error || (k && !d.code)) throw new Error(d.error || 'The code could not be made.');
       if (d.code) text.value = text.value.split('[CODE]').join(d.code);
-      if (w) w.location = wa(text.value); else location.href = wa(text.value);
       if (o.done) o.done(d, btn);
+      if (PHONE) { openApp(text.value); return; }   // the box closes once WhatsApp has opened
+      if (w) w.location = wa(text.value); else location.href = wa(text.value);
       dlg.close();
     }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
   });
@@ -887,4 +916,43 @@ document.addEventListener('click', function (e) {
     });
   });
   show();
+})();
+
+/* phone (under 760px wide): the top of Orders, Members, Reviews, Stock, Sales, Expenses, Review requests and Refill reminders folds under one button
+   (filters, search, dates, settings), with Excel beside it, so the list below gets the screen. The number boxes and chips become thin rows (admin.css "phone: short top").
+   On a laptop the button is hidden and nothing is folded. */
+(function () {
+  var main = document.querySelector('main'), q = function (s) { return main && main.querySelector(s); };
+  if (!main) return;
+  var P = q('.rqtop') ? {fold: ['.rqtop .dbar', 'details.rfauto', '.rfbar'], at: '.box.fill'}
+    : q('#ordFilters') ? {fold: ['#ordFilters'], at: '#ordFilters', excel: '#ordFilters a.btn'}
+    : q('.mtool') ? {fold: ['.dbar', '.mtool'], at: '.dbar', excel: '.mtool a.btn[href*="excel"]'}
+    : q('form.rtool') ? {fold: ['.dbar', 'form.rtool'], at: '.dbar'}
+    : q('table.stock') ? {fold: ['.row.top>form', '.bf>.muted.small'], at: '.row.top', label: 'Low stock level &amp; help'}
+    : q('#expPanes') ? {fold: ['.dbar'], at: '.dbar', label: 'Add an expense &amp; dates', add: true}
+    : q('.rtab') ? {fold: ['.dbar'], at: '.kpis.rk + *'} : null;
+  if (!P || !q(P.at)) return;
+  var F = [];
+  P.fold.forEach(function (s) { [].forEach.call(main.querySelectorAll(s), function (e) { F.push(e); }); });
+  /* "· on": a search, a filter or other dates are in use behind the button */
+  var on = [].some.call(main.querySelectorAll('input[type=search]'), function (i) { return i.value.trim() !== ''; })
+    || [].some.call(main.querySelectorAll('#ordFilters select, #ordFilters input[name=from], #ordFilters input[name=to]'), function (i) { return i.value !== ''; })
+    || !!q('.dbar[data-set]');
+  var bar = document.createElement('div'), b = document.createElement('button');
+  bar.className = 'pfbar'; b.type = 'button'; b.className = 'btn line pfbtn'; b.setAttribute('aria-expanded', 'false');
+  b.innerHTML = '<span>' + (P.label || 'Filters &amp; search') + (on ? ' <b>· on</b>' : '') + '</span><i aria-hidden="true">▾</i>';
+  bar.appendChild(b);
+  var x = P.excel && q(P.excel);
+  if (x) { var c = x.cloneNode(true); c.className = 'btn pfx'; c.textContent = 'Excel'; bar.appendChild(c); }
+  q(P.at).parentNode.insertBefore(bar, q(P.at));
+  main.classList.add('pf');
+  var sw = P.add && q('.sw[data-for="#expPanes"]');
+  var show = function (o) {
+    b.classList.toggle('on', o); b.setAttribute('aria-expanded', o ? 'true' : 'false');
+    F.forEach(function (f) { f.classList.toggle('pfh', !o); });
+    if (sw && matchMedia('(max-width:759px)').matches) { var t = sw.querySelector('[data-show="' + (o ? 'add' : 'list') + '"]'); if (t) t.click(); }   // Expenses: open shows the Add an expense form, closed the list
+    window.dispatchEvent(new Event('resize'));
+  };
+  show(false);
+  b.addEventListener('click', function () { show(!b.classList.contains('on')); });
 })();

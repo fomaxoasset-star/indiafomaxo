@@ -113,7 +113,7 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 /* orders */
 .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;flex:none}.filters label{min-width:130px}.filters .grow{flex:1;min-width:180px}
 .order{border-bottom:1px solid var(--line2);border-left:4px solid var(--line)}.order[open]{background:var(--panel2)}
-.order summary{display:grid;grid-template-columns:34px 118px 112px minmax(0,1fr) 104px 168px 380px;gap:10px;align-items:center;padding:8px 10px;cursor:pointer;list-style:none}.order summary::-webkit-details-marker{display:none}
+.order summary{display:grid;grid-template-columns:64px 118px 112px minmax(0,1fr) 104px 168px 380px;gap:10px;align-items:center;padding:8px 10px;cursor:pointer;list-style:none}.order summary::-webkit-details-marker{display:none}
 .order .no{color:var(--gold2);font-weight:600}.order .dt,.order .pm{color:var(--muted);font-size:12px}.order .cu b,.order .cu small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.order .cu small{color:var(--muted);font-size:12px}.order .tt{font-weight:600;text-align:right}
 
 .mtool{flex:none}.mrule{flex-direction:row!important;align-items:center;gap:8px!important;font-size:14px;white-space:nowrap}.mrule input{width:70px}.mrule input[name=member_spend]{width:100px}.msearch{display:flex;gap:8px;flex:1;min-width:240px;align-items:center}.msearch input{flex:1;min-width:0}
@@ -194,7 +194,7 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
 .lt-more{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;padding:4px 16px 14px}
 .lt-more dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-size:13px;flex:1 1 320px}.lt-more dt{color:var(--muted)}.lt-more dd{margin:0;overflow-wrap:anywhere}
 .lts .empty{padding:16px}
-.lt-n{font-size:12px;flex:none}.lt-x{display:flex;justify-content:center}.lt .xbtn{width:30px;height:30px;border:1px solid var(--line);border-radius:4px;background:none;color:var(--muted);font:inherit;font-size:13px;line-height:1;cursor:pointer;padding:0}
+.lt-n{font-size:12px;flex:none}.lt summary .lt-name{display:flex;align-items:baseline;gap:6px}.lt-name>span{min-width:0;overflow:hidden;text-overflow:ellipsis}.lt-tries{flex:none;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em}.lt-x{display:flex;justify-content:center}.lt .xbtn{width:30px;height:30px;border:1px solid var(--line);border-radius:4px;background:none;color:var(--muted);font:inherit;font-size:13px;line-height:1;cursor:pointer;padding:0}
 .lt .xbtn:hover,.lt .xbtn:focus-visible{color:var(--red);border-color:var(--red)}.lt.going{opacity:0;transition:opacity .25s}
 .lt-wa{display:flex;justify-content:flex-end}.lt-wa .btn{gap:6px;height:30px;min-height:30px;padding:0 10px}.lt-wa svg{flex:none}
 .rvr{margin:8px 0 4px;padding:10px 12px;border-left:3px solid var(--gold,#b8892f);background:rgba(184,137,47,.08);border-radius:0 6px 6px 0}.rvr b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold,#b8892f)}.rvr p{margin:4px 0 0}
@@ -206,7 +206,7 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
 .clip{display:block;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:13px}
 .kpis.n6 .kpi b{font-size:20px}
 
-@media (min-width:821px) and (max-width:1180px){.order summary{grid-template-columns:34px 118px minmax(0,1fr) 96px 160px 360px}.order .dt{display:none}}
+@media (min-width:821px) and (max-width:1180px){.order summary{grid-template-columns:64px 118px minmax(0,1fr) 96px 160px 360px}.order .dt{display:none}}
 @media (max-width:820px){
   header{height:48px;padding:0 14px;gap:10px}.hlinks .full{display:none}.hlinks .short{display:inline}
   body.app header .tabs{display:none}.mbar{display:flex;height:42px;flex:none;border-bottom:1px solid var(--line);align-items:stretch}
@@ -240,7 +240,7 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
   .quick{display:grid;grid-template-columns:1fr 1fr;gap:6px}.quick .btn{font-size:11px;padding:7px 6px;white-space:normal;text-align:center}
   .bh{padding:8px 10px}.bb{padding:2px 10px 8px}
   .filters label{min-width:0;flex:1 1 40%}.filters .grow{flex-basis:100%}
-  .order summary{grid-template-columns:30px minmax(0,1fr) auto;gap:3px 10px;padding:10px}.order .dt,.order .pm{display:none}.order .no{grid-column:2;grid-row:1}.order .cu{grid-column:2;grid-row:2}.order .tt{grid-column:3;grid-row:1;text-align:right}.order .tags{grid-column:3;grid-row:2}.order summary .th{grid-row:1/3}
+  .order summary{grid-template-columns:62px minmax(0,1fr) auto;gap:3px 10px;padding:10px}.order .dt,.order .pm{display:none}.order .no{grid-column:2;grid-row:1}.order .cu{grid-column:2;grid-row:2}.order .tt{grid-column:3;grid-row:1;text-align:right}.order .tags{grid-column:3;grid-row:2}.order summary .ox{grid-row:1/3}
   .order summary .acts{grid-column:1/-1;grid-row:3;justify-content:flex-start;flex-wrap:wrap;margin-top:6px}.order summary .acts:empty{display:none}.order[open] summary .acts{display:none}
   .order .acts .btn{height:42px;min-height:42px;font-size:12px;padding-left:2px;padding-right:2px;letter-spacing:0}.steps5{gap:6px}.step{flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;text-align:center;font-size:11px}.step span{white-space:normal;line-height:1.2}.step b{font-size:18px}.otop{padding:4px 10px 10px;flex-direction:column;align-items:stretch}.otop .acts{flex-wrap:wrap}.track{max-width:none}.track small{white-space:normal}
   .od{grid-template-columns:1fr;padding:4px 10px 12px}
@@ -315,7 +315,7 @@ body.zooming{overflow:hidden}
 @media (max-width:820px){
   .lt-hd{display:none}
   .lt summary{grid-template-columns:36px minmax(0,1fr) auto 92px 40px 12px;gap:8px;padding:12px}.lt .xbtn{width:36px;height:36px}.lt-wa .btn{width:40px;height:36px;min-height:36px;padding:0}.lt-wa .btn span{display:none}.lt-wa svg{width:18px;height:18px}
-  .lt summary .lt-date,.lt summary .lt-state,.lt summary .lt-later{display:none}
+  .lt summary .lt-date,.lt summary .lt-state,.lt summary .lt-later{display:none}.lt-tw{display:none}
   .lt-bag{font-size:14px}.lt-more{padding:2px 12px 14px}
 }
 /* stock page: Running low and Out of stock warning boxes */
@@ -578,7 +578,7 @@ body.zooming{overflow:hidden}
 @media (prefers-color-scheme:light){.fplist li:hover,.fplist li.on{background:#efe3c9;color:#5e4318}.fplist{box-shadow:0 8px 24px rgba(60,40,10,.15)}}
 /* Left at checkout → WhatsApp: the ready-message box */
 .ltwa{width:min(460px,calc(100vw - 24px));padding:0;border:1px solid var(--gold);border-radius:12px;background:var(--panel);color:var(--text)}.ltwa::backdrop{background:rgba(0,0,0,.55)}
-.ltwa .bb{padding:14px 16px 16px}.ltwa textarea{width:100%;font-size:13px;line-height:1.45;resize:vertical}.ltwa-btns{display:flex;gap:8px;justify-content:flex-end}.ltwa-btns .btn{gap:6px}
+.ltwa .bb{padding:14px 16px 16px}.ltwa-go{margin:0 0 10px;text-align:right}.ltwa-go a{color:#25D366;font-weight:600}.ltwa textarea{width:100%;font-size:13px;line-height:1.45;resize:vertical}.ltwa-btns{display:flex;gap:8px;justify-content:flex-end}.ltwa-btns .btn{gap:6px}
 .ltwa:not([data-kind=pct]):not([data-kind=amt]) .ltwa-val,.ltwa:not([data-kind=free]) .ltwa-free,.ltwa[data-kind=""] .ltwa-note,.ltwa[data-kind=""] .ltwa-min,.ltwa[data-kind=""] .ltwa-end{display:none}
 
 /* every WhatsApp button: WhatsApp green #25D366 with white text; once sent, outlined in the same green */
@@ -589,14 +589,14 @@ body.zooming{overflow:hidden}
 /* Review requests: the gold button on the orders count line, the green Review button at the end of a due order, filters, statuses, settings */
 .rqbtn{flex:none}.ohb{display:inline-flex;gap:6px;flex:none;align-items:center}.sndbtn{white-space:nowrap}
 .rqwa{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 10px;border-radius:3px;border:1px solid;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap}
-.olist.has-rq .order summary{grid-template-columns:34px 118px 112px minmax(0,1fr) 104px 168px 488px}.olist.has-rq .order .acts{grid-template-columns:1fr 1.35fr 1fr 100px}
+.olist.has-rq .order summary{grid-template-columns:64px 118px 112px minmax(0,1fr) 104px 168px 488px}.olist.has-rq .order .acts{grid-template-columns:1fr 1.35fr 1fr 100px}
 .order .acts>.rqwa:only-child{grid-column:4}
 .rqseg{display:flex;width:fit-content;max-width:100%;margin:0 auto;overflow-x:auto;flex:none}.rqseg button.on{background:var(--gold);color:#17130b}
 .rqst{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;margin-right:8px}.rqst.ok{background:#25D366;border-color:#25D366;color:#fff}.rqst.part{border-color:var(--gold);color:var(--gold2)}
 .rqsw{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end}.rqsw .lb{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.rqsw .rqn input{width:90px}
 .rqlist .ra{white-space:nowrap}.rqlist .wag{gap:6px}
-@media (min-width:821px) and (max-width:1180px){.olist.has-rq .order summary{grid-template-columns:34px 118px minmax(0,1fr) 96px 160px 468px}}
-@media (max-width:820px){.olist.has-rq .order summary{grid-template-columns:30px minmax(0,1fr) auto}.olist.has-rq .order .acts{grid-template-columns:1fr 1.35fr 1fr}.order .acts>.rqwa,.order .acts>.rqwa:only-child{grid-column:1/-1;height:42px;padding:0 10px}
+@media (min-width:821px) and (max-width:1180px){.olist.has-rq .order summary{grid-template-columns:64px 118px minmax(0,1fr) 96px 160px 468px}}
+@media (max-width:820px){.olist.has-rq .order summary{grid-template-columns:62px minmax(0,1fr) auto}.olist.has-rq .order .acts{grid-template-columns:1fr 1.35fr 1fr}.order .acts>.rqwa,.order .acts>.rqwa:only-child{grid-column:1/-1;height:42px;padding:0 10px}
   .rq3{grid-template-columns:repeat(3,minmax(0,1fr))!important}.rqseg button{padding:5px 8px;font-size:12px}.rqlist .rqst{display:block;margin:0 0 4px;width:fit-content;margin-left:auto}.rqlist .wag span{display:inline}}
 
 /* Review requests | Refill reminders switch at the top of both lists */
@@ -624,3 +624,60 @@ button.rqwa,button[data-wabox]{font-family:inherit;cursor:pointer}.btn.wag{gap:6
 /* phone: a sent button in a narrow column keeps its size and shows Sent over dd/mm instead of the logo */
 @media(max-width:760px){.mlist .mwa.line{width:44px;padding:0 2px;justify-content:center}.mlist .mwa.line svg{display:none}.mlist .mwa.line span{display:block;white-space:normal;font-size:10.5px;line-height:1.15;text-align:center}}
 @media(max-width:820px){.lt .lt-wa .btn.line{padding:0 2px}.lt .lt-wa .btn.line svg{display:none}.lt .lt-wa .btn.line span{display:block;white-space:normal;font-size:10.5px;line-height:1.15;text-align:center}}
+
+/* phone: short top (AJAY 09/10/2026). On Orders, Members, Reviews, Stock, Sales, Expenses, Review requests and Refill reminders (main.pf, admin.js)
+   the number boxes and the chips become one thin row each (swipe sideways for more), and filters, search, dates and settings fold under one
+   "Filters & search" button with Excel beside it, so only the list scrolls and gets most of the screen. Laptop: the button is hidden, nothing folds. */
+.pfbar{display:none}
+@media (max-width:759px){
+  main.pf{gap:6px}
+  .pfbar{display:flex;gap:6px;flex:none;align-items:stretch}.pfbar .btn{min-height:36px;padding:6px 12px;font-size:13px}
+  .pfbtn{flex:1 1 auto;justify-content:space-between;min-width:0}.pfbtn span{overflow:hidden;text-overflow:ellipsis}.pfbtn b{font-weight:700;color:var(--gold)}
+  .pfbtn i{font-style:normal;font-size:12px;transition:transform .2s}.pfbtn.on i{transform:rotate(180deg)}.pfbtn.on{background:#221d12}
+  .pfx{flex:none;min-width:76px}
+  main.pf .pfh{display:none!important}
+  /* number boxes: one thin row, a small label over the number */
+  main.pf>.kpis,main.pf>.swarn{display:flex!important;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:5px;flex:none}main.pf>.kpis::-webkit-scrollbar,main.pf>.swarn::-webkit-scrollbar{display:none}
+  main.pf>.kpis>.kpi,main.pf>.swarn>.sbox{flex:1 0 auto;min-width:72px;padding:3px 9px;border-radius:7px;display:block;grid-column:auto!important;border-top-width:2px}
+  main.pf>.kpis>.kpi span,main.pf>.swarn>.sbox span{display:block;font:600 8.5px/1.3 Manrope,sans-serif;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+  main.pf>.kpis>.kpi b,main.pf>.swarn>.sbox b{display:block;font-size:13px;line-height:1.25;white-space:nowrap}main.pf>.kpis>.kpi small,main.pf>.swarn>.sbox small{display:none}
+  /* chips: one thin row of small pills, never a second line */
+  main.pf .steps5,main.pf .cpbar,main.pf>.chips,main.pf .rqseg{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:5px;flex:none;width:auto;margin:0}
+  main.pf .steps5::-webkit-scrollbar,main.pf .cpbar::-webkit-scrollbar,main.pf .rqseg::-webkit-scrollbar{display:none}
+  main.pf .cpbar .chips{flex:none;overflow:visible;gap:5px}
+  main.pf .step,main.pf .cpbox,main.pf .chip,main.pf .rqseg button{flex:0 0 auto;display:flex;flex-direction:row;align-items:baseline;gap:5px;min-height:0;padding:3px 10px;font-size:11px;line-height:1.35;border-radius:999px;white-space:nowrap;text-align:left}
+  main.pf .step span{white-space:nowrap}main.pf .step b,main.pf .cpbox b,main.pf .chip b{font-size:12px;margin:0}main.pf .cpbox{border-left-width:1px}main.pf .cpbox small{display:none}
+  main.pf .rqseg{border:0;border-radius:0;overflow-y:hidden}main.pf .rqseg button{border:1px solid var(--line)}main.pf .rqseg button.on{border-color:var(--gold)}
+  /* what sits behind the button shows in full when it is open */
+  main.pf .filters .fx{display:flex}main.pf .filters .show-m-i,main.pf .filters>a.btn,main.pf .mtool>a.btn{display:none!important}
+  main.pf .rtool{flex-wrap:wrap}main.pf .rtool .chip{padding:5px 11px}
+  main.pf .sw[data-for="#expPanes"]{display:none}
+  main.pf .rqtop{flex-wrap:nowrap;gap:6px}main.pf .rqtop>.btn{min-height:34px;padding:4px 9px;font-size:12px}main.pf .rqtabs{flex:1 1 auto;min-width:0}main.pf .rqtabs a{padding:8px 4px;font-size:10px;letter-spacing:.03em;white-space:nowrap}
+  /* list headings: one line */
+  main.pf .box>.bh>.muted.small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}main.pf .ohint{display:none}
+}
+
+/* Trash: the round ✕ in front of each order closes it into Trash; the Trash page puts orders back (one, or the ticked ones) */
+.order .ox{display:flex;align-items:center;gap:6px}
+.order .xbtn{flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-size:11px;line-height:1;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.order .xbtn:hover,.order .xbtn:focus-visible{color:var(--red);border-color:var(--red)}
+.trbtn{flex:none;white-space:nowrap}
+.trtop h2.trh{font:600 18px Cinzel,serif;letter-spacing:.06em}.trtop h2.trh .trn{font-size:14px;margin-left:4px;color:var(--muted)}
+.trnote{margin:0;flex:none}
+.trbar{justify-content:space-between}label.trall{display:inline-flex;flex-direction:row;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0;cursor:pointer}
+.trall input,.trlist .tck input{width:18px;height:18px;margin:0;accent-color:var(--gold);cursor:pointer}
+.trlist th.tck,.trlist td.tck{width:34px}.trlist .tags{display:flex;gap:4px;flex-wrap:wrap}.trlist .tags+small{margin-top:3px}
+.trform .bb{overflow:auto}
+@media (max-width:820px){
+  .order .xbtn{width:26px;height:26px}
+  .obh{flex-wrap:wrap;row-gap:6px}.obh>.muted.small{flex:1 1 100%}.obh .ohb{flex-wrap:wrap}
+  main.pf .box>.obh>.muted.small{white-space:normal}main.pf .obh .ohint{display:inline}
+  .trtop .trh{font-size:16px}
+  .trlist thead{display:none}.trlist tr{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:2px 8px;padding:8px 2px;border-bottom:1px solid var(--line2)}
+  .trlist td{border:0;padding:0}.trlist td.tck{grid-row:1/4;align-self:center;width:auto}
+  .trlist td:nth-child(2){grid-column:2}.trlist td:nth-child(3){grid-column:2}.trlist td:nth-child(4){grid-column:3;grid-row:1/3;align-self:start}
+  .trlist td:nth-child(5){grid-column:2}.trlist td:nth-child(6){grid-column:3;grid-row:3;align-self:end}
+  .trlist td:nth-child(2) b,.trlist td:nth-child(2) small,.trlist td:nth-child(3) b,.trlist td:nth-child(3) small{display:inline}
+  .trlist td:nth-child(2) b::after,.trlist td:nth-child(3) b::after{content:" · ";font-weight:400;color:var(--muted)}
+  .trlist td:nth-child(5){display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}.trlist td:nth-child(5) .tags{flex-wrap:nowrap}.trlist td:nth-child(5) small{margin:0;flex:1 1 100%}.trlist td:nth-child(4) small{font-size:11px}
+}

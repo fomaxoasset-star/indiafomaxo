@@ -74,8 +74,8 @@ function period_label(array $D): string {
 }
 /* the bar at the top of a page: quick buttons, From and To, Show. $keep: the page's other filters, kept when dates change */
 function date_bar(array $D, array $keep = [], string $note = ''): string {
-  [$presets] = DATE_BARS[$D['page']]; $tab = $D['tab'] ?? $D['page'];   // 'tab': a date bar on a page inside another tab (Review requests is on Orders)
-  $out = '<form class="dbar" method="get"><input type="hidden" name="tab" value="' . h($tab) . '">';
+  [$presets, $start] = DATE_BARS[$D['page']]; $tab = $D['tab'] ?? $D['page'];   // 'tab': a date bar on a page inside another tab (Review requests is on Orders)
+  $out = '<form class="dbar" method="get"' . ($D['r'] !== $start ? ' data-set' : '') . '><input type="hidden" name="tab" value="' . h($tab) . '">';
   foreach ($keep as $k => $v) if ((string)$v !== '') $out .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
   $out .= '<span class="seg">' . implode('', array_map(fn($k) => '<a href="' . h(self_url(['tab' => $tab, 'r' => $k] + array_filter($keep, 'strlen'))) . '"' . ($D['r'] === $k ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>', $presets)) . '</span>'
     . '<label class="dfl"><span>From</span>' . date_box('from', $D['from'], 'From') . '</label><label class="dfl"><span>To</span>' . date_box('to', $D['to'], 'To') . '</label>'
@@ -482,6 +482,7 @@ function wa_box(string $id, string $free, string $kind, int $pct, int $min, stri
     . '<p class="muted small ltwa-note">' . h($note) . '</p>'
     . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="14"></textarea></label>'
     . '<p class="err ltwa-err" hidden></p>'
+    . '<p class="small ltwa-go" hidden>WhatsApp did not open? <a class="ltwa-app">Open WhatsApp app</a> · <a class="ltwa-web" target="_blank" rel="noopener">WhatsApp website</a></p>'
     . '<div class="row ltwa-btns"><button type="button" class="btn line" data-ltwa-close>Cancel</button><button type="button" class="btn" data-ltwa-send>' . WA_SVG . '<span>Open WhatsApp</span></button></div></div></dialog>';
 }
 /* the free product picker: one box to type in or pick from its dropdown (every product and size, at ₹0 in the order; gift sets are
@@ -880,7 +881,17 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
     if ($l['later'] === '' && (int)$l['ordered']) $l['later'] = 'yes';
   }
   unset($l);
-  return $leads;
+  /* one line per customer per day: every visit is its own lead, so the same mobile (or the same email when there is no mobile) on the same day is put together under their
+     latest visit; 'tries' counts the visits, 'sids' are all of them (✕ removes them all), 'times' their dates, 'sent' the latest WhatsApp Sent day */
+  $by = [];
+  foreach ($leads as $l) {
+    $k = ($l['phone'] !== '' ? 'p:' . $l['phone'] : (trim((string)$l['email']) !== '' ? 'e:' . strtolower(trim((string)$l['email'])) : 's:' . $l['sid'])) . '|' . substr((string)$l['updated'], 0, 10);   // a new day is a new line
+    if (!isset($by[$k])) { $l['tries'] = 0; $l['sids'] = []; $l['times'] = []; $l['sent'] = ''; $by[$k] = $l; }
+    $by[$k]['tries']++; $by[$k]['sids'][] = (string)$l['sid']; $by[$k]['times'][] = (string)$l['updated'];
+    $d = wa_sent_all()['lt:' . $l['sid']] ?? '';
+    if ($d > $by[$k]['sent']) $by[$k]['sent'] = $d;
+  }
+  return array_values($by);
 }
 function lead_items(array $l): string { return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: [])); }
 /* the bag they left as a short code for the website link (product.size.qty for each line, joined with _): fomaxo.in/#/checkout?bag=… fills the bag again */
@@ -968,8 +979,8 @@ function admin_badges(): array {
   $b = ['orders' => (int)$s->fetchColumn(), 'bad' => 0, 'faulty' => 0, 'late' => 0];
   $since = (int)admin_seen('reviews');
   foreach (reviews_list() as $r) if ((int)$r['created'] > $since && isset($b[$r['issue']])) $b[$r['issue']]++;   // only Bad product, Faulty product and Late delivery
-  $s = shop_db()->prepare('SELECT COUNT(*) FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?'); $s->execute([admin_seen('leads')]);
-  $b['leads'] = (int)$s->fetchColumn();
+  $s = shop_db()->prepare('SELECT phone, email, sid, created FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?'); $s->execute([admin_seen('leads')]);   // customers per day, as the list shows them
+  $b['leads'] = count(array_unique(array_map(fn($l) => ($l['phone'] !== '' ? $l['phone'] : ($l['email'] !== '' ? strtolower($l['email']) : $l['sid'])) . '|' . substr($l['created'], 0, 10), $s->fetchAll())));
   return $b;
 }
 
