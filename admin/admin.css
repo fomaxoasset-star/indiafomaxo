@@ -32,7 +32,7 @@ h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.14em;c
 @keyframes noaIn{from{opacity:0;transform:translateY(-12px)}}@keyframes noaDot{50%{opacity:.25}}
 /* count rounds on the menu tabs (admin.js) */
 .tb{display:inline-flex;margin-left:4px}.tb i{font:700 9.5px/1 Manrope,sans-serif;font-style:normal;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 0 1.5px #0a0907}.tb i+i{margin-left:-3px}
-.tb-orders{background:#2f9e55}.tb-bad{background:#4f7fc4}.tb-faulty{background:#d0644e}.tb-late{background:#e0a03a;color:#2a1c05!important}.tb-leads{background:#c9a45c;color:#17130b!important}
+.tb-orders{background:#e0242b}.tb-bad{background:#4f7fc4}.tb-faulty{background:#d0644e}.tb-late{background:#e0a03a;color:#2a1c05!important}.tb-leads{background:#c9a45c;color:#17130b!important}
 .nalert{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.nalert small{font-size:12px}
 .changed{border-color:var(--gold)!important;background:#1f1a0f!important}.unsaved{color:var(--amber);font-size:12px;font-weight:600}
 .qbtns{display:flex;gap:8px;flex-wrap:wrap}.show-m-i{display:none!important}
