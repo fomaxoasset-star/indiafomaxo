@@ -222,11 +222,12 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . '. Tap a button to update an order, or tap the order to see it.' . '</span>'
     . '<span class="ohb">' . sound_btn() . '<a class="btn xs rqbtn" href="' . h(self_url(['tab' => 'orders', 'ask' => 1])) . '">Review requests (' . count($rqAsk) . ')</a></span></div><div class="bb np olist has-rq">';
   if (!$orders) $body .= '<p class="empty">No orders' . (array_filter($F) ? ' for this filter' : ' yet') . '.</p>';
+  $seenO = (string)shop_setting('seen_orders');   // orders placed since Orders was last opened get a red NEW tag (it goes on the next visit)
   foreach ($orders as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $btns = order_buttons($o);
     $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary>' . $orderThumb($o)
-      . '<span class="no">' . h($o['no'] ?: 'Not paid') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
+      . '<span class="no">' . h($o['no'] ?: 'Not paid') . ($seenO !== '' && $o['created'] > $seenO ? ' <span class="onew">NEW</span>' : '') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small>' . order_coupon_tag($o) . '</span>'
       . '<span class="tt">' . rupees((int)$o['total']) . '<small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online') . ($o['test'] ? ' · TEST' : '') . '</small></span>'
       . '<span class="tags">' . order_tags($o) . '</span><span class="acts">' . $btns . $waBtn($o) . '</span></summary>'
