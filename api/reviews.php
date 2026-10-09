@@ -100,6 +100,33 @@ function requireAdmin(): void {
   if (!$key || !password_verify($key, $hash)) { usleep(400000); fail('Wrong owner key.', 403); }
 }
 
+/* A phone JPEG keeps its pixels sideways and says how to turn them in the EXIF Orientation tag (1-8).
+   Re-encoding drops that tag, so it is read here: exif_read_data when the server has it, else from the JPEG's APP1 block. */
+function jpegOrientation(string $file): int {
+  if (function_exists('exif_read_data')) { $e = @exif_read_data($file); if (is_array($e) && isset($e['Orientation'])) return (int)$e['Orientation']; }
+  $d = @file_get_contents($file, false, null, 0, 131072); if (!$d || substr($d, 0, 2) !== "\xFF\xD8") return 1;
+  for ($p = 2; $p + 4 <= strlen($d) && $d[$p] === "\xFF";) {
+    $m = ord($d[$p + 1]); $len = unpack('n', substr($d, $p + 2, 2))[1];
+    if ($m === 0xE1 && substr($d, $p + 4, 6) === "Exif\0\0") {
+      $t = substr($d, $p + 10, $len - 8); $le = substr($t, 0, 2) === 'II';
+      $u16 = fn($o) => unpack($le ? 'v' : 'n', substr($t, $o, 2))[1] ?? 0;
+      $ifd = unpack($le ? 'V' : 'N', substr($t, 4, 4))[1] ?? 0; $n = $u16($ifd);
+      for ($i = 0; $i < $n; $i++) { $e = $ifd + 2 + $i * 12; if ($u16($e) === 0x0112) { $o = $u16($e + 8); return $o >= 1 && $o <= 8 ? $o : 1; } }
+      return 1;
+    }
+    if ($m === 0xDA) break;   // image data starts: no EXIF before it
+    $p += 2 + $len;
+  }
+  return 1;
+}
+function uprightPhoto($img, int $o) {
+  if ($o === 2 || $o === 5 || $o === 7) imageflip($img, IMG_FLIP_HORIZONTAL);   // mirrored (selfie) variants
+  if ($o === 4) imageflip($img, IMG_FLIP_VERTICAL);
+  $deg = [3 => 180, 5 => 90, 6 => -90, 7 => -90, 8 => 90][$o] ?? 0;
+  if ($deg) { $r = imagerotate($img, $deg, 0); if ($r) { imagedestroy($img); $img = $r; } }
+  return $img;
+}
+
 /* Re-encode an uploaded image with GD: strips metadata and anything that isn't pixels. */
 function savePhoto(array $f): ?string {
   global $PRIV;
@@ -110,6 +137,7 @@ function savePhoto(array $f): ?string {
   $img = match ($type) { IMAGETYPE_JPEG => @imagecreatefromjpeg($f['tmp_name']), IMAGETYPE_PNG => @imagecreatefrompng($f['tmp_name']),
     IMAGETYPE_WEBP => @imagecreatefromwebp($f['tmp_name']), default => false };
   if (!$img) fail('Photos must be JPG, PNG or WebP images.');
+  if ($type === IMAGETYPE_JPEG) $img = uprightPhoto($img, jpegOrientation($f['tmp_name']));   // phone photos: turn them the way they were taken
   $w = imagesx($img); $h = imagesy($img); $k = min(1, 1600 / max($w, $h));
   if ($k < 1) { $img = imagescale($img, (int)round($w * $k), (int)round($h * $k)); }
   $dir = "$PRIV/photos"; if (!is_dir($dir)) mkdir($dir, 0750, true);
