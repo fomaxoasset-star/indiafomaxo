@@ -224,7 +224,7 @@ try {
         fail('It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.');
       if ($issue === 'late' && preg_match(RV_FAULTY, $text) && !preg_match(RV_LATE, $text)) fail('Your review is about a faulty or damaged product. Please pick Faulty or damaged product instead of Late delivery.');
       if ($issue === 'faulty' && preg_match(RV_LATE, $text) && !preg_match(RV_FAULTY, $text)) fail('Your review is about a late delivery. Please pick Late delivery instead of Faulty or damaged product.');
-      if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp upon proof.');
+      if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your mobile number, so we can send your coupon on WhatsApp upon proof.');
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
         $o = orderByToken((string)$in['token']);
@@ -237,7 +237,7 @@ try {
       }
 
       if (!empty($in['token']) && $rating <= 3 && preg_match(RV_FAULTY, $text) && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Sorry about that. Your review is about a damaged or faulty product, so please add a photo of it for proof. We will check it and send you a coupon on WhatsApp.');   // verified purchasers: proof for a damaged product
-      if ($issue === 'faulty' && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Please add a photo of the faulty or damaged product.');   // the proof for its coupon
+      if ($issue === 'faulty' && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Please add a photo of faulty or damaged product for proof.');   // the proof for its coupon
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
       db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country, mobile, issue) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
