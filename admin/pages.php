@@ -695,7 +695,7 @@ if ($tab === 'analytics' && !$cv) {
       . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
       . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
       . '<span class="lt-later">' . $later . '</span>'
-      . '<span class="lt-wa">' . (($waOk = (bool)preg_match('/^[6-9]\d{9}$/', (string)$l['phone'])) ? '<a class="btn sm" href="' . h(lead_wa($l)) . '" target="_blank" rel="noopener" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . ' with a link back to their bag">' . WA_SVG . '<span>WhatsApp</span></a>' : '') . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm" data-ltwa data-phone="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-head="' . h(lead_wa_parts($l)[0]) . '" data-tail="' . h(lead_wa_parts($l)[1]) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . ' with a link back to their bag">' . WA_SVG . '<span>WhatsApp</span></button>' : '') . '</span>'
       . '<span class="lt-chev" aria-hidden="true"></span></summary>'
       . '<div class="lt-more"><dl>'
       . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
@@ -704,11 +704,9 @@ if ($tab === 'analytics' && !$cv) {
       . '<dt>Address</dt><dd>' . h(trim($l['address'] . ($l['state'] ? ', ' . $l['state'] : ''), ', ') ?: '—') . '</dd>'
       . '<dt>Products</dt><dd>' . h($names ?: '—') . '</dd>'
       . '<dt>Ordered later</dt><dd>' . ($l['later'] !== '' && $l['later'] !== 'yes' ? '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '">Order ' . h($l['later']) . '</a>' : ($l['later'] === 'yes' ? 'Yes' : 'Not ordered')) . '</dd></dl>'
-      . ($waOk ? '<form class="lcode" method="post" target="_blank">' . $csrfField . '<input type="hidden" name="action" value="lead_code"><input type="hidden" name="sid" value="' . h($l['sid']) . '">'
-        . '<button class="btn sm wag">' . WA_SVG . '<span>WhatsApp + 10% code</span></button><span class="muted small">The same message with a COMEBACK- code for this mobile only: 10% off, one use, ends in 7 days.</span></form>' : '')
       . '</div></details>';
   }
-  $body .= '</div></div></div></div>';
+  $body .= '</div></div></div></div>' . wa_box('ltWa', 'ltfree', '', 10, 0, 'A new COMEBACK- code just for this customer: one use, only with their mobile number, ends in 7 days. It is made when you tap Open WhatsApp.');
 }
 
 /* ============ Sales (profit & loss; was Reports) ============ */

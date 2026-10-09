@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '70';
+const ASSET_V = '71';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -248,11 +248,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'offer_save') { $msg = save_offer(); go(['tab' => 'offer'], $msg); }
   if ($a === 'newprod_save') { go(['tab' => 'offer'], save_newprod($CAT)); }
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
-  if ($a === 'lead_code') {   // "WhatsApp + 10% code" on a Left at checkout line: saves its COMEBACK- code in Coupons, then opens WhatsApp (in a new tab) with the message and the code
-    $s = shop_db()->prepare('SELECT * FROM leads WHERE sid = ?'); $s->execute([(string)($_POST['sid'] ?? '')]); $l = $s->fetch();
-    if (!$l || !preg_match('/^[6-9]\d{9}$/', (string)$l['phone'])) go(['tab' => 'analytics'], '!This person has no mobile number.');
-    $code = lead_code($l); phone_coupon($code, 10, (string)$l['phone'], 0, date('Y-m-d', strtotime('+7 days')) . ' 23:59');
-    header('Location: ' . lead_wa($l, $code), true, 303); exit;
+  if ($a === 'lead_coupon') {   // Left at checkout WhatsApp box with a coupon: a new COMEBACK- code, one use, only this customer's mobile, ends in 7 days (admin.js asks without reloading)
+    $_POST['ends'] = date('d/m/Y', strtotime('+7 days')); [$code, $msg] = make_goodwill_coupon('COMEBACK-');
+    header('Content-Type: application/json'); echo json_encode($code !== '' ? ['code' => $code] : ['error' => ltrim($msg, '!')]); exit;
   }
   if ($a === 'lead_remove') {   // Left at checkout ✕: hide that line from the list (admin.js sends it without reloading the page)
     shop_db()->prepare('UPDATE leads SET removed = 1 WHERE sid = ?')->execute([(string)($_POST['sid'] ?? '')]);
