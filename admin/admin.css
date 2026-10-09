@@ -249,6 +249,10 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
 .show-m{display:none}
 .revs .li{color:var(--text);text-decoration:none;border-radius:6px}.revs a.li:hover,.revs .li.on{background:var(--panel2)}.revs .li.on{box-shadow:inset 3px 0 var(--gold)}
 .rv .bh .chip,.revs .bh .chip{flex:none}
+/* Reviews: a faulty product review has a red edge, a late delivery an amber one; the chips and tags match */
+.revs .rv{padding-left:12px;border-left:3px solid transparent}.revs .rv.rv-faulty{border-left-color:#d0644e}.revs .rv.rv-late{border-left-color:#e0a03a}
+.rv .badge.ib-late{color:#e0a03a;border-color:#e0a03a}
+.chip.ck-faulty::before,.chip.ck-late::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0644e;margin-right:6px;display:inline-block;vertical-align:1px}.chip.ck-late::before{background:#e0a03a}
 .mtabs{display:none;gap:2px;overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}.mtabs a{display:flex;align-items:center;padding:0 10px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:13px}.mtabs a.on{color:var(--gold2);border-color:var(--gold)}
 /* analytics: any tile or box opens big */
 .zoomable{cursor:zoom-in}.kpi.zoomable:hover,.an>.box.zoomable:hover{border-color:#5a4c2e}.kpi.zoomable:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
