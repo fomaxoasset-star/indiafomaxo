@@ -379,6 +379,43 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-photos{display:flex;gap:8px;flex-wrap:wrap}
 .rv-photos a{width:84px;height:84px;border:1px solid var(--line);overflow:hidden}
 .rv-photos img{width:100%;height:100%;object-fit:cover}
+/* customer photos: every review photo of this product in one row above the list, and the photo viewer */
+.rv-gal{padding-bottom:22px}
+.rv-gal[hidden]{display:none}
+.rv-gal-h{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.rv-gal-row{display:flex;flex-wrap:wrap;gap:8px}
+.rv-gal-row button{flex:0 0 96px;width:96px;height:96px;padding:0;border:1px solid var(--line);overflow:hidden;background:var(--panel);cursor:zoom-in;transition:border-color .25s}
+.rv-gal-row button:hover,.rv-gal-row button:focus-visible{border-color:var(--gold);outline:none}
+.rv-gal-row img{display:block;width:100%;height:100%;object-fit:cover}
+.rv-photos a{cursor:zoom-in}
+@media(max-width:760px){.rv-gal-row{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.rv-gal-row::-webkit-scrollbar{display:none}.rv-gal-row button{flex-basis:84px;width:84px;height:84px;scroll-snap-align:start}}
+.rvx{position:fixed;inset:0;z-index:320;display:flex;flex-direction:column;background:rgba(3,3,3,.96);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;transition:opacity .3s;overscroll-behavior:contain}
+.rvx.on{opacity:1}
+.rvx-x{position:absolute;top:10px;right:14px;z-index:3;width:44px;height:44px;font-size:34px;font-weight:300;line-height:1;color:#f2ebdd;opacity:.85}
+.rvx-x:hover{opacity:1;color:#f0d3a0}
+.rvx-in{flex:1;min-height:0;width:100%;max-width:1360px;margin:0 auto;padding:64px 48px 0;display:grid;grid-template-columns:minmax(0,1fr) 380px;grid-template-rows:minmax(0,1fr);gap:32px}
+.rvx-pic{position:relative;min-height:0;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+.rvx-pic img{display:block;max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 0 0 1px rgba(215,170,105,.3);user-select:none;-webkit-user-drag:none}
+.rvx-arrow{position:absolute;top:50%;z-index:2;width:46px;height:46px;margin-top:-23px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #d7aa69;background:rgba(0,0,0,.55);color:#f0d3a0;font-family:inherit;font-weight:300;font-size:26px;line-height:1;padding:0 0 3px;cursor:pointer;transition:background .2s,color .2s}
+.rvx-arrow[data-rvgo="-1"]{left:0}.rvx-arrow[data-rvgo="1"]{right:0}
+.rvx-arrow:hover:not(:disabled){background:#d7aa69;color:#0a0805}
+.rvx-arrow:disabled{opacity:.3;cursor:default}
+.rvx-arrow[hidden]{display:none}
+.rvx-rv{align-self:center;max-height:100%;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:28px 26px;background:var(--panel);border:1px solid var(--line-2)}
+.rvx-rv b.rvx-who{font-weight:500;color:var(--ivory)}
+.rvx-rv time{font-size:12px;color:var(--muted)}
+.rvx-rv .rv-text{font-size:19px}
+.rvx-rv .rv-reply{align-self:stretch}
+.rvx-foot{flex:0 0 auto;padding:16px 0 calc(18px + env(safe-area-inset-bottom));text-align:center;font-size:12px;letter-spacing:.24em;color:#e9d6b2}
+@media(max-width:760px){
+  .rvx-in{display:flex;flex-direction:column;gap:0;padding:56px 0 0;overflow-y:auto;overscroll-behavior:contain}
+  .rvx-pic{flex:0 0 auto;height:min(58vh,100vw);padding:0 12px}
+  .rvx-arrow{width:40px;height:40px;margin-top:-20px;font-size:23px}
+  .rvx-arrow[data-rvgo="-1"]{left:6px}.rvx-arrow[data-rvgo="1"]{right:6px}
+  .rvx-rv{align-self:stretch;max-height:none;overflow:visible;margin:14px 12px 4px;padding:20px 18px}
+  .rvx-rv .rv-text{font-size:18px}
+  .rvx-foot{padding-top:12px}
+}
 .rv-help{align-self:flex-start;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);padding:7px 12px;transition:.3s}
 .rv-help:hover,.rv-help.on{color:var(--gold-hi);border-color:var(--line-2)}
 .rv-reply{margin:2px 0 4px;padding:14px 18px;border-left:2px solid var(--gold);background:rgba(201,162,92,.08)}
@@ -3470,6 +3507,7 @@ function product(id, q){
         <button class="btn line sm" id="rvWrite" type="button" style="align-self:flex-start">Write a review</button>
         <p class="rv-note"><span class="rv-ver">✓ Verified Purchaser</span> badge appears only on reviews written from the review link after a paid order.</p></div>
       <div class="rv-main rv-up d1"><div id="rvFormBox"></div>
+        <div class="rv-gal" id="rvGal" hidden></div>
         <div class="rv-tools"><span id="rvCount">Reviews</span><label>Sort <select id="rvSort"><option value="recent">Most recent</option><option value="helpful">Most helpful</option></select></label></div>
         <div id="rvList"><p class="rv-none">Loading reviews…</p></div><div class="rv-pager" id="rvPager" hidden><button type="button" class="rv-arrow" data-pg="-1" aria-label="Previous reviews">&#8249;</button><span id="rvPgInfo"></span><button type="button" class="rv-arrow" data-pg="1" aria-label="Next reviews">&#8250;</button></div></div>
     </div>
@@ -4354,12 +4392,52 @@ function rvItem(r){
     ${rvStars(r.rating)}
     ${r.text ? `<p class="rv-text">“${esc(r.text)}”</p>` : ''}
     ${r.reply ? `<div class="rv-reply"><b>Reply from FOMAXO</b><p>${esc(r.reply).replace(/\n/g, '<br>')}</p></div>` : ''}
-    ${r.photos.length ? `<div class="rv-photos">${r.photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}
+    ${r.photos.length ? `<div class="rv-photos">${r.photos.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener" data-rvp="${r.id}:${i}"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}
     <button class="rv-help${voted ? ' on' : ''}" type="button" data-help="${r.id}"${voted ? ' disabled' : ''}>Helpful${r.helpful ? ` (${r.helpful})` : ''}</button>
   </article>`;
 }
+/* customer photos: every photo of this product's reviews, newest review first. Any photo, in the row or in a review, opens the viewer:
+   the photo with that person's review beside it (below it on a phone), ‹ › / swipe / arrow keys move through all of them */
+const rvPhotoList = reviews => reviews.slice().sort((a, b) => b.id - a.id).flatMap(r => r.photos.map((u, i) => ({u, r, i})));
+const rvGalHTML = ph => `<div class="rv-gal-h">Customer photos (${ph.length})</div><div class="rv-gal-row">${ph.map((x, k) => `<button type="button" data-rvx="${k}" aria-label="Customer photo ${k + 1} of ${ph.length}"><img src="${esc(x.u)}" alt="" loading="lazy"></button>`).join('')}</div>`;
+let rvxClose = () => {};
+function rvViewer(ph, at){
+  rvxClose();
+  const n = ph.length, back = document.activeElement, el = document.createElement('div'); let k = Math.max(0, Math.min(n - 1, at));
+  el.className = 'rvx'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Customer photos');
+  el.innerHTML = `<button class="rvx-x" type="button" aria-label="Close">×</button>
+    <div class="rvx-in"><div class="rvx-pic"><img alt="Customer photo"><button class="rvx-arrow" type="button" data-rvgo="-1" aria-label="Previous photo"${n > 1 ? '' : ' hidden'}>&#8249;</button><button class="rvx-arrow" type="button" data-rvgo="1" aria-label="Next photo"${n > 1 ? '' : ' hidden'}>&#8250;</button></div><div class="rvx-rv"></div></div>
+    <div class="rvx-foot" aria-live="polite"></div>`;
+  const img = $('.rvx-pic img', el), rv = $('.rvx-rv', el), foot = $('.rvx-foot', el);
+  const show = () => { const {u, r} = ph[k];
+    img.src = u;
+    rv.innerHTML = `<b class="rvx-who">${esc(rvCap(r.name))}${rvPlace(r).replace(' — ', ' · ')}</b><time>${rvDate(r.date)}</time>${rvStars(r.rating)}${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}
+      ${r.text ? `<p class="rv-text">“${esc(r.text)}”</p>` : ''}${r.reply ? `<div class="rv-reply"><b>Reply from FOMAXO</b><p>${esc(r.reply).replace(/\n/g, '<br>')}</p></div>` : ''}`;
+    rv.scrollTop = 0; $('.rvx-in', el).scrollTop = 0;
+    foot.textContent = `${k + 1} / ${n}`;
+    $('[data-rvgo="-1"]', el).disabled = k === 0; $('[data-rvgo="1"]', el).disabled = k === n - 1;
+    [k - 1, k + 1].forEach(j => { if (ph[j]) new Image().src = ph[j].u; });
+  };
+  const go = d => { const to = Math.max(0, Math.min(n - 1, k + d)); if (to !== k) { k = to; show(); } };
+  const onKey = e => { if (e.key === 'Escape') rvxClose(); else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); } };
+  rvxClose = () => { rvxClose = () => {}; el.classList.remove('on'); document.body.classList.remove('lock');
+    removeEventListener('keydown', onKey); removeEventListener('hashchange', rvxClose); setTimeout(() => el.remove(), 300);
+    if (back && back.focus && back.isConnected) back.focus({preventScroll: true}); };
+  el.onclick = e => { const b = e.target.closest('[data-rvgo]');
+    if (b) { if (!b.disabled) go(+b.dataset.rvgo); return; }
+    if (e.target.closest('.rvx-x') || e.target === el || e.target.matches('.rvx-in,.rvx-pic,.rvx-foot')) rvxClose(); };
+  let tx = null, ty = 0; const pic = $('.rvx-pic', el);
+  pic.addEventListener('touchstart', e => { if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } else tx = null; }, {passive: true});
+  pic.addEventListener('touchend', e => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty; tx = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) { e.preventDefault(); go(dx < 0 ? 1 : -1); } });
+  show(); document.body.appendChild(el); document.body.classList.add('lock');
+  addEventListener('keydown', onKey); addEventListener('hashchange', rvxClose);
+  requestAnimationFrame(() => { el.classList.add('on'); $('.rvx-x', el).focus({preventScroll: true}); });
+}
 function bindReviews(p){
   const list = $('#rvList'), box = $('#rvFormBox'), sort = $('#rvSort');
+  const gal = $('#rvGal'); let ph = [];
+  gal.onclick = e => { const b = e.target.closest('[data-rvx]'); if (b) rvViewer(ph, +b.dataset.rvx); };
   const load = async () => {
     try {
       const d = await rvGet(`action=list&product=${encodeURIComponent(p.id)}&sort=${sort.value}`);
@@ -4368,6 +4446,7 @@ function bindReviews(p){
       const pr = $('#pRate'); if (pr) pr.innerHTML = pRateHTML(d.rating, d.count);
       $('#rvCount').textContent = d.count ? `${d.count} review${d.count > 1 ? 's' : ''}` : 'Reviews';
       all = d.reviews || []; page = 0;
+      ph = rvPhotoList(all); gal.hidden = !ph.length; gal.innerHTML = ph.length ? rvGalHTML(ph) : '';
       if (d.count) show(); else { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; }
     } catch(e) { if (list.isConnected) { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; } }
   };
@@ -4405,6 +4484,8 @@ function bindReviews(p){
     if (wide) { pop(true); f.elements.text.focus({preventScroll: true}); } else f.scrollIntoView({behavior: 'smooth', block: 'center'});
   };
   list.onclick = async e => {
+    const a = e.target.closest('[data-rvp]');
+    if (a) { const [id, i] = a.dataset.rvp.split(':').map(Number), at = ph.findIndex(x => x.r.id === id && x.i === i); if (at > -1) { e.preventDefault(); rvViewer(ph, at); } return; }
     const b = e.target.closest('[data-help]'); if (!b || b.disabled) return;
     const id = +b.dataset.help; b.disabled = true;
     try { const d = await rvPost('helpful', {id}); rvVoted.push(id); try { localStorage.setItem('fomaxo_rv_voted', JSON.stringify(rvVoted.slice(-500))); } catch(x) {}
