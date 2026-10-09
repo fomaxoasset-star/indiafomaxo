@@ -4153,7 +4153,7 @@ function bindRvForm(form, p, token, done){
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
     if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your mobile number, so we can send your coupon on WhatsApp upon proof.';
     if (token && rvNeedsProof(rating, form.elements.text.value, files.length)) return err.textContent = RV_PROOF;
-    if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
+    if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of faulty or damaged product for proof.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';
     const fd = new FormData(); fd.append('product', p.id); fd.append('rating', rating); fd.append('text', form.elements.text.value);
