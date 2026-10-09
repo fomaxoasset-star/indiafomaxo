@@ -601,14 +601,6 @@ function duration(int $secs): string {
 }
 
 /* ---------------- reviews (api/reviews.php keeps them in fomaxo-private/reviews.sqlite) ---------------- */
-function reviews_db(): ?PDO {
-  global $PRIV; static $db = false;
-  if ($db !== false) return $db;
-  if (!is_file("$PRIV/reviews.sqlite")) return $db = null;
-  $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-  $db->exec('PRAGMA busy_timeout=4000;');
-  return $db;
-}
 /* a 1–3 star review that talks about a late delivery or a faulty / damaged product (the words api/reviews.php checks, split in two):
    verified purchasers get no problem box on the form, so their problem is read from the words */
 function review_issue_from_words(string $text, float $rating): string {

@@ -18,54 +18,51 @@ function shop_db(): PDO {
   if (!empty($cfg['db_name']) && !empty($cfg['db_user'])) $SHOP_DB = shop_mysql($cfg);
   else { $SHOP_DB = new PDO("sqlite:$PRIV/shop.sqlite", null, null, SHOP_PDO); $SHOP_DB->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;'); }
   shop_schema($SHOP_DB);
+  $add = function (string ...$cols) use ($SHOP_DB) { foreach ($cols as $c) try { $SHOP_DB->exec("ALTER TABLE $c"); } catch (Throwable $e) { /* already there */ } };   // columns added later
   if ((int)(shop_setting('schema') ?? '0') < 2) {   // columns added after the tables first went live
-    foreach (["visits ADD country VARCHAR(2) NOT NULL DEFAULT ''", "visits ADD region VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD email VARCHAR(120) NOT NULL DEFAULT ''",
-      "leads ADD state VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD address VARCHAR(300) NOT NULL DEFAULT ''"] as $alter)
-      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    $add("visits ADD country VARCHAR(2) NOT NULL DEFAULT ''", "visits ADD region VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD email VARCHAR(120) NOT NULL DEFAULT ''",
+      "leads ADD state VARCHAR(60) NOT NULL DEFAULT ''", "leads ADD address VARCHAR(300) NOT NULL DEFAULT ''");
     shop_set('schema', '2');
   }
   if (shop_setting('schema') === '2') {   // order tracking: when it was delivered, and when it was cancelled or refunded
-    foreach (["orders ADD delivered_at VARCHAR(19) NULL", "orders ADD closed_at VARCHAR(19) NULL"] as $alter)
-      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    $add("orders ADD delivered_at VARCHAR(19) NULL", "orders ADD closed_at VARCHAR(19) NULL");
     /* orders delivered or cancelled before this: their last change is the best date there is */
     $SHOP_DB->exec("UPDATE orders SET delivered_at = updated WHERE status = 'delivered' AND delivered_at IS NULL AND updated <> ''");
     $SHOP_DB->exec("UPDATE orders SET closed_at = updated WHERE status = 'cancelled' AND closed_at IS NULL AND updated <> ''");
     shop_set('schema', '3');
   }
   if (shop_setting('schema') === '3') {   // coupon codes: the code used on an order and the money it took off
-    foreach (["orders ADD coupon VARCHAR(24) NOT NULL DEFAULT ''", "orders ADD discount INT NOT NULL DEFAULT 0"] as $alter)
-      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    $add("orders ADD coupon VARCHAR(24) NOT NULL DEFAULT ''", "orders ADD discount INT NOT NULL DEFAULT 0");
     shop_set('schema', '4');
   }
   if (shop_setting('schema') === '4') {   // coupon time limits: a start, and an end that can carry an hour ('Y-m-d H:i')
-    try { $SHOP_DB->exec("ALTER TABLE coupons ADD starts VARCHAR(16) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
+    $add("coupons ADD starts VARCHAR(16) NOT NULL DEFAULT ''");
     if ($SHOP_DB->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $SHOP_DB->exec("ALTER TABLE coupons MODIFY ends VARCHAR(16) NOT NULL DEFAULT ''");
     shop_set('schema', '5');
   }
   if (shop_setting('schema') === '5') {   // the WhatsApp opt-in tick at checkout: 1 = the shopper asked for order updates and offers on WhatsApp
-    try { $SHOP_DB->exec("ALTER TABLE orders ADD wa_optin INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
+    $add("orders ADD wa_optin INT NOT NULL DEFAULT 0");
     shop_set('schema', '6');
   }
   if (shop_setting('schema') === '6') {   // Left at checkout: 1 = the owner removed this line from the list with its ✕ (the row is kept)
-    try { $SHOP_DB->exec("ALTER TABLE leads ADD removed INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
+    $add("leads ADD removed INT NOT NULL DEFAULT 0");
     shop_set('schema', '7');
   }
   if (shop_setting('schema') === '7') {   // Analytics → Conversion: the utm_campaign name each visit came with; conv_since = the day campaigns, the Razorpay step and homepage scroll started being counted
-    try { $SHOP_DB->exec("ALTER TABLE visits ADD campaign VARCHAR(60) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
+    $add("visits ADD campaign VARCHAR(60) NOT NULL DEFAULT ''");
     if (shop_setting('conv_since') === null) shop_set('conv_since', date('Y-m-d'));
     shop_set('schema', '8');
   }
   if (shop_setting('schema') === '8') {   // coupons: 0 = "Use the bigger offer" (coupon or website offer, whichever saves more), 1 = "Use both" (offer first, then the coupon)
-    try { $SHOP_DB->exec("ALTER TABLE coupons ADD stack INT NOT NULL DEFAULT 0"); } catch (Throwable $e) { /* already there */ }
+    $add("coupons ADD stack INT NOT NULL DEFAULT 0");
     shop_set('schema', '9');
   }
   if (shop_setting('schema') === '9') {   // goodwill coupons: phone = the last 10 digits of the one mobile number the code works for ('' = any shopper)
-    try { $SHOP_DB->exec("ALTER TABLE coupons ADD phone VARCHAR(10) NOT NULL DEFAULT ''"); } catch (Throwable $e) { /* already there */ }
+    $add("coupons ADD phone VARCHAR(10) NOT NULL DEFAULT ''");
     shop_set('schema', '10');
   }
   if (shop_setting('schema') === '10') {   // free product coupons: kind 'free' adds this product (id) in this size (opt) to the order at ₹0; per_cust 1 = one use per mobile number
-    foreach (["coupons ADD free_id VARCHAR(48) NOT NULL DEFAULT ''", "coupons ADD free_opt VARCHAR(16) NOT NULL DEFAULT ''", "coupons ADD per_cust INT NOT NULL DEFAULT 0"] as $alter)
-      try { $SHOP_DB->exec("ALTER TABLE $alter"); } catch (Throwable $e) { /* already there */ }
+    $add("coupons ADD free_id VARCHAR(48) NOT NULL DEFAULT ''", "coupons ADD free_opt VARCHAR(16) NOT NULL DEFAULT ''", "coupons ADD per_cust INT NOT NULL DEFAULT 0");
     shop_set('schema', '11');
   }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }

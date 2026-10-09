@@ -53,10 +53,8 @@ function seo_img(string $k): string {
 }
 /* the live star rating from api/reviews.php's store, or null when there are no reviews yet */
 function seo_rating(string $id): ?array {
-  global $PRIV;
-  if (!is_file("$PRIV/reviews.sqlite")) return null;
   try {
-    $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    if (!($db = reviews_db())) return null;
     $s = $db->prepare("SELECT AVG(rating), COUNT(*) FROM reviews WHERE product = ? AND status = 'live'"); $s->execute([$id]);
     [$avg, $n] = $s->fetch(PDO::FETCH_NUM);
     return (int)$n > 0 ? ['avg' => round((float)$avg, 1), 'n' => (int)$n] : null;

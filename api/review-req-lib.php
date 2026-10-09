@@ -32,12 +32,11 @@ function rq_mark(string $no, string $how = 'tap'): void {
 
 /* how far each order's review link has got (reviews.sqlite, as api/reviews.php keeps it): token → total perfumes, reviewed, average stars */
 function rq_reviewed(): array {
-  global $PRIV; static $out = null;
+  static $out = null;
   if ($out !== null) return $out;
   $out = [];
-  if (!is_file("$PRIV/reviews.sqlite")) return $out;
   try {
-    $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+    if (!($db = reviews_db())) return $out;
     $rv = [];
     foreach ($db->query('SELECT order_id, product, rating FROM reviews WHERE order_id IS NOT NULL') as $r) $rv[(int)$r['order_id']][(string)$r['product']] = (int)$r['rating'];
     foreach ($db->query('SELECT id, token, products FROM orders') as $o) {
@@ -60,28 +59,11 @@ function rq_badge(array $a): string {
   return '<span class="rqst">Not reviewed yet</span>';
 }
 
-/* each customer's (same mobile = one customer) latest real order (not cancelled, not an unpaid online try, not test) that is between 'days' and
-   'list_to' days old and of which nothing is reviewed yet, oldest first; not yet asked first. 'sent' = date already asked, 'auto' = sent by itself,
-   'optin' = ticked WhatsApp offers (only they get automatic messages), 'stopped' = replied STOP */
+/* Review requests: each customer's latest order from 'days' to 'list_to' days old with nothing in it reviewed yet (see latest_orders_due) */
 function rq_due(): array {
-  $set = rq_set(); $last = [];
-  foreach (shop_db()->query("SELECT id, no, created, name, phone, items, wa_optin, review FROM orders WHERE status IN ('new', 'paid', 'delivered') AND test = 0 AND COALESCE(no, '') <> '' ORDER BY created, id") as $o) {
-    if (($k = coupon_phone((string)$o['phone'])) === '') continue;
-    $o['optin'] = (int)$o['wa_optin'] === 1 || !empty($last[$k]['optin']);
-    $last[$k] = $o;   // the latest order wins
-  }
-  $sent = json_decode((string)shop_setting('rvreq_sent'), true) ?: [];
-  $stops = json_decode((string)shop_setting('wa_stop'), true) ?: [];
-  $due = [];
-  foreach ($last as $k => $o) {
-    $days = (int)floor((strtotime('today') - strtotime(substr((string)$o['created'], 0, 10))) / 86400);
-    if ($days < $set['days'] || $days > $set['list_to'] || !preg_match('/^[a-f0-9]{32}$/', (string)$o['review'])) continue;
-    if (rq_info($o)['done'] > 0) continue;   // reviewed (all or part): never asked again for this order
-    $sd = (string)($sent[$o['no']] ?? '');
-    $due["m:$k"] = $o + ['days' => $days, 'sent' => $sd !== '' ? substr($sd, 0, 10) : null, 'auto' => str_ends_with($sd, 'auto'), 'stopped' => isset($stops[$k]) && !$o['optin']];
-  }
-  uasort($due, fn($a, $b) => (int)($a['sent'] || $a['stopped']) <=> (int)($b['sent'] || $b['stopped']) ?: $b['days'] <=> $a['days']);
-  return $due;
+  $set = rq_set();
+  return latest_orders_due($set['days'], $set['list_to'], 'rvreq_sent',   // reviewed (all or part): never asked again for this order
+    fn($o) => !preg_match('/^[a-f0-9]{32}$/', (string)$o['review']) || rq_info($o)['done'] > 0);
 }
 
 /* every order already asked, newest first, with its review status ('total', 'done', 'stars'); orders asked but still not reviewed
