@@ -115,10 +115,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $autoOn = $waOk && shop_setting('refill_auto') === '1'; $err = (string)shop_setting('refill_auto_err'); $nStop = count(wa_stops());
   $hsel = fn(string $nm, int $a, int $b, int $v) => '<select id="' . $nm . '" name="' . $nm . '">' . implode('', array_map(fn($x) => '<option value="' . $x . '"' . ($x === $v ? ' selected' : '') . '>' . refill_hour($x) . '</option>', range($a, $b))) . '</select>';
   $open = count(array_filter($due, fn($o) => !$o['sent'] && !$o['stopped']));
-  $body .= $rqTabs('refill', '<form method="post" class="rfdays" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="refill_days"><span>Show</span>'
-    . '<input name="rf_lfrom" type="number" min="1" max="730" inputmode="numeric" required value="' . $tm['list_from'] . '" aria-label="From day">'
-    . '<span>to</span><input name="rf_lto" type="number" min="1" max="730" inputmode="numeric" required value="' . $tm['list_to'] . '" aria-label="To day">'
-    . '<span>days<i> after the latest order</i></span><button class="btn sm">Save</button></form>');
+  $body .= $rqTabs('refill');
   $body .= '<details class="box rfauto"><summary><b>Automatic sending</b><span class="rfst' . ($autoOn ? ' on' : '') . '">' . ($autoOn ? 'On' : 'Off') . '</span><span class="muted small rfsum">'
     . ($autoOn ? 'sent by itself to customers who ticked WhatsApp offers, ' . $tm['days'] . ' days after the order, ' . refill_hour($tm['from']) . '–' . refill_hour($tm['to']) . ', ' . refill_pct() . '% off' . (refill_min() ? ' from ' . rupees(refill_min() * 100) : '') : 'messages are sent only when you tap WhatsApp') . '</span></summary>'
     . '<form method="post" class="bb rff" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="refill_auto">'
@@ -136,6 +133,10 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     . ($err !== '' && $autoOn ? '<p class="small rferr">Last problem: ' . h($err) . '</p>' : '')
     . '<p class="muted small" style="margin:0">India time. Only customers who ticked “Send me offers on WhatsApp” at checkout get it by itself, once per order, using your approved template refill_reminder.</p></form></details>';
   $body .= '<div class="kpis n2 rfk" style="--n:2"><div class="kpi"><span>To remind</span><b data-rfn="todo">' . $open . '</b></div><div class="kpi"><span>Sent</span><b data-rfn="sent">' . count(array_filter($due, fn($o) => (bool)$o['sent'])) . '</b></div></div>';
+  $body .= '<form method="post" class="rfdays" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="refill_days"><span>Show</span>'
+    . '<input name="rf_lfrom" type="number" min="1" max="730" inputmode="numeric" required value="' . $tm['list_from'] . '" aria-label="From day">'
+    . '<span>to</span><input name="rf_lto" type="number" min="1" max="730" inputmode="numeric" required value="' . $tm['list_to'] . '" aria-label="To day">'
+    . '<span>days<i> after the latest order</i></span><button class="btn sm">Save</button></form>';
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bb np">';
   if (!$due) $body .= '<p class="empty">Nobody is due right now. Customers show here ' . $tm['list_from'] . ' to ' . $tm['list_to'] . ' days after their latest order.</p>';
   else {
