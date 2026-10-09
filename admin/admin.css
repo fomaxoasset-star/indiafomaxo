@@ -586,7 +586,7 @@ body.zooming{overflow:hidden}
 .rvwa .btn.line,.rflist [data-rf].line,.btn.wag.line,.rqwa.done{background:transparent!important;color:#25D366!important}
 .btn.wag svg,.rqwa svg{flex:none}
 /* Review requests: the gold button on the orders count line, the green Review button at the end of a due order, filters, statuses, settings */
-.rqbtn{flex:none}
+.rqbtn{flex:none}.ohb{display:inline-flex;gap:6px;flex:none;align-items:center}.sndbtn{white-space:nowrap}
 .rqwa{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 10px;border-radius:3px;border:1px solid;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap}
 .olist.has-rq .order summary{grid-template-columns:34px 118px 112px minmax(0,1fr) 104px 168px 488px}.olist.has-rq .order .acts{grid-template-columns:1fr 1.35fr 1fr 100px}
 .order .acts>.rqwa:only-child{grid-column:4}
