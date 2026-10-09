@@ -30,6 +30,7 @@ function refill_code(string $no): string { return fixed_code('REFILL-', 'refill|
    in Coupons with the % and minimum set on Automatic sending (single use, only with this customer's mobile, no end date); a tap makes its own code (admin). */
 function refill_mark(string $no, string $how = 'tap'): void {
   $sent = json_decode((string)shop_setting('refill_sent'), true) ?: [];
+  if (isset($sent[$no]) && $how === 'tap') { $sent[$no] = date('Y-m-d'); shop_set('refill_sent', json_encode($sent)); return; }   // sent again from the admin: the new date
   if (isset($sent[$no])) return;   // one message per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());

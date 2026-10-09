@@ -22,6 +22,7 @@ function rq_code(string $phone): string { return fixed_code('REVIEW-', 'review|'
    (single use, only with this customer's mobile, no end date). A code already saved for them is left as it is. */
 function rq_mark(string $no, string $how = 'tap'): void {
   $sent = json_decode((string)shop_setting('rvreq_sent'), true) ?: [];
+  if (isset($sent[$no]) && $how === 'tap') { $sent[$no] = date('Y-m-d'); shop_set('rvreq_sent', json_encode($sent)); return; }   // sent again from the admin: the new date
   if (isset($sent[$no])) return;   // one request per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $set = rq_set();
@@ -96,13 +97,15 @@ function rq_parts(array $o): array {
 }
 
 /* the message: a blank line between parts, the code in WhatsApp bold on its own line. The same words as the Meta templates review_ask / review_ask_coupon. */
-function rq_text(array $p): string {
+function rq_head(array $p): string {
   $n2 = "\n\n";
   return 'Hi ' . $p['first'] . ',' . $n2 . 'This is FOMAXO about your order ' . $p['no'] . '.' . $n2 . "*Thank You Again For Your Order*\nI hope you received it safely and are enjoying " . $p['perfumes'] . '.'
     . $n2 . "Could you spare a minute to share your honest review?\nIt will show as Verified Purchaser.\n" . $p['review'] . "\nYour honest review helps others choose their FOMAXO."
-    . ($p['code'] ? $n2 . 'As a thank you for your time, here is your personal code for ' . $p['pct'] . '% off your next order (single use):' . $n2 . '*' . $p['code'] . '*' : '')
-    . $n2 . 'Just reply here if you need anything. If you would rather not get these messages, reply STOP.' . $n2 . "Thank you,\nFOMAXO";
+    . ($p['code'] ? $n2 . 'As a thank you for your time, here is your personal code for ' . $p['pct'] . '% off your next order (single use):' . $n2 . '*' . $p['code'] . '*' : '');
 }
+/* the end of the message (the admin WhatsApp box puts a picked coupon between rq_head and this) */
+function rq_tail(): string { return "\n\nJust reply here if you need anything. If you would rather not get these messages, reply STOP.\n\nThank you,\nFOMAXO"; }
+function rq_text(array $p): string { return rq_head($p) . rq_tail(); }
 
 /* the wa.me link with the ready message, for the WhatsApp buttons */
 function rq_wa(array $o): string { return wa_link((string)$o['phone'], rq_text(rq_parts($o))); }
