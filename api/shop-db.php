@@ -126,6 +126,11 @@ function shop_schema(PDO $db): void {
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
       starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '',
       free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '', per_cust INT NOT NULL DEFAULT 0)$tail",
+    /* Trash on admin Orders: an order closed with its ✕ is moved here whole (row = the orders row as JSON), so it leaves every list, count and report;
+       Put back inserts it again as it was. The other columns are for the Trash page. */
+    "CREATE TABLE IF NOT EXISTS orders_trash(no VARCHAR(24) NOT NULL PRIMARY KEY, closed VARCHAR(19) NOT NULL, created VARCHAR(19) NOT NULL DEFAULT '',
+      name VARCHAR(80) NOT NULL DEFAULT '', phone VARCHAR(24) NOT NULL DEFAULT '', total INT NOT NULL DEFAULT 0, method VARCHAR(8) NOT NULL DEFAULT '',
+      status VARCHAR(12) NOT NULL DEFAULT '', row_json $text NOT NULL)$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
@@ -144,7 +149,7 @@ function shop_move_to_mysql(string $name, string $user, string $pass): string {
     $src = shop_db();
     if ($src->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite' && !(int)$dst->query('SELECT COUNT(*) FROM orders')->fetchColumn()) {
       $dst->beginTransaction();
-      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads', 'visits', 'coupons'] as $t) {
+      foreach (['settings', 'stock', 'products', 'orders', 'costs', 'expenses', 'events', 'online', 'leads', 'visits', 'coupons', 'orders_trash'] as $t) {
         $dst->exec("DELETE FROM $t");
         foreach ($src->query("SELECT * FROM $t") as $r) {
           $cols = array_keys($r);
@@ -323,6 +328,39 @@ function shop_set_status(int $id, string $status, ?string $note = null): void {
       ->execute([$status, $taken, $no, $note ?? $r['admin_note'], $paid, $dlv, $closed, $now, $id]);
   });
 }
+/* Trash (admin Orders ✕): the order leaves the orders table whole, so Sales, the boxes, counts, Members, coupons, the WhatsApp lists and Excel
+   no longer see it, and its stock goes back if it was taken. Its number is never given again (order_counter only goes up).
+   Returns the order number, or '' when nothing was done. */
+function shop_order_trash(int $id): string {
+  return shop_tx(function (PDO $db) use ($id) {
+    $s = $db->prepare('SELECT * FROM orders WHERE id = ?' . (shop_is_mysql() ? ' FOR UPDATE' : '')); $s->execute([$id]); $r = $s->fetch();
+    if (!$r || !$r['no']) return '';   // an unpaid card try has no number and is not on the list
+    if ((int)$r['stock_taken']) shop_return_stock($db, json_decode((string)$r['items'], true) ?: []);   // the row keeps stock_taken = 1, so Put back takes it again
+    $db->prepare('INSERT INTO orders_trash(no, closed, created, name, phone, total, method, status, row_json) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      ->execute([$r['no'], shop_now(), $r['created'], $r['name'], $r['phone'], (int)$r['total'], $r['method'], $r['status'], json_encode($r, JSON_UNESCAPED_UNICODE)]);
+    $db->prepare('DELETE FROM orders WHERE id = ?')->execute([$id]);
+    return (string)$r['no'];
+  });
+}
+/* Trash → Put back: the order comes back exactly as it was (same number, status, dates, notes); its stock is taken again if it was before. */
+function shop_order_restore(string $no): bool {
+  try {
+    return shop_tx(function (PDO $db) use ($no) {
+      $s = $db->prepare('SELECT row_json FROM orders_trash WHERE no = ?'); $s->execute([$no]); $r = json_decode((string)$s->fetchColumn(), true);
+      if (!is_array($r)) return false;
+      $cols = shop_is_mysql() ? $db->query('SHOW COLUMNS FROM orders')->fetchAll(PDO::FETCH_COLUMN) : array_column($db->query('PRAGMA table_info(orders)')->fetchAll(), 'name');
+      $r = array_intersect_key($r, array_flip($cols));   // only columns the orders table still has
+      $s = $db->prepare('SELECT COUNT(*) FROM orders WHERE id = ?'); $s->execute([(int)($r['id'] ?? 0)]);
+      if ((int)$s->fetchColumn()) unset($r['id']);       // its old id went to another order: it gets a new one
+      if (!empty($r['stock_taken'])) { shop_take_stock($db, json_decode((string)$r['items'], true) ?: [], false); $r['stock_taken'] = 1; }
+      $db->prepare('INSERT INTO orders(' . implode(',', array_keys($r)) . ') VALUES(' . implode(',', array_fill(0, count($r), '?')) . ')')->execute(array_values($r));
+      $db->prepare('DELETE FROM orders_trash WHERE no = ?')->execute([$no]);
+      return true;
+    });
+  } catch (Throwable $e) { error_log('FOMAXO put back ' . $no . ': ' . $e->getMessage()); return false; }
+}
+function shop_trash_count(): int { return (int)shop_db()->query('SELECT COUNT(*) FROM orders_trash')->fetchColumn(); }
+
 /* Is the money in? Online orders once Razorpay confirmed; cash orders once marked Paid or delivered. */
 function shop_is_paid(array $o): bool { return $o['status'] !== 'awaiting' && (!empty($o['paid_at']) || in_array($o['status'], ['paid', 'delivered'], true)); }
 /* The one-tap buttons that work on an order now: paid (unpaid cash orders), deliver and cancel (pending), refund (paid or delivered online orders). */

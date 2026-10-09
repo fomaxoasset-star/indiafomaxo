@@ -135,6 +135,20 @@ function markSent(btn, day) {
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
+  /* Trash: Select all and the ticks light "Put back selected (N)", which asks before putting them back */
+  document.querySelectorAll('.trform').forEach(function (f) {
+    var all = f.querySelector('[data-trall]'), b = f.querySelector('[data-trsel]'), bx = [].slice.call(f.querySelectorAll('input[name="nos[]"]'));
+    if (!all || !b) return;
+    var up = function () {
+      var n = bx.filter(function (x) { return x.checked; }).length;
+      b.disabled = !n; b.textContent = 'Put back selected (' + n + ')'; b.dataset.confirm = 'Put back ' + n + ' order' + (n === 1 ? '' : 's') + '?';
+      all.checked = n > 0 && n === bx.length; all.indeterminate = n > 0 && n < bx.length;
+    };
+    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked; }); up(); });
+    bx.forEach(function (x) { x.addEventListener('change', up); });
+    up();
+  });
+
   /* Review requests / Refill reminders: ✕ in front of a name asks first, then takes that order off the list without reloading */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-rmx]');
