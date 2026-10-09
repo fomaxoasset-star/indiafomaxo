@@ -334,6 +334,26 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 /* inside a review: the text takes the width, Helpful and a small photo sit on the right, the photo under Helpful */
 .rv-body{display:flex;align-items:flex-start;gap:14px}.rv-bt{flex:1;min-width:0}.rv-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .rv-side .rv-help{align-self:flex-end}.rv-side .rv-photos{gap:6px;flex-wrap:nowrap;justify-content:flex-end}.rv-side .rv-photos a{width:44px;height:44px}
+/* laptop: each review is short so the list fits on one screen. One line with the name, stars, date, Helpful and the small photo,
+   the words below in up to 2 lines with Read more. Phone keeps its own look */
+.rv-more{display:none}
+@media(min-width:861px){
+  .reviews{padding:56px 0}
+  .rv{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 0}
+  .rv-head,.rv-body{display:contents}
+  .rv-head b{order:1}.rv-ver{order:2}.rv>.stars{order:3;line-height:1.2}.rv-head time{order:4;margin-left:auto}
+  .rv-side{order:5;flex-direction:row;align-items:center;gap:8px}
+  .rv-bt{order:6;flex:0 0 100%}.rv>.rv-reply{order:7;flex:0 0 100%}
+  .rv-side .rv-help{padding:4px 9px;font-size:10px}.rv-side .rv-photos a{width:30px;height:30px}
+  .rv-bt:empty{display:none}
+  .rv-text{font-size:17px;line-height:1.45;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  .rv.open .rv-text{display:block;-webkit-line-clamp:unset}
+  .rv-more{display:inline-block;margin-top:2px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-hi);border-bottom:1px solid currentColor;padding:0 0 1px}
+  .rv-more[hidden]{display:none}
+  .rv>.rv-reply{padding:8px 14px;margin:4px 0 0}.rv>.rv-reply b{margin-bottom:2px}.rv>.rv-reply p{font-size:13.5px;line-height:1.5;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.rv.open>.rv-reply p{display:block}
+  .reviews .rv-gal-row button{flex-basis:84px;width:84px;height:84px}
+  .rv-pager{padding:16px 0 0}.rv-arrow{width:40px;height:40px;font-size:23px}
+}
 .rv-gal{display:flex;flex-direction:column;gap:4px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .rv-gal[hidden]{display:none}
 .rv-gal-h{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);line-height:1.5}
@@ -4107,12 +4127,14 @@ function rvPlace(r){
   const n = rvNation(r.country), parts = [rvCap(r.city), n ? `<span class="rv-flag" title="${esc(n[0])}" role="img" aria-label="${esc(n[0])}">${rvFlag(n[1])}</span>` : rvCap(r.country)].filter(Boolean);
   return parts.length ? `<span class="rv-from"> — ${parts.map((x, i) => i === 0 && r.city ? esc(x) : (n ? x : esc(x))).join(', ')}</span>` : '';
 }
+/* empty lines between the words are dropped, so a review never shows big gaps */
+const rvTidy = t => String(t).replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim();
 function rvItem(r){
   const voted = rvVoted.includes(r.id);
   return `<article class="rv">
     <div class="rv-head"><b>${esc(rvCap(r.name))}${rvPlace(r)}</b>${r.verified ? '<span class="rv-ver">✓ Verified Purchaser</span>' : ''}<time>${rvDate(r.date)}</time></div>
     ${rvStars(r.rating)}
-    <div class="rv-body"><div class="rv-bt">${r.text ? `<p class="rv-text">“${esc(r.text)}”</p>` : ''}</div>
+    <div class="rv-body"><div class="rv-bt">${r.text ? `<p class="rv-text">“${esc(rvTidy(r.text))}”</p><button class="rv-more" type="button" hidden>Read more</button>` : ''}</div>
       <div class="rv-side"><button class="rv-help${voted ? ' on' : ''}" type="button" data-help="${r.id}"${voted ? ' disabled' : ''}>Helpful${r.helpful ? ` (${r.helpful})` : ''}</button>
       ${r.photos.length ? `<div class="rv-photos">${r.photos.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener" data-rvp="${r.id}:${i}"><img src="${esc(u)}" alt="Customer photo" loading="lazy"></a>`).join('')}</div>` : ''}</div></div>
     ${r.reply ? `<div class="rv-reply"><b>Reply from FOMAXO</b><p>${esc(r.reply).replace(/\n/g, '<br>')}</p></div>` : ''}
@@ -4177,6 +4199,9 @@ function bindReviews(p){
   const pages = () => Math.max(1, Math.ceil(all.length / PER));
   function show(){
     list.innerHTML = all.slice(page * PER, page * PER + PER).map(rvItem).join('');
+    /* laptop: Read more only under words (or a reply) that are cut at 2 lines */
+    const cut = el => el && el.scrollHeight > el.clientHeight + 2;
+    $$('.rv-more', list).forEach(m => { const rv = m.closest('.rv'); m.hidden = !cut($('.rv-text', rv)) && !cut($('.rv-reply p', rv)); });
     pager.hidden = all.length <= PER;
     $('#rvPgInfo').textContent = `${page * PER + 1}–${Math.min(all.length, page * PER + PER)} of ${all.length}`;
     $('[data-pg="-1"]', pager).disabled = page === 0; $('[data-pg="1"]', pager).disabled = page >= pages() - 1;
@@ -4185,6 +4210,7 @@ function bindReviews(p){
     const to = Math.max(0, Math.min(pages() - 1, page + n)); if (to === page) return; page = to; show();
     const t = $('#rvCount').getBoundingClientRect().top; if (t < 0) $('#rvCount').scrollIntoView({behavior: 'smooth', block: 'start'});
   };
+  list.addEventListener('click', e => { const m = e.target.closest('.rv-more'); if (!m) return; const rv = m.closest('.rv'), o = rv.classList.toggle('open'); m.textContent = o ? 'Show less' : 'Read more'; });
   pager.onclick = e => { const b = e.target.closest('[data-pg]'); if (b && !b.disabled) go(+b.dataset.pg); };
   let tx = null, ty = 0;
   list.addEventListener('touchstart', e => { if (all.length > PER) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, {passive: true});
