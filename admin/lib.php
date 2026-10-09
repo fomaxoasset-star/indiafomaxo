@@ -537,6 +537,18 @@ function wa_btn(string $phone, string $who, string $head, string $tail = "\n\nTh
   return '<button type="button" class="' . $cls . '" data-wabox data-phone="' . $ph . '" data-who="' . h($who) . '" data-head="' . h($head) . '" data-tail="' . h($tail) . '"'
     . ($mark !== '' ? ' data-mark="' . h($mark) . '"' : '') . ($nocoupon ? ' data-nocoupon' : '') . ' title="Send on WhatsApp">' . WA_SVG . '<span>' . h($label) . '</span></button>';
 }
+/* when a WhatsApp was last sent from the admin to a mobile (ph:<mobile>) or a Left at checkout line (lt:<sid>): Sent dd/mm inside its button */
+function wa_sent_all(): array { static $s = null; return $s ??= json_decode((string)shop_setting('wa_sent'), true) ?: []; }
+function wa_sent_day(string $key): string { $d = wa_sent_all()[$key] ?? ''; return $d !== '' ? date('d/m', strtotime($d)) : ''; }
+function wa_sent_set(string $key): void {
+  $s = array_filter(json_decode((string)shop_setting('wa_sent'), true) ?: [], fn($d) => $d >= date('Y-m-d', strtotime('-400 days')));
+  $s[$key] = date('Y-m-d'); shop_set('wa_sent', json_encode($s));
+}
+/* a button for a mobile: WhatsApp, or Sent dd/mm (outlined) once sent; it opens the box again either way */
+function wa_btn_ph(string $phone, string $who, string $head, string $cls = 'btn sm wag'): string {
+  $ph = coupon_phone($phone); $sd = wa_sent_day('ph:' . $ph);
+  return wa_btn($ph, $who, $head, "\n\nThank you,\nFOMAXO", 'ph:' . $ph, $sd !== '' ? 'Sent ' . $sd : 'WhatsApp', $cls . ($sd !== '' ? (str_contains($cls, 'rqwa') ? ' done' : ' line') : ''));
+}
 /* the usual opening: Hi First, This is FOMAXO (about your order NO) */
 function wa_hello(string $name, string $no = ''): string {
   $f = first_name($name);

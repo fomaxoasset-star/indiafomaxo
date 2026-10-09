@@ -599,3 +599,8 @@ body.zooming{overflow:hidden}
 /* the shared WhatsApp box: a coupon's own message has no coupon choice; WhatsApp buttons are <button>s */
 .ltwa.noc :is(label:has(.ltwa-kind),.ltwa-val,.ltwa-free,.ltwa-min,.ltwa-note){display:none!important}
 button.rqwa,button[data-wabox]{font-family:inherit;cursor:pointer}.btn.wag{gap:6px}.btn.xs.wag{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;margin-left:6px}.btn.xs.wag svg{width:13px;height:13px}
+.lt-wa .btn.line,.ltwa-x{background:transparent!important;color:#25D366!important}
+@media(max-width:620px){.rvwa .btn.line{width:auto;padding:0 8px}.rvwa .btn.line>span{display:inline;font-size:11px}}
+/* phone: a sent button in a narrow column keeps its size and shows Sent over dd/mm instead of the logo */
+@media(max-width:760px){.mlist .mwa.line{width:44px;padding:0 2px;justify-content:center}.mlist .mwa.line svg{display:none}.mlist .mwa.line span{display:block;white-space:normal;font-size:10.5px;line-height:1.15;text-align:center}}
+@media(max-width:820px){.lt .lt-wa .btn.line{padding:0 2px}.lt .lt-wa .btn.line svg{display:none}.lt .lt-wa .btn.line span{display:block;white-space:normal;font-size:10.5px;line-height:1.15;text-align:center}}

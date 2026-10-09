@@ -22,6 +22,7 @@ function rq_code(string $phone): string { return fixed_code('REVIEW-', 'review|'
    (single use, only with this customer's mobile, no end date). A code already saved for them is left as it is. */
 function rq_mark(string $no, string $how = 'tap'): void {
   $sent = json_decode((string)shop_setting('rvreq_sent'), true) ?: [];
+  if (isset($sent[$no]) && $how === 'tap') { $sent[$no] = date('Y-m-d'); shop_set('rvreq_sent', json_encode($sent)); return; }   // sent again from the admin: the new date
   if (isset($sent[$no])) return;   // one request per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $set = rq_set();

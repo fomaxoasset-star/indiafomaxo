@@ -86,8 +86,8 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     $p = rq_parts($o); $ph = coupon_phone((string)$o['phone']); $a = $asked[$o['no']] ?? null;
     if ($o['sent'] && !$a) continue;   // asked long ago and never reviewed: removed after the set days
     $act = $o['stopped'] ? '<span class="rstop" title="Replied STOP on WhatsApp">Stopped</span>'
-      : ($a ? rq_badge($a) : '') . ($o['sent'] ? '<span class="rsent">' . ($o['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($o['sent']))) . '</span>' : '')
-        . wa_btn((string)$o['phone'], (string)$o['name'], rq_head($p), rq_tail(), 'rq:' . $o['no'], 'WhatsApp', 'btn sm wag' . ($o['sent'] ? ' line' : ''));
+      : ($a ? rq_badge($a) : '')   // once sent, the button says Sent dd/mm (sent by itself: the same, its tooltip says so)
+        . str_replace('title="Send on WhatsApp"', 'title="' . ($o['sent'] && $o['auto'] ? 'Sent by itself' : 'Send on WhatsApp') . '"', wa_btn((string)$o['phone'], (string)$o['name'], rq_head($p), rq_tail(), 'rq:' . $o['no'], $o['sent'] ? 'Sent ' . date('d/m', strtotime($o['sent'])) : 'WhatsApp', 'btn sm wag' . ($o['sent'] ? ' line' : '')));
     $rows .= '<tr data-st="' . ($a ? rq_state($a) : 'ask') . '"' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td>' . $rmX('ask', $o) . '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
       . '<small>' . h(phone_fmt($ph)) . ' · ' . h($p['perfumes']) . '</small></td>'
       . '<td class="nw"><b>' . $o['days'] . ' days</b><small>' . h(date('d/m/Y', strtotime((string)$o['created']))) . ' · ' . h($o['no']) . '</small></td><td class="r nw ra">' . $act . '</td></tr>';
@@ -99,7 +99,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     $p = rq_parts($a);
     $rows .= '<tr data-st="' . rq_state($a) . '" class="dim2"><td>' . $rmX('ask', $a) . '<a href="' . h(self_url(['tab' => 'members', 'c' => 'm:' . coupon_phone((string)$a['phone'])])) . '"><b>' . h($a['name'] ?: 'No name') . '</b></a><small>' . h(phone_fmt(coupon_phone((string)$a['phone']))) . ' · ' . h($p['perfumes']) . '</small></td>'
       . '<td class="nw"><b>' . h(date('d/m/Y', strtotime((string)$a['created']))) . '</b><small>' . h($no) . '</small></td>'
-      . '<td class="r nw ra">' . rq_badge($a) . '<span class="rsent">' . ($a['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($a['sent']))) . '</span></td></tr>';
+      . '<td class="r nw ra">' . rq_badge($a) . str_replace('title="Send on WhatsApp"', 'title="' . ($a['auto'] ? 'Sent by itself' : 'Send on WhatsApp') . '"', wa_btn((string)$a['phone'], (string)$a['name'], rq_head($p), rq_tail(), 'rq:' . $no, 'Sent ' . date('d/m', strtotime($a['sent'])), 'btn sm wag line')) . '</td></tr>';
   }
   $body .= '<div class="seg rqseg" role="group" aria-label="Show">' . implode('', array_map(fn($k, $l) => '<button type="button" data-rqf="' . $k . '"' . ($k === '' ? ' class="on"' : '') . '>' . $l . '</button>',
     ['', 'rv', 'part', 'not', 'ask'], ['All', 'Reviewed ' . ($st['rv'] ?? 0), 'Partly ' . ($st['part'] ?? 0), 'Not reviewed ' . ($st['not'] ?? 0), 'To ask&nbsp;<span data-rqn="ask">' . $open . '</span>'])) . '</div>';
@@ -140,10 +140,10 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     foreach ($due as $k => $o) {
       $p = refill_parts($o); $ph = coupon_phone((string)$o['phone']);
       $act = $o['stopped'] ? '<span class="rstop" title="Replied STOP on WhatsApp">Stopped</span>'
-        : ($o['sent'] ? '<span class="rsent">' . ($o['auto'] ? 'Sent by itself ' : 'Sent ') . h(date('d/m', strtotime($o['sent']))) . '</span>'
+        : ($o['sent'] ? ''
           : '<span class="rdue" title="' . $tm['days'] . ' days after the order (Days after order)">' . ($o['days'] >= $tm['days'] ? 'Reminder due' : 'Reminder ' . h(date('d/m', strtotime(substr((string)$o['created'], 0, 10) . ' +' . $tm['days'] . ' days')))) . '</span>')
           . '<button type="button" class="btn sm' . ($o['sent'] ? ' line' : '') . '" data-rf="' . h($o['no']) . '" data-phone="' . h($ph) . '" data-who="' . h($o['name'] ?: phone_fmt($ph)) . '"'
-          . ' data-first="' . h($p['first'] !== '' ? $p['first'] : 'there') . '" data-perfumes="' . h($p['perfumes']) . '" data-days="' . $p['days'] . '" data-review="' . h((string)$p['review']) . '">WhatsApp</button>';
+          . ' data-first="' . h($p['first'] !== '' ? $p['first'] : 'there') . '" data-perfumes="' . h($p['perfumes']) . '" data-days="' . $p['days'] . '" data-review="' . h((string)$p['review']) . '"' . ($o['sent'] && $o['auto'] ? ' title="Sent by itself"' : '') . '>' . WA_SVG . '<span>' . ($o['sent'] ? 'Sent ' . h(date('d/m', strtotime($o['sent']))) : 'WhatsApp') . '</span></button>';
       $body .= '<tr' . ($o['sent'] || $o['stopped'] ? ' class="dim2"' : '') . '><td>' . $rmX('refill', $o) . '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '"><b>' . h($o['name'] ?: 'No name') . '</b></a>' . ($o['optin'] ? '<span class="wtag" title="Ticked at checkout: send me order updates and offers on WhatsApp">WhatsApp ✓</span>' : '')
         . '<small>' . h(phone_fmt($ph)) . ' · ' . h($p['perfumes']) . '</small></td>'
         . '<td class="nw"><b>' . $o['days'] . ' days</b><small>' . h(date('d/m/Y', strtotime((string)$o['created']))) . ' · ' . h($o['no']) . '</small></td><td class="r nw ra">' . $act . '</td></tr>';
@@ -161,7 +161,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $waBtn = function (array $o) use ($rqSent): string {
     if (coupon_phone((string)$o['phone']) === '') return '';
     if ($o['no'] === '' || !preg_match('/^[a-f0-9]{32}$/', (string)$o['review']))
-      return wa_btn((string)$o['phone'], (string)$o['name'], order_hello($o), "\n\nThank you,\nFOMAXO", '', 'WhatsApp', 'rqwa');
+      return wa_btn_ph((string)$o['phone'], (string)$o['name'], order_hello($o), 'rqwa');
     $sd = (string)($rqSent[$o['no']] ?? '');
     return wa_btn((string)$o['phone'], (string)$o['name'], rq_head(rq_parts($o)), rq_tail(), 'rq:' . $o['no'], $sd !== '' ? 'Sent ' . date('d/m', strtotime(substr($sd, 0, 10))) : 'WhatsApp', 'rqwa' . ($sd !== '' ? ' done' : ''));
   };
@@ -224,7 +224,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     foreach ($items as $it) $body .= '<div class="li">' . $thumbOf((string)($it['id'] ?? ''), 'th sm') . '<span class="grow"><b>' . h($it['name'] ?? $it['id'] ?? '') . '</b><small>' . (int)($it['qty'] ?? 0) . ' × ' . (!empty($it['free']) ? '<b class="cfree">Free</b>' : rupees((int)($it['unit'] ?? 0))) . ($it['desc'] ?? '' ? ' · ' . h($it['desc']) : '') . '</small></span></div>';
     $body .= ($o['coupon'] !== '' ? '<p class="small muted">Coupon <b class="cpn">' . h($o['coupon']) . '</b> −' . rupees((int)$o['discount']) . '</p>' : '')
       . ($o['cod_fee'] ? '<p class="small muted">Cash on delivery fee ' . rupees((int)$o['cod_fee']) . '</p>' : '') . '<p><b>Total ' . rupees((int)$o['total']) . '</b></p></div>'
-      . '<div><h4>Delivery</h4><p>' . h($o['name']) . '<br>' . h($o['address']) . '</p><p><a href="tel:' . h(preg_replace('/[^0-9+]/', '', $o['phone'])) . '">' . h($o['phone']) . '</a> ' . wa_btn((string)$o['phone'], (string)$o['name'], order_hello($o), "\n\nThank you,\nFOMAXO", '', 'WhatsApp', 'btn xs wag') . '<br><a href="mailto:' . h($o['email']) . '">' . h($o['email']) . '</a></p>'
+      . '<div><h4>Delivery</h4><p>' . h($o['name']) . '<br>' . h($o['address']) . '</p><p><a href="tel:' . h(preg_replace('/[^0-9+]/', '', $o['phone'])) . '">' . h($o['phone']) . '</a> ' . wa_btn_ph((string)$o['phone'], (string)$o['name'], order_hello($o), 'btn xs wag') . '<br><a href="mailto:' . h($o['email']) . '">' . h($o['email']) . '</a></p>'
       . '<p class="small ' . ((int)($o['wa_optin'] ?? 0) ? 'wa-in">✓ Wants order updates and offers on WhatsApp' : 'muted">Did not tick WhatsApp offers') . '</p>'
       . ($o['note'] ? '<p class="muted">Customer note: ' . h($o['note']) . '</p>' : '') . '</div>'
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
@@ -415,7 +415,7 @@ if ($tab === 'offer') {
 $ckey = (string)($_GET['c'] ?? '');
 if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
   /* the customer page */
-  $W = $C['web']; $wa = fn(string $cls) => wa_btn((string)$C['phone'], (string)$C['name'], wa_hello((string)$C['name']), "\n\nThank you,\nFOMAXO", '', 'WhatsApp', $cls);
+  $W = $C['web']; $wa = fn(string $cls) => wa_btn_ph((string)$C['phone'], (string)$C['name'], wa_hello((string)$C['name']), $cls);
   $dt = fn($s) => $s ? h(date('d M Y', is_int($s) ? $s : strtotime($s))) : '—';
   $body .= '<div class="row ctop"><a class="btn line sm" href="' . h(self_url(['tab' => 'members'])) . '">‹ Members</a><h2>' . h($C['name']) . '</h2><span class="muted">' . h(phone_fmt($C['phone']) ?: $C['email']) . '</span><span class="sp"></span>'
     . $wa('btn sm wag') . '</div>';
@@ -483,7 +483,7 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
       $body .= '<tr data-href="' . $url . '"><td><a href="' . $url . '"><b>' . h($m['name']) . '</b></a><small class="show-m">' . h(implode(' · ', array_filter([$m['phone'] ? phone_fmt($m['phone']) : '', $m['state']]))) . '</small></td>'
         . '<td class="hide-m">' . ($m['phone'] ? h(phone_fmt($m['phone'])) : '—') . '</td>'
         . '<td class="hide-m">' . h($m['email']) . '</td><td class="hide-m"><span class="clip">' . h($m['address']) . '</span></td><td class="r">' . $m['count'] . '</td><td class="r"><b>' . rupees($m['spent']) . '</b></td>'
-        . '<td class="r">' . wa_btn((string)$m['phone'], (string)$m['name'], wa_hello((string)$m['name']), "\n\nThank you,\nFOMAXO", '', 'WhatsApp', 'btn sm wag mwa') . '</td></tr>';
+        . '<td class="r">' . wa_btn_ph((string)$m['phone'], (string)$m['name'], wa_hello((string)$m['name']), 'btn sm wag mwa') . '</td></tr>';
     }
     $body .= '</tbody></table><script>document.querySelectorAll("tr[data-href]").forEach(function(r){r.onclick=function(e){if(!e.target.closest("a,button"))location.href=r.dataset.href}})</script>';
   }
@@ -707,7 +707,7 @@ if ($tab === 'analytics' && !$cv) {
       . '<span class="lt-date nw">' . h(date('d M, H:i', strtotime($l['updated']))) . '</span><b class="lt-name">' . h($l['name'] ?: '—') . '</b><span class="lt-state">' . h($l['state'] ?: '—') . '</span>'
       . '<span class="lt-bag r nw">' . rupees((int)$l['total']) . '</span><span class="lt-step">' . ($l['step'] === 'payment' ? '<span class="badge st-cancelled">At payment</span>' : '<span class="badge st-new">At details</span>') . '</span>'
       . '<span class="lt-later">' . $later . '</span>'
-      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm" data-ltwa data-phone="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-head="' . h(lead_wa_parts($l)[0]) . '" data-tail="' . h(lead_wa_parts($l)[1]) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . ' with a link back to their bag">' . WA_SVG . '<span>WhatsApp</span></button>' : '') . '</span>'
+      . '<span class="lt-wa">' . (preg_match('/^[6-9]\d{9}$/', (string)$l['phone']) ? '<button type="button" class="btn sm' . (($ltd = wa_sent_day('lt:' . $l['sid'])) !== '' ? ' line' : '') . '" data-ltwa data-sid="' . h($l['sid']) . '" data-phone="' . h($l['phone']) . '" data-who="' . h($l['name'] ?: phone_fmt($l['phone'])) . '" data-head="' . h(lead_wa_parts($l)[0]) . '" data-tail="' . h(lead_wa_parts($l)[1]) . '" title="WhatsApp ' . h($l['name'] ?: phone_fmt($l['phone'])) . ' with a link back to their bag">' . WA_SVG . '<span>' . ($ltd !== '' ? 'Sent ' . $ltd : 'WhatsApp') . '</span></button>' : '') . '</span>'
       . '<span class="lt-chev" aria-hidden="true"></span></summary>'
       . '<div class="lt-more"><dl>'
       . '<dt>Date</dt><dd>' . h(date('d M Y, H:i', strtotime($l['updated']))) . '</dd>'
@@ -798,8 +798,7 @@ if ($tab === 'reviews') {
     $live = $r['status'] === 'live';
     /* a 1–3 star review from a customer whose mobile we have: WhatsApp them an apology, with a coupon or not (the WhatsApp box, admin.js); a green button at the end of the stars line */
     $issue = ['late' => 'Late delivery', 'faulty' => 'Faulty product', 'bad' => 'Bad product'][$r['issue'] ?? ''] ?? '';   // picked on the review form, or read from a 1–3 star review's words (late / faulty: a coupon is owed); any other 1–3 stars: bad product
-    $rvWa = ((int)round((float)$r['rating']) <= 3 || $issue !== '') && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? (isset($rvSent[$r['id']]) ? '<span class="rsent">Sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) . '</span>' : '')
-      . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(first_name((string)$r['name'])) . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-issue="' . h($r['issue'] ?? '') . '" data-photo="' . (json_decode((string)$r['photos'], true) ? '1' : '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
+    $rvWa = ((int)round((float)$r['rating']) <= 3 || $issue !== '') && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(first_name((string)$r['name'])) . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-issue="' . h($r['issue'] ?? '') . '" data-photo="' . (json_decode((string)$r['photos'], true) ? '1' : '') . '">' . WA_SVG . '<span>' . (isset($rvSent[$r['id']]) ? 'Sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) : 'WhatsApp') . '</span></button>' : '';
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . (($r['issue'] ?? '') !== '' ? ' rv-' . h($r['issue']) : '') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
       . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($issue !== '' ? '<span class="badge st-cancelled ib-' . h($r['issue']) . '">' . $issue . '</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Hidden</span>' : '')) . ($rvWa !== '' ? '<span class="rvwa">' . $rvWa . '</span>' : '') . '</div>'
