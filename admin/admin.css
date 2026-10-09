@@ -252,8 +252,8 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
 /* Reviews: a faulty product review has a red edge, a late delivery an amber one; the chips and tags match */
 .revs .rv{padding-left:12px;border-left:3px solid transparent}.revs .rv.rv-faulty{border-left-color:#d0644e}.revs .rv.rv-late{border-left-color:#e0a03a}
 .rv .badge.ib-late{color:#e0a03a;border-color:#e0a03a}
-.rvwa{margin-left:auto;display:flex;align-items:center;gap:0}.rvwa .btn{height:32px;min-height:32px;background:#25d366;border-color:#25d366;color:#fff;cursor:pointer}.rvwa .btn:hover{background:#1ebe5b;border-color:#1ebe5b}
-.rvwa .btn.line{background:transparent;color:#1faa52;border-color:#25d366}.rvwa .btn.line:hover{background:rgba(37,211,102,.12)}
+.rvwa{margin-left:auto;display:flex;align-items:center;gap:0}.rvwa .btn{height:32px;min-height:32px;background:var(--green);border-color:var(--green);color:var(--bg);cursor:pointer}.rvwa .btn:hover{opacity:.88}
+.rvwa .btn.line{background:transparent;color:var(--green);border-color:var(--green)}
 @media(max-width:620px){.rvwa .btn>span{display:none}.rvwa .btn{width:34px;padding:0}.rvwa .rsent{font-size:11px;margin-right:6px}}   /* phone: the green WhatsApp logo alone, so it stays on the stars line */
 .chip.ck-faulty::before,.chip.ck-late::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0644e;margin-right:6px;display:inline-block;vertical-align:1px}.chip.ck-late::before{background:#e0a03a}
 .mtabs{display:none;gap:2px;overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}.mtabs a{display:flex;align-items:center;padding:0 10px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:13px}.mtabs a.on{color:var(--gold2);border-color:var(--gold)}
