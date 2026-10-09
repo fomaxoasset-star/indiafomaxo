@@ -509,21 +509,40 @@ function coupon_wa_text(array $c, string $intro, array $extra = []): string {
   return "Hi,$n2$intro{$n2}Your code:\n*{$c['code']}*" . ($details ? $n2 . implode("\n", $details) : '')
     . "{$n2}Type the code at checkout on our website:\nhttps://fomaxo.in{$n2}Thank you,\n*FOMAXO*";
 }
-/* the WhatsApp link that sends a goodwill coupon to its customer, with a ready message */
-function goodwill_wa(array $c): string {
-  return wa_link((string)$c['phone'], coupon_wa_text($c,
+/* the WhatsApp message that sends a goodwill coupon to its customer */
+function goodwill_text(array $c): string {
+  return coupon_wa_text($c,
     'We are sorry about your last order. As a goodwill gesture, here is ' . ($c['kind'] === 'free' ? 'a *free ' . coupon_free_name($c) . '* with your next order.' : '*' . coupon_label($c) . '* your next order.'),
-    ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]));
+    ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]);
 }
+function goodwill_wa(array $c): string { return wa_link((string)$c['phone'], goodwill_text($c)); }
 
 /* the WhatsApp message that shares a coupon: WhatsApp opens and the owner picks the customer */
-function coupon_wa(array $c): string {
+function coupon_share_text(array $c): string {
   $min = (int)$c['min_order'];
   $intro = $c['kind'] === 'free'
     ? ($min ? 'Shop for *' . rupees($min) . '* or more and get a *free ' . coupon_free_name($c) . '* with your order.' : 'Here is a *free ' . coupon_free_name($c) . '* with your next order.')
     : 'Here is *' . coupon_label($c) . '* your next order.';
-  return 'https://wa.me/?text=' . rawurlencode(coupon_wa_text($c, $intro, [!empty($c['per_cust']) ? 'One use per customer.' : '']));
+  return coupon_wa_text($c, $intro, [!empty($c['per_cust']) ? 'One use per customer.' : '']);
 }
+function coupon_wa(array $c): string { return 'https://wa.me/?text=' . rawurlencode(coupon_share_text($c)); }
+
+/* Every other admin WhatsApp button (Orders, an order, Review requests, Members, a customer, Coupons) opens the one shared box (gWa, admin.js):
+   the ready message ($head, then the coupon lines if one is picked, then $tail) to change if you like, and a coupon choice that makes a new
+   THANKS- code for this mobile only (one use) when Open WhatsApp is tapped. $mark: what the server notes as sent (rq:<order no>, cp:<coupon code>);
+   $nocoupon: the message already carries a coupon (Coupons page), so no choice. Shown only with a mobile, unless $nocoupon (WhatsApp then asks who). */
+function wa_btn(string $phone, string $who, string $head, string $tail = "\n\nThank you,\nFOMAXO", string $mark = '', string $label = 'WhatsApp', string $cls = 'btn sm wag', bool $nocoupon = false): string {
+  $ph = coupon_phone($phone);
+  if (!preg_match('/^[6-9]\d{9}$/', $ph)) { if (!$nocoupon) return ''; $ph = ''; }
+  return '<button type="button" class="' . $cls . '" data-wabox data-phone="' . $ph . '" data-who="' . h($who) . '" data-head="' . h($head) . '" data-tail="' . h($tail) . '"'
+    . ($mark !== '' ? ' data-mark="' . h($mark) . '"' : '') . ($nocoupon ? ' data-nocoupon' : '') . ' title="Send on WhatsApp">' . WA_SVG . '<span>' . h($label) . '</span></button>';
+}
+/* the usual opening: Hi First, This is FOMAXO (about your order NO) */
+function wa_hello(string $name, string $no = ''): string {
+  $f = first_name($name);
+  return 'Hi ' . ($f !== '' ? $f : 'there') . ",\n\nThis is FOMAXO" . ($no !== '' ? ' about your order ' . $no : '') . '.';
+}
+function order_hello(array $o): string { return wa_hello((string)$o['name'], (string)$o['no']); }
 
 /* ---------------- members (repeat customers) ---------------- */
 function member_min(): int { return max(1, min(999, (int)(shop_setting('member_min') ?? '5'))); }

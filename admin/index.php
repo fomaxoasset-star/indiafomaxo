@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '75';
+const ASSET_V = '76';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -240,6 +240,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sent = array_filter($sent, fn($d) => $d >= date('Y-m-d', strtotime('-400 days'))); $sent[$code] = date('Y-m-d'); shop_set('coupon_wa', json_encode($sent));
     header('Content-Type: application/json'); echo json_encode(['ok' => true, 'day' => date('d/m')]); exit;
   }
+  if ($a === 'wa_coupon') {   // Open WhatsApp in the shared box (admin.js gWa, without reloading): with a coupon picked, a new THANKS- code for this mobile only
+    header('Content-Type: application/json');   // (one use); then the review request (rq:<order no>) or the coupon (cp:<code>) shows Sent dd/mm
+    $code = '';
+    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
+      $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('THANKS-');
+      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
+    }
+    [$mk, $mv] = explode(':', (string)($_POST['mark'] ?? ''), 2) + ['', ''];
+    if ($mk === 'rq' && preg_match('/^FMX-IN-\d+$/', $mv)) { require_once dirname(__DIR__) . '/api/review-req-lib.php'; rq_mark($mv); }
+    if ($mk === 'cp' && ($mv = coupon_clean($mv)) !== '') {
+      $sent = json_decode((string)shop_setting('coupon_wa'), true) ?: [];
+      $sent = array_filter($sent, fn($d) => $d >= date('Y-m-d', strtotime('-400 days'))); $sent[$mv] = date('Y-m-d'); shop_set('coupon_wa', json_encode($sent));
+    }
+    echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
+  }
   if ($a === 'coupon_on') {
     $code = coupon_clean((string)($_POST['code'] ?? '')); $on = ($_POST['on'] ?? '') === '1';
     shop_db()->prepare('UPDATE coupons SET active = ? WHERE code = ?')->execute([$on ? 1 : 0, $code]);
@@ -454,4 +469,5 @@ $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '">
 $thumbOf = fn(string $id, string $cls = 'th') => thumb($CAT[$id] ?? null, $cls);
 $orderThumb = function (array $o) use ($thumbOf) { $it = (json_decode((string)$o['items'], true) ?: [])[0] ?? []; return $thumbOf((string)($it['id'] ?? ''), 'th sm'); };
 require __DIR__ . '/pages.php';
+if (str_contains($body, 'data-wabox')) $body .= wa_box('gWa', 'gwfree', '', 10, 0, 'A new THANKS- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');   // the shared WhatsApp box
 page(html_entity_decode($tabs[$tab]), $body, true, $tab, $tabs);

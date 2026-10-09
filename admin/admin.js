@@ -134,13 +134,6 @@ function markSent(btn, day) {
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
-  /* Coupons: WhatsApp on a row opens the chat and notes the day; the button then says Sent dd/mm */
-  document.addEventListener('click', function (e) {
-    var a = e.target.closest && e.target.closest('[data-cpwa]');
-    if (!a) return;
-    postAction(a, {action: 'coupon_wa', code: a.dataset.cpwa}).then(function (j) { if (j && j.ok) { a.querySelector('span').textContent = 'Sent ' + j.day; a.classList.add('line'); } }).catch(function () {});
-  });
-
   /* Review requests / Refill reminders: ✕ in front of a name asks first, then takes that order off the list without reloading */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-rmx]');
@@ -604,12 +597,13 @@ function waBox(id, sel, o) {
       gift: k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || PCT) + '% off' : '₹' + (v || 200) + ' off') + '*',
       min: m ? ' of ₹' + m.toLocaleString('en-IN') + ' or more' : ''} : null);
   }
-  function wa(t) { return 'https://wa.me/91' + btn.dataset.phone + '?text=' + encodeURIComponent(t); }
+  function wa(t) { return 'https://wa.me/' + (btn.dataset.phone ? '91' + btn.dataset.phone : '') + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest(sel); if (!b) return;
     e.preventDefault(); e.stopPropagation();   // a Left at checkout button sits in the line's summary: don't open the line
     btn = b; q('.ltwa-who').textContent = b.dataset.who;
-    kind.value = K0; val.value = ''; min.value = dlg.dataset.min || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+    var noc = b.hasAttribute('data-nocoupon'); dlg.classList.toggle('noc', noc);   // the message already carries its coupon: no choice
+    kind.value = noc ? '' : K0; val.value = ''; min.value = dlg.dataset.min || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
   });
   kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); free.addEventListener('change', build);
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
@@ -677,6 +671,24 @@ waBox('rvWa', '[data-rvwa]', {
   done: function (d, btn) { markSent(btn, d.day); }
 });
 
+/* Every other WhatsApp button (Orders, an order, Review requests, Members, a customer, Coupons): its ready message to change if you like, and
+   No coupon (picked first) or % off / ₹ off / a free product, for which a new THANKS- code is made for that mobile only (one use) on Open WhatsApp.
+   Review requests and Coupons then show Sent dd/mm. */
+waBox('gWa', '[data-wabox]', {
+  action: 'wa_coupon', always: true,
+  fields: function (d) { return {phone: d.phone || '', mark: d.mark || ''}; },
+  text: function (d, c) {
+    return d.head + (c ? '\n\nAs a thank you, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use, with this mobile number):\n\n*[CODE]*\n\nType the code at checkout on our website:\nhttps://fomaxo.in' : '') + d.tail;
+  },
+  done: function (d, btn) {
+    if (!btn.dataset.mark || !d.day) return;
+    if (btn.classList.contains('rqwa') || btn.classList.contains('sry-wa')) { btn.classList.add(btn.classList.contains('rqwa') ? 'done' : 'line'); btn.lastChild.textContent = 'Sent ' + d.day; return; }   // Sent dd/mm inside the button
+    var first = !btn.classList.contains('line'); markSent(btn, d.day);
+    var tr = btn.closest('.rqlist tr');
+    if (tr && first) { tr.classList.add('dim2'); [['todo', -1], ['ask', -1], ['sent', 1]].forEach(function (x) { var n = document.querySelector('[data-rqn="' + x[0] + '"]'); if (n) n.textContent = Math.max(0, +n.textContent + x[1]); }); }
+  }
+});
+
 /* Coupons: picking Free product on a new coupon ticks One use per customer */
 document.addEventListener('change', function (e) {
   var r = e.target;
@@ -730,22 +742,6 @@ document.addEventListener('click', function (e) {
 })();
 
 
-/* Review requests: the WhatsApp button (on Review requests, or the green Review button at the end of a due order) opens WhatsApp with the ready
-   message itself (a plain link); this marks the order Sent on the server without reloading, and never opens the order */
-document.addEventListener('click', function (e) {
-  var a = e.target.closest && e.target.closest('[data-rq]'); if (!a) return;
-  e.stopPropagation();
-  var first = !a.classList.contains('line') && !a.classList.contains('done');
-  postAction(a, {action: 'rq_sent', no: a.dataset.rq}).then(function (d) {
-    if (!d.ok) return;
-    if (a.classList.contains('rqwa')) { a.classList.add('done'); a.lastChild.textContent = 'Sent ' + d.day; return; }
-    markSent(a, d.day);
-    if (first) {
-      var tr = a.closest('tr'); if (tr) { tr.classList.add('dim2'); }
-      [['todo', -1], ['ask', -1], ['sent', 1]].forEach(function (x) { var n = document.querySelector('[data-rqn="' + x[0] + '"]'); if (n) n.textContent = Math.max(0, +n.textContent + x[1]); });
-    }
-  });
-});
 /* Review requests: All · Reviewed · Partly · Not reviewed · To ask filter the list at once */
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-rqf]'); if (!b) return;
