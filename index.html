@@ -4248,7 +4248,7 @@ function rvForm(p, token, customer){
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div></div>
     <div class="rv-c2">    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
-    ${token ? '' : '<label><span>Mobile <i>(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label>'}
+    ${token ? '' : '<label><span>Mobile <i class="rv-mob-why">(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label>'}
     <div class="rv-loc">
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
       <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
@@ -4292,7 +4292,7 @@ function bindRvForm(form, p, token, done){
     /* words about a late or faulty order with No problem picked: warned while typing, not only on Post review */
     const prob = $('.rv-prob', form), hint = $('.rv-hint', form), words = form.elements.text;
     const warn = () => { const msg = rating > 0 && rating <= 3 ? (!issue.value && RV_PROBLEM.test(words.value) ? RV_ASK : rvMismatch(issue.value, words.value)) : ''; hint.textContent = msg; hint.hidden = !msg; prob.classList.toggle('rv-need', !!msg); };
-    issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; warn(); };
+    issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; $('.rv-mob-why', form).textContent = `(${issue.value ? 'needed' : 'optional'}, only FOMAXO sees it)`; warn(); };
     words.addEventListener('input', warn);
     stars.forEach(b => b.addEventListener('click', () => {
       const low = rating <= 3; prob.hidden = !low;
