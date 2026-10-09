@@ -303,6 +303,7 @@ if ($tab === 'coupons') {
   if (!$CP) $body .= '<p class="empty">No coupons yet. Add one, like WELCOME10 for 10% off.</p>';
   else {
     $body .= '<table class="grid cpt"><thead><tr><th>Code</th><th>Discount</th><th class="hide-m">Minimum</th><th class="hide-m">Time limit</th><th class="r">Used</th><th class="r hide-m">Sales</th><th class="r hide-m">Given off</th><th></th></tr></thead><tbody>';
+    $cpSent = json_decode((string)shop_setting('coupon_wa'), true) ?: [];   // coupon code → day its WhatsApp was tapped (shows Sent dd/mm)
     foreach ($CP as $c) {
       [$sk, $sl] = $state($c);
       $wa = $goodwill($c) ? (!$c['uses'] && str_starts_with($c['code'], 'GOODWILL-') ? goodwill_wa($c) : '') : ((int)$c['active'] ? coupon_wa($c) : '');   // CART-, REFILL-, REVIEW- and COMEBACK- codes go out from their own WhatsApp messages
@@ -316,8 +317,9 @@ if ($tab === 'coupons') {
           . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>')
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
-        . '<td class="r nw"><form method="post" class="cpa">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
-        . ($wa !== '' ? '<a class="btn sm wag sry-wa" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')
+        . '<td class="r nw"><form method="post" class="cpa" data-csrf="' . h($CSRF) . '">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
+        . ($wa !== '' ? (($sd = $cpSent[$c['code']] ?? '') !== '' ? '<span class="rsent">Sent ' . h(date('d/m', strtotime($sd))) . '</span>' : '')
+          . '<a class="btn sm wag sry-wa' . ($sd !== '' ? ' line' : '') . '" data-cpwa="' . h($c['code']) . '" href="' . h($wa) . '" target="_blank" rel="noopener" title="Send on WhatsApp">' . WA_SVG . '<span>WhatsApp</span></a>' : '')
         . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'
         . (!$goodwill($c) ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons', 'edit' => $c['code']])) . '">Edit</a>' : '')
         . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';
