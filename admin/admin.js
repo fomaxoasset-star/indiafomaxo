@@ -817,7 +817,7 @@ document.addEventListener('click', function (e) {
     }).catch(function () { /* notifications not allowed here: the pop-up and chime still show */ });
   };
 
-  /* count rounds on the menu (both the laptop tabs and the phone tabs): green = new orders; blue / red / amber = new
+  /* count rounds on the menu (both the laptop tabs and the phone tabs): red = new orders; blue / red / amber = new
      Bad product / Faulty product / Late delivery reviews (the Reviews chip colours); gold = new Left at checkout on Analytics */
   var ROUNDS = {orders: [['orders', 'new order', 'new orders']], reviews: [['bad', 'new Bad product review', 'new Bad product reviews'], ['faulty', 'new Faulty product review', 'new Faulty product reviews'], ['late', 'new Late delivery review', 'new Late delivery reviews']], analytics: [['leads', 'new left at checkout', 'new left at checkout']]};
   var rounds = function (b) {
