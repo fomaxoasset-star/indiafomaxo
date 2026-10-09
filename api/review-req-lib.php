@@ -30,6 +30,8 @@ function rq_mark(string $no, string $how = 'tap'): void {
   shop_set('rvreq_sent', json_encode($sent));
 }
 
+const RQ_DONE_DAYS = 30;   // a reviewed or partly reviewed order stays on Review requests this many days after its latest review
+
 /* how far each order's review link has got (reviews.sqlite, as api/reviews.php keeps it): token → total perfumes, reviewed, average stars */
 function rq_reviewed(): array {
   static $out = null;
@@ -37,16 +39,16 @@ function rq_reviewed(): array {
   $out = [];
   try {
     if (!($db = reviews_db())) return $out;
-    $rv = [];
-    foreach ($db->query('SELECT order_id, product, rating FROM reviews WHERE order_id IS NOT NULL') as $r) $rv[(int)$r['order_id']][(string)$r['product']] = (int)$r['rating'];
+    $rv = []; $last = [];   // last: when the order's latest review came in
+    foreach ($db->query('SELECT order_id, product, rating, created FROM reviews WHERE order_id IS NOT NULL') as $r) { $rv[(int)$r['order_id']][(string)$r['product']] = (int)$r['rating']; $last[(int)$r['order_id']] = max($last[(int)$r['order_id']] ?? 0, (int)$r['created']); }
     foreach ($db->query('SELECT id, token, products FROM orders') as $o) {
       $ps = array_values(array_unique((array)json_decode((string)$o['products'], true))); $done = $rv[(int)$o['id']] ?? [];
-      $out[$o['token']] = ['total' => max(count($ps), count($done)), 'done' => count($done), 'stars' => $done ? round(array_sum($done) / count($done), 1) : null];
+      $out[$o['token']] = ['total' => max(count($ps), count($done)), 'done' => count($done), 'stars' => $done ? round(array_sum($done) / count($done), 1) : null, 'last' => $last[(int)$o['id']] ?? 0];
     }
   } catch (Throwable $e) { error_log('FOMAXO review requests: ' . $e->getMessage()); }
   return $out;
 }
-function rq_info(array $o): array { return rq_reviewed()[(string)$o['review']] ?? ['total' => 0, 'done' => 0, 'stars' => null]; }
+function rq_info(array $o): array { return rq_reviewed()[(string)$o['review']] ?? ['total' => 0, 'done' => 0, 'stars' => null, 'last' => 0]; }
 
 /* rv = every perfume reviewed, part = some, not = none yet */
 function rq_state(array $a): string { return $a['total'] > 0 && $a['done'] >= $a['total'] ? 'rv' : ($a['done'] > 0 ? 'part' : 'not'); }
@@ -77,6 +79,7 @@ function rq_asked(): array {
   foreach ($s->fetchAll() as $o) {
     $sd = (string)$sent[$o['no']]; $a = $o + rq_info($o) + ['sent' => substr($sd, 0, 10), 'auto' => str_ends_with($sd, 'auto')];
     if ($set['drop'] && rq_state($a) === 'not' && strtotime($a['sent']) < strtotime('today -' . $set['drop_days'] . ' days')) continue;
+    if (rq_state($a) !== 'not' && $a['last'] && $a['last'] < strtotime('today -' . RQ_DONE_DAYS . ' days')) continue;   // reviewed or partly: leaves the list 30 days after the latest review (reviews and orders stay)
     $out[$o['no']] = $a;
   }
   uasort($out, fn($a, $b) => strcmp($b['sent'], $a['sent']) ?: strcmp((string)$b['created'], (string)$a['created']));
