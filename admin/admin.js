@@ -158,7 +158,7 @@ function markSent(btn, day) {
     b.disabled = true;
     postAction(b, {action: 'lead_remove', sid: b.dataset.lead, js: '1'}).then(function (j) {
       if (!j || !j.ok) throw 0;
-      document.querySelectorAll('.lt[data-sid="' + b.dataset.lead + '"]').forEach(function (row) {
+      document.querySelectorAll('.lt[data-sid="' + b.closest('.lt').dataset.sid + '"]').forEach(function (row) {
         var box = row.closest('.box'); row.classList.add('going');
         setTimeout(function () {
           row.remove();
