@@ -2410,7 +2410,7 @@ window.STORE = {
       ],
       notes: { top: "Matcha Tea · Rose · Cinnamon", heart: "Orange Blossom · Lily of the Valley · Tea Rose", base: "Coconut · Vanilla · Amber" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["matchacoco-1", "matchacoco-2", "matchacoco-3"], miniImage: "matchacoco-10-1", miniImages: ["matchacoco-10-1", "matchacoco-10-2"],
+      images: ["matchacoco-1", "matchacoco-model", "matchacoco-2", "matchacoco-3"], addImages: ["matchacoco-model"], miniImage: "matchacoco-10-1", miniImages: ["matchacoco-10-1", "matchacoco-10-2"],
       url: ""
     },
     {
@@ -2556,7 +2556,7 @@ const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/
   /* cash on delivery minimum, hidden maximum and fee from Admin → Settings */
   if (LIVE.cod && S.checkout.cod && typeof S.checkout.cod === 'object') Object.assign(S.checkout.cod, LIVE.cod);
   /* details and photos edited on the admin page */
-  S.products.forEach(p => { const e = ed[p.id]; if (!e) return; const main = p.lockMain && p.images[0];
+  S.products.forEach(p => { const e = ed[p.id]; if (!e) return; const main = p.lockMain && p.images[0], add = p.addImages || [];
     /* an editorial photo that is one of the product photos follows the admin edit; a separate one (not in images) stays */
     if (e.images && p.editorial && p.images.includes(p.editorial) && !e.images.includes(p.editorial)) p.editorial = e.images[Math.min(2, e.images.length - 1)];
     if ('tier' in e && !p.kind && (e.tier || '') !== (p.tier || '')) { (S.tiers || []).forEach(t => { if (t.id !== 'car') t.products = t.products.filter(x => x !== p.id); }); const t = e.tier && (S.tiers || []).find(x => x.id === e.tier); if (t) t.products.push(p.id); }
@@ -2565,6 +2565,8 @@ const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/
     if (e.sizes) p.sizes = e.sizes.map(x => x === 'one' ? x : +x);
     if (!e.notes) delete p.notes; if (!e.tier) delete p.tier;
     if (main) p.images = [main, ...(p.images || []).filter(k => k !== main)];
+    /* addImages: photos added in index.html after the admin database was filled; they go right after the main photo unless the admin list already has them */
+    if (add.length) { const im = [...(p.images || [])]; add.filter(k => !im.includes(k)).reverse().forEach(k => im.splice(1, 0, k)); p.images = im; }
     /* the admin page never sets the editorial photo; products copied into the admin database carry an old one, so index.html's wins */
     if (edPhoto) p.editorial = edPhoto; else delete p.editorial;
   });
