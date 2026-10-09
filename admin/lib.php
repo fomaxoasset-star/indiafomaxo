@@ -482,6 +482,7 @@ function wa_box(string $id, string $free, string $kind, int $pct, int $min, stri
     . '<p class="muted small ltwa-note">' . h($note) . '</p>'
     . '<label>Message <small>(you can change it)</small><textarea class="ltwa-text" rows="14"></textarea></label>'
     . '<p class="err ltwa-err" hidden></p>'
+    . '<p class="small ltwa-go" hidden>WhatsApp did not open? <a class="ltwa-app">Open WhatsApp app</a> · <a class="ltwa-web" target="_blank" rel="noopener">WhatsApp website</a></p>'
     . '<div class="row ltwa-btns"><button type="button" class="btn line" data-ltwa-close>Cancel</button><button type="button" class="btn" data-ltwa-send>' . WA_SVG . '<span>Open WhatsApp</span></button></div></div></dialog>';
 }
 /* the free product picker: one box to type in or pick from its dropdown (every product and size, at ₹0 in the order; gift sets are
