@@ -102,7 +102,7 @@ function wa_send_refills(int $max = 20): array {
 
 /* ---- automatic review requests (admin → Orders → Review requests): the set days after a customer's latest order, within the sending hours (India time),
    only to customers who ticked "Send me offers on WhatsApp", once per order, never once anything in the order is reviewed. Approved templates (Marketing, English):
-   review_ask (coupon off): {{1}} first name, {{2}} perfumes, {{3}} review link; review_ask_coupon (coupon on): the same + {{4}} % off, {{5}} code.
+   review_ask (coupon off): {{1}} first name, {{2}} order number, {{3}} perfumes, {{4}} review link; review_ask_coupon (coupon on): the same + {{5}} % off, {{6}} code.
    Failed sends are tried again, up to 3 tries in all; the last problem shows in red on the page. ---- */
 const RVREQ_TRIES = 3;
 function wa_send_rvreqs(int $max = 20): array {
@@ -118,7 +118,7 @@ function wa_send_rvreqs(int $max = 20): array {
   foreach (rq_due() as $o) {
     if ($sent + $failed >= $max) break;
     if ($o['sent'] || !$o['optin'] || $o['stopped'] || ($tries[$o['no']] ?? 0) >= RVREQ_TRIES || !($to = wa_number((string)$o['phone']))) continue;
-    $p = rq_parts($o); $vars = [$p['first'], $p['perfumes'], $p['review']];
+    $p = rq_parts($o); $vars = [$p['first'], $p['no'], $p['perfumes'], $p['review']];
     if ($p['code']) { $vars[] = $p['pct']; $vars[] = $p['code']; }
     [$ok, $info] = wa_template($to, $p['code'] ? 'review_ask_coupon' : 'review_ask', 'en', $vars, $c);
     if ($ok) { rq_mark((string)$o['no'], 'auto'); $sent++; unset($tries[$o['no']]); shop_set('rvreq_auto_err', ''); }

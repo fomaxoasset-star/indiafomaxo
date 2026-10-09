@@ -83,18 +83,18 @@ function rq_asked(): array {
   return $out;
 }
 
-/* what the message says: first name, perfumes, the order's review link, and (coupon on) the % and the customer's code */
+/* what the message says: first name, order number, perfumes, the order's review link, and (coupon on) the % and the customer's code */
 function rq_parts(array $o): array {
   $set = rq_set(); $p = refill_parts($o + ['days' => 0]); $cat = fomaxo_catalog()['products'];
   $names = array_values(array_unique(array_filter(array_map(fn($i) => empty($i['free']) ? (string)($cat[$i['id'] ?? '']['name'] ?? '') : '', json_decode((string)$o['items'], true) ?: []))));
-  return ['first' => $p['first'] !== '' ? $p['first'] : 'there', 'perfumes' => $names ? implode(', ', $names) : $p['perfumes'], 'review' => 'https://fomaxo.in/#/review?t=' . $o['review'],
+  return ['first' => $p['first'] !== '' ? $p['first'] : 'there', 'no' => (string)$o['no'], 'perfumes' => $names ? implode(', ', $names) : $p['perfumes'], 'review' => 'https://fomaxo.in/#/review?t=' . $o['review'],
           'pct' => $set['pct'], 'code' => $set['coupon'] ? rq_code((string)$o['phone']) : null];
 }
 
 /* the message: a blank line between parts, the code in WhatsApp bold on its own line. The same words as the Meta templates review_ask / review_ask_coupon. */
 function rq_text(array $p): string {
   $n2 = "\n\n";
-  return 'Hi ' . $p['first'] . ',' . $n2 . "*Thank You Again For Your Order*\nI hope you received it safely and are enjoying " . $p['perfumes'] . '.'
+  return 'Hi ' . $p['first'] . ',' . $n2 . 'This is FOMAXO about your order ' . $p['no'] . '.' . $n2 . "*Thank You Again For Your Order*\nI hope you received it safely and are enjoying " . $p['perfumes'] . '.'
     . $n2 . "Could you spare a minute to share your honest review?\nIt will show as Verified Purchaser.\n" . $p['review'] . "\nYour honest review helps others choose their FOMAXO."
     . ($p['code'] ? $n2 . 'As a thank you for your time, here is your personal code for ' . $p['pct'] . '% off your next order (single use):' . $n2 . '*' . $p['code'] . '*' : '')
     . $n2 . 'Just reply here if you need anything. If you would rather not get these messages, reply STOP.' . $n2 . "Thank you,\nFOMAXO";
