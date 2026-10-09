@@ -4187,12 +4187,14 @@ const RV_CITIES = 'Mumbai, Maharashtra|Pune, Maharashtra|Nagpur, Maharashtra|Nas
 const RV_NATIONS = 'India:in|United Arab Emirates:ae|Saudi Arabia:sa|Qatar:qa|Oman:om|Kuwait:kw|Bahrain:bh|United States:us|United Kingdom:gb|Canada:ca|Australia:au|Singapore:sg|Nepal:np|Bangladesh:bd|Sri Lanka:lk|Afghanistan:af|Albania:al|Algeria:dz|Andorra:ad|Angola:ao|Argentina:ar|Armenia:am|Austria:at|Azerbaijan:az|Bahamas:bs|Barbados:bb|Belarus:by|Belgium:be|Belize:bz|Benin:bj|Bhutan:bt|Bolivia:bo|Bosnia and Herzegovina:ba|Botswana:bw|Brazil:br|Brunei:bn|Bulgaria:bg|Burkina Faso:bf|Burundi:bi|Cambodia:kh|Cameroon:cm|Chad:td|Chile:cl|China:cn|Colombia:co|Costa Rica:cr|Croatia:hr|Cuba:cu|Cyprus:cy|Czechia:cz|Denmark:dk|Djibouti:dj|Dominican Republic:do|Ecuador:ec|Egypt:eg|El Salvador:sv|Eritrea:er|Estonia:ee|Eswatini:sz|Ethiopia:et|Fiji:fj|Finland:fi|France:fr|Gabon:ga|Georgia:ge|Germany:de|Ghana:gh|Greece:gr|Guatemala:gt|Guyana:gy|Haiti:ht|Honduras:hn|Hong Kong:hk|Hungary:hu|Iceland:is|Indonesia:id|Iran:ir|Iraq:iq|Ireland:ie|Israel:il|Italy:it|Ivory Coast:ci|Jamaica:jm|Japan:jp|Jordan:jo|Kazakhstan:kz|Kenya:ke|Kyrgyzstan:kg|Laos:la|Latvia:lv|Lebanon:lb|Libya:ly|Lithuania:lt|Luxembourg:lu|Madagascar:mg|Malawi:mw|Malaysia:my|Maldives:mv|Mali:ml|Malta:mt|Mauritius:mu|Mexico:mx|Moldova:md|Monaco:mc|Mongolia:mn|Montenegro:me|Morocco:ma|Mozambique:mz|Myanmar:mm|Namibia:na|Netherlands:nl|New Zealand:nz|Nicaragua:ni|Niger:ne|Nigeria:ng|North Macedonia:mk|Norway:no|Pakistan:pk|Palestine:ps|Panama:pa|Papua New Guinea:pg|Paraguay:py|Peru:pe|Philippines:ph|Poland:pl|Portugal:pt|Romania:ro|Russia:ru|Rwanda:rw|Senegal:sn|Serbia:rs|Seychelles:sc|Sierra Leone:sl|Slovakia:sk|Slovenia:si|Somalia:so|South Africa:za|South Korea:kr|Spain:es|Sudan:sd|Suriname:sr|Sweden:se|Switzerland:ch|Syria:sy|Taiwan:tw|Tajikistan:tj|Tanzania:tz|Thailand:th|Togo:tg|Trinidad and Tobago:tt|Tunisia:tn|Turkey:tr|Turkmenistan:tm|Uganda:ug|Ukraine:ua|Uruguay:uy|Uzbekistan:uz|Venezuela:ve|Vietnam:vn|Yemen:ye|Zambia:zm|Zimbabwe:zw'.split('|').map(x => x.split(':'));
 const rvFlag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 127397 + c.charCodeAt(0))) : '';
 const rvNation = n => RV_NATIONS.find(([c]) => c.toLowerCase() === String(n || '').trim().toLowerCase());
+/* words about a late delivery or a faulty / damaged product (English and Hinglish), the same list as api/reviews.php */
+const RV_PROBLEM = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|der(i|ee)? se|toot(a|i))\b/i;
 const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
     <label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
-    <label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
-    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp${token ? '' : ', so please add your mobile number'}<span class="rv-need-photo"> and a photo of the product</span>.</p>
+    ${token ? '' : `<label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
+    <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product</span>.</p>`}
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div>
     <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
@@ -4235,12 +4237,16 @@ function bindRvForm(form, p, token, done){
   const city = form.elements.city, nation = form.elements.country;
   rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
   rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : RV_NATIONS).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
-  const issue = form.elements.issue, note = $('.rv-issue', form);   // late delivery or a faulty product: mobile (no order link) and, if faulty, a photo are needed for the coupon
-  issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
-  stars.forEach(b => b.addEventListener('click', () => {   // the problem box only for 1–3 stars
-    const low = rating <= 3; $('.rv-prob', form).hidden = !low;
-    if (!low && issue.value) { issue.value = ''; issue.onchange(); }
-  }));
+  /* reviews without an order link only (verified purchasers have their order and mobile already): for 1–3 stars, "Any problem with your order?"
+     Late delivery needs a mobile, a faulty product a mobile and a photo, for its coupon. No problem with words about one asks them to pick it. */
+  const issue = form.elements.issue || {value: ''}, note = $('.rv-issue', form);
+  if (note) {
+    issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; };
+    stars.forEach(b => b.addEventListener('click', () => {
+      const low = rating <= 3; $('.rv-prob', form).hidden = !low;
+      if (!low && issue.value) { issue.value = ''; issue.onchange(); }
+    }));
+  }
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
     const e = b.dataset.emoji, a = ta.selectionStart ?? ta.value.length, z = ta.selectionEnd ?? a;
@@ -4252,6 +4258,7 @@ function bindRvForm(form, p, token, done){
     const files = [...form.elements.photos.files];
     if (!rating) return err.textContent = 'Please choose a star rating.';
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
+    if (note && rating <= 3 && !issue.value && RV_PROBLEM.test(form.elements.text.value)) { $('.rv-prob select', form).focus(); return err.textContent = 'It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.'; }
     if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.';
     if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';

@@ -120,6 +120,8 @@ function savePhoto(array $f): ?string {
   return $name;
 }
 
+/* words about a late delivery or a faulty / damaged product (English and Hinglish), the same list as the review form in index.html */
+const RV_PROBLEM = '/\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|der(i|ee)? se|toot(a|i))\b/i';
 function uploadedPhotos(): array {
   if (empty($_FILES['photos'])) return [];
   $f = $_FILES['photos'];
@@ -186,7 +188,9 @@ try {
       if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
       $mobile = substr(preg_replace('/\D/', '', (string)($in['mobile'] ?? '')) ?? '', -10); if (!preg_match('/^[6-9]\d{9}$/', $mobile)) $mobile = '';   // a 10-digit Indian mobile, or nothing
 
-      $issue = $rating <= 3 && in_array($in['issue'] ?? '', ['late', 'faulty'], true) ? $in['issue'] : '';   // the form offers it only for 1–3 stars
+      $issue = $rating <= 3 && empty($in['token']) && in_array($in['issue'] ?? '', ['late', 'faulty'], true) ? $in['issue'] : '';   // the form offers it only without an order link, for 1–3 stars
+      if ($rating <= 3 && empty($in['token']) && $issue === '' && preg_match(RV_PROBLEM, $text))
+        fail('It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.');
       if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.');
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
