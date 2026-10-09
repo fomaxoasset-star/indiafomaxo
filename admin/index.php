@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '77';
+const ASSET_V = '78';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -186,12 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (reviews_list() as $r) if ((int)$r['id'] === $id) $ph = (string)$r['phone'];
     header('Content-Type: application/json');
     if (!preg_match('/^[6-9]\d{9}$/', $ph)) { echo json_encode(['error' => 'This review has no mobile number.']); exit; }
-    $code = '';
-    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
-      $_POST['phone'] = $ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon();
-      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
-    }
-    $sent = json_decode((string)shop_setting('review_wa'), true) ?: []; $sent[$id] = date('Y-m-d'); shop_set('review_wa', json_encode($sent));
+    $code = box_code('GOODWILL-', $ph);
+    day_mark('review_wa', (string)$id);
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'review_reply') {
@@ -235,25 +231,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' ? (!empty($_POST['editing']) ? ['edit' => $code] : []) : ['made' => $code]), $msg); }   // made: the saved coupon shows on top with Send on WhatsApp
   if ($a === 'coupon_goodwill') { [$code, $msg] = make_goodwill_coupon(); go(['tab' => 'coupons'] + ($code !== '' ? ['made' => $code] : []), $msg); }
-  if ($a === 'coupon_wa') {   // WhatsApp tapped on a coupon row (admin.js, without reloading): the row shows Sent dd/mm
-    $code = coupon_clean((string)($_POST['code'] ?? '')); $sent = json_decode((string)shop_setting('coupon_wa'), true) ?: [];
-    $sent = array_filter($sent, fn($d) => $d >= date('Y-m-d', strtotime('-400 days'))); $sent[$code] = date('Y-m-d'); shop_set('coupon_wa', json_encode($sent));
-    header('Content-Type: application/json'); echo json_encode(['ok' => true, 'day' => date('d/m')]); exit;
-  }
   if ($a === 'wa_coupon') {   // Open WhatsApp in the shared box (admin.js gWa, without reloading): with a coupon picked, a new THANKS- code for this mobile only
     header('Content-Type: application/json');   // (one use); then the review request (rq:<order no>) or the coupon (cp:<code>) shows Sent dd/mm
-    $code = '';
-    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
-      $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('THANKS-');
-      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
-    }
+    $code = box_code('THANKS-', (string)($_POST['phone'] ?? ''));
     [$mk, $mv] = explode(':', (string)($_POST['mark'] ?? ''), 2) + ['', ''];
     if ($mk === 'rq' && preg_match('/^FMX-IN-\d+$/', $mv)) { require_once dirname(__DIR__) . '/api/review-req-lib.php'; rq_mark($mv); }
-    if ($mk === 'ph' && preg_match('/^[6-9]\d{9}$/', $mv)) wa_sent_set('ph:' . $mv);
-    if ($mk === 'cp' && ($mv = coupon_clean($mv)) !== '') {
-      $sent = json_decode((string)shop_setting('coupon_wa'), true) ?: [];
-      $sent = array_filter($sent, fn($d) => $d >= date('Y-m-d', strtotime('-400 days'))); $sent[$mv] = date('Y-m-d'); shop_set('coupon_wa', json_encode($sent));
-    }
+    if ($mk === 'ph' && preg_match('/^[6-9]\d{9}$/', $mv)) day_mark('wa_sent', 'ph:' . $mv);
+    if ($mk === 'cp' && ($mv = coupon_clean($mv)) !== '') day_mark('coupon_wa', $mv);
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'coupon_on') {
@@ -270,12 +254,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'newprod_save') { go(['tab' => 'offer'], save_newprod($CAT)); }
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
   if ($a === 'lead_coupon') {   // Left at checkout WhatsApp box (admin.js asks without reloading): with a coupon, a new COMEBACK- code, one use, only this customer's mobile,
-    header('Content-Type: application/json'); $code = '';   // ends in 7 days; the line then shows Sent dd/mm
-    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
-      $_POST['ends'] = date('d/m/Y', strtotime('+7 days')); [$code, $msg] = make_goodwill_coupon('COMEBACK-');
-      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
-    }
-    wa_sent_set('lt:' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($_POST['sid'] ?? '')));
+    header('Content-Type: application/json');   // ends in 7 days; the line then shows Sent dd/mm
+    $code = box_code('COMEBACK-', (string)($_POST['phone'] ?? ''), date('d/m/Y', strtotime('+7 days')));
+    day_mark('wa_sent', 'lt:' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($_POST['sid'] ?? '')));
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'list_remove') {   // ✕ on a Review requests or Refill reminders line (admin.js, without reloading): that order leaves the list and gets no automatic message
@@ -319,12 +300,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'auto' => $auto, 'drop' => ($_POST['rq_drop'] ?? '') === '1', 'drop_days' => $n('rq_drop_days', 1, 365, $q0['drop_days'])]));
     go($back, $want && !$auto ? '!Saved, but automatic sending stays off until the WhatsApp details are saved on Refill reminders.' : 'Saved.');
   }
-  if ($a === 'rq_sent') {   // WhatsApp tapped on Review requests or on an order (admin.js, without reloading): the order shows Sent; with the coupon on, its REVIEW- code is saved
-    require_once dirname(__DIR__) . '/api/review-req-lib.php';
-    $no = (string)($_POST['no'] ?? ''); header('Content-Type: application/json');
-    if (!preg_match('/^FMX-IN-\d+$/', $no)) { echo json_encode(['error' => 'That order was not found.']); exit; }
-    rq_mark($no); echo json_encode(['ok' => true, 'day' => date('d/m')]); exit;
-  }
   if ($a === 'wa_stop') {   // Stop on a customer's page: no more WhatsApp offers or automatic messages
     require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
     $ph = (string)($_POST['phone'] ?? '');
@@ -332,14 +307,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'refill_sent') {   // Open WhatsApp on Refill reminders (admin.js asks without reloading): that order shows Sent; with a coupon picked, a new REFILL- code
     require_once dirname(__DIR__) . '/api/refill-lib.php';   // is made for this customer only (one use, only their mobile), like Left at checkout
-    $no = (string)($_POST['no'] ?? ''); $code = '';
+    $no = (string)($_POST['no'] ?? '');
     $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = $s->fetchColumn();
     header('Content-Type: application/json');
     if (!preg_match('/^FMX-IN-\d+$/', $no) || $ph === false) { echo json_encode(['error' => 'That order was not found.']); exit; }
-    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
-      $_POST['phone'] = (string)$ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('REFILL-');
-      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
-    }
+    $code = box_code('REFILL-', (string)$ph);
     refill_mark($no);
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }

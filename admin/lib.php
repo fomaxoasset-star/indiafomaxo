@@ -515,7 +515,6 @@ function goodwill_text(array $c): string {
     'We are sorry about your last order. As a goodwill gesture, here is ' . ($c['kind'] === 'free' ? 'a *free ' . coupon_free_name($c) . '* with your next order.' : '*' . coupon_label($c) . '* your next order.'),
     ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]);
 }
-function goodwill_wa(array $c): string { return wa_link((string)$c['phone'], goodwill_text($c)); }
 
 /* the WhatsApp message that shares a coupon: WhatsApp opens and the owner picks the customer */
 function coupon_share_text(array $c): string {
@@ -525,7 +524,6 @@ function coupon_share_text(array $c): string {
     : 'Here is *' . coupon_label($c) . '* your next order.';
   return coupon_wa_text($c, $intro, [!empty($c['per_cust']) ? 'One use per customer.' : '']);
 }
-function coupon_wa(array $c): string { return 'https://wa.me/?text=' . rawurlencode(coupon_share_text($c)); }
 
 /* Every other admin WhatsApp button (Orders, an order, Review requests, Members, a customer, Coupons) opens the one shared box (gWa, admin.js):
    the ready message ($head, then the coupon lines if one is picked, then $tail) to change if you like, and a coupon choice that makes a new
@@ -540,9 +538,18 @@ function wa_btn(string $phone, string $who, string $head, string $tail = "\n\nTh
 /* when a WhatsApp was last sent from the admin to a mobile (ph:<mobile>) or a Left at checkout line (lt:<sid>): Sent dd/mm inside its button */
 function wa_sent_all(): array { static $s = null; return $s ??= json_decode((string)shop_setting('wa_sent'), true) ?: []; }
 function wa_sent_day(string $key): string { $d = wa_sent_all()[$key] ?? ''; return $d !== '' ? date('d/m', strtotime($d)) : ''; }
-function wa_sent_set(string $key): void {
-  $s = array_filter(json_decode((string)shop_setting('wa_sent'), true) ?: [], fn($d) => $d >= date('Y-m-d', strtotime('-400 days')));
-  $s[$key] = date('Y-m-d'); shop_set('wa_sent', json_encode($s));
+/* notes today as the day a WhatsApp went (setting $setting: wa_sent, coupon_wa, review_wa); days older than 400 are forgotten */
+function day_mark(string $setting, string $key): void {
+  $s = array_filter(json_decode((string)shop_setting($setting), true) ?: [], fn($d) => $d >= date('Y-m-d', strtotime('-400 days')));
+  $s[$key] = date('Y-m-d'); shop_set($setting, json_encode($s));
+}
+/* the coupon picked in a WhatsApp box (gkind pct / amt / free): a new one-use code with $prefix for this mobile only, or '' for No coupon.
+   A problem (no mobile, no amount, no free product) answers the box's JSON request with the error and stops. */
+function box_code(string $prefix, string $phone, string $ends = ''): string {
+  if (!in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) return '';
+  $_POST['phone'] = $phone; $_POST['ends'] = $ends; [$code, $msg] = make_goodwill_coupon($prefix);
+  if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
+  return $code;
 }
 /* a button for a mobile: WhatsApp, or Sent dd/mm (outlined) once sent; it opens the box again either way */
 function wa_btn_ph(string $phone, string $who, string $head, string $cls = 'btn sm wag'): string {

@@ -388,7 +388,6 @@ function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Us
 function coupon_phone(string $phone): string { $d = preg_replace('/\D/', '', $phone) ?? ''; return strlen($d) >= 10 ? substr($d, -10) : ''; }
 /* ---- shared by every WhatsApp button and customer code (Refill reminders, Review requests, Reviews, Left at checkout, goodwill coupons) ---- */
 /* a WhatsApp chat with an Indian mobile and a ready message (WhatsApp shows *text* as bold; no emoji, wa.me shows them as "?") */
-function wa_link(string $phone, string $text): string { return 'https://wa.me/91' . coupon_phone($phone) . '?text=' . rawurlencode($text); }
 /* the first word of a name, for "Hi Priya," */
 function first_name(string $name): string { return preg_split('/\s+/u', trim($name))[0] ?? ''; }
 /* a code that is always the same for the same $seed: $prefix + 5 letters (no 0/O, 1/I or L, so it is easy to read out) */
