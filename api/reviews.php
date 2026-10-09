@@ -48,6 +48,8 @@ function db(): PDO {
   if (!in_array('city', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN city TEXT NOT NULL DEFAULT ''");
   if (!in_array('country', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN country TEXT NOT NULL DEFAULT ''");
   if (!in_array('reply', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN reply TEXT NOT NULL DEFAULT ''");          // FOMAXO's answer, written in Admin → Reviews
+  if (!in_array('issue', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN issue TEXT NOT NULL DEFAULT ''");          // 'late' delivery or 'faulty' product: FOMAXO sends a coupon on WhatsApp
+  if (!in_array('mobile', $cols, true)) $db->exec("ALTER TABLE reviews ADD COLUMN mobile TEXT NOT NULL DEFAULT ''");        // optional, private: only Admin → Reviews sees it (WhatsApp)
   return $db;
 }
 
@@ -182,7 +184,10 @@ try {
       $country = cap(str($in['country'] ?? '', 40));                                 // optional, picked from the form's list
       if ($anon) { $city = ''; $country = ''; }
       if ($country !== '' && !preg_match('/^[\p{L} .,()\'-]+$/u', $country)) $country = '';
+      $mobile = substr(preg_replace('/\D/', '', (string)($in['mobile'] ?? '')) ?? '', -10); if (!preg_match('/^[6-9]\d{9}$/', $mobile)) $mobile = '';   // a 10-digit Indian mobile, or nothing
 
+      $issue = $rating <= 3 && in_array($in['issue'] ?? '', ['late', 'faulty'], true) ? $in['issue'] : '';   // the form offers it only for 1–3 stars
+      if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.');
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
         $o = orderByToken((string)$in['token']);
@@ -194,10 +199,11 @@ try {
         if ($rawName === '') $rawName = displayName($o['customer']);   // left blank: the order name, shortened
       }
 
+      if ($issue === 'faulty' && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Please add a photo of the faulty or damaged product.');   // the proof for its coupon
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
-      db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-        ->execute([$product, $rating, $text, $rawName, $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country]);
+      db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country, mobile, issue) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        ->execute([$product, $rating, $text, $rawName, $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country, $mobile, $issue]);
       out(['ok' => true, 'pending' => $status === 'pending']);
     }
 

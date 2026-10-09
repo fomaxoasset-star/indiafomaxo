@@ -85,7 +85,7 @@ function wa_send_refills(int $max = 20): array {
     if ($sent + $failed >= $max) break;
     if ($o['sent'] || !$o['optin'] || $o['days'] < $tm['days'] || ($tries[$o['no']] ?? 0) >= REFILL_TRIES || !($to = wa_number((string)$o['phone']))) continue;
     $p = refill_parts($o);
-    [$ok, $info] = wa_template($to, $tpl, $lang, [$p['first'] !== '' ? $p['first'] : 'there', $p['perfumes'], $p['days'], $p['pct'], $p['code'], $p['review'] ?: 'https://fomaxo.in'], $c);
+    [$ok, $info] = wa_template($to, $tpl, $lang, [$p['first'] !== '' ? $p['first'] : 'there', $p['perfumes'], $p['days'], $p['offer'], $p['code'], $p['review'] ?: 'https://fomaxo.in'], $c);
     if ($ok) { refill_mark((string)$o['no'], 'auto'); $sent++; unset($tries[$o['no']]); shop_set('refill_auto_err', ''); }
     else {
       $tries[$o['no']] = ($tries[$o['no']] ?? 0) + 1; $failed++;

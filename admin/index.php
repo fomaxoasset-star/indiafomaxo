@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '62';
+const ASSET_V = '64';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -181,6 +181,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review hidden from the website.' : 'Review is on the website.');
   }
   if ($a === 'review_delete') { review_delete((int)($_POST['id'] ?? 0)); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Review deleted.'); }
+  if ($a === 'review_wa') {   // WhatsApp on a 1–3 star review (admin.js asks without reloading): notes the day, and with a coupon makes a GOODWILL- code for that mobile
+    $id = (int)($_POST['id'] ?? 0); $ph = '';
+    foreach (reviews_list() as $r) if ((int)$r['id'] === $id) $ph = (string)$r['phone'];
+    header('Content-Type: application/json');
+    if (!preg_match('/^[6-9]\d{9}$/', $ph)) { echo json_encode(['error' => 'This review has no mobile number.']); exit; }
+    $code = '';
+    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
+      $_POST['phone'] = $ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon();
+      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
+    }
+    $sent = json_decode((string)shop_setting('review_wa'), true) ?: []; $sent[$id] = date('Y-m-d'); shop_set('review_wa', json_encode($sent));
+    echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
+  }
   if ($a === 'review_reply') {
     $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? '');
     /* Save reply with an empty box changes nothing: a reply already there stays (only Delete reply removes it), and no reply is added */
@@ -257,6 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tm = refill_time(); $tf = $n('rf_from', 0, 23, $tm['from']); $tt = $n('rf_to', 1, 24, $tm['to']);
     if ($tt <= $tf) go($back, '!The Until hour must be after the Send from hour.');
     shop_set('refill_time', json_encode(['days' => $n('rf_days', 1, 365, $tm['days']), 'from' => $tf, 'to' => $tt]));
+    shop_set('refill_pct', (string)$n('rf_pct', 1, 99, refill_pct())); shop_set('refill_min', (string)$n('rf_min', 0, 1000000, 0));   // the automatic coupon; an empty minimum = none
     $want = ($_POST['auto_on'] ?? '') === '1'; $on = $want && wa_ready();
     shop_set('refill_auto', $on ? '1' : '0');
     go($back, $on ? 'Saved. Automatic refill messages are on.' : ($want ? '!Saved, but it stays off until the access token and phone number ID are saved.' : 'Saved. Automatic refill messages are off.'));
@@ -266,11 +280,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ph = (string)($_POST['phone'] ?? '');
     go(['tab' => 'members', 'c' => 'm:' . coupon_phone($ph)], wa_stop($ph, 'admin') ? 'WhatsApp offers stopped for this customer. No more automatic messages.' : '!This customer has no mobile number.');
   }
-  if ($a === 'refill_sent') {   // tapped WhatsApp on Refill reminders (admin.js sends it without reloading): that order shows Sent and its coupon is made
-    require_once dirname(__DIR__) . '/api/refill-lib.php';
-    $no = (string)($_POST['no'] ?? '');
-    if (preg_match('/^FMX-IN-\d+$/', $no)) refill_mark($no);
-    http_response_code(204); exit;
+  if ($a === 'refill_sent') {   // Open WhatsApp on Refill reminders (admin.js asks without reloading): that order shows Sent; with a coupon picked, a new REFILL- code
+    require_once dirname(__DIR__) . '/api/refill-lib.php';   // is made for this customer only (one use, only their mobile), like Left at checkout
+    $no = (string)($_POST['no'] ?? ''); $code = '';
+    $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = $s->fetchColumn();
+    header('Content-Type: application/json');
+    if (!preg_match('/^FMX-IN-\d+$/', $no) || $ph === false) { echo json_encode(['error' => 'That order was not found.']); exit; }
+    if (in_array($_POST['gkind'] ?? '', ['pct', 'amt', 'free'], true)) {
+      $_POST['phone'] = (string)$ph; $_POST['ends'] = ''; [$code, $msg] = make_goodwill_coupon('REFILL-');
+      if ($code === '') { echo json_encode(['error' => ltrim($msg, '!')]); exit; }
+    }
+    refill_mark($no);
+    echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);

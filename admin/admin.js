@@ -558,22 +558,101 @@
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-preview]'); if (b) open(b.dataset.preview); });
 })();
 
-/* Refill reminders: tapping WhatsApp opens the ready message and notes the order as Sent (its REFILL- coupon is made then), without reloading */
-document.addEventListener('click', function (e) {
-  var a = e.target.closest && e.target.closest('[data-rf]');
-  if (!a) return;
-  var list = a.closest('[data-csrf]'), fd = new FormData();
-  fd.append('csrf', list ? list.dataset.csrf : ''); fd.append('action', 'refill_sent'); fd.append('no', a.dataset.rf);
-  fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'});
-  var cell = a.parentNode;
-  if (!cell.querySelector('.rsent')) {
-    var d = new Date(), s = document.createElement('span');
-    s.className = 'rsent'; s.textContent = 'Sent ' + ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
-    cell.insertBefore(s, a);
-    var todo = document.querySelector('[data-rfn="todo"]'), done = document.querySelector('[data-rfn="sent"]');
-    if (todo && !a.classList.contains('line')) { todo.textContent = Math.max(0, +todo.textContent - 1); done.textContent = +done.textContent + 1; }
+/* The WhatsApp box (Left at checkout, Refill reminders): a ready message to one customer. No coupon, or % off / ₹ off / a free product with an
+   optional minimum order, for which a new code is made (one use, only their mobile) when Open WhatsApp is tapped. The message can be changed first.
+   o.text(button data, coupon or null) writes the message; o.action is asked on the server; o.always asks it even without a coupon; o.done(reply, button). */
+function waBox(id, sel, o) {
+  var dlg = document.getElementById(id); if (!dlg) return;
+  var q = function (s) { return dlg.querySelector(s); }, kind = q('.ltwa-kind'), val = q('.ltwa-val input'), free = q('.ltwa-free [data-ffind]'),
+    freeV = q('.ltwa-free input[type=hidden]'), min = q('.ltwa-min input'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'),
+    K0 = kind.value, PCT = dlg.dataset.pct || '10', btn = null;
+  function build() {
+    var k = kind.value, v = parseInt(val.value, 10) || 0, m = parseInt(min.value, 10) || 0;
+    dlg.dataset.kind = k;
+    text.value = o.text(btn.dataset, k ? {
+      gift: k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || PCT) + '% off' : '₹' + (v || 200) + ' off') + '*',
+      min: m ? ' of ₹' + m.toLocaleString('en-IN') + ' or more' : ''} : null);
   }
-  a.classList.add('line');
+  function wa(t) { return 'https://wa.me/91' + btn.dataset.phone + '?text=' + encodeURIComponent(t); }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest(sel); if (!b) return;
+    e.preventDefault(); e.stopPropagation();   // a Left at checkout button sits in the line's summary: don't open the line
+    btn = b; q('.ltwa-who').textContent = b.dataset.who;
+    kind.value = K0; val.value = ''; min.value = dlg.dataset.min || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+  });
+  kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); free.addEventListener('change', build);
+  q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
+  send.addEventListener('click', function () {
+    var k = kind.value; err.hidden = true;
+    if (!k && !o.always) { window.open(wa(text.value), '_blank'); dlg.close(); return; }
+    var w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
+    var fd = new FormData(), box = btn.closest('[data-csrf]'), f = o.fields(btn.dataset);
+    fd.append('csrf', box ? box.dataset.csrf : ''); fd.append('action', o.action); fd.append('gkind', k);
+    fd.append('pct', val.value || (k === 'pct' ? PCT : '200')); fd.append('gfree', freeV.value); fd.append('gmin', min.value);
+    for (var n in f) fd.append(n, f[n]);
+    send.disabled = true;
+    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+      send.disabled = false;
+      if (d.error || (k && !d.code)) throw new Error(d.error || 'The code could not be made.');
+      if (d.code) text.value = text.value.split('[CODE]').join(d.code);
+      if (w) w.location = wa(text.value); else location.href = wa(text.value);
+      if (o.done) o.done(d, btn);
+      dlg.close();
+    }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
+  });
+}
+
+/* Refill reminders: laid out like the automatic message; % off (the usual) is picked first. The order then shows Sent (asked even without a coupon). */
+waBox('rfWa', '[data-rf]', {
+  action: 'refill_sent', always: true,
+  fields: function (d) { return {no: d.rf}; },
+  text: function (d, c) {
+    var n2 = '\n\n';
+    return 'Hi ' + d.first + ',' + n2 + 'I hope you are enjoying ' + d.perfumes + '. It has been ' + d.days + ' days since your order, so your bottle may be running low.'
+      + (c ? n2 + 'As a thank you, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' : '')
+      + n2 + 'You can reorder anytime here:\nhttps://fomaxo.in'
+      + (d.review ? n2 + 'If you have a moment, we would love your honest review. It will show as Verified Purchaser:\n' + d.review : '')
+      + n2 + 'Just reply here if you would like help choosing your next scent. If you would rather not get these messages, reply STOP.' + n2 + 'Thank you,\nFOMAXO';
+  },
+  done: function (d, btn) {   // the line shows Sent with today's date (India time, from the server), and the counts move once
+    var cell = btn.parentNode, due = cell.querySelector('.rdue');
+    if (due) due.remove();
+    if (!cell.querySelector('.rsent')) {
+      var s = document.createElement('span');
+      s.className = 'rsent'; s.textContent = 'Sent ' + d.day;
+      cell.insertBefore(s, btn);
+      var todo = document.querySelector('[data-rfn="todo"]'), done = document.querySelector('[data-rfn="sent"]');
+      if (todo && !btn.classList.contains('line')) { todo.textContent = Math.max(0, +todo.textContent - 1); done.textContent = +done.textContent + 1; }
+    }
+    btn.classList.add('line');
+  }
+});
+
+/* Reviews: a 1–3 star review's customer, or one who picked Late delivery / Faulty product, gets an apology; % off is picked first. The review then shows WhatsApp sent. */
+waBox('rvWa', '[data-rvwa]', {
+  action: 'review_wa', always: true,
+  fields: function (d) { return {id: d.rvwa}; },
+  text: function (d, c) {
+    var n2 = '\n\n';
+    return 'Hi ' + (d.first || 'there') + ',' + n2 + 'Thank you for your review' + (d.product ? ' of ' + d.product : '') + '. ' + ({late: 'We checked and found your delivery was indeed late. We are sorry about that.', faulty: 'We checked the photo and found your product was indeed faulty. We are sorry about that.'}[d.issue] || 'We are sorry it was not what you hoped for.')
+      + (c ? n2 + 'As an apology, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' + n2 + 'Type the code at checkout on our website:\nhttps://fomaxo.in' : '')
+      + n2 + 'Just reply here if there is anything we can do to put it right.' + n2 + 'Thank you,\nFOMAXO';
+  },
+  done: function (d, btn) {
+    if (!btn.parentNode.querySelector('.rsent')) { var s = document.createElement('span'); s.className = 'rsent'; s.textContent = 'WhatsApp sent ' + d.day; btn.parentNode.insertBefore(s, btn); }
+    btn.classList.add('line');
+  }
+});
+
+/* Left at checkout: the opening (data-hi) comes from the page; No coupon is picked first */
+waBox('ltWa', '[data-ltwa]', {
+  action: 'lead_coupon',
+  fields: function (d) { return {phone: d.phone}; },
+  text: function (d, c) {
+    return d.hi + (c ? '\n\nTo help you finish it, here is ' + c.gift + ' your order' + c.min + '.\n\nYour code:\n*[CODE]*\n\nWorks one time, only with this mobile number.'
+      + '\n\nType the code at checkout on our website:\nhttps://fomaxo.in' : '\n\nCan we help you finish your order? Just reply to this message.\n\nFinish your order on our website:\nhttps://fomaxo.in')
+      + '\n\nThank you,\n*FOMAXO*';
+  }
 });
 
 /* Coupons: picking Free product on a new coupon ticks One use per customer */
@@ -628,44 +707,3 @@ document.addEventListener('click', function (e) {
   });
 })();
 
-/* Left at checkout → WhatsApp: a ready message to that customer. "No coupon", or % off / ₹ off / a free product, for which a new CART- code
-   is made (one use, only their mobile) when Open WhatsApp is tapped; the message can be changed before sending */
-(function () {
-  var dlg = document.getElementById('ltWa'); if (!dlg) return;
-  var q = function (s) { return dlg.querySelector(s); }, kind = q('.ltwa-kind'), val = q('.ltwa-val input'), free = q('.ltwa-free [data-ffind]'),
-    freeV = q('input[name=ltfree]'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'), phone = '', hi = '';
-  var END = '\n\nThank you,\n*FOMAXO*';
-  function build() {
-    var k = kind.value, v = parseInt(val.value, 10) || 0;
-    dlg.dataset.kind = k;
-    if (!k) { text.value = hi + '\n\nCan we help you finish your order? Just reply to this message.\n\nFinish your order on our website:\nhttps://fomaxo.in' + END; return; }
-    var gift = k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || 10) + '% off' : '₹' + (v || 200) + ' off') + '*';
-    text.value = hi + '\n\nTo help you finish it, here is ' + gift + ' your order.\n\nYour code:\n*[CODE]*\n\nWorks one time, only with this mobile number.'
-      + '\n\nType the code at checkout on our website:\nhttps://fomaxo.in' + END;
-  }
-  function wa(t) { return 'https://wa.me/91' + phone + '?text=' + encodeURIComponent(t); }
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-ltwa]'); if (!b) return;
-    e.preventDefault(); e.stopPropagation();   // the button sits in the line's summary: don't open the line
-    phone = b.dataset.ltwa; hi = b.dataset.hi; q('.ltwa-who').textContent = b.dataset.who;
-    kind.value = ''; val.value = ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
-  });
-  kind.addEventListener('change', build); val.addEventListener('input', build); free.addEventListener('change', build);
-  q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
-  send.addEventListener('click', function () {
-    var k = kind.value; err.hidden = true;
-    if (!k) { window.open(wa(text.value), '_blank'); dlg.close(); return; }
-    var w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the code is made
-    var fd = new FormData(), lts = document.querySelector('.lts');
-    fd.append('csrf', lts ? lts.dataset.csrf : ''); fd.append('action', 'lead_coupon'); fd.append('phone', phone); fd.append('gkind', k);
-    fd.append('pct', val.value || (k === 'pct' ? '10' : '200')); fd.append('gfree', freeV.value);
-    send.disabled = true;
-    fetch(location.pathname, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
-      send.disabled = false;
-      if (!d.code) throw new Error(d.error || 'The code could not be made.');
-      text.value = text.value.split('[CODE]').join(d.code);
-      if (w) w.location = wa(text.value); else location.href = wa(text.value);
-      dlg.close();
-    }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
-  });
-})();
