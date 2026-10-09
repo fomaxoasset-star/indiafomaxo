@@ -589,14 +589,16 @@ function markSent(btn, day) {
 function waBox(id, sel, o) {
   var dlg = document.getElementById(id); if (!dlg) return;
   var q = function (s) { return dlg.querySelector(s); }, kind = q('.ltwa-kind'), val = q('.ltwa-val input'), free = q('.ltwa-free [data-ffind]'),
-    freeV = q('.ltwa-free input[type=hidden]'), min = q('.ltwa-min input'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'),
+    freeV = q('.ltwa-free input[type=hidden]'), min = q('.ltwa-min input'), end = q('.ltwa-end input[data-date]'), text = q('.ltwa-text'), err = q('.ltwa-err'), send = q('[data-ltwa-send]'),
     K0 = kind.value, PCT = dlg.dataset.pct || '10', btn = null;
   function build() {
-    var k = kind.value, v = parseInt(val.value, 10) || 0, m = parseInt(min.value, 10) || 0;
+    var k = kind.value, v = parseInt(val.value, 10) || 0, m = parseInt(min.value, 10) || 0,
+      e = end.value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/), M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     dlg.dataset.kind = k;
     text.value = o.text(btn.dataset, k ? {
       gift: k === 'free' ? 'a *free ' + (free.value.split(' · ')[0] || 'gift') + '* with' : '*' + (k === 'pct' ? (v || PCT) + '% off' : '₹' + (v || 200) + ' off') + '*',
-      min: m ? ' of ₹' + m.toLocaleString('en-IN') + ' or more' : ''} : null);
+      min: m ? ' of ₹' + m.toLocaleString('en-IN') + ' or more' : '',
+      till: e && M[+e[2] - 1] ? ', valid till ' + (+e[1]) + ' ' + M[+e[2] - 1] + ' ' + e[3] : ''} : null);   // the end date, if one is picked
   }
   function wa(t) { return 'https://wa.me/' + (btn.dataset.phone ? '91' + btn.dataset.phone : '') + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
   document.addEventListener('click', function (e) {
@@ -604,16 +606,16 @@ function waBox(id, sel, o) {
     e.preventDefault(); e.stopPropagation();   // a Left at checkout button sits in the line's summary: don't open the line
     btn = b; q('.ltwa-who').textContent = b.dataset.who;
     var noc = b.hasAttribute('data-nocoupon'); dlg.classList.toggle('noc', noc);   // the message already carries its coupon: no choice
-    kind.value = noc ? '' : K0; val.value = ''; min.value = dlg.dataset.min || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
+    kind.value = noc ? '' : K0; val.value = ''; min.value = dlg.dataset.min || ''; end.value = dlg.dataset.ends || ''; free.value = ''; freeV.value = ''; err.hidden = true; send.disabled = false; build(); dlg.showModal();
   });
-  kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); free.addEventListener('change', build);
+  kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); end.addEventListener('input', build); free.addEventListener('change', build);
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
   send.addEventListener('click', function () {
     var k = kind.value; err.hidden = true;
     if (!k && !o.always) { window.open(wa(text.value), '_blank'); dlg.close(); return; }
     var w = window.open('', '_blank');   // opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
     var f = o.fields(btn.dataset);
-    f.action = o.action; f.gkind = k; f.pct = val.value || (k === 'pct' ? PCT : '200'); f.gfree = freeV.value; f.gmin = min.value;
+    f.action = o.action; f.gkind = k; f.pct = val.value || (k === 'pct' ? PCT : '200'); f.gfree = freeV.value; f.gmin = min.value; f.gend = end.value.trim();
     send.disabled = true;
     postAction(btn, f).then(function (d) {
       send.disabled = false;
@@ -633,7 +635,7 @@ waBox('rfWa', '[data-rf]', {
   text: function (d, c) {
     var n2 = '\n\n';
     return 'Hi ' + d.first + ',' + n2 + 'I hope you are enjoying ' + d.perfumes + '. It has been ' + d.days + ' days since your order, so your bottle may be running low.'
-      + (c ? n2 + 'As a thank you, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' : '')
+      + (c ? n2 + 'As a thank you, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use' + c.till + '):' + n2 + '*[CODE]*' : '')
       + n2 + 'You can reorder anytime here:\nhttps://fomaxo.in'
       + (d.review ? n2 + 'If you have a moment, we would love your honest review. It will show as Verified Purchaser:\n' + d.review : '')
       + n2 + 'Just reply here if you would like help choosing your next scent. If you would rather not get these messages, reply STOP.' + n2 + 'Thank you,\nFOMAXO';
@@ -654,7 +656,7 @@ waBox('ltWa', '[data-ltwa]', {
   fields: function (d) { return {phone: d.phone, sid: d.sid}; },
   done: function (d, btn) { markSent(btn, d.day); },
   text: function (d, c) {
-    return d.head + (c ? '\n\nAs a thank you, here is your personal code for ' + c.gift + ' your order' + c.min + ' (single use, valid 7 days, with this mobile number):\n\n*[CODE]*' : '') + d.tail;
+    return d.head + (c ? '\n\nAs a thank you, here is your personal code for ' + c.gift + ' your order' + c.min + ' (single use' + c.till + ', with this mobile number):\n\n*[CODE]*' : '') + d.tail;
   }
 });
 
@@ -665,7 +667,7 @@ waBox('rvWa', '[data-rvwa]', {
   text: function (d, c) {
     var n2 = '\n\n';
     return 'Hi ' + (d.first || 'there') + ',' + n2 + 'Thank you for your review' + (d.product ? ' of ' + d.product : '') + '. ' + ({late: 'We checked and found your delivery was indeed late. We are sorry about that.', faulty: 'We checked ' + (d.photo ? 'the photo' : 'your order') + ' and found your product was indeed faulty. We are sorry about that.'}[d.issue] || 'We are sorry it was not what you hoped for.')
-      + (c ? n2 + 'As an apology, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' + n2 + 'Type the code at checkout on our website:\nhttps://fomaxo.in' : '')
+      + (c ? n2 + 'As an apology, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use' + c.till + '):' + n2 + '*[CODE]*' + n2 + 'Type the code at checkout on our website:\nhttps://fomaxo.in' : '')
       + n2 + 'Just reply here if there is anything we can do to put it right.' + n2 + 'Thank you,\nFOMAXO';
   },
   done: function (d, btn) { markSent(btn, d.day); }
@@ -678,7 +680,7 @@ waBox('gWa', '[data-wabox]', {
   action: 'wa_coupon', always: true,
   fields: function (d) { return {phone: d.phone || '', mark: d.mark || ''}; },
   text: function (d, c) {
-    return d.head + (c ? '\n\nAs a thank you, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use, with this mobile number):\n\n*[CODE]*\n\nType the code at checkout on our website:\nhttps://fomaxo.in' : '') + d.tail;
+    return d.head + (c ? '\n\nAs a thank you, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use' + c.till + ', with this mobile number):\n\n*[CODE]*\n\nType the code at checkout on our website:\nhttps://fomaxo.in' : '') + d.tail;
   },
   done: function (d, btn) {
     var first = !btn.classList.contains('line'); markSent(btn, d.day);

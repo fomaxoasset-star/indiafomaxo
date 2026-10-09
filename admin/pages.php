@@ -729,7 +729,7 @@ if ($tab === 'analytics' && !$cv) {
       . '<dt>Ordered later</dt><dd>' . ($l['later'] !== '' && $l['later'] !== 'yes' ? '<a href="' . h(self_url(['tab' => 'orders', 'q' => $l['later']])) . '">Order ' . h($l['later']) . '</a>' : ($l['later'] === 'yes' ? 'Yes' : 'Not ordered')) . '</dd></dl>'
       . '</div></details>';
   }
-  $body .= '</div></div></div></div>' . wa_box('ltWa', 'ltfree', '', 10, 0, 'A new COMEBACK- code just for this customer: one use, only with their mobile number, ends in 7 days. It is made when you tap Open WhatsApp.');
+  $body .= '</div></div></div></div>' . wa_box('ltWa', 'ltfree', '', 10, 0, 'A new COMEBACK- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.', 7);
 }
 
 /* ============ Sales (profit & loss; was Reports) ============ */
