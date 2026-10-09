@@ -105,7 +105,4 @@ function rq_head(array $p): string {
 }
 /* the end of the message (the admin WhatsApp box puts a picked coupon between rq_head and this) */
 function rq_tail(): string { return "\n\nJust reply here if you need anything. If you would rather not get these messages, reply STOP.\n\nThank you,\nFOMAXO"; }
-function rq_text(array $p): string { return rq_head($p) . rq_tail(); }
 
-/* the wa.me link with the ready message, for the WhatsApp buttons */
-function rq_wa(array $o): string { return wa_link((string)$o['phone'], rq_text(rq_parts($o))); }

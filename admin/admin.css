@@ -258,7 +258,7 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
 .revs .rv{padding-left:12px;border-left:3px solid transparent}.revs .rv.rv-faulty{border-left-color:#d0644e}.revs .rv.rv-late{border-left-color:#e0a03a}.revs .rv.rv-bad{border-left-color:var(--blue)}
 .rv .badge.ib-late{color:#e0a03a;border-color:#e0a03a}.rv .badge.ib-bad{color:var(--blue);border-color:var(--blue)}
 .rvwa{margin-left:auto;display:flex;align-items:center;gap:0}.rvwa .btn{height:32px;min-height:32px;cursor:pointer}
-@media(max-width:620px){.rvwa .btn>span{display:none}.rvwa .btn{width:34px;padding:0}.rvwa .rsent{font-size:11px;margin-right:6px}}   /* phone: the green WhatsApp logo alone, so it stays on the stars line */
+@media(max-width:620px){.rvwa .btn>span{display:none}.rvwa .btn{width:34px;padding:0}}   /* phone: the green WhatsApp logo alone, so it stays on the stars line */
 .chip.ck-bad::before,.chip.ck-faulty::before,.chip.ck-late::before{content:"";width:8px;height:8px;border-radius:50%;background:#d0644e;margin-right:6px;display:inline-block;vertical-align:1px}.chip.ck-late::before{background:#e0a03a}.chip.ck-bad::before{background:var(--blue)}
 .mtabs{display:none;gap:2px;overflow-x:auto;scrollbar-width:none}.mtabs::-webkit-scrollbar{display:none}.mtabs a{display:flex;align-items:center;padding:0 10px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:13px}.mtabs a.on{color:var(--gold2);border-color:var(--gold)}
 /* analytics: any tile or box opens big */
@@ -515,7 +515,7 @@ body.zooming{overflow:hidden}
 .rfsw span{display:block;padding:6px 22px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold2)}.rfsw input:checked+span{background:var(--gold);color:#17130b}.rfsw input:focus-visible+span{outline:2px solid var(--gold2);outline-offset:-3px}
 .rferr{color:var(--red);margin:0;font-weight:600}
 .rfk{flex:none;grid-template-columns:repeat(2,minmax(0,220px))}.rflist td{padding:8px 10px}.rflist th:first-child,.rflist td:first-child{padding-left:14px}.rflist th:last-child,.rflist td:last-child{padding-right:14px}.rflist .btn{width:auto;display:inline-flex}.rflist tr.dim2 td>*:not(.ra){opacity:.75}.rfk.rq3{grid-template-columns:repeat(3,minmax(0,220px))}
-.rsent{font-size:12px;font-weight:600;color:var(--green);margin-right:10px}.rdue{font-size:12px;font-weight:600;color:var(--gold);margin-right:10px}.rstop{font-size:12px;font-weight:700;color:var(--red)}
+.rdue{font-size:12px;font-weight:600;color:var(--gold);margin-right:10px}.rstop{font-size:12px;font-weight:700;color:var(--red)}
 .wtag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:1px 7px;margin-left:8px;border-radius:20px;border:1px solid color-mix(in srgb,var(--green) 45%,transparent);color:var(--green);background:color-mix(in srgb,var(--green) 10%,transparent);white-space:nowrap;vertical-align:1px}
 .wastop{display:inline;margin:0 0 0 10px}.btn.xs{height:auto;min-height:0;width:auto;padding:3px 10px;font-size:11.5px}
 .rfnote{padding:10px 14px;margin:0;border-top:1px solid var(--line2)}
@@ -526,7 +526,7 @@ body.zooming{overflow:hidden}
   .rflist tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--line2)}
   .rflist td{display:block;padding:0!important;border:0!important;font-size:13px;min-width:0}.rflist td:nth-child(2){grid-row:2;margin-top:2px}.rflist td.ra{grid-column:2;grid-row:1/3}
   .rflist td small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rflist td:nth-child(2) b,.rflist td:nth-child(2) small{display:inline;font-size:12px}.rflist td:nth-child(2) b::after{content:" · ";font-weight:400;color:var(--muted)}
-  .rflist .rsent,.rflist .rdue{display:block;margin:0 0 4px;font-size:11px}.rflist .btn{padding:0 10px}.rfnote{padding:8px 10px}
+  .rflist .rdue{display:block;margin:0 0 4px;font-size:11px}.rflist .btn{padding:0 10px}.rfnote{padding:8px 10px}
 }
 
 /* light mode: the admin follows the phone or computer setting (black text, gold, cream background) */
@@ -599,7 +599,7 @@ body.zooming{overflow:hidden}
 /* the shared WhatsApp box: a coupon's own message has no coupon choice; WhatsApp buttons are <button>s */
 .ltwa.noc :is(label:has(.ltwa-kind),.ltwa-val,.ltwa-free,.ltwa-min,.ltwa-note){display:none!important}
 button.rqwa,button[data-wabox]{font-family:inherit;cursor:pointer}.btn.wag{gap:6px}.btn.xs.wag{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;margin-left:6px}.btn.xs.wag svg{width:13px;height:13px}
-.lt-wa .btn.line,.ltwa-x{background:transparent!important;color:#25D366!important}
+.lt-wa .btn.line{background:transparent!important;color:#25D366!important}
 @media(max-width:620px){.rvwa .btn.line{width:auto;padding:0 8px}.rvwa .btn.line>span{display:inline;font-size:11px}}
 /* phone: a sent button in a narrow column keeps its size and shows Sent over dd/mm instead of the logo */
 @media(max-width:760px){.mlist .mwa.line{width:44px;padding:0 2px;justify-content:center}.mlist .mwa.line svg{display:none}.mlist .mwa.line span{display:block;white-space:normal;font-size:10.5px;line-height:1.15;text-align:center}}

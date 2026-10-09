@@ -11,7 +11,6 @@ function markSent(btn, day) {
   var s = btn.querySelector('span'); if (!s) { s = document.createElement('span'); btn.textContent = ''; btn.appendChild(s); }
   s.textContent = 'Sent ' + day; btn.removeAttribute('title');
   btn.classList.add(btn.classList.contains('rqwa') ? 'done' : 'line');
-  var old = btn.parentNode.querySelector('.rsent'); if (old) old.remove();
 }
 (function () {
   /* phones: keep the open tab in view in the scrolling tab strip */
