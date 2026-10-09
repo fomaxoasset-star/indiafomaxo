@@ -880,7 +880,17 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
     if ($l['later'] === '' && (int)$l['ordered']) $l['later'] = 'yes';
   }
   unset($l);
-  return $leads;
+  /* one line per customer: every visit is its own lead, so the same mobile (or the same email when there is no mobile) is put together under their
+     latest visit; 'tries' counts the visits, 'sids' are all of them (✕ removes them all), 'times' their dates, 'sent' the latest WhatsApp Sent day */
+  $by = [];
+  foreach ($leads as $l) {
+    $k = $l['phone'] !== '' ? 'p:' . $l['phone'] : (trim((string)$l['email']) !== '' ? 'e:' . strtolower(trim((string)$l['email'])) : 's:' . $l['sid']);
+    if (!isset($by[$k])) { $l['tries'] = 0; $l['sids'] = []; $l['times'] = []; $l['sent'] = ''; $by[$k] = $l; }
+    $by[$k]['tries']++; $by[$k]['sids'][] = (string)$l['sid']; $by[$k]['times'][] = (string)$l['updated'];
+    $d = wa_sent_all()['lt:' . $l['sid']] ?? '';
+    if ($d > $by[$k]['sent']) $by[$k]['sent'] = $d;
+  }
+  return array_values($by);
 }
 function lead_items(array $l): string { return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: [])); }
 /* the bag they left as a short code for the website link (product.size.qty for each line, joined with _): fomaxo.in/#/checkout?bag=… fills the bag again */
@@ -968,7 +978,7 @@ function admin_badges(): array {
   $b = ['orders' => (int)$s->fetchColumn(), 'bad' => 0, 'faulty' => 0, 'late' => 0];
   $since = (int)admin_seen('reviews');
   foreach (reviews_list() as $r) if ((int)$r['created'] > $since && isset($b[$r['issue']])) $b[$r['issue']]++;   // only Bad product, Faulty product and Late delivery
-  $s = shop_db()->prepare('SELECT COUNT(*) FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?'); $s->execute([admin_seen('leads')]);
+  $s = shop_db()->prepare("SELECT COUNT(DISTINCT CASE WHEN phone <> '' THEN phone WHEN email <> '' THEN LOWER(email) ELSE sid END) FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?"); $s->execute([admin_seen('leads')]);
   $b['leads'] = (int)$s->fetchColumn();
   return $b;
 }
