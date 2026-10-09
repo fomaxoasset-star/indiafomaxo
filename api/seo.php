@@ -162,5 +162,5 @@ $swap = [
   '/<meta property="og:image:width" content="[^"]*">\s*<meta property="og:image:height" content="[^"]*">\s*/' => '',   // sizes of the home link picture, not this product photo
 ];
 foreach ($swap as $re => $to) $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
-$html = preg_replace('/<link rel="preload" as="image"[^>]*>/', '', $html, 2);   // the home banner (phone and laptop): not shown on a product page
+// the home banner's early download (top of index.html) skips itself here: $go below sets the #/product/… address first
 echo preg_replace('/<meta charset="utf-8">/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $go), $html, 1);
