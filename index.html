@@ -2426,7 +2426,7 @@ window.STORE = {
       ],
       notes: { top: "Lemon · Bergamot · Vervain", heart: "Star Anise · Olive Blossom · Guaiac Wood", base: "Ambergris · Leather · Sandalwood" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["oldmoney-50-main", "oldmoney-2", "oldmoney-3", "oldmoney-4"], miniImage: "oldmoney-10-1", miniImages: ["oldmoney-10-1", "oldmoney-10-2", "oldmoney-10-3"],
+      images: ["oldmoney-50-main", "oldmoney-2", "oldmoney-3", "oldmoney-4"], lockMain: true, dropImages: ["oldmoney-1"], miniImage: "oldmoney-10-1", miniImages: ["oldmoney-10-1", "oldmoney-10-2", "oldmoney-10-3"],
       url: "https://fomaxo.com/fomaxo-old-money"
     },
     {
@@ -2438,7 +2438,7 @@ window.STORE = {
       ],
       notes: { top: "Green Tangerine · Lemon · Sage", heart: "Candy · Gardenia · Cinnamon · Praline", base: "Black Amber · Rosewood · Musk" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["royalcandy-50-main", "royalcandy-2"], miniImage: "royalcandy-10-1", miniImages: ["royalcandy-10-1", "royalcandy-10-2", "royalcandy-10-3"],
+      images: ["royalcandy-50-main", "royalcandy-2"], lockMain: true, dropImages: ["royalcandy-1"], miniImage: "royalcandy-10-1", miniImages: ["royalcandy-10-1", "royalcandy-10-2", "royalcandy-10-3"],
       url: "https://fomaxo.com/fomaxo-royal-candy"
     },
     {
@@ -2462,7 +2462,7 @@ window.STORE = {
       ],
       notes: { top: "Matcha Tea · Rose · Cinnamon", heart: "Orange Blossom · Lily of the Valley · Tea Rose", base: "Coconut · Vanilla · Amber" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["matchacoco-50-main", "matchacoco-model", "matchacoco-2", "matchacoco-3"], addImages: ["matchacoco-model"], miniImage: "matchacoco-10-1", miniImages: ["matchacoco-10-1", "matchacoco-10-2"],
+      images: ["matchacoco-50-main", "matchacoco-model", "matchacoco-2", "matchacoco-3"], addImages: ["matchacoco-model"], lockMain: true, dropImages: ["matchacoco-1"], miniImage: "matchacoco-10-1", miniImages: ["matchacoco-10-1", "matchacoco-10-2"],
       url: ""
     },
     {
@@ -2474,7 +2474,7 @@ window.STORE = {
       ],
       notes: { top: "Passion Fruit · Lemon · Apple", heart: "Litchi · Patchouli · Bergamot", base: "Juniper Berry · Vetiver · Cedar" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2300 },
-      images: ["passionsin-1", "passionsin-2", "passionsin-3"], miniImage: "passionsin-10-1", miniImages: ["passionsin-10-1", "passionsin-10-2", "passionsin-10-3"],
+      images: ["passionsin-1", "passionsin-model", "passionsin-2", "passionsin-3"], addImages: ["passionsin-model"], miniImage: "passionsin-10-1", miniImages: ["passionsin-10-1", "passionsin-10-2", "passionsin-10-3"],
       url: ""
     },
 
@@ -2619,6 +2619,8 @@ const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/
     if (main) p.images = [main, ...(p.images || []).filter(k => k !== main)];
     /* addImages: photos added in index.html after the admin database was filled; they go right after the main photo unless the admin list already has them */
     if (add.length) { const im = [...(p.images || [])]; add.filter(k => !im.includes(k)).reverse().forEach(k => im.splice(1, 0, k)); p.images = im; }
+    /* dropImages: old photos replaced in index.html that an admin photo snapshot still lists */
+    if (p.dropImages) p.images = (p.images || []).filter(k => !p.dropImages.includes(k));
     /* the admin page never sets the editorial photo; products copied into the admin database carry an old one, so index.html's wins */
     if (edPhoto) p.editorial = edPhoto; else delete p.editorial;
   });
