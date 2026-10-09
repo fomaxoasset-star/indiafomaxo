@@ -1,4 +1,5 @@
-<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}</style>
+<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}.rv-form p.rv-mob-tip{margin:-6px 0 0;color:#d0644e;font-size:12px;line-height:1.45;letter-spacing:0;text-transform:none}
+</style>
 <!--seo--><link rel="canonical" href="https://fomaxo.in/"><meta property="og:url" content="https://fomaxo.in/"><meta property="og:type" content="website"><meta property="og:site_name" content="FOMAXO India">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://fomaxo.in/#org","name":"FOMAXO","url":"https://fomaxo.in/","sameAs":["https://www.instagram.com/fomaxo_india/","https://fomaxo.com/"]},{"@type":"WebSite","@id":"https://fomaxo.in/#site","name":"FOMAXO India","url":"https://fomaxo.in/","publisher":{"@id":"https://fomaxo.in/#org"},"inLanguage":"en-IN"}]}</script><!--/seo--><!-- the shop's address and details for Google; api/seo.php swaps this block on each /fomaxo-<name> product page -->
 <title>FOMAXO — Luxury Personal Care</title>
@@ -4081,7 +4082,7 @@ function rvForm(p, token, customer){
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div></div>
     <div class="rv-c2">    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
-    ${token ? '' : '<label><span>Mobile <i class="rv-mob-why">(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label>'}
+    ${token ? '' : '<label><span>Mobile <i class="rv-mob-why">(optional, only FOMAXO sees it)</i></span><input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="e.g. 98765 43210"></label><p class="small rv-mob-tip">Please add your mobile number, so we can send your coupon on WhatsApp upon proof.</p>'}
     <div class="rv-loc">
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
       <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
@@ -4149,7 +4150,7 @@ function bindRvForm(form, p, token, done){
     if (!rating) return err.textContent = 'Please choose a star rating.';
     if (note && rating <= 3) { const msg = !issue.value && RV_PROBLEM.test(form.elements.text.value) ? RV_ASK : rvMismatch(issue.value, form.elements.text.value); if (msg) { $('.rv-prob select', form).focus(); return err.textContent = msg; } }
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
-    if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.';
+    if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp upon proof.';
     if (token && rvNeedsProof(rating, form.elements.text.value, files.length)) return err.textContent = RV_PROOF;
     if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';

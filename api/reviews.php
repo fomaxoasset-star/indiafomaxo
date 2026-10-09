@@ -224,7 +224,7 @@ try {
         fail('It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.');
       if ($issue === 'late' && preg_match(RV_FAULTY, $text) && !preg_match(RV_LATE, $text)) fail('Your review is about a faulty or damaged product. Please pick Faulty or damaged product instead of Late delivery.');
       if ($issue === 'faulty' && preg_match(RV_LATE, $text) && !preg_match(RV_FAULTY, $text)) fail('Your review is about a late delivery. Please pick Late delivery instead of Faulty or damaged product.');
-      if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.');
+      if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp upon proof.');
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
         $o = orderByToken((string)$in['token']);
