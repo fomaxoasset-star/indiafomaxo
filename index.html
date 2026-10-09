@@ -392,12 +392,30 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-arrow{width:46px;height:46px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--gold);background:transparent;color:var(--gold-hi);font-family:inherit;font-weight:300;font-size:26px;line-height:1;padding:0 0 3px;cursor:pointer;transition:background .2s,color .2s}
 .rv-arrow:hover:not(:disabled){background:var(--gold);color:#0a0805}
 .rv-arrow:disabled{border-color:var(--line-2);color:var(--dim);cursor:default}
-.rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px}
+.rv-form{border:1px solid var(--line-2);padding:clamp(20px,3vw,34px);margin-bottom:22px;background:linear-gradient(180deg,rgba(215,170,105,.06),transparent 160px)}
 .rv-c1,.rv-c2{display:grid;gap:14px;align-content:start;min-width:0}
+.rv-fhead{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.rv-fhead span{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
+.rv-fhead b{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:.04em;color:var(--ivory)}
+.rv-x{margin-left:auto;align-self:center;width:34px;height:34px;border:1px solid var(--line-2);border-radius:50%;color:var(--muted);font-size:20px;line-height:1;transition:color .2s,border-color .2s}
+.rv-x:hover{color:var(--gold-hi);border-color:var(--gold)}
+.rv-rate{display:flex;align-items:center;gap:14px}
+.rv-word{font-size:12px;letter-spacing:.2em;color:var(--gold-hi)}
+.rv-drop{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border:1px dashed var(--line-2);color:var(--gold-hi);letter-spacing:.2em;transition:border-color .2s,background .2s}
+.rv-drop:hover,.rv-drop:focus-within{border-color:var(--gold);background:rgba(215,170,105,.06)}
+.rv-drop svg{width:20px;height:20px}
+.form.rv-form .rv-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0}
+.rv-thumbs{display:flex;gap:6px}.rv-thumbs[hidden]{display:none}
+.rv-thumbs img{width:34px;height:34px;object-fit:cover;border:1px solid var(--line-2)}
+.rv-foot{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--line)}
+.rv-foot .rv-err{flex:1 1 220px;margin:0}
+.rv-btns{display:flex;gap:12px;flex-wrap:wrap;margin-left:auto}
+@media(max-width:620px){.rv-btns{width:100%}.rv-btns .btn{flex:1 1 0;justify-content:center}.rv-foot .rv-err:empty{display:none}}
 /* laptop: two columns (rating, problem and words | name, mobile, place, photos), so the whole form fits on one screen */
 @media (min-width:900px){.rv-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:clamp(24px,3vw,40px)}.rv-form>*{grid-column:1/-1}.rv-form>.rv-c1{grid-column:1}.rv-form>.rv-c2{grid-column:2}.rv-form textarea{min-height:96px}
-  .rv-form{padding:24px 30px;row-gap:12px}.rv-c1,.rv-c2{gap:12px}.form.rv-form input,.form.rv-form select{padding:11px 14px}.form.rv-form textarea{padding:12px 14px}.rv-form .rv-loc{grid-template-columns:1fr;gap:12px}
-  .rv-form .rv-emoji button{width:34px;height:34px;font-size:17px}.rv-form .rv-pick button{font-size:26px}}
+  .rv-form{padding:18px 30px 20px;row-gap:12px}.rv-c1,.rv-c2{gap:11px}.rv-form .rv-issue{font-size:13px;line-height:1.55}.rv-foot{padding-top:14px}.rv-fhead b{font-size:22px}.form.rv-form input,.form.rv-form select{padding:11px 14px}.form.rv-form textarea{padding:12px 14px}.rv-form .rv-loc{grid-template-columns:1fr;gap:12px}
+  .rv-form .rv-emoji{flex-wrap:nowrap;gap:2px}.rv-form .rv-emoji button{flex:1 1 0;width:auto;max-width:34px;height:auto;aspect-ratio:1;font-size:17px;border-color:transparent}.rv-form .rv-emoji button:hover{border-color:var(--line-2)}
+  .rv-form .rv-pick button{font-size:28px}}
 .rv-pick{display:flex;gap:4px}
 .rv-emoji{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
 .rv-emoji button{font-size:20px;line-height:1;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;transition:border-color .2s,transform .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
@@ -425,7 +443,6 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 @font-face{font-family:"Twemoji Country Flags";unicode-range:U+1F1E6-1F1FF,U+1F3F4,U+E0062-E007F;src:url(https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1/dist/TwemojiCountryFlags.woff2) format("woff2");font-display:swap}
 .rv-flag{font-family:"Twemoji Country Flags","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:1.15em;line-height:1;vertical-align:-1px}
 .rv-sug .rv-flag{margin-right:10px}
-.rv-form input[type=file]{padding:12px;font-size:13px}
 .rv-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .rv-err{color:#e08a7a;min-height:1em}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
 .rv-ok{border:1px solid var(--line-2);padding:24px;color:var(--champagne)}
@@ -4194,10 +4211,12 @@ const rvFlag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c =>
 const rvNation = n => RV_NATIONS.find(([c]) => c.toLowerCase() === String(n || '').trim().toLowerCase());
 /* words about a late delivery or a faulty / damaged product (English and Hinglish), the same list as api/reviews.php */
 const RV_PROBLEM = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|der(i|ee)? se|toot(a|i))\b/i;
+const RV_WORDS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
 const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
   return `<form class="form rv-form" novalidate>
-    <div class="rv-c1"><label>Your rating<div class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</div></label>
+    ${token ? '' : `<div class="rv-fhead"><span>Write a review</span><b>${esc(p.name)}</b><button type="button" class="rv-x" data-cancel aria-label="Close">&times;</button></div>`}
+    <div class="rv-c1"><label>Your rating<span class="rv-rate"><span class="rv-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(k => `<button type="button" role="radio" aria-checked="false" data-star="${k}" aria-label="${k} star${k > 1 ? 's' : ''}">★</button>`).join('')}</span><span class="rv-word"></span></span></label>
     ${token ? '' : `<label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
     <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product</span>.</p>`}
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
@@ -4209,11 +4228,10 @@ function rvForm(p, token, customer){
       <label class="rv-city"><span>City / State <i>(optional)</i></span><input name="city" maxlength="60" autocomplete="off" placeholder="Start typing, e.g. Pune" role="combobox" aria-autocomplete="list" aria-expanded="false"><ul class="rv-sug" role="listbox" hidden></ul></label>
       <label class="rv-city"><span>Nation <i>(optional)</i></span><span class="rv-dd"><input name="country" maxlength="40" autocomplete="off" placeholder="Type or pick, e.g. India" role="combobox" aria-autocomplete="list" aria-expanded="false"><button type="button" class="rv-dd-btn" tabindex="-1" aria-label="Show all nations"></button></span><ul class="rv-sug" role="listbox" hidden></ul></label>
     </div>
-    <label>Photos (optional, up to 3)<input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple></label></div>
+    <label><span>Photos <i>(optional, up to 3)</i></span><span class="rv-drop"><input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h3l2-3h8l2 3h3v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="rv-thumbs" hidden></span><span class="rv-drop-t">Add photos</span></span></label></div>
     <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     ${token ? '<p class="rv-ver">✓ This review will show as Verified Purchaser</p>' : ''}
-    <div style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn sm" type="submit">Post review</button>${token ? '' : '<button class="btn line sm" type="button" data-cancel>Cancel</button>'}</div>
-    <p class="small rv-err" role="alert"></p>
+    <div class="rv-foot"><p class="small rv-err" role="alert"></p><div class="rv-btns">${token ? '' : '<button class="btn line sm" type="button" data-cancel>Cancel</button>'}<button class="btn sm" type="submit">Post review</button></div></div>
   </form>`;
 }
 /* type-ahead list under an input: find(q) returns [value, html] pairs; onFocus also opens it while empty */
@@ -4235,7 +4253,7 @@ function rvSuggest(input, find, onFocus){
 }
 function bindRvForm(form, p, token, done){
   let rating = 0; const stars = $$('[data-star]', form), err = $('.rv-err', form);
-  const paint = n => stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); });
+  const word = $('.rv-word', form), paint = n => { word.textContent = RV_WORDS[n]; stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); }); };
   stars.forEach(b => { b.onclick = () => { rating = +b.dataset.star; paint(rating); }; b.onmouseenter = () => paint(+b.dataset.star); b.onmouseleave = () => paint(rating); });
   const anon = form.elements.anonymous, name = form.elements.name;
   anon.onchange = () => { name.disabled = form.elements.city.disabled = form.elements.country.disabled = anon.checked; };   // anonymous hides name, place and flag
@@ -4277,7 +4295,12 @@ function bindRvForm(form, p, token, done){
     try { const d = await rvPost('submit', fd); done(d); }
     catch(x){ err.textContent = x.message; btn.disabled = false; btn.textContent = 'Post review'; }
   };
-  const c = $('[data-cancel]', form); if (c) c.onclick = () => done(null);
+  /* chosen photos show as small pictures under the box */
+  const pics = form.elements.photos, thumbs = $('.rv-thumbs', form), dropT = $('.rv-drop-t', form);
+  pics.onchange = () => { const fs = [...pics.files]; thumbs.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
+    thumbs.innerHTML = fs.slice(0, 3).map(f => `<img src="${URL.createObjectURL(f)}" alt="">`).join(''); thumbs.hidden = !fs.length;
+    dropT.textContent = fs.length ? `${fs.length} photo${fs.length > 1 ? 's' : ''} added · change` : 'Add photos'; };
+  $$('[data-cancel]', form).forEach(c => c.onclick = () => done(null));
 }
 
 let rvVoted = []; try { rvVoted = JSON.parse(localStorage.getItem('fomaxo_rv_voted') || '[]'); } catch(e) {}
