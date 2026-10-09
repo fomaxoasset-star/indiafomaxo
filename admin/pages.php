@@ -697,7 +697,7 @@ if ($tab === 'reviews') {
   $rq = trim((string)($_GET['q'] ?? '')); $rv = (string)($_GET['v'] ?? ''); $rv = in_array($rv, ['1', '0'], true) ? $rv : '';
   $rp = (string)($_GET['p'] ?? ''); if (!preg_match('/^[\w-]{1,60}$/', $rp)) $rp = '';
   $rs = (string)($_GET['s'] ?? ''); $rs = in_array($rs, ['1', '2', '3', '4', '5'], true) ? $rs : '';
-  $ri = (string)($_GET['pr'] ?? ''); $ri = in_array($ri, ['faulty', 'late', '1'], true) ? $ri : '';   // Faulty product / Late delivery chips (old ?pr=1 links: both)
+  $ri = (string)($_GET['pr'] ?? ''); $ri = in_array($ri, ['bad', 'faulty', 'late', '1'], true) ? $ri : '';   // Bad product / Faulty product / Late delivery chips (old ?pr=1 links: the last two)
   /* the date bar: picking dates shows only the reviews written in them (the counts, stars and top reviewers too) */
   $D = pick_dates('reviews'); $dd = $D['r'] === 'all' ? [] : ['from' => $D['from'], 'to' => $D['to']];
   $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []) + ($rs !== '' ? ['stars' => (int)$rs] : []) + ($ri !== '' ? ['issue' => $ri] : []));
@@ -708,7 +708,7 @@ if ($tab === 'reviews') {
     . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
     . '<a class="chip' . ($rv === '0' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '0' ? '' : '0'] + $keep)) . '">Unverified <b>' . $nu . '</b></a>'
     /* problems, verified and unverified alike: tap one to see only those reviews (a coupon is owed), tap again for all */
-    . implode('', array_map(fn($k, $t) => '<a class="chip ck-' . $k . ($ri === $k ? ' on' : '') . '" href="' . h(self_url(['pr' => $ri === $k ? '' : $k] + $keep)) . '" title="Show only ' . strtolower($t) . ' reviews">' . $t . ' <b>' . count(array_filter($ALL, fn($r) => ($r['issue'] ?? '') === $k)) . '</b></a>', ['faulty', 'late'], ['Faulty product', 'Late delivery']))
+    . implode('', array_map(fn($k, $t) => '<a class="chip ck-' . $k . ($ri === $k ? ' on' : '') . '" href="' . h(self_url(['pr' => $ri === $k ? '' : $k] + $keep)) . '" title="Show only ' . strtolower($t) . ' reviews">' . $t . ' <b>' . count(array_filter($ALL, fn($r) => ($r['issue'] ?? '') === $k)) . '</b></a>', ['bad', 'faulty', 'late'], ['Bad product', 'Faulty product', 'Late delivery']))
     /* stars: tap one to see only the reviews with that many stars, tap again for all */
     . implode('', array_map(fn($n) => '<a class="chip' . ($rs === (string)$n ? ' on' : '') . '" href="' . h(self_url(['s' => $rs === (string)$n ? '' : (string)$n] + $keep)) . '" title="Show only ' . $n . '-star reviews">' . $n . '★ <b>' . count(array_filter($ALL, fn($r) => (int)round((float)$r['rating']) === $n)) . '</b></a>', [5, 4, 3, 2, 1])) . '</form>';
   $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars By Product', 'top' => 'Top Reviewers']) . '<div class="revs panes" id="rvPanes">';
@@ -720,7 +720,7 @@ if ($tab === 'reviews') {
   foreach ($list as $r) {
     $live = $r['status'] === 'live';
     /* a 1–3 star review from a customer whose mobile we have: WhatsApp them an apology, with a coupon or not (the WhatsApp box, admin.js); a green button at the end of the stars line */
-    $issue = ['late' => 'Late delivery', 'faulty' => 'Faulty product'][$r['issue'] ?? ''] ?? '';   // picked on the review form, or read from a 1–3 star review's words: a coupon is owed
+    $issue = ['late' => 'Late delivery', 'faulty' => 'Faulty product', 'bad' => 'Bad product'][$r['issue'] ?? ''] ?? '';   // picked on the review form, or read from a 1–3 star review's words (late / faulty: a coupon is owed); any other 1–3 stars: bad product
     $rvWa = ((int)round((float)$r['rating']) <= 3 || $issue !== '') && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? (isset($rvSent[$r['id']]) ? '<span class="rsent">Sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) . '</span>' : '')
       . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(preg_split('/\s+/u', trim((string)$r['name']))[0] ?? '') . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-issue="' . h($r['issue'] ?? '') . '" data-photo="' . (json_decode((string)$r['photos'], true) ? '1' : '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
     $photos = json_decode((string)$r['photos'], true) ?: [];
@@ -742,7 +742,7 @@ if ($tab === 'reviews') {
       . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
       . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button><button type="button" class="btn line sm" data-sg-clear title="Empty the box to write your own reply">✕ Clear</button></div></form></div>';
   }
-  $body .= '</div></div>' . wa_box('rvWa', 'gfree', 'pct', 10, 0, 'A new GOODWILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
+  $body .= '</div></div>' . wa_box('rvWa', 'gfree', '', 10, 0, 'A new GOODWILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
   /* stars by product (live reviews only, as on the website) */
   $by = [];
   foreach ($ALL as $r) if ($r['status'] === 'live') { $by[$r['product']]['n'] = ($by[$r['product']]['n'] ?? 0) + 1; $by[$r['product']]['sum'] = ($by[$r['product']]['sum'] ?? 0) + (int)$r['rating']; }
