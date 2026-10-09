@@ -4305,8 +4305,8 @@ function bindRvForm(form, p, token, done){
     e.preventDefault(); err.textContent = '';
     const files = [...form.elements.photos.files];
     if (!rating) return err.textContent = 'Please choose a star rating.';
-    if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
     if (note && rating <= 3) { const msg = !issue.value && RV_PROBLEM.test(form.elements.text.value) ? RV_ASK : rvMismatch(issue.value, form.elements.text.value); if (msg) { $('.rv-prob select', form).focus(); return err.textContent = msg; } }
+    if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
     if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.';
     if (token && rvNeedsProof(rating, form.elements.text.value, files.length)) return err.textContent = RV_PROOF;
     if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
