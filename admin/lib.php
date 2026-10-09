@@ -643,12 +643,15 @@ function duration(int $secs): string {
 }
 
 /* ---------------- reviews (api/reviews.php keeps them in fomaxo-private/reviews.sqlite) ---------------- */
-/* a 1–3 star review that talks about a late delivery or a faulty / damaged product (the words api/reviews.php checks, split in two):
-   verified purchasers get no problem box on the form, so their problem is read from the words */
+/* a review that talks about a delivery delay or a faulty / damaged product (the words api/reviews.php checks, split in two), at every star rating:
+   verified purchasers get no problem box on the form, so their problem is read from the words. A 4–5 star review is a bad product only when
+   its words say so (1–3 stars always are, in reviews_list). Negated words in a happy review ("no delay", "not bad") are ignored. */
 function review_issue_from_words(string $text, float $rating): string {
-  if ((int)round($rating) > 3) return '';
+  $hi = (int)round($rating) > 3;
+  if ($hi) $text = preg_replace('/\b(no|not|without|zero|nothing|never|any|wasn\'t|isn\'t|didn\'t|koi)\s+(\w+\s+){0,3}?(late|delay(ed|s)?|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|faulty|defective|bad|poor|weak|fake|disappointed|disappointing|complaints?|problems?|issues?|der(i|ee)?)\b/i', ' ', $text);
   if (preg_match('/\b(faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|toot(a|i))\b/i', $text)) return 'faulty';
   if (preg_match('/\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|der(i|ee)? se)\b/i', $text)) return 'late';
+  if ($hi && preg_match('/\b(bad|poor|terrible|horrible|awful|worst|fake|disappoint(ed|ing|ment)|waste|cheap|weak|not (good|worth|happy|satisfied|long ?lasting|as described)|(does|did)n\'?t (last|like|stay)|(do|did) not (last|like|stay)|no (smell|scent|longevity)|fades? (fast|quickly|away)|smells? (bad|weird|off|like alcohol)|bekaar|bakwas|ghatiya|nakli)\b/i', $text)) return 'bad';
   return '';
 }
 /* reviews with the mobile of the order they came from (verified purchasers), or the optional one typed with the review. $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone, from and to (written in those days) */
