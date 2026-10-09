@@ -448,7 +448,7 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .rv-flag{font-family:"Twemoji Country Flags","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-size:1.15em;line-height:1;vertical-align:-1px}
 .rv-sug .rv-flag{margin-right:10px}
 .rv-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-.rv-err{color:#e08a7a;min-height:1em}.rv-form .rv-hint{color:#d0644e;margin:-6px 0 0}.rv-hint[hidden]{display:none}.form .rv-need select{border-color:#d0644e;box-shadow:0 0 0 1px #d0644e}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
+.rv-err{color:#e08a7a;min-height:1em}.rv-form .rv-hint{color:#d0644e;margin:-6px 0 0}.rv-hint[hidden]{display:none}.form .rv-need select,.rv-drop.rv-need{border-color:#d0644e;box-shadow:0 0 0 1px #d0644e}.rv-issue{color:var(--gold-hi);margin:-6px 0 0}
 .rv-ok{border:1px solid var(--line-2);padding:24px;color:var(--champagne)}
 .rv-order{display:grid;grid-template-columns:120px minmax(0,1fr);gap:clamp(18px,3vw,40px);padding:40px 0;border-top:1px solid var(--line);align-items:start}
 .rv-order img{width:100%;aspect-ratio:4/5;object-fit:cover;border:1px solid var(--line)}
@@ -4214,7 +4214,18 @@ const RV_NATIONS = 'India:in|United Arab Emirates:ae|Saudi Arabia:sa|Qatar:qa|Om
 const rvFlag = cc => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 127397 + c.charCodeAt(0))) : '';
 const rvNation = n => RV_NATIONS.find(([c]) => c.toLowerCase() === String(n || '').trim().toLowerCase());
 /* words about a late delivery or a faulty / damaged product (English and Hinglish), the same list as api/reviews.php */
-const RV_PROBLEM = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|der(i|ee)? se|toot(a|i))\b/i;
+const RV_LATE = /\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|der(i|ee)? se)\b/i,
+  RV_FAULTY = /\b(faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|toot(a|i))\b/i,
+  RV_PROBLEM = {test: t => RV_LATE.test(t) || RV_FAULTY.test(t)};
+/* the problem picked against the words: '' when they fit, else what to say (late picked but the words are about damage, or the other way round) */
+const RV_ASK = 'It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.';
+const RV_PROOF = 'Sorry about that. Your review is about a damaged or faulty product, so please add a photo of it for proof. We will check it and send you a coupon on WhatsApp.';
+const rvNeedsProof = (rating, text, photos) => rating > 0 && rating <= 3 && RV_FAULTY.test(text) && !photos;
+function rvMismatch(issue, text){
+  if (issue === 'late' && RV_FAULTY.test(text) && !RV_LATE.test(text)) return 'Your review is about a faulty or damaged product. Please pick Faulty or damaged product instead of Late delivery.';
+  if (issue === 'faulty' && RV_LATE.test(text) && !RV_FAULTY.test(text)) return 'Your review is about a late delivery. Please pick Late delivery instead of Faulty or damaged product.';
+  return '';
+}
 const RV_WORDS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
 const RV_EMOJI = ['😍','❤️','🔥','✨','🌸','👌','🎁','💯','😊','👏'];
 function rvForm(p, token, customer){
@@ -4224,7 +4235,7 @@ function rvForm(p, token, customer){
     ${token ? '' : `<label class="rv-prob" hidden>Any problem with your order?<select name="issue"><option value="">No problem</option><option value="late">Late delivery</option><option value="faulty">Faulty or damaged product</option></select></label>
     <p class="small rv-issue" hidden>Sorry about that. We will check it and send you a coupon on WhatsApp, so please add your mobile number<span class="rv-need-photo"> and a photo of the product for proof</span>.</p>`}
     <label>Your review<textarea name="text" maxlength="2000" placeholder="Enjoying FOMAXO? Share your honest review—it helps us grow and helps others find their next favourite."></textarea></label>
-    ${token ? '' : '<p class="small rv-hint" role="alert" hidden>It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?” above.</p>'}
+    <p class="small rv-hint" role="alert" hidden></p>
     <div class="rv-emoji" role="group" aria-label="Add an emoji">${RV_EMOJI.map(e => `<button type="button" data-emoji="${e}" aria-label="Add ${e}">${e}</button>`).join('')}</div></div>
     <div class="rv-c2">    <label>Your name<input name="name" maxlength="60" autocomplete="name" value="${esc(customer || '')}" placeholder="e.g. Arjun Menon"></label>
     <label class="rv-check"><input type="checkbox" name="anonymous"> Post anonymously</label>
@@ -4271,13 +4282,18 @@ function bindRvForm(form, p, token, done){
   if (note) {
     /* words about a late or faulty order with No problem picked: warned while typing, not only on Post review */
     const prob = $('.rv-prob', form), hint = $('.rv-hint', form), words = form.elements.text;
-    const warn = () => { const hit = rating > 0 && rating <= 3 && !issue.value && RV_PROBLEM.test(words.value); hint.hidden = !hit; prob.classList.toggle('rv-need', hit); };
+    const warn = () => { const msg = rating > 0 && rating <= 3 ? (!issue.value && RV_PROBLEM.test(words.value) ? RV_ASK : rvMismatch(issue.value, words.value)) : ''; hint.textContent = msg; hint.hidden = !msg; prob.classList.toggle('rv-need', !!msg); };
     issue.onchange = () => { note.hidden = !issue.value; $('.rv-need-photo', note).hidden = issue.value !== 'faulty'; warn(); };
     words.addEventListener('input', warn);
     stars.forEach(b => b.addEventListener('click', () => {
       const low = rating <= 3; prob.hidden = !low;
       if (!low && issue.value) { issue.value = ''; issue.onchange(); } warn();
     }));
+  } else {
+    /* verified purchasers: a 1–3 star review about a damaged or faulty product needs a photo of it for proof before it can be posted */
+    const hint = $('.rv-hint', form), words = form.elements.text;
+    const warn = () => { const msg = rvNeedsProof(rating, words.value, form.elements.photos.files.length) ? RV_PROOF : ''; hint.textContent = msg; hint.hidden = !msg; $('.rv-drop', form).classList.toggle('rv-need', !!msg); };
+    words.addEventListener('input', warn); form.elements.photos.addEventListener('change', warn); stars.forEach(b => b.addEventListener('click', warn));
   }
   const ta = form.elements.text;
   $$('[data-emoji]', form).forEach(b => b.onclick = () => {
@@ -4290,8 +4306,9 @@ function bindRvForm(form, p, token, done){
     const files = [...form.elements.photos.files];
     if (!rating) return err.textContent = 'Please choose a star rating.';
     if (!anon.checked && !name.value.trim()) return err.textContent = 'Please enter your name, or choose to post anonymously.';
-    if (note && rating <= 3 && !issue.value && RV_PROBLEM.test(form.elements.text.value)) { $('.rv-prob select', form).focus(); return err.textContent = 'It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.'; }
+    if (note && rating <= 3) { const msg = !issue.value && RV_PROBLEM.test(form.elements.text.value) ? RV_ASK : rvMismatch(issue.value, form.elements.text.value); if (msg) { $('.rv-prob select', form).focus(); return err.textContent = msg; } }
     if (issue.value && form.elements.mobile && !/^[6-9]\d{9}$/.test(form.elements.mobile.value.replace(/\D/g, '').slice(-10))) return err.textContent = 'Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.';
+    if (token && rvNeedsProof(rating, form.elements.text.value, files.length)) return err.textContent = RV_PROOF;
     if (issue.value === 'faulty' && !files.length) return err.textContent = 'Please add a photo of the faulty or damaged product.';
     if (files.length > 3) return err.textContent = 'You can add up to 3 photos.';
     if (files.some(f => f.size > 6 * 1024 * 1024)) return err.textContent = 'Each photo must be under 6 MB.';

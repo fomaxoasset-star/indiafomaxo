@@ -719,9 +719,9 @@ if ($tab === 'reviews') {
   foreach ($list as $r) {
     $live = $r['status'] === 'live';
     /* a 1–3 star review from a customer whose mobile we have: WhatsApp them an apology, with a coupon or not (the WhatsApp box, admin.js) */
-    $issue = ['late' => 'Late delivery', 'faulty' => 'Faulty product'][$r['issue'] ?? ''] ?? '';   // picked on the review form: a coupon is owed
+    $issue = ['late' => 'Late delivery', 'faulty' => 'Faulty product'][$r['issue'] ?? ''] ?? '';   // picked on the review form, or read from a 1–3 star review's words: a coupon is owed
     $rvWa = ((int)round((float)$r['rating']) <= 3 || $issue !== '') && preg_match('/^[6-9]\d{9}$/', (string)$r['phone']) ? (isset($rvSent[$r['id']]) ? '<span class="rsent">WhatsApp sent ' . h(date('d/m', strtotime($rvSent[$r['id']]))) . '</span>' : '')
-      . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(preg_split('/\s+/u', trim((string)$r['name']))[0] ?? '') . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-issue="' . h($r['issue'] ?? '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
+      . '<button type="button" class="btn sm' . (isset($rvSent[$r['id']]) ? ' line' : '') . '" data-rvwa="' . (int)$r['id'] . '" data-phone="' . h($r['phone']) . '" data-who="' . h($r['name']) . '" data-first="' . h(preg_split('/\s+/u', trim((string)$r['name']))[0] ?? '') . '" data-product="' . h($CAT[$r['product']]['name'] ?? '') . '" data-issue="' . h($r['issue'] ?? '') . '" data-photo="' . (json_decode((string)$r['photos'], true) ? '1' : '') . '">' . WA_SVG . '<span>WhatsApp</span></button>' : '';
     $photos = json_decode((string)$r['photos'], true) ?: [];
     $body .= '<div class="rv' . ($live ? '' : ' off') . '"><div class="rvh">' . $thumbOf($r['product'], 'th xs') . '<b>' . h($CAT[$r['product']]['name'] ?? $r['product']) . '</b>' . stars((float)$r['rating'])
       . ($r['verified'] ? '<span class="badge st-paid">Verified purchaser</span>' : '') . ($issue !== '' ? '<span class="badge st-cancelled">' . $issue . '</span>' : '') . ($r['status'] === 'pending' ? '<span class="badge st-new">Waiting</span>' : (!$live ? '<span class="badge st-cancelled">Hidden</span>' : '')) . '</div>'

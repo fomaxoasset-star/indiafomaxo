@@ -634,7 +634,7 @@ waBox('rvWa', '[data-rvwa]', {
   fields: function (d) { return {id: d.rvwa}; },
   text: function (d, c) {
     var n2 = '\n\n';
-    return 'Hi ' + (d.first || 'there') + ',' + n2 + 'Thank you for your review' + (d.product ? ' of ' + d.product : '') + '. ' + ({late: 'We checked and found your delivery was indeed late. We are sorry about that.', faulty: 'We checked the photo and found your product was indeed faulty. We are sorry about that.'}[d.issue] || 'We are sorry it was not what you hoped for.')
+    return 'Hi ' + (d.first || 'there') + ',' + n2 + 'Thank you for your review' + (d.product ? ' of ' + d.product : '') + '. ' + ({late: 'We checked and found your delivery was indeed late. We are sorry about that.', faulty: 'We checked ' + (d.photo ? 'the photo' : 'your order') + ' and found your product was indeed faulty. We are sorry about that.'}[d.issue] || 'We are sorry it was not what you hoped for.')
       + (c ? n2 + 'As an apology, here is your personal code for ' + c.gift + ' your next order' + c.min + ' (single use):' + n2 + '*[CODE]*' + n2 + 'Type the code at checkout on our website:\nhttps://fomaxo.in' : '')
       + n2 + 'Just reply here if there is anything we can do to put it right.' + n2 + 'Thank you,\nFOMAXO';
   },

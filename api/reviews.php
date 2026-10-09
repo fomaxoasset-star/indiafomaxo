@@ -122,6 +122,8 @@ function savePhoto(array $f): ?string {
 
 /* words about a late delivery or a faulty / damaged product (English and Hinglish), the same list as the review form in index.html */
 const RV_PROBLEM = '/\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|der(i|ee)? se|toot(a|i))\b/i';
+const RV_LATE = '/\b(late|delay(ed)?|not (yet )?(received|delivered|arrived)|never (came|arrived)|der(i|ee)? se)\b/i';   // RV_PROBLEM split in two:
+const RV_FAULTY = '/\b(faulty|defective|damaged?|broken|cracked|leak(ed|ing|s)?|spill(ed)?|wrong (item|product|perfume)|toot(a|i))\b/i';   // a picked problem must fit the words
 function uploadedPhotos(): array {
   if (empty($_FILES['photos'])) return [];
   $f = $_FILES['photos'];
@@ -191,6 +193,8 @@ try {
       $issue = $rating <= 3 && empty($in['token']) && in_array($in['issue'] ?? '', ['late', 'faulty'], true) ? $in['issue'] : '';   // the form offers it only without an order link, for 1–3 stars
       if ($rating <= 3 && empty($in['token']) && $issue === '' && preg_match(RV_PROBLEM, $text))
         fail('It sounds like there was a problem with your order. Please pick Late delivery or Faulty or damaged product under “Any problem with your order?”.');
+      if ($issue === 'late' && preg_match(RV_FAULTY, $text) && !preg_match(RV_LATE, $text)) fail('Your review is about a faulty or damaged product. Please pick Faulty or damaged product instead of Late delivery.');
+      if ($issue === 'faulty' && preg_match(RV_LATE, $text) && !preg_match(RV_FAULTY, $text)) fail('Your review is about a late delivery. Please pick Late delivery instead of Faulty or damaged product.');
       if ($issue !== '' && empty($in['token']) && $mobile === '') fail('Please add your 10-digit mobile number, so we can send your coupon on WhatsApp.');
       $verified = 0; $orderId = null;
       if (!empty($in['token'])) {
@@ -203,6 +207,7 @@ try {
         if ($rawName === '') $rawName = displayName($o['customer']);   // left blank: the order name, shortened
       }
 
+      if (!empty($in['token']) && $rating <= 3 && preg_match(RV_FAULTY, $text) && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Sorry about that. Your review is about a damaged or faulty product, so please add a photo of it for proof. We will check it and send you a coupon on WhatsApp.');   // verified purchasers: proof for a damaged product
       if ($issue === 'faulty' && !array_filter((array)($_FILES['photos']['tmp_name'] ?? []))) fail('Please add a photo of the faulty or damaged product.');   // the proof for its coupon
       $photos = uploadedPhotos();
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
