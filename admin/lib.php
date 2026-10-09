@@ -74,8 +74,8 @@ function period_label(array $D): string {
 }
 /* the bar at the top of a page: quick buttons, From and To, Show. $keep: the page's other filters, kept when dates change */
 function date_bar(array $D, array $keep = [], string $note = ''): string {
-  [$presets] = DATE_BARS[$D['page']]; $tab = $D['tab'] ?? $D['page'];   // 'tab': a date bar on a page inside another tab (Review requests is on Orders)
-  $out = '<form class="dbar" method="get"><input type="hidden" name="tab" value="' . h($tab) . '">';
+  [$presets, $start] = DATE_BARS[$D['page']]; $tab = $D['tab'] ?? $D['page'];   // 'tab': a date bar on a page inside another tab (Review requests is on Orders)
+  $out = '<form class="dbar" method="get"' . ($D['r'] !== $start ? ' data-set' : '') . '><input type="hidden" name="tab" value="' . h($tab) . '">';
   foreach ($keep as $k => $v) if ((string)$v !== '') $out .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
   $out .= '<span class="seg">' . implode('', array_map(fn($k) => '<a href="' . h(self_url(['tab' => $tab, 'r' => $k] + array_filter($keep, 'strlen'))) . '"' . ($D['r'] === $k ? ' class="on"' : '') . '>' . DATE_PRESETS[$k] . '</a>', $presets)) . '</span>'
     . '<label class="dfl"><span>From</span>' . date_box('from', $D['from'], 'From') . '</label><label class="dfl"><span>To</span>' . date_box('to', $D['to'], 'To') . '</label>'

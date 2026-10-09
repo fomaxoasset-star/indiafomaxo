@@ -888,3 +888,42 @@ document.addEventListener('click', function (e) {
   });
   show();
 })();
+
+/* phone (under 760px wide): the top of Orders, Members, Reviews, Stock, Sales, Expenses, Review requests and Refill reminders folds under one button
+   (filters, search, dates, settings), with Excel beside it, so the list below gets the screen. The number boxes and chips become thin rows (admin.css "phone: short top").
+   On a laptop the button is hidden and nothing is folded. */
+(function () {
+  var main = document.querySelector('main'), q = function (s) { return main && main.querySelector(s); };
+  if (!main) return;
+  var P = q('.rqtop') ? {fold: ['.rqtop .dbar', 'details.rfauto', '.rfbar'], at: '.box.fill'}
+    : q('#ordFilters') ? {fold: ['#ordFilters'], at: '#ordFilters', excel: '#ordFilters a.btn'}
+    : q('.mtool') ? {fold: ['.dbar', '.mtool'], at: '.dbar', excel: '.mtool a.btn[href*="excel"]'}
+    : q('form.rtool') ? {fold: ['.dbar', 'form.rtool'], at: '.dbar'}
+    : q('table.stock') ? {fold: ['.row.top>form', '.bf>.muted.small'], at: '.row.top', label: 'Low stock level &amp; help'}
+    : q('#expPanes') ? {fold: ['.dbar'], at: '.dbar', label: 'Add an expense &amp; dates', add: true}
+    : q('.rtab') ? {fold: ['.dbar'], at: '.kpis.rk + *'} : null;
+  if (!P || !q(P.at)) return;
+  var F = [];
+  P.fold.forEach(function (s) { [].forEach.call(main.querySelectorAll(s), function (e) { F.push(e); }); });
+  /* "· on": a search, a filter or other dates are in use behind the button */
+  var on = [].some.call(main.querySelectorAll('input[type=search]'), function (i) { return i.value.trim() !== ''; })
+    || [].some.call(main.querySelectorAll('#ordFilters select, #ordFilters input[name=from], #ordFilters input[name=to]'), function (i) { return i.value !== ''; })
+    || !!q('.dbar[data-set]');
+  var bar = document.createElement('div'), b = document.createElement('button');
+  bar.className = 'pfbar'; b.type = 'button'; b.className = 'btn line pfbtn'; b.setAttribute('aria-expanded', 'false');
+  b.innerHTML = '<span>' + (P.label || 'Filters &amp; search') + (on ? ' <b>· on</b>' : '') + '</span><i aria-hidden="true">▾</i>';
+  bar.appendChild(b);
+  var x = P.excel && q(P.excel);
+  if (x) { var c = x.cloneNode(true); c.className = 'btn pfx'; c.textContent = 'Excel'; bar.appendChild(c); }
+  q(P.at).parentNode.insertBefore(bar, q(P.at));
+  main.classList.add('pf');
+  var sw = P.add && q('.sw[data-for="#expPanes"]');
+  var show = function (o) {
+    b.classList.toggle('on', o); b.setAttribute('aria-expanded', o ? 'true' : 'false');
+    F.forEach(function (f) { f.classList.toggle('pfh', !o); });
+    if (sw && matchMedia('(max-width:759px)').matches) { var t = sw.querySelector('[data-show="' + (o ? 'add' : 'list') + '"]'); if (t) t.click(); }   // Expenses: open shows the Add an expense form, closed the list
+    window.dispatchEvent(new Event('resize'));
+  };
+  show(false);
+  b.addEventListener('click', function () { show(!b.classList.contains('on')); });
+})();
