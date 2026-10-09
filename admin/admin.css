@@ -73,6 +73,7 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .li .grow{flex:1;min-width:0}.li .grow b,.li .grow small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.li small{color:var(--muted);font-size:12px}
 .order summary .badge{justify-self:end}
 .badge{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.onew{display:inline-block;vertical-align:2px;margin-left:6px;padding:2px 6px;border-radius:4px;background:#e0242b;color:#fff;font:700 10px/1.2 Manrope,sans-serif;letter-spacing:.08em}
 .order .tags .badge{text-transform:none;font-variant-caps:all-small-caps;font-size:12.5px;letter-spacing:.07em;padding:1px 8px 3px}
 .st-new,.st-pending{color:var(--gold)}.st-paid{color:var(--green)}.st-delivered{color:var(--blue)}.st-cancelled,.st-refunded{color:var(--red)}.st-refunded{border-style:dashed}.st-awaiting{color:var(--muted)}
 .pd-yes{color:var(--green);background:#16241a;border-color:#2f5338}.pd-no{color:var(--amber);background:#2a2113;border-color:#5a4520}
