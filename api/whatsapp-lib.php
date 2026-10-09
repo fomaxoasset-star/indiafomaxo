@@ -84,8 +84,10 @@ function wa_send_refills(int $max = 20): array {
   foreach (refill_due() as $o) {
     if ($sent + $failed >= $max) break;
     if ($o['sent'] || !$o['optin'] || $o['days'] < $tm['days'] || ($tries[$o['no']] ?? 0) >= REFILL_TRIES || !($to = wa_number((string)$o['phone']))) continue;
-    $p = refill_parts($o);
-    [$ok, $info] = wa_template($to, $tpl, $lang, [$p['first'] !== '' ? $p['first'] : 'there', $p['perfumes'], $p['days'], $p['offer'], $p['code'], $p['review'] ?: 'https://fomaxo.in'], $c);
+    $p = refill_parts($o); $ok = false;
+    $vars = [$p['first'] !== '' ? $p['first'] : 'there', $p['perfumes'], $p['days'], $p['offer'], $p['code'], $p['review'] ?: 'https://fomaxo.in'];
+    if (!$p['review']) [$ok, $info] = wa_template($to, $tpl . '_plain', $lang, array_slice($vars, 0, 5), $c);   // already reviewed (all or part): refill_reminder_plain, without the review request
+    if (!$ok) [$ok, $info] = wa_template($to, $tpl, $lang, $vars, $c);   // not reviewed, or refill_reminder_plain is not approved by Meta yet
     if ($ok) { refill_mark((string)$o['no'], 'auto'); $sent++; unset($tries[$o['no']]); shop_set('refill_auto_err', ''); }
     else {
       $tries[$o['no']] = ($tries[$o['no']] ?? 0) + 1; $failed++;
@@ -96,4 +98,37 @@ function wa_send_refills(int $max = 20): array {
   }
   flock($lock, LOCK_UN); fclose($lock);
   return ['refills' => $sent, 'refills_failed' => $failed];
+}
+
+/* ---- automatic review requests (admin → Orders → Review requests): the set days after a customer's latest order, within the sending hours (India time),
+   only to customers who ticked "Send me offers on WhatsApp", once per order, never once anything in the order is reviewed. Approved templates (Marketing, English):
+   review_ask (coupon off): {{1}} first name, {{2}} perfumes, {{3}} review link; review_ask_coupon (coupon on): the same + {{4}} % off, {{5}} code.
+   Failed sends are tried again, up to 3 tries in all; the last problem shows in red on the page. ---- */
+const RVREQ_TRIES = 3;
+function wa_send_rvreqs(int $max = 20): array {
+  global $PRIV;
+  require_once __DIR__ . '/review-req-lib.php';
+  $set = rq_set();
+  if (!$set['auto']) return ['reviews' => 0, 'note' => 'automatic review requests are off'];
+  if (!wa_ready()) return ['reviews' => 0, 'note' => 'WhatsApp Business details missing'];
+  $h = (int)date('G');
+  if ($h < $set['from'] || $h >= $set['to']) return ['reviews' => 0, 'note' => 'outside sending hours'];
+  $lock = @fopen("$PRIV/whatsapp-rv.lock", 'c'); if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) return ['reviews' => 0, 'note' => 'already running'];
+  $c = wa_config(); $tries = json_decode((string)shop_setting('rvreq_tries'), true) ?: []; $sent = 0; $failed = 0;
+  foreach (rq_due() as $o) {
+    if ($sent + $failed >= $max) break;
+    if ($o['sent'] || !$o['optin'] || $o['stopped'] || ($tries[$o['no']] ?? 0) >= RVREQ_TRIES || !($to = wa_number((string)$o['phone']))) continue;
+    $p = rq_parts($o); $vars = [$p['first'], $p['perfumes'], $p['review']];
+    if ($p['code']) { $vars[] = $p['pct']; $vars[] = $p['code']; }
+    [$ok, $info] = wa_template($to, $p['code'] ? 'review_ask_coupon' : 'review_ask', 'en', $vars, $c);
+    if ($ok) { rq_mark((string)$o['no'], 'auto'); $sent++; unset($tries[$o['no']]); shop_set('rvreq_auto_err', ''); }
+    else {
+      $tries[$o['no']] = ($tries[$o['no']] ?? 0) + 1; $failed++;
+      shop_set('rvreq_auto_err', date('d/m g:i A') . ' · ' . $o['no'] . ': ' . mb_substr($info, 0, 200));
+      error_log("FOMAXO review request WhatsApp {$o['no']}: $info");
+    }
+    shop_set('rvreq_tries', json_encode($tries));
+  }
+  flock($lock, LOCK_UN); fclose($lock);
+  return ['reviews' => $sent, 'reviews_failed' => $failed];
 }

@@ -24,11 +24,7 @@ function refill_offer(int $pct, int $min): string { return $pct . '% off your ne
 function refill_key(): string { $k = shop_setting('wa_key'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('wa_key', $k); } return $k; }
 
 /* the order's coupon: REFILL- + 5 letters, always the same for that order */
-function refill_code(string $no): string {
-  $abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; $hx = hash_hmac('sha256', 'refill|' . $no, refill_key()); $c = 'REFILL-';
-  for ($i = 0; $i < 5; $i++) $c .= $abc[hexdec(substr($hx, $i * 2, 2)) % strlen($abc)];
-  return $c;
-}
+function refill_code(string $no): string { return fixed_code('REFILL-', 'refill|' . $no, refill_key()); }
 
 /* marks the order's reminder as sent ('tap' = FOMAXO tapped WhatsApp, 'auto' = sent by itself). Sent by itself also saves the order's REFILL- code
    in Coupons with the % and minimum set on Automatic sending (single use, only with this customer's mobile, no end date); a tap makes its own code (admin). */
@@ -37,53 +33,54 @@ function refill_mark(string $no, string $how = 'tap'): void {
   if (isset($sent[$no])) return;   // one message per order
   $sent[$no] = date('Y-m-d') . ($how === 'auto' ? ' auto' : '');
   $s = shop_db()->prepare('SELECT phone FROM orders WHERE no = ?'); $s->execute([$no]); $ph = coupon_phone((string)$s->fetchColumn());
-  if ($how === 'auto' && $ph !== '') {
-    shop_upsert('coupons', ['code'], ['code' => refill_code($no), 'kind' => 'pct', 'value' => refill_pct(), 'min_order' => refill_min() * 100, 'starts' => '', 'ends' => '',
-      'max_uses' => 1, 'stack' => 0, 'active' => 1, 'phone' => $ph, 'created' => shop_now()]);
-  }
+  if ($how === 'auto' && $ph !== '') phone_coupon(refill_code($no), refill_pct(), $ph, refill_min() * 100);
   $keep = date('Y-m-d', strtotime('-' . (refill_time()['list_to'] + 30) . ' days'));   // forgotten only once the order has long left the list
   shop_set('refill_sent', json_encode(array_filter($sent, fn($d) => substr($d, 0, 10) >= $keep)));
 }
 
-/* every customer (same mobile = one customer) whose latest real order is in the list window (refill_time), oldest first; 'sent' = date already reminded,
-   'auto' = sent by itself, 'optin' = ticked WhatsApp offers at checkout (only they get automatic messages), 'stopped' = replied STOP and has not ticked offers since */
-function refill_due(): array {
+/* each customer's (same mobile = one customer) latest real order (not cancelled, not an unpaid online try, not test) that is $from to $to days old,
+   not yet sent first, then oldest first. 'sent' = date already sent (from the $sentKey setting), 'auto' = sent by itself, 'optin' = ticked WhatsApp offers
+   at checkout on any order (only they get automatic messages), 'stopped' = replied STOP and has not ticked offers since. $skip($o) leaves an order out.
+   Shared by Refill reminders and Review requests. */
+function latest_orders_due(int $from, int $to, string $sentKey, ?callable $skip = null): array {
   $last = [];
   foreach (shop_db()->query("SELECT id, no, created, name, phone, items, wa_optin, review FROM orders WHERE status IN ('new', 'paid', 'delivered') AND test = 0 AND COALESCE(no, '') <> '' ORDER BY created, id") as $o) {
     if (($k = coupon_phone((string)$o['phone'])) === '') continue;
     $o['optin'] = (int)$o['wa_optin'] === 1 || !empty($last[$k]['optin']);   // ticked "Send me offers on WhatsApp" on any order (STOP clears them all)
     $last[$k] = $o;   // the latest order wins
   }
-  $sent = json_decode((string)shop_setting('refill_sent'), true) ?: [];
+  $sent = json_decode((string)shop_setting($sentKey), true) ?: [];
   $stops = json_decode((string)shop_setting('wa_stop'), true) ?: [];
-  $tm = refill_time(); $due = [];
+  $due = [];
   foreach ($last as $k => $o) {
     $days = (int)floor((strtotime('today') - strtotime(substr((string)$o['created'], 0, 10))) / 86400);
-    if ($days < $tm['list_from'] || $days > $tm['list_to']) continue;
+    if ($days < $from || $days > $to || ($skip && $skip($o))) continue;
     $sd = (string)($sent[$o['no']] ?? '');
     $due["m:$k"] = $o + ['days' => $days, 'sent' => $sd !== '' ? substr($sd, 0, 10) : null, 'auto' => str_ends_with($sd, 'auto'), 'stopped' => isset($stops[$k]) && !$o['optin']];
   }
   uasort($due, fn($a, $b) => (int)($a['sent'] || $a['stopped']) <=> (int)($b['sent'] || $b['stopped']) ?: $b['days'] <=> $a['days']);
   return $due;
 }
+/* Refill reminders: the customers in the list window (refill_time) */
+function refill_due(): array { $tm = refill_time(); return latest_orders_due($tm['list_from'], $tm['list_to'], 'refill_sent'); }
 
-/* the review link of an order, or null when every perfume in it is already reviewed (reviews.sqlite, as api/reviews.php keeps it) */
+/* the review link of an order, or null once anything in it is reviewed (reviews.sqlite, as api/reviews.php keeps it): a customer who reviewed
+   all or part of the order gets the refill reminder without the review request */
 function refill_review(string $token): ?string {
-  global $PRIV;
-  if (!preg_match('/^[a-f0-9]{32}$/', $token) || !is_file("$PRIV/reviews.sqlite")) return null;
+  if (!preg_match('/^[a-f0-9]{32}$/', $token)) return null;
   try {
-    $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+    if (!($db = reviews_db())) return null;
     $s = $db->prepare('SELECT id, products FROM orders WHERE token = ?'); $s->execute([$token]); $r = $s->fetch();
     if (!$r) return null;
-    $s = $db->prepare('SELECT product FROM reviews WHERE order_id = ?'); $s->execute([$r['id']]);
-    if (!array_diff((array)json_decode((string)$r['products'], true), $s->fetchAll(PDO::FETCH_COLUMN))) return null;
+    $s = $db->prepare('SELECT 1 FROM reviews WHERE order_id = ? LIMIT 1'); $s->execute([$r['id']]);
+    if ($s->fetchColumn()) return null;
   } catch (Throwable $e) { return null; }
   return "https://fomaxo.in/#/review?t=$token";
 }
 
-/* what the message says for one order: first name, perfumes, days, offer words, coupon, review link (null once everything is reviewed) */
+/* what the message says for one order: first name, perfumes, days, offer words, coupon, review link (null once anything is reviewed) */
 function refill_parts(array $o): array {
   $names = array_values(array_unique(array_filter(array_map(fn($i) => trim((string)($i['name'] ?? '')), json_decode((string)$o['items'], true) ?: []))));
-  return ['first' => preg_split('/\s+/u', trim((string)$o['name']))[0] ?? '', 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],
+  return ['first' => first_name((string)$o['name']), 'perfumes' => $names ? implode(', ', $names) : 'your FOMAXO perfume', 'days' => (int)$o['days'],
           'offer' => refill_offer(refill_pct(), refill_min()), 'code' => refill_code((string)$o['no']), 'review' => refill_review((string)$o['review'])];
 }

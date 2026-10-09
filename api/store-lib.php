@@ -391,6 +391,15 @@ function fomaxo_log_order(array $row): void {
   @fputcsv($f, $row); fclose($f);
 }
 
+/* the reviews store that api/reviews.php keeps (fomaxo-private/reviews.sqlite), opened once; null until the first review or order link */
+function reviews_db(): ?PDO {
+  global $PRIV; static $db = false;
+  if ($db !== false) return $db;
+  if (!is_file("$PRIV/reviews.sqlite")) return $db = null;
+  $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+  $db->exec('PRAGMA busy_timeout=4000;');
+  return $db;
+}
 /* Verified Purchaser: a private review link for the products in an order (paid online, or cash on delivery). It goes into the same
    reviews.sqlite that api/reviews.php reads, so reviews written from #/review?t=… carry the badge (once per product).
    Returns the token, or '' if the products aren't known or the reviews store can't be opened. */

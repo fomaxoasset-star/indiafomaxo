@@ -438,7 +438,7 @@ function coupon_free_pick(string $field): ?array {
   $p = fomaxo_catalog()['products'][$id] ?? null;
   return $p && $p['kind'] !== 'set' && isset($p['prices'][$opt]) ? [$id, $opt] : null;
 }
-function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // CART-: Left at checkout, REFILL-: Refill reminders (their WhatsApp box)
+function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // REFILL-: Refill reminders (their WhatsApp box); CART-: older Left at checkout codes
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
   $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
   if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
@@ -510,7 +510,7 @@ function coupon_wa_text(array $c, string $intro, array $extra = []): string {
 }
 /* the WhatsApp link that sends a goodwill coupon to its customer, with a ready message */
 function goodwill_wa(array $c): string {
-  return 'https://wa.me/91' . $c['phone'] . '?text=' . rawurlencode(coupon_wa_text($c,
+  return wa_link((string)$c['phone'], coupon_wa_text($c,
     'We are sorry about your last order. As a goodwill gesture, here is ' . ($c['kind'] === 'free' ? 'a *free ' . coupon_free_name($c) . '* with your next order.' : '*' . coupon_label($c) . '* your next order.'),
     ['Works one time, only with this mobile number' . (coupon_ends($c) === '' ? ', no end date.' : '.')]));
 }
@@ -601,14 +601,6 @@ function duration(int $secs): string {
 }
 
 /* ---------------- reviews (api/reviews.php keeps them in fomaxo-private/reviews.sqlite) ---------------- */
-function reviews_db(): ?PDO {
-  global $PRIV; static $db = false;
-  if ($db !== false) return $db;
-  if (!is_file("$PRIV/reviews.sqlite")) return $db = null;
-  $db = new PDO("sqlite:$PRIV/reviews.sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-  $db->exec('PRAGMA busy_timeout=4000;');
-  return $db;
-}
 /* a 1–3 star review that talks about a late delivery or a faulty / damaged product (the words api/reviews.php checks, split in two):
    verified purchasers get no problem box on the form, so their problem is read from the words */
 function review_issue_from_words(string $text, float $rating): string {
@@ -850,6 +842,27 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
   return $leads;
 }
 function lead_items(array $l): string { return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: [])); }
+/* the bag they left as a short code for the website link (product.size.qty for each line, joined with _): fomaxo.in/#/checkout?bag=… fills the bag again */
+function lead_bag_code(array $l): string {
+  $c = implode('_', array_map(fn($b) => $b['id'] . '.' . $b['opt'] . '.' . (int)$b['qty'], array_filter(json_decode((string)$l['bag'], true) ?: [], fn($b) => preg_match('/^[a-z0-9-]{1,48}$/', (string)($b['id'] ?? '')) && preg_match('/^[a-z0-9]{1,16}$/', (string)($b['opt'] ?? '')))));
+  return strlen($c) <= 600 ? $c : '';
+}
+/* the Left at checkout COMEBACK- code: always the same for that checkout, 10% off, one use, only with that mobile, ends after 7 days */
+function lead_code(array $l): string { return fixed_code('COMEBACK-', 'left|' . $l['sid'], (string)shop_setting('admin_hash')); }
+/* the ready WhatsApp message for someone who left checkout: what they left (qty × product size, one per line), a link that refills their bag and opens checkout,
+   the delivery line; $code adds the 10% COMEBACK- code before "Your bag is saved" */
+function lead_wa_text(array $l, string $code = ''): string {
+  $n2 = "\n\n"; $first = first_name((string)$l['name']); $bag = lead_bag_code($l);
+  $items = implode("\n", array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));
+  return 'Hi' . ($first !== '' ? ' ' . $first : '') . ','
+    . $n2 . ($items !== '' ? "You left these in your FOMAXO bag:\n" . $items : 'We noticed you did not finish your FOMAXO order.')
+    . ($code !== '' ? $n2 . 'As a thank you, here is your personal code for 10% off (single use, valid 7 days, with this mobile number):' . $n2 . '*' . $code . '*' : '')
+    . $n2 . ($bag !== '' ? "Your bag is saved. Tap here to finish your order:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout#/checkout?bag=" . $bag
+                         : "You can finish your order here:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout")
+    . $n2 . 'Free delivery across India in 1–3 days.'
+    . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO';
+}
+function lead_wa(array $l, string $code = ''): string { return wa_link((string)$l['phone'], lead_wa_text($l, $code)); }
 
 /* chart series for the dashboard, for the dates picked: by hour for one day, by day up to 3 months, by month for longer */
 function series(string $from, string $to): array {
