@@ -18,7 +18,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '83';
+const ASSET_V = '84';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -344,6 +344,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'expense_delete') {
     shop_db()->prepare('DELETE FROM expenses WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
     go(['tab' => 'expenses'], 'Expense deleted.');
+  }
+  if ($a === 'alert_sound') {   // the Sound on / off button on Orders (admin.js, no reload)
+    shop_set('alert_sound', ($_POST['on'] ?? '') === '1' ? '1' : '0');
+    header('Content-Type: application/json'); echo json_encode(['ok' => true, 'on' => shop_setting('alert_sound') === '1']); exit;
   }
   if ($a === 'settings') {
     $email = trim((string)($_POST['notify_email'] ?? ''));

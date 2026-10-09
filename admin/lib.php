@@ -972,3 +972,9 @@ function admin_badges(): array {
   $b['leads'] = (int)$s->fetchColumn();
   return $b;
 }
+
+/* Orders: the new order chime on / off in one tap (the same setting as Settings → New orders; admin.js saves it without reloading) */
+function sound_btn(): string {
+  $on = shop_setting('alert_sound') === '1';
+  return '<button type="button" class="btn xs sndbtn' . ($on ? ' on' : ' line') . '" data-sound-tgl aria-pressed="' . ($on ? 'true' : 'false') . '" title="Chime when a new order pops up">' . ($on ? '🔔 Sound on' : '🔕 Sound off') . '</button>';
+}

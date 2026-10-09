@@ -856,6 +856,21 @@ document.addEventListener('click', function (e) {
   document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });   // back on the tab: check at once
   if ('Notification' in window && Notification.permission === 'granted') sw();
 
+  /* Orders: Sound on / off button, saved at once (the pop-ups keep coming either way) */
+  document.querySelectorAll('[data-sound-tgl]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var on = b.getAttribute('aria-pressed') !== 'true';
+      b.disabled = true;
+      postAction(b, {action: 'alert_sound', on: on ? '1' : '0'}).then(function (j) {
+        on = !!j.on; box.dataset.sound = on ? '1' : '0';
+        b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('on', on); b.classList.toggle('line', !on);
+        b.textContent = on ? '🔔 Sound on' : '🔕 Sound off';
+        if (on) { unlock(); chime(); }   // a short chime so you hear what it sounds like
+      }).catch(function () { alert('Could not save it. Please reload the page and try again.'); })
+        .then(function () { b.disabled = false; });
+    });
+  });
+
   /* Settings → New orders: turn on phone / laptop notifications for this device */
   var on = document.querySelector('[data-notify-on]'), st = document.querySelector('[data-notify-state]');
   if (!on) return;
