@@ -742,7 +742,7 @@ if ($tab === 'reviews') {
       . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
       . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button><button type="button" class="btn line sm" data-sg-clear title="Empty the box to write your own reply">✕ Clear</button></div></form></div>';
   }
-  $body .= '</div></div>' . wa_box('rvWa', 'gfree', 'pct', 10, 0, 'A new GOODWILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
+  $body .= '</div></div>' . wa_box('rvWa', 'gfree', '', 10, 0, 'A new GOODWILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
   /* stars by product (live reviews only, as on the website) */
   $by = [];
   foreach ($ALL as $r) if ($r['status'] === 'live') { $by[$r['product']]['n'] = ($by[$r['product']]['n'] ?? 0) + 1; $by[$r['product']]['sum'] = ($by[$r['product']]['sum'] ?? 0) + (int)$r['rating']; }
