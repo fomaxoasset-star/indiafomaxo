@@ -2649,9 +2649,10 @@ S.products.forEach(p => { if (!p.kind) p.family = unisexType(p.family); });
 /* Ad tags set on Admin → Settings → Ads (STORE_LIVE.ads): Meta Pixel, TikTok Pixel and the Google tag (Analytics G-… and/or
    Ads AW-…). Each loads only when its ID is filled in, and only after the page has finished loading and the browser is idle,
    so the first paint stays fast; events before that wait in a queue. Standard events: page view, product view, add to bag,
-   checkout, payment step and purchase (value in ₹, order number, item ids), the purchase sent once per order. */
+   checkout, payment step and purchase (value in ₹, order number, item ids), the purchase sent once per order.
+   The shop's own Google tag G-C1TFB0MT5N is built in, so it runs even with the Ads boxes empty; a G-… typed in Admin wins. */
 const ADS = (() => {
-  const a = LIVE.ads || {}, on = !!(a.meta || a.tiktok || a.ga4 || a.gads);
+  const a = {ga4: 'G-C1TFB0MT5N', ...(LIVE.ads || {})}, on = !!(a.meta || a.tiktok || a.ga4 || a.gads);
   let q = [], ready = false, lastPage = '', coAt = null;
   const run = f => { if (!on) return; if (ready) { try { f(); } catch(e) {} } else q.push(f); };
   const load = src => { const s = document.createElement('script'); s.async = true; s.src = src; document.head.appendChild(s); };
@@ -2699,7 +2700,7 @@ const ADS = (() => {
     if (extra.no && a.gads && a.gadsLabel) gtag('event', 'conversion', {send_to: `${a.gads}/${a.gadsLabel}`, ...data, transaction_id: extra.no});
   });
   return {
-    on,
+    on, ids: a,
     page(path, seg){
       if (!on || path === lastPage) return; lastPage = path; coAt = null;
       run(() => {
@@ -4803,7 +4804,7 @@ $('#footShop').innerHTML = `<a href="#/fragrances">All products</a><a href="#/co
 $('#footIg').href = `https://www.instagram.com/${S.contact.instagram}/`;
 if (PAGES_OFF.size) { $$('#menu a, #mnav nav a, footer .fgrid a').forEach(a => { if (pageOff(a.getAttribute('href'))) a.style.display = 'none'; });
   $$('footer .fgrid > div').forEach(c => { if (c.querySelector('h5') && ![...c.querySelectorAll('a')].some(a => a.style.display !== 'none')) c.style.display = 'none'; }); }
-if (ADS.on) { const a = LIVE.ads, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Google' : '', a.tiktok && 'TikTok'].filter(Boolean);   /* the footer stays true once ad tags are on */
+if (ADS.on) { const a = ADS.ids, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Google' : '', a.tiktok && 'TikTok'].filter(Boolean);   /* the footer stays true once ad tags are on */
   $('#fstat').textContent = `We count visits anonymously on our own server to improve the shop, and use ${n.join(n.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1')} ad tags to measure our ads.`; }
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;
 addEventListener('hashchange', route);
