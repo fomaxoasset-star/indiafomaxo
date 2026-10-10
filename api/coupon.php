@@ -19,11 +19,11 @@ $recent[] = time(); @file_put_contents($rl, implode("\n", $recent), LOCK_EX);
 
 $order = fomaxo_price_order($in);
 if (isset($order['error'])) fail($order['error']);
-$cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : '', 'phone' => is_string($in['phone'] ?? null) ? $in['phone'] : ''], $order['subtotal']);   // phone: for goodwill coupons
+$cp = fomaxo_coupon(['coupon' => is_string($in['code'] ?? null) ? $in['code'] : '', 'phone' => is_string($in['phone'] ?? null) ? $in['phone'] : ''], $order);   // phone: for goodwill coupons
 if (!$cp) fail('Please type your coupon code.');
 if (isset($cp['error'])) fail($cp['error']);
 if (($e = fomaxo_add_free($order, $cp)) !== '') fail($e);
-/* discount = the coupon, offer = the multi-buy discount kept with it ("Use both", or a bigger offer); stack = the coupon's choice */
+/* discount = the coupon, offer = the Customers bought together saving kept with it ("Use both", or when it saves more); stack = the coupon's choice */
 out(['code' => $cp['code'], 'label' => $cp['label'], 'discount' => $cp['discount'] / 100, 'offer' => $cp['offer'] / 100, 'stack' => $cp['stack'],
   'subtotal' => $order['subtotal'] / 100, 'total' => ($order['subtotal'] - $cp['off']) / 100,
   'ends' => $cp['ends'] === '' ? null : date('c', strtotime($cp['ends'] . ':59'))]   // for "Ends in 2h 15m" at checkout

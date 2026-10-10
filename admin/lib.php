@@ -722,12 +722,13 @@ function report_rows(string $from, string $to, string $unit = 'M'): array {
   for ($t = strtotime($unit === 'D' ? $from : ($unit === 'M' ? substr($from, 0, 7) . '-01' : substr($from, 0, 4) . '-01-01')), $end = strtotime($to); $t <= $end; $t = strtotime(['D' => '+1 day', 'M' => '+1 month', 'Y' => '+1 year'][$unit], $t))
     $m[substr(date('Y-m-d', $t), 0, $len)] = $zero;
   $costs = shop_costs(); $pct = pay_fee_pct();
-  $s = shop_db()->prepare("SELECT created, total, method, items, discount FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
+  $s = shop_db()->prepare("SELECT created, total, method, items, discount, together FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
   $s->execute(["$from 00:00:00", "$to 23:59:59"]);
   foreach ($s as $o) {
     $k = substr($o['created'], 0, $len); if (!isset($m[$k])) continue;
     $m[$k]['orders']++; $m[$k]['sales'] += (int)$o['total']; $m[$k]['coupons'] += (int)$o['discount'];
     if ($o['method'] === 'online') $m[$k]['online'] += (int)$o['total'];
+    $m[$k]['discounts'] += (int)$o['together'];   // the Customers bought together saving
     foreach (json_decode((string)$o['items'], true) ?: [] as $it) {
       $q = (int)($it['qty'] ?? 0);
       if (!empty($it['was']) && $it['was'] > ($it['unit'] ?? 0)) $m[$k]['discounts'] += ((int)$it['was'] - (int)$it['unit']) * $q;

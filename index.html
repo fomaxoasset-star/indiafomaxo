@@ -2242,6 +2242,7 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
 .fbt-buy p{margin:0;font-size:14px;color:var(--muted);letter-spacing:.04em}.fbt-buy p b{font-size:24px;color:var(--ivory);font-weight:400;margin-left:6px;font-family:var(--display)}
 .fbt-buy small{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.fbt-buy small svg{width:16px;height:16px;color:var(--gold)}
 .fbt-buy .btn:disabled{opacity:.5;cursor:default}
+.fbt-buy p b s{font-size:16px;color:var(--muted);margin-right:4px}   /* the total before the together % (Admin → Products) */
 html[data-mode="light"] .fbt-img i{color:#fffaf1}
 html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
 @media(max-width:960px){
@@ -3100,8 +3101,8 @@ function renderCart(){
         <div style="margin-top:10px">${priceHTML(p, l.opt)}${stockTag(p, l.opt)}</div>
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
   const r = $('.bl-row', body); if (r && rowX) r.scrollLeft = rowX;
-  const t = subtotal(cart);
-  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div><div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
+  const t0 = subtotal(cart), tog = t0 !== null ? togetherOff(cart) : 0, t = t0 !== null ? r2(t0 - tog) : null;   // less the Customers bought together saving
+  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div>${tog > 0 ? `<div class="sub-row tg-row"><span>Together extra off (${TOGETHER}%)</span><span class="gold">−${money(tog, '₹')}</span></div>` : ''}<div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
     ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
     <a class="btn line block bag-more" href="#/fragrances" data-close>Continue shopping</a>`;
   const dc = $('#doCheckout'); if (dc) dc.onclick = () => checkout(cart);
@@ -3540,9 +3541,11 @@ function renderFbt(p, size){
   box.className = 'fbt rv-up in';
   box.innerHTML = `<h2 class="fbt-h">Customers bought <em class="metal">together</em></h2>
     <div class="fbt-row">${tile(items[0], 0)}<span class="fbt-plus" aria-hidden="true">+</span>${tile(items[1], 1)}
-      <div class="fbt-buy"><p>Total price: <b id="fbtTot"></b></p><button class="btn block" id="fbtAdd" type="button"></button><small>${AS_ICON.free}Free delivery on both</small></div></div>`;
+      <div class="fbt-buy"><p>Total price: <b id="fbtTot"></b></p><button class="btn block" id="fbtAdd" type="button"></button><small>${AS_ICON.free}<span>Free delivery on both<span id="fbtPct"> · ${TOGETHER}% off included</span></span></small></div></div>`;
+  /* both ticked and the together % on (Admin → Products): the total after the % (the same sum as the bag: round((A + B) × % / 100) paise off) */
   const upd = () => { const n = on.filter(Boolean).length, t = items.reduce((a, x, i) => a + (on[i] ? +x[0].prices[x[1]] : 0), 0);
-    $('#fbtTot').textContent = n ? money(t, curOf(p)) : '—'; const b = $('#fbtAdd'); b.disabled = !n; b.textContent = n === 2 ? 'Add both to Cart' : n ? 'Add to Cart' : 'Tick an item';
+    const tg = n === 2 && TOGETHER && curOf(p) === '₹' ? Math.round(items.reduce((a, x) => a + Math.round(+x[0].prices[x[1]] * 100), 0) * TOGETHER / 100) / 100 : 0;
+    $('#fbtTot').innerHTML = n ? (tg ? `<s>${money(t, curOf(p))}</s> ` : '') + money(r2(t - tg), curOf(p)) : '—'; $('#fbtPct').hidden = !tg; const b = $('#fbtAdd'); b.disabled = !n; b.textContent = n === 2 ? 'Add both to Cart' : n ? 'Add to Cart' : 'Tick an item';
     $$('#fbt .fbt-it').forEach((el, i) => el.classList.toggle('off', !on[i])); };
   $$('#fbt [data-fbt]').forEach(c => c.onchange = () => { on[+c.dataset.fbt] = c.checked; upd(); });
   $('#fbtAdd').onclick = () => { const add = items.filter((x, i) => on[i]); add.forEach(x => addToCart(x[0].id, x[1], 1, add.length > 1)); if (add.length > 1) toast(`${add.map(x => x[0].name).join(' and ')} added to your bag`, true); };
@@ -3723,6 +3726,19 @@ function cbOffs(lines){
   return offs;
 }
 const lineUnit = (l, offs) => +P[l.id].prices[l.opt] - (offs.get(l) || 0);
+/* Customers bought together (Admin → Products, STORE_LIVE.together): % off one unit of each of two different products in the bag; 0 = off.
+   Each product once (not gift sets or combo lines) at its cheapest unit price in the bag, paired two at a time in bag order (1st + 2nd, 3rd + 4th …),
+   each pair round((A + B) × % / 100) paise off, the bag keeping at least ₹1. The same sums as the server (api/store-lib.php fomaxo_together), in rupees */
+const r2 = v => Math.round(v * 100) / 100;   // rupees to the paisa, so ₹1,980 never shows as ₹1,979.99
+const TOGETHER = Math.max(0, Math.min(50, parseInt(LIVE.together, 10) || 0));
+function togetherOff(lines){
+  if (!TOGETHER || cartCur(lines) !== '₹') return 0;
+  const offs = cbOffs(lines), cheap = new Map(); let sub = 0, off = 0;
+  for (const l of lines) { const p = P[l.id], u = Math.round(lineUnit(l, offs) * 100); sub += u * l.qty;
+    if (p.kind === 'set' || offs.has(l) || !(l.qty >= 1) || !(u > 0)) continue; if (!cheap.has(l.id) || u < cheap.get(l.id)) cheap.set(l.id, u); }
+  const us = [...cheap.values()]; for (let i = 0; i + 1 < us.length; i += 2) off += Math.round((us[i] + us[i + 1]) * TOGETHER / 100);
+  return Math.max(0, Math.min(off, sub - 100)) / 100;
+}
 /* the bag and checkout show a combo as one row: its name, a collage of its products' pictures and its combo price.
    cbRows: the lines to show (a combo's first line stands for the combo), with their place in the bag */
 const cbRows = (lines, offs) => { const seen = new Set(); return lines.map((l, i) => ({l, i})).filter(({l}) => !l.cb || !offs.has(l) || (!seen.has(l.cb) && seen.add(l.cb))); };
@@ -4596,7 +4612,7 @@ function checkoutPage(q){
   const lines = coLines(q), t = subtotal(lines);
   if (!lines.length) return pageHead('Checkout', 'Your bag is <em class="metal">empty</em>', 'Add a fragrance or a personal care favourite, then come back here to check out.') + `<section class="sec" style="padding-top:40px"><div class="wrap" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="#/fragrances">Shop fragrances</a><a class="btn line" href="#/personal-care">Personal care</a></div></section>`;
   if (t === null || cartCur(lines) !== '₹' || !(S.checkout.razorpay || coCod())) return pageHead('Checkout', 'Order on <em class="metal">WhatsApp</em>', 'An item in your bag is priced on request, so we will confirm your order with you on WhatsApp.') + `<section class="sec" style="padding-top:40px"><div class="wrap"><button class="btn" id="coWa">Order via WhatsApp</button></div></section>`;
-  const d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codSt = coCodState(cod, t, t, d.name), codOk = codSt === 'ok';
+  const tog = togetherOff(lines), d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codSt = coCodState(cod, t, t - tog, d.name), codOk = codSt === 'ok';
   const offs = cbOffs(lines), was = lines.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
   const phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
   return `<section class="co"><div class="wrap co-grid">
@@ -4612,9 +4628,9 @@ function checkoutPage(q){
       <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > u ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(u * l.qty)}</span></div></div>`; }).join('')}</div>
-    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coMbRow" hidden><span>Multi-buy discount</span><b id="coMbRowOff"></b></div><div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
-    <div class="co-total"><span>Total</span><b id="coTotal">${inr(t)}</b></div>
-    <p class="co-save" id="coSave" data-was="${was - t}"${was > t ? '' : ' hidden'}>You save ${inr(was - t)} on this order</p>
+    <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div><div class="co-cpnrow" id="coMbRow"${tog > 0 ? '' : ' hidden'}><span>Together extra off (${TOGETHER}%)</span><b id="coMbRowOff">−${inr(tog)}</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
+    <div class="co-total"><span>Total</span><b id="coTotal">${inr(r2(t - tog))}</b></div>
+    <p class="co-save" id="coSave" data-was="${was - t}"${was > t - tog ? '' : ' hidden'}>You save ${inr(r2(was - t + tog))} on this order</p>
     ${S.checkout.coupons !== false ? `<div class="co-cpn" id="coCpn">
       <div class="co-cpn-form" id="coCpnForm"><input id="coCpnIn" placeholder="Have a coupon?" aria-label="Coupon code" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go"><button type="button" class="btn line sm" id="coCpnApply">Apply</button></div>
       <div class="co-cpn-on" id="coCpnOn" hidden><span>✓ <b id="coCpnCode"></b> applied<small class="co-cpn-end" id="coCpnEnd" hidden></small></span><button type="button" id="coCpnDel">Remove</button></div>
@@ -4652,7 +4668,7 @@ function checkoutPage(q){
       ${cod ? `<label class="co-opt${codOk ? '' : ' off'}${codSt === 'na' ? ' na' : ''}"><input type="radio" name="pay" value="cod"${codOk ? (S.checkout.razorpay ? '' : ' checked') : ' disabled'}><span class="co-ot"><b>Cash on delivery</b><small class="co-cl" id="coCodLine">${coCodLine(cod, codSt)}</small>${cod.onlyName ? '' : `<small class="co-more" id="coCodNote"${codSt === 'min' ? '' : ' hidden'}>Add ${inr(cod.min - t)} more to activate COD</small>`}</span>${CO_ICON.cash}${cod.onlyName ? '<b class="co-codoff">COD NOT AVAILABLE AT MOMENT</b>' : ''}</label>` : ''}
     </div>
     <p class="co-err" id="coErr" role="alert" hidden></p>
-    <button class="btn block co-btn" id="coPay" type="submit">${LOCK_SVG}<span id="coPayTxt">Pay ${inr(t)} securely</span></button>
+    <button class="btn block co-btn" id="coPay" type="submit">${LOCK_SVG}<span id="coPayTxt">Pay ${inr(r2(t - tog))} securely</span></button>
     <ul class="co-trust">
       <li>${ICON.truck}Delivered in 1–3 days across INDIA</li>
       <li>${LOCK_SVG}Secure payments by Razorpay</li>
@@ -4671,7 +4687,7 @@ const loadRazorpay = () => window.Razorpay ? Promise.resolve() : (rzpLoad = rzpL
 function bindCheckout(q){
   const wa = $('#coWa'); if (wa) wa.onclick = () => checkout(coLines(q));
   const f = $('#coForm'); if (!f) return;
-  const lines = coLines(q), t = subtotal(lines), cod = coCod(), E = f.elements, btn = $('#coPay'), err = $('#coErr');
+  const lines = coLines(q), t = subtotal(lines), tog = togetherOff(lines), cod = coCod(), E = f.elements, btn = $('#coPay'), err = $('#coErr');
   const fd = $('#coFold'); if (fd) fd.onclick = () => { const on = $('#coSum').classList.toggle('fold'); fd.setAttribute('aria-expanded', !on); fd.textContent = on ? `Show items (${lines.reduce((a, l) => a + l.qty, 0)})` : 'Hide items'; };
   const ed = $('#coEdit'), openBag = () => { renderCart(); openPanel($('#cart')); }; if (ed) ed.onclick = openBag;
   /* clicking any item in the order summary opens Your Bag, same as Edit bag */
@@ -4679,9 +4695,11 @@ function bindCheckout(q){
   if (S.checkout.razorpay) loadRazorpay().catch(() => {});
   const method = () => (f.querySelector('input[name=pay]:checked') || {}).value;
   /* the coupon applied: {code, off, cp, offer} in rupees, worked out by api/coupon.php (cod.php and razorpay.php work it out again).
-     cp = the coupon, offer = the multi-buy discount kept with it ("Use both", or when the offer saves more), off = both together */
+     cp = the coupon, offer = the together saving kept with it ("Use both", or when it saves more), off = both together.
+     Without a coupon the whole together saving (tog) comes off, as on the server */
   let cpn = null;
-  const total = () => t - (cpn ? cpn.off : 0) + (method() === 'cod' && cod ? cod.fee : 0);
+  const off = () => cpn ? cpn.off : tog, togKept = () => cpn ? cpn.offer : tog;
+  const total = () => r2(t - off() + (method() === 'cod' && cod ? cod.fee : 0));
   /* payment stays locked until every required delivery field is filled in correctly */
   const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', v => /^[6-9]\d{9}$/.test(v.replace(/\D/g, ''))],
     ['email', 'Email', v => (v === '' && coPhone()) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)], ['house', 'Flat / house no, building', v => v.length > 0],
@@ -4692,7 +4710,7 @@ function bindCheckout(q){
   const upd = () => {
     const miss = missing(), locked = miss.length > 0, fr = $('#coFeeRow');
     f.classList.toggle('co-locked', locked);
-    const codSt = coCodState(cod, t, t - (cpn ? cpn.off : 0), E.name.value), codOn = codSt === 'ok', cr = f.querySelector('input[value=cod]');
+    const codSt = coCodState(cod, t, t - off(), E.name.value), codOn = codSt === 'ok', cr = f.querySelector('input[value=cod]');
     if (cr) { const co = cr.closest('.co-opt'), cl = $('#coCodLine'), w = coCodLine(cod, codSt); co.classList.toggle('off', !codOn); co.classList.toggle('na', codSt === 'na'); co.classList.toggle('max', codSt === 'max');
       if (cl.innerHTML !== w) cl.innerHTML = w; const cn = $('#coCodNote'); if (cn) cn.hidden = codSt !== 'min';
       /* over the maximum (or COD closed), the payment moves to card */
@@ -4703,9 +4721,9 @@ function bindCheckout(q){
     if (locked) $('#coChips').innerHTML = miss.map(([k, l]) => `<button type="button" data-need="${k}">${l}</button>`).join('');
     if (fr) fr.hidden = !isCod;
     $('#coTotal').textContent = inr(total());
-    const sv = $('#coSave'), saved = Number(sv.dataset.was) + (cpn ? cpn.off + (cpn.free ? cpn.free.worth : 0) : 0); sv.hidden = saved <= 0; sv.textContent = `You save ${inr(saved)} on this order`;
-    const cr2 = $('#coCpnRow'), mb = $('#coMbRow'); if (cr2) { cr2.hidden = !(cpn && cpn.cp > 0); mb.hidden = !(cpn && cpn.offer > 0);
-      if (cpn) { $('#coCpnRowCode').textContent = cpn.code; $('#coCpnRowOff').textContent = '−' + inr(cpn.cp); $('#coMbRowOff').textContent = '−' + inr(cpn.offer); } }
+    const sv = $('#coSave'), saved = Number(sv.dataset.was) + off() + (cpn && cpn.free ? cpn.free.worth : 0); sv.hidden = saved <= 0; sv.textContent = `You save ${inr(saved)} on this order`;
+    const cr2 = $('#coCpnRow'), mb = $('#coMbRow'); mb.hidden = !(togKept() > 0); $('#coMbRowOff').textContent = '−' + inr(togKept());
+    if (cr2) { cr2.hidden = !(cpn && cpn.cp > 0); if (cpn) { $('#coCpnRowCode').textContent = cpn.code; $('#coCpnRowOff').textContent = '−' + inr(cpn.cp); } }
     btn.disabled = locked;
     $('#coPayTxt').textContent = locked ? 'Complete delivery details to pay' : isCod ? `Place order · ${inr(total())} on delivery` : `Pay ${inr(total())} securely`;
     $$('.co-opt', f).forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
@@ -4792,7 +4810,7 @@ function bindCheckout(q){
     const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
     try { const d = await post('api/coupon.php', {code, lines: payload({}).lines, phone: E.phone.value.replace(/\D/g, '')}); const cp = Number(d.discount), offer = Number(d.offer || 0);
       cpn = {code: d.code, cp, offer, off: cp + offer, ends: d.ends || '', free: d.free ? {...d.free, worth: Number(d.free.worth)} : null}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {}
-      !cp && offer > 0 ? cpnShow('Your multi-buy discount saves more, so we kept it.', true) : cpnShow(''); }
+      !cp && offer > 0 && !d.free ? cpnShow('Your together extra off saves more, so we kept it.', true) : cpnShow(''); }
     catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message, /^Spend /.test(x.message)); }   // "Spend ₹999 to get your free …": a gold note
     finally { b.disabled = false; b.textContent = 'Apply'; }
   };

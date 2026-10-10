@@ -65,6 +65,10 @@ function shop_db(): PDO {
     $add("coupons ADD free_id VARCHAR(48) NOT NULL DEFAULT ''", "coupons ADD free_opt VARCHAR(16) NOT NULL DEFAULT ''", "coupons ADD per_cust INT NOT NULL DEFAULT 0");
     shop_set('schema', '11');
   }
+  if (shop_setting('schema') === '11') {   // Customers bought together: the together saving (Admin → Products) an order kept, in paise
+    $add("orders ADD together INT NOT NULL DEFAULT 0");
+    shop_set('schema', '12');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   return $SHOP_DB;
@@ -280,7 +284,7 @@ function shop_order_row(array $rec): array {
     'name' => $c['name'], 'phone' => $c['phone'], 'email' => $c['email'], 'address' => $c['address'], 'city' => $c['city'] ?? '',
     'state' => $c['state'] ?? '', 'pin' => $c['pin'] ?? '', 'note' => $c['note'] ?? '', 'payment_id' => $rec['payment'] ?? '',
     'test' => !empty($rec['test']) ? 1 : 0, 'review' => $rec['review'] ?? '', 'stock_taken' => !empty($rec['stock_taken']) ? 1 : 0, 'updated' => shop_now(),
-    'coupon' => (string)($rec['coupon'] ?? ''), 'discount' => (int)($rec['discount'] ?? 0), 'wa_optin' => !empty($c['wa']) ? 1 : 0];
+    'coupon' => (string)($rec['coupon'] ?? ''), 'discount' => (int)($rec['discount'] ?? 0), 'together' => (int)($rec['together'] ?? 0), 'wa_optin' => !empty($c['wa']) ? 1 : 0];
 }
 function shop_insert_order(PDO $db, array $rec): void {
   $row = shop_order_row($rec); $cols = array_keys($row);
@@ -296,7 +300,7 @@ function shop_rec(array $r): array {
       'state' => $r['state'], 'pin' => $r['pin'], 'note' => $r['note'], 'wa' => (int)($r['wa_optin'] ?? 0)],
     'payment' => $r['payment_id'], 'test' => (bool)$r['test'], 'review' => $r['review'], 'stock_taken' => (bool)$r['stock_taken'],
     'paid' => $r['paid_at'], 'cod' => $r['method'] === 'cod', 'admin_note' => $r['admin_note'], 'id' => (int)$r['id'],
-    'coupon' => (string)($r['coupon'] ?? ''), 'discount' => (int)($r['discount'] ?? 0)];
+    'coupon' => (string)($r['coupon'] ?? ''), 'discount' => (int)($r['discount'] ?? 0), 'together' => (int)($r['together'] ?? 0)];
 }
 function shop_find_order(string $ref, bool $lock = false, ?PDO $db = null): ?array {
   $s = ($db ?: shop_db())->prepare('SELECT * FROM orders WHERE ref = ?' . ($lock && shop_is_mysql() ? ' FOR UPDATE' : '')); $s->execute([$ref]);
@@ -573,6 +577,13 @@ function shop_cod(array $def): array {
   $c = json_decode((string)shop_setting('cod'), true);
   if (!is_array($c)) return $def + ['max' => 0];
   return ['min' => max(0, (int)($c['min'] ?? 0)), 'max' => max(0, (int)($c['max'] ?? 0)), 'fee' => max(0, (int)($c['fee'] ?? 0))];
+}
+
+/* Customers bought together (Admin → Products): pct = % off one unit of each of two different products in the bag (0 to 50),
+   on = switched on. Off (or nothing saved) = no together saving anywhere; the % is kept for when it is switched back on. */
+function shop_together(): array {
+  $t = json_decode((string)shop_setting('together'), true); $t = is_array($t) ? $t : [];
+  return ['pct' => max(0, min(50, (int)($t['pct'] ?? 0))), 'on' => !empty($t['on'])];
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */

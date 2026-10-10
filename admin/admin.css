@@ -126,6 +126,12 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .pager{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0}.pager a{padding:4px 10px;border:1px solid var(--line);border-radius:6px;text-decoration:none}.pager a.on{border-color:var(--gold)}
 
 /* products */
+/* Customers bought together: % box and On / Off switch in the Products header (the word reads ON gold, OFF grey) */
+.tgo{display:flex;align-items:center;gap:8px;margin:0;border:1px solid var(--line);border-radius:7px;padding:4px 6px 4px 12px;min-width:0}
+.tgo>label{flex-direction:row;font-size:13px;color:var(--text);letter-spacing:0;white-space:nowrap}
+.tgn{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:13px}.tgn input{width:48px;padding:5px 6px;text-align:right}
+.tgs{flex-direction:row!important;align-items:center;gap:6px!important;cursor:pointer}.tgs b{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--muted);min-width:26px}
+.tgs .y,.tgo.on .tgs .n{display:none}.tgo.on .tgs .y{display:inline;color:var(--gold)}
 .prod{display:grid;grid-template-columns:40px 56px 200px 1fr auto;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2)}
 .prod.off>:not(.pvis){opacity:.5}
 /* the ring dot in front of each product (column Show): filled green = on the website, empty grey ring = hidden; one tap saves */
@@ -244,6 +250,7 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
   .order summary .acts{grid-column:1/-1;grid-row:3;justify-content:flex-start;flex-wrap:wrap;margin-top:6px}.order summary .acts:empty{display:none}.order[open] summary .acts{display:none}
   .order .acts .btn{height:42px;min-height:42px;font-size:12px;padding-left:2px;padding-right:2px;letter-spacing:0}.steps5{gap:6px}.step{flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;text-align:center;font-size:11px}.step span{white-space:normal;line-height:1.2}.step b{font-size:18px}.otop{padding:4px 10px 10px;flex-direction:column;align-items:stretch}.otop .acts{flex-wrap:wrap}.track{max-width:none}.track small{white-space:normal}
   .od{grid-template-columns:1fr;padding:4px 10px 12px}
+  .tgo{order:3;flex:1 1 100%;padding:4px 6px 4px 10px}.tgo>label{flex:1;font-size:14px}.tgn input{width:56px}
   .prod{grid-template-columns:34px 48px 1fr;gap:10px}.prod .th{width:48px;height:48px}.pprices,.pact{grid-column:2/-1}.prod.phd{display:none}.prod .pvis{grid-row:span 2;align-self:center}.rdot{width:28px;height:28px}.rdot.on::after{inset:5px}.pact{justify-content:flex-start}.pprices div{grid-template-columns:64px 1fr 1fr}
   .pform{grid-template-columns:1fr 1fr}.notes{grid-template-columns:1fr}.srow{grid-template-columns:1fr 1fr 1fr}.srow label:first-child{grid-column:1/-1}
   .an{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr)}.an>.box{grid-row:1!important;grid-column:1!important}
