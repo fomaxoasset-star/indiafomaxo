@@ -630,10 +630,9 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   /* From Instagram: connect once with a token, then tap a reel and its product (or let Automatic add them) */
   $ig = ig_fresh(); $auto = shop_setting('ig_auto') !== '0';
   if (!$ig) $igBox = '<form class="box vig" method="post">' . $csrfField . '<input type="hidden" name="action" value="vid_ig_token"><div class="bh"><h3>From Instagram</h3></div><div class="bb">'
-    . '<p class="muted small">Connect once, then add any reel in two taps. Your Instagram must be a Business or Creator account.</p>'
-    . '<label>Instagram access token<input name="ig_token" type="password" autocomplete="new-password" spellcheck="false" required placeholder="Paste here"></label>'
-    . '<p class="muted small">developers.facebook.com → My apps → your app → Instagram → API setup with Instagram login → Generate token. Kept on your Hostinger server only, never shown again.</p>'
-    . '<button class="btn">Connect Instagram</button></div></form>';
+    . '<p class="muted small">Connect once, then add any reel in two taps (Business or Creator account).</p>'
+    . '<div class="igadd"><input name="ig_token" type="password" autocomplete="new-password" spellcheck="false" required placeholder="Instagram access token" aria-label="Instagram access token"><button class="btn">Connect</button></div>'
+    . '<details class="vhow"><summary>Where is the token?</summary><p class="muted small">developers.facebook.com → My apps → your app → Instagram → API setup with Instagram login → Generate token. Kept on your Hostinger server only, never shown again.</p></details></div></form>';
   else {
     $reels = ig_reels($ig); $have = array_filter(array_column($vids, 'ig'));
     $grid = is_array($reels) ? implode('', array_map(fn($r) => '<label class="igr' . (in_array($r['id'], $have, true) ? ' had' : '') . '"><input type="radio" name="ig" value="' . h($r['id']) . '" required>'
@@ -650,22 +649,21 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   $body .= '<div class="row"><a class="btn line sm" href="' . h(self_url(['tab' => 'products'])) . '">← Products</a><h2 class="sp">Shop videos</h2></div>'
     . $sw('#vidPanes', ['list' => 'Your videos', 'add' => 'Add a video']) . '<div class="vids panes" id="vidPanes"><div class="vleft" data-pane="add">' . $igBox
     . '<form class="box vlink" method="post" onsubmit="this.querySelector(\'.btn\').textContent=\'Adding…\'">' . $csrfField . '<input type="hidden" name="action" value="vid_link"><div class="bh"><h3>Paste a link</h3></div><div class="bb">'
-    . '<label>Video link<input type="url" name="url" required inputmode="url" placeholder="https://www.instagram.com/reel/…" spellcheck="false"></label>'
+    . '<input type="url" name="url" required inputmode="url" placeholder="https://www.instagram.com/reel/…" spellcheck="false" aria-label="Video link">'
     . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Add</button></div>'
-    . '<p class="muted small">Any Instagram reel link (no token needed), or a link that opens the video itself. YouTube and TikTok links can’t be added.</p></div></form>'
+    . '<p class="muted small">Instagram reel link, or a link that opens the video itself. Not YouTube or TikTok.</p></div></form>'
     . '<form class="box vadd" method="post" enctype="multipart/form-data" data-vshrink data-max="' . $max . '">' . $csrfField . '<input type="hidden" name="action" value="vid_add">'
     . '<div class="bh"><h3>Upload from your phone</h3></div><div class="bb">'
     . '<label>Video<input type="file" name="video" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov" required></label>'
-    . '<label>Product in the video' . $vpick('Product in the video') . '</label>'
     . '<label>Cover photo (optional)<input type="file" name="cover" accept="image/*"></label>'
-    . '<p class="muted small">Upright phone video (9:16), 10 to 30 seconds. A big video is made smaller by itself before it uploads. It plays without sound until the customer taps the sound button. No cover photo = the product photo.</p>'
-    . '<div class="vsh muted small" hidden><span></span></div>'
-    . '<button class="btn">Upload</button></div></form><script>' . @file_get_contents(__DIR__ . '/vshrink.js') . '</script></div>'
+    . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Upload</button></div>'
+    . '<p class="muted small">Upright 9:16, 10 to 30 seconds. Big videos shrink by themselves. No cover = product photo.</p>'
+    . '<div class="vsh muted small" hidden><span></span></div></div></form><script>' . @file_get_contents(__DIR__ . '/vshrink.js') . '</script></div>'
     . '<div class="box on vlist' . ($allOn ? '' : ' alloff') . '" data-pane="list"><div class="bh"><h3>Your videos <small class="muted">' . $n . '</small> <b class="tgok vok" aria-live="polite"></b></h3>'
     . '<form method="post" class="vall">' . $csrfField . '<input type="hidden" name="action" value="vid_all"><label class="pg"><span><b>' . ($allOn ? 'On website' : 'Off: row hidden') . '</b></span><input type="checkbox" class="tgl" name="on" value="1"' . ($allOn ? ' checked' : '') . ' aria-label="Show videos on the website" onchange="this.form.submit()"></label></form></div>'
     . ($allOn ? '' : '<p class="voff">All videos are switched off. Turn the switch on to show the video row again.</p>') . '<div class="bb">'
     . ($rows ?: '<p class="empty">No videos yet. The home page shows the video row once you add one.</p>')
-    . '</div><div class="bf"><span class="muted small">Sells: tap a product to remove it, + Add product for more. No product = a Shop Now button, with the words you typed. Drag the dots on the left to change the order: the first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
+    . '</div><div class="bf"><span class="muted small">Ring dot filled = on the website. Drag the dots on the left to change the order. Tap a product to remove it. No product = Shop Now button. Hidden products’ videos are left out.</span></div></div></div>';
 } elseif ($tab === 'products') {
   $qq = trim((string)($_GET['q'] ?? ''));
   $TG = shop_together();
