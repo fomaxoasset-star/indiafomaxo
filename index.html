@@ -1717,9 +1717,10 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .prow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;width:100%}
 .prow .psave{margin-left:auto}
 .buy .price-rate #pstock{align-self:flex-end;margin-top:-6px}   /* AJAY: the low-stock box sits by the green You save box */
-.buy .price-rate{position:relative}.buy .price-rate:has(.pold) #pstock{position:absolute;top:0;right:0;margin:0}
-@media(min-width:961px){.buy .price-rate:has(.pold) #pstock{top:-6px}}
-.stk-x{font-style:normal}@media(max-width:400px){.buy .price-rate:has(.pold) .stk-x{display:none}}   /* a narrow phone: just "Only 2 left", so it fits beside ₹2,200 */   /* AJAY: when "Only N left" shows, nothing below moves down: it sits in the empty space beside the old price, right above You save */
+/* AJAY: when "Only N left" shows, nothing below moves down. You save goes up beside the old price and the box sits right under it, beside the big price */
+.buy .price-rate{position:relative}.buy .price-rate:has(.pold):has(#pstock .stk) .psave{position:absolute;top:0;right:0}.buy .price-rate:has(.pold) #pstock{position:absolute;bottom:4px;right:0;margin:0}
+@media(min-width:961px){.buy .price-rate:has(.pold):has(#pstock .stk) .psave{top:-4px}}
+.stk-x{font-style:normal}@media(max-width:400px){.buy .price-rate:has(.pold) .stk-x{display:none}.buy .price-rate:has(.pold) .psave{position:absolute;top:0;right:0}}   /* a narrow phone: just "Only 2 left", so it fits beside ₹1,750 */
 .buy .price-rate,.buy #pprice,.pnow{width:100%;align-self:stretch}
 .psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
 html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
