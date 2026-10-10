@@ -3242,6 +3242,7 @@ function home(){
     <div>${ICON.pen}<span><b>Custom engraving</b>On request</span></div>
     <div>${ICON.drop}<span>${miniPic() ? '<b>Try a mini</b>Luxury in 10ml' : '<b>Try first</b>Ask us for a sample'}</span></div>
   </div></div>
+  ${vids().length ? `<section class="sec vid-sec" id="vidSec" style="padding-bottom:0">${vidSecHTML()}</section>` : ''}
   ${lastOrder().length ? `<section class="again-home"><div class="wrap">${againHTML()}</div></section>` : ''}
 
   <section class="sec"><div class="wrap">
@@ -3250,8 +3251,6 @@ function home(){
       <div class="hg-pager" id="hgPager"><button type="button" data-hp="-1" aria-label="Previous products">←</button><span id="hgCount"></span><button type="button" data-hp="1" aria-label="Next products">→</button></div></div>
     <div class="pc-grid hg-grid" id="homeGrid"></div>
   </div></section>
-
-  ${vids().length ? `<section class="sec vid-sec" id="vidSec" style="padding-top:0">${vidSecHTML()}</section>` : ''}
 
 
   <section class="sec" style="padding-top:0" id="tiers"><div class="wrap">
