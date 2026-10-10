@@ -547,8 +547,8 @@ function shop_newprod_live(): ?array {
 }
 
 /* Ad tags set on Admin → Settings → Ads (STORE_LIVE.ads): Meta Pixel ID, TikTok Pixel ID, Google Analytics 4 ID (G-…),
-   Google Ads ID (AW-…) and its purchase conversion label. Empty boxes are left out; nothing loads on the website until one is filled in. */
-const SHOP_ADS = ['meta' => '/^\d{10,20}$/', 'tiktok' => '/^[A-Z0-9]{10,30}$/', 'ga4' => '/^G-[A-Z0-9]{4,16}$/', 'gads' => '/^AW-\d{6,15}$/', 'gadsLabel' => '/^[A-Za-z0-9_-]{4,40}$/'];
+   Google Ads ID (AW-…) and its purchase conversion label, and the Microsoft Clarity project ID. Empty boxes are left out; nothing loads on the website until one is filled in. */
+const SHOP_ADS = ['meta' => '/^\d{10,20}$/', 'tiktok' => '/^[A-Z0-9]{10,30}$/', 'ga4' => '/^G-[A-Z0-9]{4,16}$/', 'gads' => '/^AW-\d{6,15}$/', 'gadsLabel' => '/^[A-Za-z0-9_-]{4,40}$/', 'clarity' => '/^[a-z0-9]{6,20}$/'];
 function shop_ads(): array {
   $a = json_decode((string)shop_setting('ads'), true); $a = is_array($a) ? $a : [];
   $out = [];

@@ -902,7 +902,7 @@ if ($tab === 'settings') {
   $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
   $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $first = $adsFirst || $codFirst || $pgFirst;
   $COD = fomaxo_catalog()['cod'] ?? null;
-  $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => ''];
+  $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => '', 'clarity' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
   $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
   $OFF = shop_pages_off();
@@ -935,6 +935,7 @@ if ($tab === 'settings') {
     . $adIn('ga4', 'Google Analytics ID', 'G-XXXXXXXXXX', 'Analytics → Admin → Data streams. Starts with G-. G-C1TFB0MT5N is built into the website and runs even when this is empty; an ID typed here is used instead.')
     . $adIn('gads', 'Google Ads ID', 'AW-123456789', 'Goals → Conversions → Tag setup. Starts with AW-.')
     . $adIn('gadsLabel', 'Google Ads purchase label', 'AbCdEfGhIjKlMnOp', 'What comes after AW-…/ in your Purchase conversion.')
+    . $adIn('clarity', 'Microsoft Clarity project ID', 'abcde12345', 'clarity.microsoft.com → your project → Settings → Overview. Records visits and heatmaps; names, phones and addresses at checkout stay hidden, and customer review links and thank-you pages are not recorded.')
     . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box" data-pane="pw" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="password"><div class="bh"><h3>Change your password</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Current password<input type="password" name="current" required autocomplete="current-password"></label>'

@@ -382,15 +382,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go($back, 'Saved. Cash on delivery from ₹' . number_format($min) . ($max ? ', under ₹' . number_format($max) : '') . ($fee ? ', fee ₹' . number_format($fee) : ', no fee') . '.');
   }
   if ($a === 'ads') {
-    $ads = []; $names = ['meta' => 'Meta Pixel ID', 'tiktok' => 'TikTok Pixel ID', 'ga4' => 'Google Analytics ID', 'gads' => 'Google Ads ID', 'gadsLabel' => 'Purchase conversion label'];
+    $ads = []; $names = ['meta' => 'Meta Pixel ID', 'tiktok' => 'TikTok Pixel ID', 'ga4' => 'Google Analytics ID', 'gads' => 'Google Ads ID', 'gadsLabel' => 'Purchase conversion label', 'clarity' => 'Microsoft Clarity project ID'];
     foreach (SHOP_ADS as $k => $re) {
       $v = preg_replace('/\s+/', '', (string)($_POST[$k] ?? '')) ?? '';
-      if ($k !== 'gadsLabel') $v = strtoupper($v);
+      if ($k === 'clarity') $v = strtolower($v); elseif ($k !== 'gadsLabel') $v = strtoupper($v);
       if ($v !== '' && !preg_match($re, $v)) go(['tab' => 'settings', 'pane' => 'ads'], '!The ' . $names[$k] . ' doesn’t look right. Please copy it again, or leave the box empty.');
       $ads[$k] = $v;
     }
     shop_set('ads', json_encode($ads));
-    $on = array_keys(array_filter(['Meta' => $ads['meta'], 'TikTok' => $ads['tiktok'], 'Google' => $ads['ga4'] . $ads['gads']]));
+    $on = array_keys(array_filter(['Meta' => $ads['meta'], 'TikTok' => $ads['tiktok'], 'Google' => $ads['ga4'] . $ads['gads'], 'Microsoft Clarity' => $ads['clarity']]));
     go(['tab' => 'settings', 'pane' => 'ads'], $on ? 'Saved. ' . implode(', ', $on) . ' tracking is now on the website.' : 'Saved. No ad tracking is on the website.');
   }
   if ($a === 'pages') {
