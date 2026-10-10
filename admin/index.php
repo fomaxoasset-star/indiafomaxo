@@ -467,6 +467,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     };
     if ($pct !== '' && (!preg_match('/^\d{1,2}$/', $pct) || (int)$pct > 50)) $done('!Please write the together extra off as a whole number from 0 to 50.');
     if ($rs !== '' && (!preg_match('/^\d{1,4}$/', $rs) || (int)$rs > 5000)) $done('!Please write the together extra off in ₹ as a whole number from 0 to 5000.');
+    if ((int)$pct && (int)$rs) $done('!Please fill only one box: Extra off in % or in ₹.');
     $pct = (int)$pct; $rs = (int)$rs; $off = fomaxo_together_txt($pct, $rs);
     shop_set('together', json_encode(['pct' => $pct, 'rs' => $rs, 'on' => $on ? 1 : 0]));
     $done(!$on ? 'Customers bought together is Off: the box is hidden on every product page. ' . ($off !== '' ? "Your $off extra off is kept for when you switch it on." : '')
