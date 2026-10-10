@@ -25,7 +25,7 @@ const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier',
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
 session_name('fomaxo_admin');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/admin', 'secure' => $https, 'httponly' => true, 'samesite' => 'Strict']);
-session_start();
+session_start(isset($_GET['vchunk']) ? ['read_and_close' => true] : []);   // a video piece only reads the sign-in, so pieces go up side by side
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(16));
 $CSRF = $_SESSION['csrf'];
 $csrfField = '<input type="hidden" name="csrf" value="' . h($CSRF) . '">';
@@ -148,6 +148,17 @@ if (($_GET['do'] ?? '') === 'new_orders') {
   echo json_encode($out); exit;
 }
 $_SESSION['seen'] = time();
+/* Upload from your phone sends a big video in pieces, 4 at a time (faster, and a piece that fails is just sent again).
+   They wait in fomaxo-private/video-parts/<upload id>/ until the Upload form joins them. */
+if (isset($_GET['vchunk'])) {
+  header('Content-Type: application/json'); header('Cache-Control: no-store');
+  $up = (string)($_POST['up'] ?? ''); $i = (int)($_POST['i'] ?? -1); $f = $_FILES['part'] ?? null;
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !hash_equals($CSRF, (string)($_POST['csrf'] ?? '')) || !preg_match('/^[a-f0-9]{16}$/', $up) || $i < 0 || $i > 999 || !$f || ($f['error'] ?? 1) !== UPLOAD_ERR_OK) exit('{"ok":0}');
+  $root = "$PRIV/video-parts"; if (!is_dir($root)) @mkdir($root, 0750, true);
+  if (!mt_rand(0, 20)) foreach (glob("$root/*", GLOB_ONLYDIR) ?: [] as $old) if (filemtime($old) < time() - 86400) { array_map('unlink', glob("$old/*") ?: []); @rmdir($old); }   // pieces of uploads never finished
+  $d = "$root/$up"; if (!is_dir($d)) @mkdir($d, 0750, true);
+  exit(json_encode(['ok' => move_uploaded_file($f['tmp_name'], "$d/$i") ? 1 : 0, 'size' => (int)@filesize("$d/$i")]));
+}
 /* this browser is the owner's: analytics leave its visits to the shop out */
 setcookie('fx_owner', fomaxo_owner_token(), ['expires' => time() + 400 * 86400, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax']);
 
@@ -203,15 +214,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       go($vb, 'Video added from the link. It shows on the home page now.');
     }
     if ($a === 'vid_add') {
-      $f = $_FILES['video'] ?? null;
+      $f = $_FILES['video'] ?? null; $pd = '';
       if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
+      if (preg_match('/^[a-f0-9]{16}$/', (string)($_POST['parts'] ?? ''))) {   // a video sent in pieces: join them, and check nothing is missing
+        $pd = "$PRIV/video-parts/" . $_POST['parts']; $pn = (int)($_POST['parts_n'] ?? 0); $total = (int)($_POST['parts_size'] ?? 0);
+        $ok = is_dir($pd) && $pn > 0 && $pn <= 1000 && $total > 0 && $total <= 500 * 1048576 && ($out = @fopen("$pd/all", 'wb'));
+        for ($k = 0; $ok && $k < $pn; $k++) { $in = @fopen("$pd/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
+        if (!empty($out)) fclose($out);
+        clearstatcache(); $ok = $ok && (int)@filesize("$pd/all") === $total;
+        foreach (glob("$pd/*") ?: [] as $x) if (basename($x) !== 'all' || !$ok) @unlink($x);
+        if (!$ok) { @rmdir($pd); go($vb, '!The upload did not finish. Please tap Upload again.'); }
+        $f = ['tmp_name' => "$pd/all", 'error' => UPLOAD_ERR_OK];
+      }
       if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) go($vb, '!Please choose a video.');
       if (in_array($f['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) go($vb, '!The video is too big. Please use one under ' . round(upload_max() / 1048576) . ' MB.');
-      $mime = $f['error'] === UPLOAD_ERR_OK && is_uploaded_file($f['tmp_name']) && function_exists('finfo_open') ? (string)finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) : '';
+      $mime = $f['error'] === UPLOAD_ERR_OK && ($pd ? is_file($f['tmp_name']) : is_uploaded_file($f['tmp_name'])) && function_exists('finfo_open') ? (string)finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) : '';
       $ext = ['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm', 'video/x-m4v' => 'mp4'][$mime] ?? '';
+      if ($ext === '' && $pd) { @unlink($f['tmp_name']); @rmdir($pd); }
       if ($ext === '') go($vb, '!That file is not a video. Please use an MP4 or a video from your phone.');
       $name = ($prod ?: 'fomaxo') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
-      if (!move_uploaded_file($f['tmp_name'], video_dir() . "/$name")) go($vb, '!The video could not be saved. Please try again.');
+      if (!($pd ? @rename($f['tmp_name'], video_dir() . "/$name") : move_uploaded_file($f['tmp_name'], video_dir() . "/$name")) || !filesize(video_dir() . "/$name")) { if ($pd) { @unlink($f['tmp_name']); @rmdir($pd); } go($vb, '!The video could not be saved. Please try again.'); }
+      if ($pd) @rmdir($pd);
       $cover = '';   // optional cover photo, saved like a product photo
       if (($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
         $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
