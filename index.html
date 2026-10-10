@@ -1718,10 +1718,12 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .prow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;width:100%}
 .prow .psave{margin-left:auto}
 .buy .price-rate #pstock{align-self:flex-end;margin-top:-6px}   /* AJAY: the low-stock box sits by the green You save box */
-/* laptop (AJAY): when "Only N left" shows, nothing below moves down. You save goes up beside the old price and the box sits right under it, beside the big price.
-   phone: like fomaxo.com, You save stays beside the big price and the box gets its own line right under it */
-@media(min-width:601px){.buy .price-rate{position:relative}.buy .price-rate:has(.pold):has(#pstock .stk) .psave{position:absolute;top:0;right:0}.buy .price-rate:has(.pold) #pstock{position:absolute;bottom:4px;right:0;margin:0}}
-@media(min-width:961px){.buy .price-rate:has(.pold):has(#pstock .stk) .psave{top:-4px}}
+/* laptop (AJAY): "Only N left" sits on the FREE delivery line, at the right under You save, so nothing below moves down.
+   phone: like fomaxo.com, the box gets its own line right under You save */
+.pstk-del{margin-left:auto}.pstk-del .stk{display:block;white-space:nowrap}
+@media(min-width:601px){.buy .price-rate #pstock{display:none}.pstk-del{margin-block:-8px}.buy .pdel-row{flex-wrap:nowrap;container-type:inline-size}.buy .pdel{white-space:nowrap}}
+@container (max-width:560px){.pstk-del .stk-x{display:none}}   /* not room for the whole line: just "Only 4 left" */
+@media(max-width:600px){.pstk-del{display:none!important}}
 .stk-x{font-style:normal}
 .buy .price-rate,.buy #pprice,.pnow{width:100%;align-self:stretch}
 .psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
@@ -3416,7 +3418,7 @@ function product(id, q){
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
           <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>${offerLine(p, 'box')}
-          <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p></div>
+          <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p><div class="stk-row pstk-del">${stockTag(p, size, true)}</div></div>
           ${assureHTML()}
         </div>
         ${p.sizes.length > 1 ? `<div><div class="opt-label opt-one"><span>${isSet ? 'Choose your set' : 'Size'}</span><span id="sizeName">${optLabel(p, size)}</span></div>
@@ -3497,7 +3499,7 @@ function bindProduct(p){
   $('#qp').onclick = () => qty.value = Math.min(99, left() ?? 99, getQ() + 1);
   function sizeState(){
     const out = sizeOut(p, size), a = $('#addBtn'), b = $('#buyBtn');
-    $('#pstock').innerHTML = stockTag(p, size, true);
+    $('#pstock').innerHTML = stockTag(p, size, true); const sd = $('.pstk-del'); if (sd) sd.innerHTML = stockTag(p, size, true);
     if (a) { a.disabled = out; a.classList.toggle('oos', out); a.textContent = out ? 'Out of stock' : 'Add To Cart'; }
     if (b) b.hidden = out;
     if (left() !== null && getQ() > left()) qty.value = Math.max(1, left());
