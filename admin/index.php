@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '91';
+const ASSET_V = '92';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -173,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $r = ig_connect($tok);
       go($vb, is_array($r) ? 'Instagram connected' . ($r['user'] !== '' ? ' as @' . $r['user'] : '') . '. Pick a reel below.' : '!Instagram did not accept the token: ' . $r);
     }
+    if ($a === 'vid_all') { $on = !empty($_POST['on']); shop_set('videos_off', $on ? '0' : '1'); go($vb, $on ? 'Videos are on the website again.' : 'Videos are off. The video row is hidden on the website.'); }
     if ($a === 'vid_ig_off') { ig_save(null); go($vb, 'Instagram disconnected. Videos already added stay on the website.'); }
     if ($a === 'vid_ig_auto') { $on = !empty($_POST['on']); shop_set('ig_auto', $on ? '1' : '0'); if ($on) ig_sync(true);
       go($vb, $on ? 'Automatic is on. New reels that name a product in their caption show on the website by themselves.' : 'Automatic is off. Add reels by tapping them.'); }

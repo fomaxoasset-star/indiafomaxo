@@ -13,6 +13,7 @@ function shop_videos_save(array $v): void { shop_set('videos', json_encode(array
 function video_dir(): string { global $PRIV; $d = "$PRIV/videos"; if (!is_dir($d)) @mkdir($d, 0750, true); return $d; }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website */
 function shop_videos_live(): array {
+  if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off
   $cat = fomaxo_catalog()['products']; $out = [];
   foreach (shop_videos() as $v) { $p = $cat[$v['product'] ?? ''] ?? null; if (empty($v['on']) || !$p || !empty($p['hidden'])) continue;
     $out[] = ['v' => 'api/live.php?vid=' . $v['file'], 'p' => (string)$v['product']] + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []); }

@@ -604,7 +604,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
 } elseif ($tab === 'products' && isset($_GET['videos'])) {
   /* Products → Videos: short upright videos on the home page. Tapping one on the website opens it full screen with its product's Add To Cart / Buy Now */
   if (ig_sync()) { /* Automatic: new reels that name a product, at most once an hour */ }
-  $vids = shop_videos(); $n = count($vids); $max = upload_max();
+  $vids = shop_videos(); $n = count($vids); $max = upload_max(); $allOn = shop_setting('videos_off') !== '1';
   $opts = fn(string $sel) => implode('', array_map(fn($id, $p) => '<option value="' . h($id) . '"' . ((string)$id === $sel ? ' selected' : '') . '>' . h($p['name']) . (!empty($p['hidden']) ? ' (hidden)' : '') . '</option>', array_keys($CAT), $CAT));
   $vpost = fn(array $v, string $act, string $inner, string $extra = '') => '<form method="post"' . $extra . '>' . $csrfField . '<input type="hidden" name="action" value="' . $act . '"><input type="hidden" name="vid" value="' . h($v['id']) . '">' . $inner . '</form>';
   $rows = '';
@@ -648,7 +648,9 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<label>Cover photo (optional)<input type="file" name="cover" accept="image/*"></label>'
     . '<p class="muted small">Upright phone video (9:16), 10 to 30 seconds' . ($max ? ', under ' . round($max / 1048576) . ' MB' : '') . '. It plays without sound until the customer taps the sound button. No cover photo = the product photo.</p>'
     . '<button class="btn">Upload</button></div></form></div>'
-    . '<div class="box on vlist" data-pane="list"><div class="bh"><h3>Your videos <small class="muted">' . $n . '</small></h3><span class="muted small hide-m">Ring dot: filled = on the website</span></div><div class="bb">'
+    . '<div class="box on vlist' . ($allOn ? '' : ' alloff') . '" data-pane="list"><div class="bh"><h3>Your videos <small class="muted">' . $n . '</small></h3>'
+    . '<form method="post" class="vall">' . $csrfField . '<input type="hidden" name="action" value="vid_all"><label class="pg"><span><b>' . ($allOn ? 'On website' : 'Off: row hidden') . '</b></span><input type="checkbox" class="tgl" name="on" value="1"' . ($allOn ? ' checked' : '') . ' aria-label="Show videos on the website" onchange="this.form.submit()"></label></form></div>'
+    . ($allOn ? '' : '<p class="voff">All videos are switched off. Turn the switch on to show the video row again.</p>') . '<div class="bb">'
     . ($rows ?: '<p class="empty">No videos yet. The home page shows the video row once you add one.</p>')
     . '</div><div class="bf"><span class="muted small">The first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
 } elseif ($tab === 'products') {
