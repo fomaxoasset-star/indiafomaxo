@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '95';
+const ASSET_V = '96';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -166,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (str_starts_with($a, 'vid_')) {
     $vb = ['tab' => 'products', 'videos' => 1]; $vids = shop_videos();
     $at = array_search((string)($_POST['vid'] ?? ''), array_column($vids, 'id'), true);
-    $prod = (string)($_POST['product'] ?? '');
+    $prod = (string)($_POST['product'] ?? ''); $none = $prod === '-'; if ($none) $prod = '';   // '-' = no product: the video gets a Shop Now button
     if ($a === 'vid_ig_token') {   // connect Instagram: the token is checked with Instagram, then kept in fomaxo-private
       $tok = preg_replace('/\s+/', '', (string)($_POST['ig_token'] ?? ''));
       if (!preg_match('/^[A-Za-z0-9_\-|.]{30,600}$/', $tok)) go($vb, '!Please paste the whole Instagram access token.');
@@ -182,17 +182,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $c = ig_conf(); $ig = (string)($_POST['ig'] ?? '');
       if (!$c) go($vb, '!Please connect Instagram first.');
       if (!preg_match('/^\d{5,30}$/', $ig)) go($vb, '!Please tap a reel first.');
-      if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the reel.');
+      if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the reel.');
       if (in_array($ig, array_column($vids, 'ig'), true)) go($vb, '!That reel is already in your videos.');
-      $v = ig_copy($c, $ig, $prod); if (!is_array($v)) go($vb, '!' . $v);
+      $v = ig_copy($c, $ig, $prod ?: 'fomaxo'); if (!is_array($v)) go($vb, '!' . $v); $v['product'] = $prod;
       array_unshift($vids, $v); shop_videos_save($vids);
       go($vb, 'Reel added. It shows on the home page now.');
     }
     if ($a === 'vid_link') {   // paste a link: an Instagram reel of the connected account, a video file, or a page with a video
       $url = trim((string)($_POST['url'] ?? ''));
       if ($url === '' || strlen($url) > 2000) go($vb, '!Please paste the video link.');
-      if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
-      $v = video_from_link($url, $prod); if (!is_array($v)) go($vb, '!' . $v);
+      if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
+      $v = video_from_link($url, $prod ?: 'fomaxo'); if (!is_array($v)) go($vb, '!' . $v); $v['product'] = $prod;
       $code = (string)($v['ig_code'] ?? '');
       if ((!empty($v['ig']) && in_array($v['ig'], array_column($vids, 'ig'), true)) || ($code !== '' && in_array($code, array_column($vids, 'ig_code'), true))) {
         @unlink(video_dir() . '/' . $v['file']); go($vb, '!That reel is already in your videos.'); }
@@ -202,24 +202,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($a === 'vid_add') {
       $f = $_FILES['video'] ?? null;
-      if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
+      if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
       if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) go($vb, '!Please choose a video.');
       if (in_array($f['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) go($vb, '!The video is too big. Please use one under ' . round(upload_max() / 1048576) . ' MB.');
       $mime = $f['error'] === UPLOAD_ERR_OK && is_uploaded_file($f['tmp_name']) && function_exists('finfo_open') ? (string)finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) : '';
       $ext = ['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm', 'video/x-m4v' => 'mp4'][$mime] ?? '';
       if ($ext === '') go($vb, '!That file is not a video. Please use an MP4 or a video from your phone.');
-      $name = $prod . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
+      $name = ($prod ?: 'fomaxo') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
       if (!move_uploaded_file($f['tmp_name'], video_dir() . "/$name")) go($vb, '!The video could not be saved. Please try again.');
       $cover = '';   // optional cover photo, saved like a product photo
       if (($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
         $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
-        $img = save_images($prod . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
+        $img = save_images(($prod ?: 'fomaxo') . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
       }
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true]);
       shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
     }
     if ($at === false) go($vb, '!That video was not found. Please try again.');
     if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
+    elseif ($a === 'vid_prods') {   // the products a video sells: remove one, add one, or none (a Shop Now button)
+      $ps = video_products($vids[$at], $CAT); $rm = (string)($_POST['rm'] ?? ''); $add = (string)($_POST['add'] ?? '');
+      if ($rm !== '') $ps = array_values(array_diff($ps, [$rm]));
+      if (isset($CAT[$add]) && !in_array($add, $ps, true)) $ps[] = $add;
+      $vids[$at]['product'] = $ps[0] ?? ''; $vids[$at]['also'] = array_slice($ps, 1); if (!$vids[$at]['also']) unset($vids[$at]['also']);
+      $nm = array_map(fn($id) => $CAT[$id]['name'], $ps);
+      $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . '.' : 'Saved. The video has no product: it shows a Shop Now button.';
+    }
     elseif ($a === 'vid_product' && isset($CAT[$prod])) { $vids[$at]['product'] = $prod; $msg = 'Saved. The video now sells ' . $CAT[$prod]['name'] . '.'; }
     elseif ($a === 'vid_up' || $a === 'vid_down') { $to = $at + ($a === 'vid_up' ? -1 : 1); if (isset($vids[$to])) [$vids[$at], $vids[$to]] = [$vids[$to], $vids[$at]]; $msg = 'Order saved.'; }
     elseif ($a === 'vid_del') {

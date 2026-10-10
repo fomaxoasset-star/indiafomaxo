@@ -609,14 +609,17 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   $vpost = fn(array $v, string $act, string $inner, string $extra = '') => '<form method="post"' . $extra . '>' . $csrfField . '<input type="hidden" name="action" value="' . $act . '"><input type="hidden" name="vid" value="' . h($v['id']) . '">' . $inner . '</form>';
   $rows = '';
   foreach ($vids as $i => $v) {
-    $p = $CAT[$v['product']] ?? null; $off = empty($v['on']);
+    $ps = video_products($v, $CAT); $p = $CAT[$ps[0] ?? ''] ?? null; $off = empty($v['on']);
+    $gone = !$ps && ((string)($v['product'] ?? '') !== '' || !empty($v['also'])); $hid = $ps && !array_filter($ps, fn($id) => empty($CAT[$id]['hidden']));
     $poster = $v['cover'] !== '' ? img_url($v['cover']) : ($p && $p['img'] ? '/' . $p['img'] : '');
     $rows .= '<div class="vrow' . ($off ? ' off' : '') . '">'
       . $vpost($v, 'vid_vis', '<button class="rdot' . ($off ? '' : ' on') . '" name="show" value="' . ($off ? '1' : '') . '" title="' . ($off ? 'Hidden. Tap to show on the website' : 'On the website. Tap to hide') . '" aria-label="' . ($off ? 'Hidden, tap to show' : 'On the website, tap to hide') . '"></button>', ' class="vvis"')
       . (!empty($v['embed']) ? '<a class="vth vemb" href="https://www.instagram.com/reel/' . h($v['embed']) . '/" target="_blank" rel="noopener" title="Open on Instagram">' . ($poster ? '<img src="' . h($poster) . '" alt="">' : '') . '<span>Instagram</span></a>'
         : '<video class="vth" src="/api/live.php?vid=' . h($v['file']) . '#t=0.1" preload="metadata" muted playsinline' . ($poster ? ' poster="' . h($poster) . '"' : '') . ' onclick="this.paused?this.play():this.pause()"></video>')
-      . '<div class="vinfo">' . $vpost($v, 'vid_product', '<label class="vsell">Sells<select name="product" onchange="this.form.submit()" aria-label="Product in this video">' . $opts((string)$v['product']) . '</select></label>')
-      . '<small class="muted">' . (!empty($v['embed']) ? '' : (!$p ? 'Product deleted: not shown' : (!empty($p['hidden']) ? 'Product hidden: not shown' : ($off ? 'Hidden' : 'On the home page, number ' . ($i + 1))))) . (!empty($v['auto']) ? ' · Instagram, automatic' : (!empty($v['ig']) ? ' · Instagram' : (!empty($v['embed']) ? '<b class="vbad">Not on the website: it opened Instagram. Paste its link again or upload the video</b>' : (!empty($v['link']) ? ' · From a link' : '')))) . '</small></div>'
+      . '<div class="vinfo">' . $vpost($v, 'vid_prods', '<span class="vsell">Sells</span><div class="vps">'
+        . ($ps ? implode('', array_map(fn($id) => '<button class="vchip' . (!empty($CAT[$id]['hidden']) ? ' hid' : '') . '" name="rm" value="' . h($id) . '" title="Remove ' . h($CAT[$id]['name']) . ' from this video">' . h($CAT[$id]['name']) . ' <span aria-hidden="true">✕</span></button>', $ps)) : '<span class="vchip none">No product · Shop Now button</span>')
+        . '<select name="add" onchange="this.form.submit()" aria-label="Add a product to this video"><option value="">+ Add product</option>' . implode('', array_map(fn($id, $q) => in_array((string)$id, $ps, true) ? '' : '<option value="' . h($id) . '">' . h($q['name']) . (!empty($q['hidden']) ? ' (hidden)' : '') . '</option>', array_keys($CAT), $CAT)) . '</select></div>')
+      . '<small class="muted">' . (!empty($v['embed']) ? '' : ($gone ? 'Product deleted: not shown' : ($hid ? 'Product hidden: not shown' : ($off ? 'Hidden' : 'On the home page, number ' . ($i + 1))))) . (!empty($v['auto']) ? ' · Instagram, automatic' : (!empty($v['ig']) ? ' · Instagram' : (!empty($v['embed']) ? '<b class="vbad">Not on the website: it opened Instagram. Paste its link again or upload the video</b>' : (!empty($v['link']) ? ' · From a link' : '')))) . '</small></div>'
       . '<div class="vmv">' . $vpost($v, 'vid_up', '<button class="btn line sm"' . ($i ? '' : ' disabled') . ' aria-label="Move up">↑</button>') . $vpost($v, 'vid_down', '<button class="btn line sm"' . ($i < $n - 1 ? '' : ' disabled') . ' aria-label="Move down">↓</button>')
       . $vpost($v, 'vid_del', '<button class="btn line sm danger" aria-label="Delete video">✕</button>', ' onsubmit="return confirm(\'Delete this video?\')"') . '</div></div>';
   }
@@ -637,19 +640,19 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
       . '<label class="pg igauto"><span><b>Automatic</b><small>New reels show by themselves when the caption names a product, e.g. Gold or Old Money</small></span><input type="checkbox" class="tgl" name="on" value="1"' . ($auto ? ' checked' : '') . ' aria-label="Automatic" onchange="var f=this.form;f.querySelector(\'[name=action]\').value=\'vid_ig_auto\';f.noValidate=true;f.submit()"></label>'
       . ($auto ? '<p class="muted small">Checked every hour. <button class="lnk" name="action" value="vid_ig_sync" formnovalidate>Check now</button></p>' : '')
       . (!is_array($reels) ? '<p class="err small">Instagram: ' . h($reels) . '</p>' : ($grid === '' ? '<p class="muted small">No reels found on this account yet.</p>' : '<p class="muted small">' . ($auto ? 'Or add any reel yourself: tap it, pick its product, then Add.' : 'Tap a reel, pick its product, then Add.') . '</p><div class="igg">' . $grid . '</div>'
-      . '<div class="igadd"><select name="product" required aria-label="Product in the reel"><option value="">Product in the reel…</option>' . $opts('') . '</select><button class="btn" onclick="if(this.form.checkValidity())this.textContent=\'Adding…\'">Add</button></div>'))
+      . '<div class="igadd"><select name="product" required aria-label="Product in the reel"><option value="">Product in the reel…</option>' . $opts('') . '<option value="-">No product · Shop Now button</option></select><button class="btn" onclick="if(this.form.checkValidity())this.textContent=\'Adding…\'">Add</button></div>'))
       . '</div></form>';
   }
   $body .= '<div class="row"><a class="btn line sm" href="' . h(self_url(['tab' => 'products'])) . '">← Products</a><h2 class="sp">Shop videos</h2></div>'
     . $sw('#vidPanes', ['list' => 'Your videos', 'add' => 'Add a video']) . '<div class="vids panes" id="vidPanes"><div class="vleft" data-pane="add">' . $igBox
     . '<form class="box vlink" method="post" onsubmit="this.querySelector(\'.btn\').textContent=\'Adding…\'">' . $csrfField . '<input type="hidden" name="action" value="vid_link"><div class="bh"><h3>Paste a link</h3></div><div class="bb">'
     . '<label>Video link<input type="url" name="url" required inputmode="url" placeholder="https://www.instagram.com/reel/…" spellcheck="false"></label>'
-    . '<div class="igadd"><select name="product" required aria-label="Product in the video"><option value="">Product in the video…</option>' . $opts('') . '</select><button class="btn">Add</button></div>'
+    . '<div class="igadd"><select name="product" required aria-label="Product in the video"><option value="">Product in the video…</option>' . $opts('') . '<option value="-">No product · Shop Now button</option></select><button class="btn">Add</button></div>'
     . '<p class="muted small">Any Instagram reel link (no token needed), or a link that opens the video itself. YouTube and TikTok links can’t be added.</p></div></form>'
     . '<form class="box vadd" method="post" enctype="multipart/form-data" onsubmit="var f=this.video.files[0];if(f&&' . $max . '&&f.size>' . $max . '){alert(\'This video is \'+Math.round(f.size/1048576)+\' MB. Please use one under ' . round($max / 1048576) . ' MB.\');return false}this.querySelector(\'.btn\').textContent=\'Uploading…\'">' . $csrfField . '<input type="hidden" name="action" value="vid_add">'
     . '<div class="bh"><h3>Upload from your phone</h3></div><div class="bb">'
     . '<label>Video<input type="file" name="video" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov" required></label>'
-    . '<label>Product in the video<select name="product" required><option value="">Choose…</option>' . $opts('') . '</select></label>'
+    . '<label>Product in the video<select name="product" required><option value="">Choose…</option>' . $opts('') . '<option value="-">No product · Shop Now button</option></select></label>'
     . '<label>Cover photo (optional)<input type="file" name="cover" accept="image/*"></label>'
     . '<p class="muted small">Upright phone video (9:16), 10 to 30 seconds' . ($max ? ', under ' . round($max / 1048576) . ' MB' : '') . '. It plays without sound until the customer taps the sound button. No cover photo = the product photo.</p>'
     . '<button class="btn">Upload</button></div></form></div>'
@@ -657,7 +660,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<form method="post" class="vall">' . $csrfField . '<input type="hidden" name="action" value="vid_all"><label class="pg"><span><b>' . ($allOn ? 'On website' : 'Off: row hidden') . '</b></span><input type="checkbox" class="tgl" name="on" value="1"' . ($allOn ? ' checked' : '') . ' aria-label="Show videos on the website" onchange="this.form.submit()"></label></form></div>'
     . ($allOn ? '' : '<p class="voff">All videos are switched off. Turn the switch on to show the video row again.</p>') . '<div class="bb">'
     . ($rows ?: '<p class="empty">No videos yet. The home page shows the video row once you add one.</p>')
-    . '</div><div class="bf"><span class="muted small">The first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
+    . '</div><div class="bf"><span class="muted small">Sells: tap a product to remove it, + Add product for more. No product = a Shop Now button. The first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
 } elseif ($tab === 'products') {
   $qq = trim((string)($_GET['q'] ?? ''));
   $body .= '<div class="row"><form class="row sp" method="get"><input type="hidden" name="tab" value="products"><input type="search" name="q" value="' . h($qq) . '" placeholder="Find a product" style="max-width:280px"></form><a class="btn line" href="' . h(self_url(['tab' => 'products', 'videos' => 1])) . '">Videos</a><a class="btn" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '">+ Add a product</a></div>'
