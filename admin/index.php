@@ -9,6 +9,7 @@ declare(strict_types=1);
    can also be reset from the sign-in page: the link goes to the order notification email set in Settings. */
 require dirname(__DIR__) . '/api/store-lib.php';
 require dirname(__DIR__) . '/api/geo-lib.php';
+require dirname(__DIR__) . '/api/video-lib.php';
 require __DIR__ . '/lib.php';
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
@@ -18,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '90';
+const ASSET_V = '91';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -156,9 +157,67 @@ $LIVE = shop_products();
 
 /* ---------------- actions ---------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (!$_POST && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 && isset($_GET['videos'])) go(['tab' => 'products', 'videos' => 1], '!The video is too big. Please use one under ' . round(upload_max() / 1048576) . ' MB.');
   if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], '!Your session expired. Please try again.');
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
   $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
+
+  /* Products → Videos: shop videos on the home page, uploaded here or copied from Instagram */
+  if (str_starts_with($a, 'vid_')) {
+    $vb = ['tab' => 'products', 'videos' => 1]; $vids = shop_videos();
+    $at = array_search((string)($_POST['vid'] ?? ''), array_column($vids, 'id'), true);
+    $prod = (string)($_POST['product'] ?? '');
+    if ($a === 'vid_ig_token') {   // connect Instagram: the token is checked with Instagram, then kept in fomaxo-private
+      $tok = preg_replace('/\s+/', '', (string)($_POST['ig_token'] ?? ''));
+      if (!preg_match('/^[A-Za-z0-9_\-|.]{30,600}$/', $tok)) go($vb, '!Please paste the whole Instagram access token.');
+      $r = ig_connect($tok);
+      go($vb, is_array($r) ? 'Instagram connected' . ($r['user'] !== '' ? ' as @' . $r['user'] : '') . '. Pick a reel below.' : '!Instagram did not accept the token: ' . $r);
+    }
+    if ($a === 'vid_ig_off') { ig_save(null); go($vb, 'Instagram disconnected. Videos already added stay on the website.'); }
+    if ($a === 'vid_ig_auto') { $on = !empty($_POST['on']); shop_set('ig_auto', $on ? '1' : '0'); if ($on) ig_sync(true);
+      go($vb, $on ? 'Automatic is on. New reels that name a product in their caption show on the website by themselves.' : 'Automatic is off. Add reels by tapping them.'); }
+    if ($a === 'vid_ig_sync') { $n = ig_sync(true); go($vb, $n ? "$n new reel" . ($n > 1 ? 's' : '') . ' added.' : 'No new reels with a product name in the caption.'); }
+    if ($a === 'vid_ig_add') {   // copy a reel from Instagram to our server, with its cover photo
+      $c = ig_conf(); $ig = (string)($_POST['ig'] ?? '');
+      if (!$c) go($vb, '!Please connect Instagram first.');
+      if (!preg_match('/^\d{5,30}$/', $ig)) go($vb, '!Please tap a reel first.');
+      if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the reel.');
+      if (in_array($ig, array_column($vids, 'ig'), true)) go($vb, '!That reel is already in your videos.');
+      $v = ig_copy($c, $ig, $prod); if (!is_array($v)) go($vb, '!' . $v);
+      array_unshift($vids, $v); shop_videos_save($vids);
+      go($vb, 'Reel added. It shows on the home page now.');
+    }
+    if ($a === 'vid_add') {
+      $f = $_FILES['video'] ?? null;
+      if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
+      if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) go($vb, '!Please choose a video.');
+      if (in_array($f['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) go($vb, '!The video is too big. Please use one under ' . round(upload_max() / 1048576) . ' MB.');
+      $mime = $f['error'] === UPLOAD_ERR_OK && is_uploaded_file($f['tmp_name']) && function_exists('finfo_open') ? (string)finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) : '';
+      $ext = ['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm', 'video/x-m4v' => 'mp4'][$mime] ?? '';
+      if ($ext === '') go($vb, '!That file is not a video. Please use an MP4 or a video from your phone.');
+      $name = $prod . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
+      if (!move_uploaded_file($f['tmp_name'], video_dir() . "/$name")) go($vb, '!The video could not be saved. Please try again.');
+      $cover = '';   // optional cover photo, saved like a product photo
+      if (($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
+        $img = save_images($prod . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
+      }
+      array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true]);
+      shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
+    }
+    if ($at === false) go($vb, '!That video was not found. Please try again.');
+    if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
+    elseif ($a === 'vid_product' && isset($CAT[$prod])) { $vids[$at]['product'] = $prod; $msg = 'Saved. The video now sells ' . $CAT[$prod]['name'] . '.'; }
+    elseif ($a === 'vid_up' || $a === 'vid_down') { $to = $at + ($a === 'vid_up' ? -1 : 1); if (isset($vids[$to])) [$vids[$at], $vids[$to]] = [$vids[$to], $vids[$at]]; $msg = 'Order saved.'; }
+    elseif ($a === 'vid_del') {
+      $v = $vids[$at]; array_splice($vids, $at, 1);
+      if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
+      @unlink(video_dir() . '/' . basename((string)$v['file']));
+      if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) @unlink("$PRIV/product-images/$m[1]");
+      $msg = 'Video deleted.';
+    } else go($vb, '!Please try again.');
+    shop_videos_save($vids); go($vb, $msg);
+  }
 
   if ($a === 'status') {
     $oid = (int)($_POST['id'] ?? 0); $ns = (string)($_POST['status'] ?? '');

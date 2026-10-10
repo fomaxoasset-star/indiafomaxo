@@ -185,6 +185,12 @@ function edit_product(string $id, array $CAT, array $LIVE): string {
   save_costs($id, $costs);
   return '';
 }
+/* the biggest upload the server accepts, in bytes (0 = no limit known) */
+function upload_max(): int {
+  $b = fn($s) => (int)$s * (['K' => 1024, 'M' => 1048576, 'G' => 1073741824][strtoupper(substr(trim((string)$s), -1))] ?? 1);
+  $m = array_filter([$b(ini_get('upload_max_filesize')), $b(ini_get('post_max_size'))]);
+  return $m ? min($m) : 0;
+}
 /* Saves up to 4 uploaded photos, re-encoded (WebP when the server can, else JPEG), at most 1600px. */
 function save_images(string $id) {
   global $PRIV;

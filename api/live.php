@@ -3,8 +3,10 @@ declare(strict_types=1);
 /* FOMAXO India — what the admin page changes, for the website.
    GET api/live.php          → a small script setting window.STORE_LIVE: stock left per product and size, products
                                added, hidden or edited on the admin page, and changed prices. index.html loads it before the shop.
-   GET api/live.php?img=…    → a product photo uploaded on the admin page (kept in fomaxo-private/product-images). */
+   GET api/live.php?img=…    → a product photo uploaded on the admin page (kept in fomaxo-private/product-images).
+   GET api/live.php?vid=…    → a shop video added on the admin page (kept in fomaxo-private/videos). */
 require __DIR__ . '/store-lib.php';
+require __DIR__ . '/video-lib.php';
 header('X-Content-Type-Options: nosniff');
 
 if (isset($_GET['img'])) {
@@ -14,6 +16,11 @@ if (isset($_GET['img'])) {
   header('Content-Type: ' . (str_ends_with($f, '.webp') ? 'image/webp' : 'image/jpeg'));
   header('Cache-Control: public, max-age=31536000, immutable');   // a new upload always gets a new file name
   readfile($path); exit;
+}
+if (isset($_GET['vid'])) {
+  $f = (string)$_GET['vid'];
+  if (!preg_match(VIDEO_FILE, $f) || !is_file($path = video_dir() . "/$f")) { http_response_code(404); exit; }
+  send_video($path);
 }
 
 header('Content-Type: application/javascript; charset=utf-8');
@@ -33,6 +40,7 @@ try {
   if (($offer = shop_offer_live()) !== null) $live['offer'] = $offer;   // the limited-time offer popup and countdown lines
   if (($np = shop_newprod_live()) !== null) $live['newProduct'] = $np;   // the Coming soon / Just arrived popup
   if ($ads = shop_ads()) $live['ads'] = $ads;
+  if ($vids = shop_videos_live()) $live['videos'] = $vids;   // shop videos (Admin → Products → Videos)
   if ($off = shop_pages_off()) $live['pagesOff'] = $off;   // pages turned off on Admin → Settings → Site pages
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
@@ -40,3 +48,12 @@ try {
   error_log('FOMAXO live: ' . $e->getMessage());
   echo "/* shop data unavailable */\n";
 }
+
+/* Automatic Instagram reels (Admin → Products → Videos): at most once an hour, after the visitor already has the answer above */
+try {
+  if (is_file(ig_file()) && time() - (int)shop_setting('ig_sync_at') >= 3600) {
+    if (function_exists('litespeed_finish_request')) litespeed_finish_request(); elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request(); else return;
+    ignore_user_abort(true);
+    ig_sync();
+  }
+} catch (Throwable $e) { error_log('FOMAXO Instagram: ' . $e->getMessage()); }
