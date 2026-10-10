@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '92';
+const ASSET_V = '93';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -187,6 +187,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $v = ig_copy($c, $ig, $prod); if (!is_array($v)) go($vb, '!' . $v);
       array_unshift($vids, $v); shop_videos_save($vids);
       go($vb, 'Reel added. It shows on the home page now.');
+    }
+    if ($a === 'vid_link') {   // paste a link: an Instagram reel of the connected account, a video file, or a page with a video
+      $url = trim((string)($_POST['url'] ?? ''));
+      if ($url === '' || strlen($url) > 2000) go($vb, '!Please paste the video link.');
+      if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
+      $v = video_from_link($url, $prod); if (!is_array($v)) go($vb, '!' . $v);
+      if (!empty($v['ig']) && in_array($v['ig'], array_column($vids, 'ig'), true)) { @unlink(video_dir() . '/' . $v['file']); go($vb, '!That reel is already in your videos.'); }
+      array_unshift($vids, $v); shop_videos_save($vids);
+      go($vb, 'Video added from the link. It shows on the home page now.');
     }
     if ($a === 'vid_add') {
       $f = $_FILES['video'] ?? null;
