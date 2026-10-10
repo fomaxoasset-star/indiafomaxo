@@ -95,9 +95,10 @@
     var fd = new FormData(f); fd.set('how', how); post(fd);
   }
   /* the video is already on the server in pieces: this only saves it. The page then loads afresh (not written over),
-     so everything on it works again for the next upload, and it shows "Video added" or what went wrong */
+     so everything on it works again for the next upload, and it shows "Video added" or what went wrong.
+     getAttribute, not f.action: the form's hidden field named "action" hides f.action (it would post to "[object HTMLInputElement]", a 404) */
   function post(fd) {
-    fetch(f.action || location.href, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function (r) {
+    fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function (r) {
       if (r.type === 'opaqueredirect' || r.ok) location.replace(location.href);
       else stop('The upload did not finish (error ' + r.status + '). Please tap Upload again.');
     }, function () { stop('The upload stopped. Check your internet, then tap Upload again.'); });
