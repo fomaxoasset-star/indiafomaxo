@@ -2651,11 +2651,11 @@ S.products.forEach(p => { if (!p.kind) p.family = unisexType(p.family); });
    so the first paint stays fast; events before that wait in a queue. Standard events: page view, product view, add to bag,
    checkout, payment step and purchase (value in ₹, order number, item ids), the purchase sent once per order.
    The shop's own Google tag G-C1TFB0MT5N is built in, so it runs even with the Ads boxes empty; a G-… typed in Admin wins.
-   Microsoft Clarity (session recordings and heatmaps) loads the same late way. It is stopped on the private pages (a customer's
+   Microsoft Clarity (session recordings and heatmaps, project yvikvvr7hf built in, an ID typed in Admin wins) loads the same late way. It is stopped on the private pages (a customer's
    review link, the thank-you page, the owner page) so their addresses never reach it, and checkout, contact and franchise
    pages carry data-clarity-mask, so names, phones and addresses typed there show as blocks in recordings. */
 const ADS = (() => {
-  const a = {ga4: 'G-C1TFB0MT5N', ...(LIVE.ads || {})}, on = !!(a.meta || a.tiktok || a.ga4 || a.gads || a.clarity);
+  const a = {ga4: 'G-C1TFB0MT5N', clarity: 'yvikvvr7hf', ...(LIVE.ads || {})}, on = !!(a.meta || a.tiktok || a.ga4 || a.gads || a.clarity);
   let q = [], ready = false, lastPage = '', coAt = null, clr = '';   // clr: '' not loaded, 'on' recording, 'off' stopped
   const priv = () => /^#\/(review|owner|thank-you)\b/.test(location.hash);
   const clarity = () => {   // Clarity's own loader, as in its snippet; started or stopped as the visitor moves between pages
