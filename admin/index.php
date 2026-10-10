@@ -218,6 +218,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true]);
       shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
     }
+    if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
+      $ids = array_values(array_unique(array_filter(explode(',', (string)($_POST['ids'] ?? '')))));
+      $byId = array_column($vids, null, 'id'); $new = array_values(array_filter(array_map(fn($id) => $byId[$id] ?? null, $ids)));
+      foreach ($vids as $v) if (!in_array($v['id'], $ids, true)) $new[] = $v;   // a video added meanwhile keeps its place at the end
+      $ok = count($new) === count($vids); if ($ok) shop_videos_save($new);
+      header('Content-Type: application/json'); header('Cache-Control: no-store'); echo json_encode(['ok' => $ok, 'msg' => $ok ? 'Order saved' : 'Not saved, try again']); exit;
+    }
     if ($at === false) go($vb, '!That video was not found. Please try again.');
     if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
     elseif ($a === 'vid_prods') {   // the products a video sells: remove one, add one, or none (a Shop Now button)
