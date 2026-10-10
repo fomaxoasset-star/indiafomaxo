@@ -747,13 +747,14 @@ document.addEventListener('click', function (e) {
     Array.prototype.forEach.call(x.ul.children, function (li) { li.hidden = q !== '' && (' ' + li.textContent.toLowerCase()).indexOf(' ' + q) < 0; li.classList.remove('on'); });
     x.ul.hidden = !shown(x.ul).length;
   }
+  function exact(f, li) { return li.textContent.trim().toLowerCase() === f.value.trim().toLowerCase(); }
   function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; f.setCustomValidity(''); f.dispatchEvent(new Event('change', {bubbles: true})); }
   document.addEventListener('focusin', function (e) { if (e.target.matches && e.target.matches('[data-ffind]')) { e.target.select(); filter(e.target, true); } });
-  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; if (f.required) f.setCustomValidity(f.value.trim() ? 'Pick one from the list' : ''); filter(f); } });
+  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; if (f.required && !f.hasAttribute('data-free')) f.setCustomValidity(f.value.trim() ? 'Pick one from the list' : ''); filter(f); } });
   document.addEventListener('focusout', function (e) {
     var f = e.target; if (!f.matches || !f.matches('[data-ffind]')) return;
     var x = parts(f); x.ul.hidden = true;
-    if (!x.hid.value) { var m = shown(x.ul); if (f.value.trim() && m.length) pick(f, m[0]); }   // left with words typed: the first match
+    if (!x.hid.value) { var m = shown(x.ul); if (f.value.trim() && m.length && (!f.hasAttribute('data-free') || exact(f, m[0]))) pick(f, m[0]); }   // left with words typed: the first match (a box that takes any words: only an exact name)
   });
   document.addEventListener('mousedown', function (e) {   // mousedown, before the box loses focus
     var li = e.target.closest && e.target.closest('.fplist li');

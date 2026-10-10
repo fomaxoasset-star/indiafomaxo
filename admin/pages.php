@@ -606,7 +606,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   if (ig_sync()) { /* Automatic: new reels that name a product, at most once an hour */ }
   $vids = shop_videos(); $n = count($vids); $max = upload_max(); $allOn = shop_setting('videos_off') !== '1';
   /* Product in the video: one box to type a name in, or pick from its own dropdown (the coupon free product picker, admin.js [data-ffind]) */
-  $vpick = fn(string $aria) => '<span class="fpick vpick"><input type="text" data-ffind required placeholder="Type or pick a product" aria-label="' . $aria . '" autocomplete="off">'
+  $vpick = fn(string $aria) => '<span class="fpick vpick"><input type="text" name="product_text" maxlength="60" data-ffind data-free required placeholder="Type anything, or pick a product" aria-label="' . $aria . '" autocomplete="off">'
     . '<input type="hidden" name="product"><ul class="fplist" hidden>'
     . implode('', array_map(fn($id, $p) => '<li data-v="' . h($id) . '">' . h($p['name']) . (!empty($p['hidden']) ? ' (hidden)' : '') . '</li>', array_keys($CAT), $CAT))
     . '<li data-v="-">No product · Shop Now button</li></ul></span>';
@@ -621,7 +621,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
       . (!empty($v['embed']) ? '<a class="vth vemb" href="https://www.instagram.com/reel/' . h($v['embed']) . '/" target="_blank" rel="noopener" title="Open on Instagram">' . ($poster ? '<img src="' . h($poster) . '" alt="">' : '') . '<span>Instagram</span></a>'
         : '<video class="vth" src="/api/live.php?vid=' . h($v['file']) . '#t=0.1" preload="metadata" muted playsinline' . ($poster ? ' poster="' . h($poster) . '"' : '') . ' onclick="this.paused?this.play():this.pause()"></video>')
       . '<div class="vinfo">' . $vpost($v, 'vid_prods', '<span class="vsell">Sells</span><div class="vps">'
-        . ($ps ? implode('', array_map(fn($id) => '<button class="vchip' . (!empty($CAT[$id]['hidden']) ? ' hid' : '') . '" name="rm" value="' . h($id) . '" title="Remove ' . h($CAT[$id]['name']) . ' from this video">' . h($CAT[$id]['name']) . ' <span aria-hidden="true">✕</span></button>', $ps)) : '<span class="vchip none">No product · Shop Now button</span>')
+        . ($ps ? implode('', array_map(fn($id) => '<button class="vchip' . (!empty($CAT[$id]['hidden']) ? ' hid' : '') . '" name="rm" value="' . h($id) . '" title="Remove ' . h($CAT[$id]['name']) . ' from this video">' . h($CAT[$id]['name']) . ' <span aria-hidden="true">✕</span></button>', $ps)) : '<span class="vchip none">' . (($v['words'] ?? '') !== '' ? '“' . h($v['words']) . '” · Shop Now button' : 'No product · Shop Now button') . '</span>')
         . '<select name="add" onchange="this.form.submit()" aria-label="Add a product to this video"><option value="">+ Add product</option>' . implode('', array_map(fn($id, $q) => in_array((string)$id, $ps, true) ? '' : '<option value="' . h($id) . '">' . h($q['name']) . (!empty($q['hidden']) ? ' (hidden)' : '') . '</option>', array_keys($CAT), $CAT)) . '</select></div>')
       . '<small class="muted">' . (!empty($v['embed']) ? '' : ($gone ? 'Product deleted: not shown' : ($hid ? 'Product hidden: not shown' : ($off ? 'Hidden' : 'On the home page, number <span class="vnum">' . ($i + 1) . '</span>')))) . (!empty($v['auto']) ? ' · Instagram, automatic' : (!empty($v['ig']) ? ' · Instagram' : (!empty($v['embed']) ? '<b class="vbad">Not on the website: it opened Instagram. Paste its link again or upload the video</b>' : (!empty($v['link']) ? ' · From a link' : '')))) . '</small></div>'
       . '<div class="vmv">' . $vpost($v, 'vid_up', '<button class="btn line sm"' . ($i ? '' : ' disabled') . ' aria-label="Move up">↑</button>') . $vpost($v, 'vid_down', '<button class="btn line sm"' . ($i < $n - 1 ? '' : ' disabled') . ' aria-label="Move down">↓</button>')
@@ -665,7 +665,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<form method="post" class="vall">' . $csrfField . '<input type="hidden" name="action" value="vid_all"><label class="pg"><span><b>' . ($allOn ? 'On website' : 'Off: row hidden') . '</b></span><input type="checkbox" class="tgl" name="on" value="1"' . ($allOn ? ' checked' : '') . ' aria-label="Show videos on the website" onchange="this.form.submit()"></label></form></div>'
     . ($allOn ? '' : '<p class="voff">All videos are switched off. Turn the switch on to show the video row again.</p>') . '<div class="bb">'
     . ($rows ?: '<p class="empty">No videos yet. The home page shows the video row once you add one.</p>')
-    . '</div><div class="bf"><span class="muted small">Sells: tap a product to remove it, + Add product for more. No product = a Shop Now button. Drag the dots on the left to change the order: the first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
+    . '</div><div class="bf"><span class="muted small">Sells: tap a product to remove it, + Add product for more. No product = a Shop Now button, with the words you typed. Drag the dots on the left to change the order: the first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
 } elseif ($tab === 'products') {
   $qq = trim((string)($_GET['q'] ?? ''));
   $TG = shop_together();
