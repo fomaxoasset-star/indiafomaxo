@@ -583,7 +583,7 @@ function shop_cod(array $def): array {
    on = switched on. Off (or nothing saved) = no together saving anywhere; the % is kept for when it is switched back on. */
 function shop_together(): array {
   $t = json_decode((string)shop_setting('together'), true); $t = is_array($t) ? $t : [];
-  return ['pct' => max(0, min(50, (int)($t['pct'] ?? 0))), 'on' => !empty($t['on'])];
+  return ['pct' => max(0, min(50, (int)($t['pct'] ?? 0))), 'on' => !isset($t['on']) || !empty($t['on'])];   // never saved = On
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
