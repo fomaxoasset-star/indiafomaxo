@@ -632,7 +632,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   if (!$ig) $igBox = '<form class="box vig" method="post">' . $csrfField . '<input type="hidden" name="action" value="vid_ig_token"><div class="bh"><h3>From Instagram</h3></div><div class="bb">'
     . '<p class="muted small">Connect once, then add any reel in two taps (Business or Creator account).</p>'
     . '<div class="igadd"><input name="ig_token" type="password" autocomplete="new-password" spellcheck="false" required placeholder="Instagram access token" aria-label="Instagram access token"><button class="btn">Connect</button></div>'
-    . '<details class="vhow"><summary>Where is the token?</summary><p class="muted small">developers.facebook.com → My apps → your app → Instagram → API setup with Instagram login → Generate token. Kept on your Hostinger server only, never shown again.</p></details></div></form>';
+    . '<details class="igtok"><summary>Where is the token?</summary><ol><li>Open <b>developers.facebook.com</b> and sign in</li><li>My apps → your app</li><li>Instagram → API setup with Instagram login</li><li>Press <b>Generate token</b> and copy it</li><li>Paste it in the box above</li></ol><p>It is kept on your Hostinger server only, never shown again.</p></details></div></form>';
   else {
     $reels = ig_reels($ig); $have = array_filter(array_column($vids, 'ig'));
     $grid = is_array($reels) ? implode('', array_map(fn($r) => '<label class="igr' . (in_array($r['id'], $have, true) ? ' had' : '') . '"><input type="radio" name="ig" value="' . h($r['id']) . '" required>'
