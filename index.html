@@ -1716,6 +1716,7 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .pold{font-family:var(--sans);font-weight:500;font-size:22px;line-height:1.1;color:#e04a3f;text-decoration:line-through;text-decoration-thickness:2px}
 .prow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;width:100%}
 .prow .psave{margin-left:auto}
+.buy .price-rate #pstock{align-self:flex-end;margin-top:-6px}   /* AJAY: the low-stock box sits right under the green You save box */
 .buy .price-rate,.buy #pprice,.pnow{width:100%;align-self:stretch}
 .psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
 html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
@@ -2259,6 +2260,13 @@ html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
   .pdel{font-size:13px}
 }
 @media(min-width:961px){.buy .pdel{font-size:13px}.buy .stk{padding:4px 8px;font-size:10.5px}.buy .assure{padding:8px 0 0;margin-top:0;border-bottom:0}.buy .assure i{width:30px;height:30px;flex:none}.buy .assure svg{width:16px;height:16px}.buy .assure li{flex-direction:row;justify-content:center;gap:7px;font-size:10.5px;line-height:1.25;text-align:left}}
+/* AJAY: laptop product page fits one screen, also with a section opened; fitPdp() sizes the photos and scales the rest */
+@media(min-width:961px){
+  .acc .body{font-size:calc(15.5px / var(--bz,1));line-height:1.6;padding-bottom:10px;max-height:calc(160px / var(--bz,1));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--gold) transparent}
+  .stage{width:var(--stage-w,auto)}
+  .thumbs{overflow-y:auto;scrollbar-width:none}.thumbs::-webkit-scrollbar{display:none}.thumbs button{flex:none}
+  .picks{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.pick span{padding:5px 6px;font-size:9.5px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
 /* ================= LIMITED-TIME OFFER (Admin → Offer): popup and slim countdown lines ================= */
 .ofl{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;line-height:1.2;color:var(--gold)}
 .ofl svg{width:14px;height:14px;flex:none}
@@ -3401,9 +3409,8 @@ function product(id, q){
           <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
-          <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div></div>${offerLine(p, 'box')}
-          <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p>
-          <div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>
+          <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>${offerLine(p, 'box')}
+          <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p></div>
           ${assureHTML()}
         </div>
         ${p.sizes.length > 1 ? `<div><div class="opt-label opt-one"><span>${isSet ? 'Choose your set' : 'Size'}</span><span id="sizeName">${optLabel(p, size)}</span></div>
@@ -3449,7 +3456,7 @@ function product(id, q){
   </div>`;
 }
 function bindProduct(p){
-  bindReviews(p); renderFbt(p, +($('#sizes .on')?.dataset.s) || defaultSize(p));
+  bindReviews(p); renderFbt(p, +($('#sizes .on')?.dataset.s) || defaultSize(p)); requestAnimationFrame(fitPdp); document.fonts && document.fonts.ready.then(fitPdp);
   let size = +($('#sizes .on')?.dataset.s) || defaultSize(p);
   const isSet = p.kind === 'set'; let picks = [];
   const qty = $('#qty'), getQ = () => Math.max(1, Math.min(99, parseInt(qty.value) || 1));
@@ -3461,7 +3468,7 @@ function bindProduct(p){
     size = +b.dataset.s; if (isSet) { picks = picks.slice(0, size); updPicks(); } $$('#sizes button').forEach(x => x.classList.toggle('on', x === b));
     $('#sizeName').textContent = optLabel(p, size); $('#pprice').innerHTML = priceHTML(p, size, 'pprice');
     setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
-    renderMbuy(); renderFbt(p, size);
+    renderMbuy(); renderFbt(p, size); fitPdp();
   });
   const stage = $('#stage');
   stage.onclick = () => stage.classList.toggle('zoom');
@@ -3531,6 +3538,24 @@ function fbtPartner(p, size){
   if (!q) q = Object.values(P).filter(x => ok(x) && catOf(x) === catOf(p) && optOf(x) !== undefined).sort((a, b) => (b.reviews || 0) - (a.reviews || 0) || (b.rating || 0) - (a.rating || 0))[0];
   return q ? [q, optOf(q)] : null;
 }
+/* laptop product page: photos and thumbnails no taller than the screen, and the buy side scaled down (never below 72%) so it all fits one screen, also with a section opened */
+function fitPdp(){
+  const pdp = $('.pdp'), buy = pdp && $('.buy', pdp), gal = pdp && $('.gallery', pdp); if (!buy) return;
+  buy.style.zoom = ''; buy.style.removeProperty('--bz'); if (gal) { gal.style.gridTemplateColumns = ''; gal.style.removeProperty('--stage-w'); const tb0 = $('.thumbs', gal); if (tb0) tb0.style.maxHeight = ''; }
+  if (innerWidth < 961) return;
+  const pf = pdp.closest('.page-fade'), ty = pf ? new DOMMatrix(getComputedStyle(pf).transform).m42 || 0 : 0;
+  const top = buy.getBoundingClientRect().top + scrollY - ty, avail = innerHeight - top - 12;
+  if (gal) {
+    const th = $$('.thumbs button', gal).length || 1, tw = Math.max(40, Math.min(84, Math.floor((avail - (th - 1) * 10) / th * .8)));
+    gal.style.gridTemplateColumns = tw + 'px minmax(0,1fr)'; const tb = $('.thumbs', gal); if (tb) tb.style.maxHeight = Math.floor(avail) + 'px';   // many photos: the thumbnails scroll inside
+    const st = $('.stage', gal); if (st && st.getBoundingClientRect().height > avail) gal.style.setProperty('--stage-w', Math.floor(avail * .8) + 'px');
+  }
+  // photos in the buy side keep their on-screen width when zoomed, so shrink in a few steps until it fits
+  let z = 1;
+  for (let i = 0; i < 4; i++) { const need = buy.getBoundingClientRect().height; if (need <= avail || z <= .72) break; z = Math.max(.72, Math.floor(z * avail / need * 100) / 100); buy.style.zoom = z; buy.style.setProperty('--bz', z); }   // --bz keeps the open section's text full size
+}
+addEventListener('resize', () => requestAnimationFrame(fitPdp));
+document.addEventListener('toggle', e => { if (e.target.closest && e.target.closest('.pdp .acc')) fitPdp(); }, true);
 function renderFbt(p, size){
   const box = $('#fbt'); if (!box) return;
   const q = LIVE.fbtOff ? null :   // Admin → Products → Customers bought together Off hides the box
