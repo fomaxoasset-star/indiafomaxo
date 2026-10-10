@@ -3381,7 +3381,7 @@ function product(id, q){
     ? [[ICON.drop,'Luxury personal care by FOMAXO'],[ICON.gift,'Premium packaging, ready to gift'],[ICON.lasting,'Made for everyday rituals'],[ICON.truck,'Free delivery across India']]
     : isSet
     ? [[ICON.drop,'Try before you buy'],[ICON.travel,'Pocket-friendly, ideal for travel'],[ICON.gift,'Luxury mini-box, ready to gift'],[ICON.truck,'Free delivery across India']]
-    : [[ICON.lasting,'Smart Scent Technology for lasting wear'],[ICON.gift,'Premium packaging, ready to gift'],[ICON.pen,'Custom engraving on request'],[ICON.truck,'Free delivery across India']];
+    : [[ICON.lasting,'Smart Scent Technology for lasting wear'],[ICON.gift,'Premium packaging, ready to gift'],[ICON.drop,'Fragrance for every occasion'],[ICON.truck,'Free delivery across India']];
   const related = isCar ? [...CAR.filter(x => x.id !== p.id), ...FRAG].slice(0, 4) : isCare ? PC.filter(x => x.id !== p.id).sort((a, b) => (b.cat === p.cat) - (a.cat === p.cat)).slice(0, 4) : FRAG.filter(x => x.id !== p.id).slice(0, 4);
   const ship = S.shipping.length ? S.shipping.map(s => `<p>${esc(s)}</p>`).join('') : `<p class="ph">Add your delivery &amp; returns information in assets/data.js.</p>`;
   document.title = `${p.kind === 'care' ? p.name : p.name + ' ' + String(p.family || '').split(' · ')[0]} — FOMAXO`;   // as on its /fomaxo-<name> address for Google (api/seo.php)
