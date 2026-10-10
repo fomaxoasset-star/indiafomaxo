@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '101';
+const ASSET_V = '102';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -167,6 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vb = ['tab' => 'products', 'videos' => 1]; $vids = shop_videos();
     $at = array_search((string)($_POST['vid'] ?? ''), array_column($vids, 'id'), true);
     $prod = (string)($_POST['product'] ?? ''); $none = $prod === '-'; if ($none) $prod = '';   // '-' = no product: the video gets a Shop Now button
+    $words = $prod === '' && !$none ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['product_text'] ?? ''))), 0, 60) : '';   // typed words, not a product from the list: shown under the video, with Shop Now
+    if ($words !== '') $none = true;
     if ($a === 'vid_ig_token') {   // connect Instagram: the token is checked with Instagram, then kept in fomaxo-private
       $tok = preg_replace('/\s+/', '', (string)($_POST['ig_token'] ?? ''));
       if (!preg_match('/^[A-Za-z0-9_\-|.]{30,600}$/', $tok)) go($vb, '!Please paste the whole Instagram access token.');
@@ -184,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!preg_match('/^\d{5,30}$/', $ig)) go($vb, '!Please tap a reel first.');
       if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the reel.');
       if (in_array($ig, array_column($vids, 'ig'), true)) go($vb, '!That reel is already in your videos.');
-      $v = ig_copy($c, $ig, $prod ?: 'fomaxo'); if (!is_array($v)) go($vb, '!' . $v); $v['product'] = $prod;
+      $v = ig_copy($c, $ig, $prod ?: 'fomaxo'); if (!is_array($v)) go($vb, '!' . $v); $v['product'] = $prod; if ($words !== '') $v['words'] = $words;
       array_unshift($vids, $v); shop_videos_save($vids);
       go($vb, 'Reel added. It shows on the home page now.');
     }
@@ -192,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $url = trim((string)($_POST['url'] ?? ''));
       if ($url === '' || strlen($url) > 2000) go($vb, '!Please paste the video link.');
       if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
-      $v = video_from_link($url, $prod ?: 'fomaxo'); if (!is_array($v)) go($vb, '!' . $v); $v['product'] = $prod;
+      $v = video_from_link($url, $prod ?: 'fomaxo'); if (!is_array($v)) go($vb, '!' . $v); $v['product'] = $prod; if ($words !== '') $v['words'] = $words;
       $code = (string)($v['ig_code'] ?? '');
       if ((!empty($v['ig']) && in_array($v['ig'], array_column($vids, 'ig'), true)) || ($code !== '' && in_array($code, array_column($vids, 'ig_code'), true))) {
         @unlink(video_dir() . '/' . $v['file']); go($vb, '!That reel is already in your videos.'); }
@@ -215,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
         $img = save_images(($prod ?: 'fomaxo') . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
       }
-      array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true]);
+      array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + ($words !== '' ? ['words' => $words] : []));
       shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
