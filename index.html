@@ -3542,13 +3542,14 @@ function renderFbt(p, size){
   box.className = 'fbt rv-up in';
   box.innerHTML = `<h2 class="fbt-h">Customers bought <em class="metal">together</em></h2>
     <div class="fbt-row">${tile(items[0], 0)}<span class="fbt-plus" aria-hidden="true">+</span>${tile(items[1], 1)}
-      <div class="fbt-buy"><p>Total price: <b id="fbtTot"></b></p><button class="btn block" id="fbtAdd" type="button"></button><small>${AS_ICON.free}<span>Free delivery on both</span></small></div></div>`;
+      <div class="fbt-buy"><p>Total price: <b id="fbtTot"></b></p><button class="btn block" id="fbtAdd" type="button"></button><small>${AS_ICON.free}<span>Free delivery on both<span id="fbtPct"> · ${TOGETHER}% off included</span></span></small></div></div>`;
   /* total: the old prices added up crossed out in red, then the price now; both ticked and the together % on (Admin → Products) takes the % off too (the same sum as the bag: round((A + B) × % / 100) paise off) */
   const upd = () => { const n = on.filter(Boolean).length, t = items.reduce((a, x, i) => a + (on[i] ? +x[0].prices[x[1]] : 0), 0);
     const tg = n === 2 && TOGETHER && curOf(p) === '₹' ? Math.round(items.reduce((a, x) => a + Math.round(+x[0].prices[x[1]] * 100), 0) * TOGETHER / 100) / 100 : 0;
     const w = items.reduce((a, x, i) => { const c = x[0].compareAt && x[0].compareAt[x[1]]; return a + (on[i] ? (hasPrice(c) && c > +x[0].prices[x[1]] ? +c : +x[0].prices[x[1]]) : 0); }, 0);   // the ticked items' old (crossed-out) prices added up
     $('#fbtTot').innerHTML = n ? (w > r2(t - tg) ? `<s>${money(w, curOf(p))}</s> ` : '') + money(r2(t - tg), curOf(p)) : '—'; const b = $('#fbtAdd'); b.disabled = !n; b.textContent = n === 2 ? 'Add both to Cart' : n ? 'Add to Cart' : 'Tick an item';
-    $$('#fbt .fbt-it').forEach((el, i) => el.classList.toggle('off', !on[i])); };
+    $$('#fbt .fbt-it').forEach((el, i) => el.classList.toggle('off', !on[i]));
+    $('#fbtPct').hidden = !(tg && TOGETHER >= 5); };   // the % note only when the together % is on, from 5% up
   $$('#fbt [data-fbt]').forEach(c => c.onchange = () => { on[+c.dataset.fbt] = c.checked; upd(); });
   $('#fbtAdd').onclick = () => { const add = items.filter((x, i) => on[i]); add.forEach(x => addToCart(x[0].id, x[1], 1, add.length > 1)); if (add.length > 1) toast(`${add.map(x => x[0].name).join(' and ')} added to your bag`, true); };
   upd();
