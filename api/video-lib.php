@@ -7,8 +7,9 @@ declare(strict_types=1);
    never public). A reel is copied to our server, so it keeps playing even if it is removed from Instagram. */
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
 
+const IG_CODE = '/^[A-Za-z0-9_-]{5,40}$/';   // an Instagram reel shown with Instagram's own player (pasted link, no token)
 const VIDEO_FILE = '/^[a-z0-9-]{1,48}-[a-f0-9]{8}\.(mp4|mov|webm)$/';
-function shop_videos(): array { return array_values(array_filter(json_decode((string)shop_setting('videos'), true) ?: [], fn($v) => is_array($v) && !empty($v['id']) && preg_match(VIDEO_FILE, (string)($v['file'] ?? '')))); }
+function shop_videos(): array { return array_values(array_filter(json_decode((string)shop_setting('videos'), true) ?: [], fn($v) => is_array($v) && !empty($v['id']) && (preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) || preg_match(IG_CODE, (string)($v['embed'] ?? ''))))); }
 function shop_videos_save(array $v): void { shop_set('videos', json_encode(array_values($v), JSON_UNESCAPED_SLASHES)); }
 function video_dir(): string { global $PRIV; $d = "$PRIV/videos"; if (!is_dir($d)) @mkdir($d, 0750, true); return $d; }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website */
@@ -16,6 +17,7 @@ function shop_videos_live(): array {
   if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off
   $cat = fomaxo_catalog()['products']; $out = [];
   foreach (shop_videos() as $v) { $p = $cat[$v['product'] ?? ''] ?? null; if (empty($v['on']) || !$p || !empty($p['hidden'])) continue;
+    if (!empty($v['embed'])) { $out[] = ['e' => (string)$v['embed'], 'p' => (string)$v['product']] + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []); continue; }
     $out[] = ['v' => 'api/live.php?vid=' . $v['file'], 'p' => (string)$v['product']] + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []); }
   return $out;
 }
@@ -191,14 +193,41 @@ function ig_find(array $c, string $code): ?string {
   }
   return null;
 }
+/* A public reel without a token: Instagram's embed page sometimes carries the video file. Copied when it does; null when not. */
+function ig_public_copy(string $code, string $prod): ?array {
+  if (!function_exists('curl_init')) return null;
+  $base = defined('FX_IG_EMBED') ? FX_IG_EMBED : 'https://www.instagram.com';
+  $ch = curl_init("$base/reel/$code/embed/captioned/");
+  curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3,
+    CURLOPT_USERAGENT => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1']);
+  $html = (string)curl_exec($ch); curl_close($ch);
+  $get = function (string $k) use ($html): string {   // the value in Instagram's page data, which is escaped once or twice
+    if (!preg_match('~' . $k . '\\\\*"\s*:\s*\\\\*"([^"]+?)\\\\*"~', $html, $x)) return '';
+    $v = $x[1]; for ($i = 0; $i < 3 && preg_match('~\\\\[/u\\\\]~', $v); $i++) { $d = json_decode('"' . $v . '"'); if (!is_string($d)) break; $v = $d; }
+    return $v;
+  };
+  $vid = $get('video_url'); if ($vid === '' || !preg_match('~^https://[\w.-]+\.(cdninstagram\.com|fbcdn\.net)/~', $vid) && !defined('FX_IG_EMBED')) return null;
+  $name = $prod . '-' . bin2hex(random_bytes(4)) . '.mp4';
+  if (ig_download($vid, video_dir() . "/$name") !== true) return null;
+  $cover = ''; $img = $get('display_url');
+  if ($img !== '' && function_exists('imagewebp') && ($tmp = tempnam(sys_get_temp_dir(), 'fxig'))) {
+    global $PRIV;
+    if (ig_download($img, $tmp, 15 * 1048576) === true && ($im = @imagecreatefromstring((string)file_get_contents($tmp)))) {
+      $k = $prod . '-cover-' . bin2hex(random_bytes(4)) . '.webp'; imagepalettetotruecolor($im);
+      if (@imagewebp($im, "$PRIV/product-images/$k", 80)) $cover = "up/$k";
+    }
+    @unlink($tmp);
+  }
+  return ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true, 'ig_code' => $code];
+}
 /* the new entry for the video list, or an error message */
 function video_from_link(string $url, string $prod) {
   $url = trim($url);
   if (preg_match('~^(?:https?://)?(?:www\.)?instagram\.com/(?:[\w.]+/)?(?:reels?|p|tv)/([A-Za-z0-9_-]+)~i', $url, $m)) {
-    $c = ig_fresh(); if (!$c) return 'To add an Instagram reel by its link, connect Instagram first (From Instagram, above).';
-    $id = ig_find($c, $m[1]);
-    if (!$id) return 'That reel was not found on @' . ($c['user'] ?: 'your account') . '. Only reels from your own Instagram can be added.';
-    $v = ig_copy($c, $id, $prod); return is_array($v) ? $v + ['link' => $url] : $v;
+    $c = ig_fresh();   // connected: copy it to our server like the reel grid does
+    if ($c && ($id = ig_find($c, $m[1])) && is_array($v = ig_copy($c, $id, $prod))) return $v + ['link' => $url];
+    if ($v = ig_public_copy($m[1], $prod)) return $v + ['link' => $url];   // a public reel Instagram lets us copy
+    return ['id' => bin2hex(random_bytes(5)), 'file' => '', 'embed' => $m[1], 'cover' => '', 'product' => $prod, 'on' => true, 'link' => $url];   // else Instagram's own player
   }
   if (preg_match('~^(?:https?://)?(?:[\w-]+\.)*(youtube\.com|youtu\.be|tiktok\.com|facebook\.com|fb\.watch)/~i', $url))
     return 'YouTube, TikTok and Facebook do not let their videos be copied. Save the video to your phone and upload it, or paste a reel link from your Instagram.';
