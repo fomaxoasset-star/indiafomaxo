@@ -2262,7 +2262,7 @@ html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
 @media(min-width:961px){.buy .pdel{font-size:13px}.buy .stk{padding:4px 8px;font-size:10.5px}.buy .assure{padding:8px 0 0;margin-top:0;border-bottom:0}.buy .assure i{width:30px;height:30px;flex:none}.buy .assure svg{width:16px;height:16px}.buy .assure li{flex-direction:row;justify-content:center;gap:7px;font-size:10.5px;line-height:1.25;text-align:left}}
 /* AJAY: laptop product page fits one screen, also with a section opened; fitPdp() sizes the photos and scales the rest */
 @media(min-width:961px){
-  .acc .body{font-size:13.5px;line-height:1.55;padding-bottom:10px;max-height:150px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--gold) transparent}
+  .acc .body{font-size:calc(15.5px / var(--bz,1));line-height:1.6;padding-bottom:10px;max-height:calc(160px / var(--bz,1));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--gold) transparent}
   .stage{width:var(--stage-w,auto)}
   .thumbs{overflow-y:auto;scrollbar-width:none}.thumbs::-webkit-scrollbar{display:none}.thumbs button{flex:none}
   .picks{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.pick span{padding:5px 6px;font-size:9.5px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -3541,7 +3541,7 @@ function fbtPartner(p, size){
 /* laptop product page: photos and thumbnails no taller than the screen, and the buy side scaled down (never below 72%) so it all fits one screen, also with a section opened */
 function fitPdp(){
   const pdp = $('.pdp'), buy = pdp && $('.buy', pdp), gal = pdp && $('.gallery', pdp); if (!buy) return;
-  buy.style.zoom = ''; if (gal) { gal.style.gridTemplateColumns = ''; gal.style.removeProperty('--stage-w'); const tb0 = $('.thumbs', gal); if (tb0) tb0.style.maxHeight = ''; }
+  buy.style.zoom = ''; buy.style.removeProperty('--bz'); if (gal) { gal.style.gridTemplateColumns = ''; gal.style.removeProperty('--stage-w'); const tb0 = $('.thumbs', gal); if (tb0) tb0.style.maxHeight = ''; }
   if (innerWidth < 961) return;
   const pf = pdp.closest('.page-fade'), ty = pf ? new DOMMatrix(getComputedStyle(pf).transform).m42 || 0 : 0;
   const top = buy.getBoundingClientRect().top + scrollY - ty, avail = innerHeight - top - 12;
@@ -3552,7 +3552,7 @@ function fitPdp(){
   }
   // photos in the buy side keep their on-screen width when zoomed, so shrink in a few steps until it fits
   let z = 1;
-  for (let i = 0; i < 4; i++) { const need = buy.getBoundingClientRect().height; if (need <= avail || z <= .72) break; z = Math.max(.72, Math.floor(z * avail / need * 100) / 100); buy.style.zoom = z; }
+  for (let i = 0; i < 4; i++) { const need = buy.getBoundingClientRect().height; if (need <= avail || z <= .72) break; z = Math.max(.72, Math.floor(z * avail / need * 100) / 100); buy.style.zoom = z; buy.style.setProperty('--bz', z); }   // --bz keeps the open section's text full size
 }
 addEventListener('resize', () => requestAnimationFrame(fitPdp));
 document.addEventListener('toggle', e => { if (e.target.closest && e.target.closest('.pdp .acc')) fitPdp(); }, true);
