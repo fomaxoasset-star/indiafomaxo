@@ -44,6 +44,7 @@ try {
   if ($off = shop_pages_off()) $live['pagesOff'] = $off;   // pages turned off on Admin → Settings → Site pages
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
   if ($tg = fomaxo_together_pct()) $live['together'] = $tg;   // Customers bought together: % off one of each of two products (Admin → Products)
+  if ($tr = fomaxo_together_rs()) $live['togetherRs'] = $tr;   // … and / or ₹ off each pair
   if (!shop_together()['on']) $live['fbtOff'] = 1;   // its On / Off switch: Off hides the box on every product page
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {

@@ -460,16 +460,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   /* Products → Customers bought together: % off one unit of each of two different products in the bag, and its On / Off switch */
   if ($a === 'together') {
-    $pct = trim((string)($_POST['together_pct'] ?? '')); $on = !empty($_POST['together_on']);
+    $pct = trim((string)($_POST['together_pct'] ?? '')); $rs = trim((string)($_POST['together_rs'] ?? '')); $on = !empty($_POST['together_on']);
     $done = function (string $m): void {   // saved from the page without reloading it (quick) answers with a small JSON, else the page reloads
       if (empty($_POST['quick'])) go(['tab' => 'products'], $m);
       header('Content-Type: application/json'); header('Cache-Control: no-store'); echo json_encode(['ok' => $m[0] !== '!', 'msg' => ltrim($m, '!')]); exit;
     };
     if ($pct !== '' && (!preg_match('/^\d{1,2}$/', $pct) || (int)$pct > 50)) $done('!Please write the together extra off as a whole number from 0 to 50.');
-    $pct = (int)$pct;
-    shop_set('together', json_encode(['pct' => $pct, 'on' => $on ? 1 : 0]));
-    $done(!$on ? 'Customers bought together is Off: the box is hidden on every product page. ' . ($pct ? "Your $pct% extra off is kept for when you switch it on. " : '') . 'It shows within a minute.'
-      : ($pct ? "Customers bought together is On with $pct% extra off when both are in the bag. It shows within a minute." : 'Customers bought together is On (no extra off). It shows within a minute.'));
+    if ($rs !== '' && (!preg_match('/^\d{1,4}$/', $rs) || (int)$rs > 5000)) $done('!Please write the together extra off in ₹ as a whole number from 0 to 5000.');
+    if ((int)$pct && (int)$rs) $done('!Please fill only one box: Extra off in % or in ₹.');
+    $pct = (int)$pct; $rs = (int)$rs; $off = fomaxo_together_txt($pct, $rs);
+    shop_set('together', json_encode(['pct' => $pct, 'rs' => $rs, 'on' => $on ? 1 : 0]));
+    $done(!$on ? 'Customers bought together is Off: the box is hidden on every product page. ' . ($off !== '' ? "Your $off extra off is kept for when you switch it on." : '')
+      : ($off !== '' ? "Customers bought together is On with $off extra off when both are in the bag." : 'Customers bought together is On (no extra off).'));
   }
   if ($a === 'cod') {
     $num = fn(string $k) => trim((string)($_POST[$k] ?? ''));
