@@ -737,7 +737,7 @@ document.addEventListener('click', function (e) {
   var inp = b.parentNode.querySelector('input'); inp.value = c; inp.dispatchEvent(new Event('input', {bubbles: true}));
 });
 
-/* Coupons: the free product box. Typing narrows its dropdown, a tap (or Enter, or the arrow keys) picks a line,
+/* Coupons: the free product box (also Shop videos: Product in the video; a required box only sends once a line is picked). Typing narrows its dropdown, a tap (or Enter, or the arrow keys) picks a line,
    and the hidden input next to it takes that line's "id|size" for the form */
 (function () {
   function parts(f) { var w = f.parentNode; return {hid: w.querySelector('input[type=hidden]'), ul: w.querySelector('.fplist')}; }
@@ -747,9 +747,9 @@ document.addEventListener('click', function (e) {
     Array.prototype.forEach.call(x.ul.children, function (li) { li.hidden = q !== '' && (' ' + li.textContent.toLowerCase()).indexOf(' ' + q) < 0; li.classList.remove('on'); });
     x.ul.hidden = !shown(x.ul).length;
   }
-  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; f.dispatchEvent(new Event('change', {bubbles: true})); }
+  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; f.setCustomValidity(''); f.dispatchEvent(new Event('change', {bubbles: true})); }
   document.addEventListener('focusin', function (e) { if (e.target.matches && e.target.matches('[data-ffind]')) { e.target.select(); filter(e.target, true); } });
-  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; filter(f); } });
+  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; if (f.required) f.setCustomValidity(f.value.trim() ? 'Pick one from the list' : ''); filter(f); } });
   document.addEventListener('focusout', function (e) {
     var f = e.target; if (!f.matches || !f.matches('[data-ffind]')) return;
     var x = parts(f); x.ul.hidden = true;
@@ -956,4 +956,51 @@ document.addEventListener('click', function (e) {
   };
   show(false);
   b.addEventListener('click', function () { show(!b.classList.contains('on')); });
+})();
+
+/* Shop videos: drag the dots (mouse or finger) to change the order of the videos; the new order saves at once, without reloading */
+(function () {
+  var list = document.querySelector('.vlist .bb'); if (!list || !list.querySelector('.vdrag')) return;
+  var row = null, y0 = 0, ok = document.querySelector('.vok');
+  function rows() { return Array.prototype.slice.call(list.querySelectorAll('.vrow')); }
+  function renumber() {
+    var r = rows();
+    r.forEach(function (x, i) {
+      var n = x.querySelector('.vnum'); if (n) n.textContent = i + 1;
+      var b = x.querySelectorAll('.vmv .btn'); if (b.length > 1) { b[0].disabled = !i; b[1].disabled = i === r.length - 1; }
+    });
+  }
+  function save() {
+    var f = list.closest('.vlist').querySelector('form'), d = new FormData();
+    d.append('csrf', f.querySelector('[name=csrf]').value); d.append('action', 'vid_order'); d.append('ids', rows().map(function (x) { return x.dataset.vid; }).join(','));
+    ok.className = 'tgok vok'; ok.textContent = 'Saving…';
+    fetch(location.href, {method: 'POST', body: d, credentials: 'same-origin'}).then(function (r) { return r.json(); })
+      .then(function (j) { ok.className = 'tgok vok ' + (j.ok ? 'ok' : 'bad'); ok.textContent = j.ok ? j.msg + ' ✓' : j.msg; })
+      .catch(function () { ok.className = 'tgok vok bad'; ok.textContent = 'Not saved, try again'; });
+  }
+  list.addEventListener('pointerdown', function (e) {
+    var h = e.target.closest('.vdrag'); if (!h || e.button > 0) return;
+    e.preventDefault(); row = h.closest('.vrow'); y0 = e.clientY; row.classList.add('drag'); document.body.classList.add('vdragging');
+    h.setPointerCapture(e.pointerId);
+  });
+  list.addEventListener('pointermove', function (e) {
+    if (!row) return;
+    row.style.transform = 'translateY(' + (e.clientY - y0) + 'px)';
+    var mid = e.clientY, prev = row.previousElementSibling, next = row.nextElementSibling;   // past the middle of the next or previous video: swap places
+    var t0 = row.offsetTop;   // where the row sits without the drag shift; y0 follows it so the row stays under the finger
+    if (next && next.classList.contains('vrow')) { var b = next.getBoundingClientRect(); if (mid > b.top + b.height / 2) list.insertBefore(next, row); }
+    if (prev && prev.classList.contains('vrow')) { var a = prev.getBoundingClientRect(); if (mid < a.top + a.height / 2) list.insertBefore(row, prev); }
+    y0 += row.offsetTop - t0;
+    row.style.transform = 'translateY(' + (e.clientY - y0) + 'px)';
+    var r = list.closest('.vlist').getBoundingClientRect();   // near the top or bottom edge: scroll the list
+    if (e.clientY < r.top + 40) list.scrollTop -= 12; else if (e.clientY > r.bottom - 40) list.scrollTop += 12;
+  });
+  function end() {
+    if (!row) return;
+    var moved = row.dataset.at !== String(rows().indexOf(row));
+    row.classList.remove('drag'); row.style.transform = ''; document.body.classList.remove('vdragging'); row = null;
+    renumber(); if (moved) save();
+  }
+  list.addEventListener('pointerdown', function () { rows().forEach(function (x, i) { x.dataset.at = i; }); }, true);
+  list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
 })();
