@@ -983,7 +983,7 @@ document.addEventListener('click', function (e) {
     e.preventDefault(); row = h.closest('.vrow'); y0 = e.clientY; row.classList.add('drag'); document.body.classList.add('vdragging');
     h.setPointerCapture(e.pointerId);
   });
-  list.addEventListener('pointermove', function (e) {
+  document.addEventListener('pointermove', function (e) {   // on the whole page: moving the row in the list can drop its pointer capture
     if (!row) return;
     row.style.transform = 'translateY(' + (e.clientY - y0) + 'px)';
     var mid = e.clientY, prev = row.previousElementSibling, next = row.nextElementSibling;   // past the middle of the next or previous video: swap places
@@ -1002,5 +1002,5 @@ document.addEventListener('click', function (e) {
     renumber(); if (moved) save();
   }
   list.addEventListener('pointerdown', function () { rows().forEach(function (x, i) { x.dataset.at = i; }); }, true);
-  list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
 })();
