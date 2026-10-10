@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '94';
+const ASSET_V = '95';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -193,10 +193,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($url === '' || strlen($url) > 2000) go($vb, '!Please paste the video link.');
       if (!isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
       $v = video_from_link($url, $prod); if (!is_array($v)) go($vb, '!' . $v);
-      $code = (string)($v['embed'] ?? $v['ig_code'] ?? '');
-      if ((!empty($v['ig']) && in_array($v['ig'], array_column($vids, 'ig'), true)) || ($code !== '' && (in_array($code, array_column($vids, 'embed'), true) || in_array($code, array_column($vids, 'ig_code'), true)))) {
-        if ($v['file'] !== '') @unlink(video_dir() . '/' . $v['file']); go($vb, '!That reel is already in your videos.'); }
-      array_unshift($vids, $v); shop_videos_save($vids);
+      $code = (string)($v['ig_code'] ?? '');
+      if ((!empty($v['ig']) && in_array($v['ig'], array_column($vids, 'ig'), true)) || ($code !== '' && in_array($code, array_column($vids, 'ig_code'), true))) {
+        @unlink(video_dir() . '/' . $v['file']); go($vb, '!That reel is already in your videos.'); }
+      $old = false; foreach ($vids as $k => $x) if ($code !== '' && ($x['embed'] ?? '') === $code) $old = $k;   // an older Instagram-player entry of this reel: the copy takes its place
+      if ($old !== false) $vids[$old] = $v; else array_unshift($vids, $v); shop_videos_save($vids);
       go($vb, 'Video added from the link. It shows on the home page now.');
     }
     if ($a === 'vid_add') {
