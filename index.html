@@ -1,5 +1,5 @@
 <!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}/* ================= SHOP VIDEOS (Admin → Products → Videos) ================= */
-.vid-sec[hidden]{display:none}
+.vid-sec[hidden]{display:none}.again-home + .vid-sec{padding-top:clamp(36px,5vw,64px)}
 .vrow{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px;overscroll-behavior-x:contain}
 .vrow::-webkit-scrollbar{display:none}
 .vt{position:relative;flex:0 0 clamp(150px,17vw,230px);aspect-ratio:9/16;overflow:hidden;background:#000;border:1px solid var(--line);scroll-snap-align:start;padding:0;text-align:left;color:#f2ebdd;cursor:pointer}
@@ -3243,6 +3243,7 @@ function home(){
     <div>${ICON.drop}<span>${miniPic() ? '<b>Try a mini</b>Luxury in 10ml' : '<b>Try first</b>Ask us for a sample'}</span></div>
   </div></div>
   ${lastOrder().length ? `<section class="again-home"><div class="wrap">${againHTML()}</div></section>` : ''}
+  ${vids().length ? `<section class="sec vid-sec" id="vidSec" style="padding-bottom:0">${vidSecHTML()}</section>` : ''}
 
   <section class="sec"><div class="wrap">
     <div class="sec-head"><div class="t rv-up"><span class="eyebrow">Shop the collection</span><h2>Featured <em class="metal">FOMAXO</em></h2></div><a class="link rv-up" id="hgAll" href="#/fragrances">View all fragrances →</a></div>
@@ -3250,8 +3251,6 @@ function home(){
       <div class="hg-pager" id="hgPager"><button type="button" data-hp="-1" aria-label="Previous products">←</button><span id="hgCount"></span><button type="button" data-hp="1" aria-label="Next products">→</button></div></div>
     <div class="pc-grid hg-grid" id="homeGrid"></div>
   </div></section>
-
-  ${vids().length ? `<section class="sec vid-sec" id="vidSec" style="padding-top:0">${vidSecHTML()}</section>` : ''}
 
 
   <section class="sec" style="padding-top:0" id="tiers"><div class="wrap">
