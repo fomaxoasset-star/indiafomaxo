@@ -2225,7 +2225,8 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
 .assure li{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font-size:11.5px;line-height:1.3;color:var(--champagne);letter-spacing:.02em}
 .assure i{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--line-2);color:var(--gold);background:rgba(215,170,105,.06)}
 .assure svg{width:20px;height:20px}
-.fbt{padding:56px 0 64px;border-top:1px solid var(--line)}
+.fbt{padding:40px 0 64px;border-top:1px solid var(--line)}
+.pdp:has(+ #fbt.fbt){padding-bottom:28px}   /* no big empty gap above Customers bought together */
 .fbt-h{font-family:var(--serif);font-weight:300;font-size:clamp(28px,3vw,40px);margin:0 0 26px;color:var(--ivory);text-align:center}
 .fbt-row{display:grid;grid-template-columns:minmax(0,230px) 40px minmax(0,230px) minmax(240px,320px);gap:0 18px;align-items:start;justify-content:center}
 .fbt-it{display:flex;flex-direction:column;gap:8px;transition:opacity .3s}.fbt-it.off{opacity:.45}
