@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '103';
+const ASSET_V = '104';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -240,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
         $img = save_images(($prod ?: 'fomaxo') . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
       }
-      array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + ($words !== '' ? ['words' => $words] : []));
+      array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + ($words !== '' ? ['words' => $words] : []) + (($_POST['shape'] ?? '') === '169' ? ['wide' => true] : []));
       shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
@@ -252,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($at === false) go($vb, '!That video was not found. Please try again.');
     if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
+    elseif ($a === 'vid_shape') { if (($_POST['shape'] ?? '') === '169') $vids[$at]['wide'] = true; else unset($vids[$at]['wide']); $msg = 'Shape saved: ' . (!empty($vids[$at]['wide']) ? '16:9 wide.' : '9:16 upright.'); }
     elseif ($a === 'vid_prods') {   // the products a video sells: remove one, add one, or none (a Shop Now button)
       $ps = video_products($vids[$at], $CAT); $rm = (string)($_POST['rm'] ?? ''); $add = (string)($_POST['add'] ?? '');
       if ($rm === '-words') unset($vids[$at]['words']); elseif ($rm !== '') $ps = array_values(array_diff($ps, [$rm]));
