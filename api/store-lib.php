@@ -318,26 +318,34 @@ function fomaxo_price_order(array $in): array {
   }
   if ($total < 100) return ['error' => 'This order cannot be paid online. Please order on WhatsApp.'];
   $rows = array_map(fn($it) => "• {$it['qty']} x {$it['name']}" . ($it['desc'] ? " ({$it['desc']})" : '') . ' — ' . rupees($it['unit'] * $it['qty']), $items);
-  $pct = fomaxo_together_pct();
-  return ['items' => $items, 'rows' => $rows, 'subtotal' => $total, 'together' => fomaxo_together(array_values($cheap), $pct), 'togetherPct' => $pct];
+  $pct = fomaxo_together_pct(); $rs = fomaxo_together_rs();
+  return ['items' => $items, 'rows' => $rows, 'subtotal' => $total, 'together' => fomaxo_together(array_values($cheap), $pct, $rs), 'togetherPct' => $pct, 'togetherTxt' => fomaxo_together_txt($pct, $rs)];
 }
 
 /* Customers bought together (Admin → Products): the % off, 0 when it is switched off or nothing is saved */
 function fomaxo_together_pct(): int {
   try { $t = shop_together(); return $t['on'] ? $t['pct'] : 0; } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return 0; }
 }
+/* … and the ₹ off each pair (whole rupees), 0 when it is switched off */
+function fomaxo_together_rs(): int {
+  try { $t = shop_together(); return $t['on'] ? $t['rs'] : 0; } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return 0; }
+}
+/* "10%", "₹50" or "10% + ₹50", for the order's rows */
+function fomaxo_together_txt(int $pct, int $rs): string {
+  return implode(' + ', array_filter([$pct ? "$pct%" : '', $rs ? '₹' . number_format($rs) : '']));
+}
 /* What the together % takes off: the products paired two at a time in bag order (1st + 2nd, 3rd + 4th …, an odd one left out),
-   each pair round((unit A + unit B) × % / 100) paise off. The same sums as index.html (togetherOff). */
-function fomaxo_together(array $units, int $pct): int {
+   each pair round((unit A + unit B) × % / 100) paise plus the ₹ off, never more than the pair. The same sums as index.html (togetherOff). */
+function fomaxo_together(array $units, int $pct, int $rs = 0): int {
   $off = 0;
-  if ($pct > 0) for ($i = 0; $i + 1 < count($units); $i += 2) $off += (int)round(($units[$i] + $units[$i + 1]) * $pct / 100);
+  if ($pct > 0 || $rs > 0) for ($i = 0; $i + 1 < count($units); $i += 2) { $ab = $units[$i] + $units[$i + 1]; $off += min($ab, (int)round($ab * $pct / 100) + $rs * 100); }
   return $off;
 }
 /* The together saving this order keeps: with a coupon, what the coupon's choice left of it ("Use the bigger offer" / "Use both");
    without one, all of it (the bag always keeps at least ₹1 to pay). Adds its line to the order's rows. */
 function fomaxo_together_kept(array &$order, array $cp): int {
   $t = $cp ? (int)$cp['offer'] : max(0, min($order['together'], $order['subtotal'] - 100));
-  if ($t > 0) $order['rows'][] = "• Together {$order['togetherPct']}% off — −" . rupees($t);
+  if ($t > 0) $order['rows'][] = "• Together {$order['togetherTxt']} off — −" . rupees($t);
   return $t;
 }
 

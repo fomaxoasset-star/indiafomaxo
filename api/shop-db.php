@@ -579,11 +579,11 @@ function shop_cod(array $def): array {
   return ['min' => max(0, (int)($c['min'] ?? 0)), 'max' => max(0, (int)($c['max'] ?? 0)), 'fee' => max(0, (int)($c['fee'] ?? 0))];
 }
 
-/* Customers bought together (Admin → Products): pct = % off one unit of each of two different products in the bag (0 to 50),
+/* Customers bought together (Admin → Products): pct = % off and rs = ₹ off one unit of each of two different products in the bag (0 to 50 %, 0 to 5000 ₹),
    on = switched on. Off (or nothing saved) = no together saving anywhere; the % is kept for when it is switched back on. */
 function shop_together(): array {
   $t = json_decode((string)shop_setting('together'), true); $t = is_array($t) ? $t : [];
-  return ['pct' => max(0, min(50, (int)($t['pct'] ?? 0))), 'on' => !isset($t['on']) || !empty($t['on'])];   // never saved = On
+  return ['pct' => max(0, min(50, (int)($t['pct'] ?? 0))), 'rs' => max(0, min(5000, (int)($t['rs'] ?? 0))), 'on' => !isset($t['on']) || !empty($t['on'])];   // never saved = On
 }
 
 /* Orders saved as JSON files before the database existed (fomaxo-private/orders/*.json) are copied in once, keeping their numbers. */
