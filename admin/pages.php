@@ -605,7 +605,11 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   /* Products → Videos: short upright videos on the home page. Tapping one on the website opens it full screen with its product's Add To Cart / Buy Now */
   if (ig_sync()) { /* Automatic: new reels that name a product, at most once an hour */ }
   $vids = shop_videos(); $n = count($vids); $max = upload_max(); $allOn = shop_setting('videos_off') !== '1';
-  $opts = fn(string $sel) => implode('', array_map(fn($id, $p) => '<option value="' . h($id) . '"' . ((string)$id === $sel ? ' selected' : '') . '>' . h($p['name']) . (!empty($p['hidden']) ? ' (hidden)' : '') . '</option>', array_keys($CAT), $CAT));
+  /* Product in the video: one box to type a name in, or pick from its own dropdown (the coupon free product picker, admin.js [data-ffind]) */
+  $vpick = fn(string $aria) => '<span class="fpick vpick"><input type="text" data-ffind required placeholder="Type or pick a product" aria-label="' . $aria . '" autocomplete="off">'
+    . '<input type="hidden" name="product"><ul class="fplist" hidden>'
+    . implode('', array_map(fn($id, $p) => '<li data-v="' . h($id) . '">' . h($p['name']) . (!empty($p['hidden']) ? ' (hidden)' : '') . '</li>', array_keys($CAT), $CAT))
+    . '<li data-v="-">No product · Shop Now button</li></ul></span>';
   $vpost = fn(array $v, string $act, string $inner, string $extra = '') => '<form method="post"' . $extra . '>' . $csrfField . '<input type="hidden" name="action" value="' . $act . '"><input type="hidden" name="vid" value="' . h($v['id']) . '">' . $inner . '</form>';
   $rows = '';
   foreach ($vids as $i => $v) {
@@ -640,19 +644,19 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
       . '<label class="pg igauto"><span><b>Automatic</b><small>New reels show by themselves when the caption names a product, e.g. Gold or Old Money</small></span><input type="checkbox" class="tgl" name="on" value="1"' . ($auto ? ' checked' : '') . ' aria-label="Automatic" onchange="var f=this.form;f.querySelector(\'[name=action]\').value=\'vid_ig_auto\';f.noValidate=true;f.submit()"></label>'
       . ($auto ? '<p class="muted small">Checked every hour. <button class="lnk" name="action" value="vid_ig_sync" formnovalidate>Check now</button></p>' : '')
       . (!is_array($reels) ? '<p class="err small">Instagram: ' . h($reels) . '</p>' : ($grid === '' ? '<p class="muted small">No reels found on this account yet.</p>' : '<p class="muted small">' . ($auto ? 'Or add any reel yourself: tap it, pick its product, then Add.' : 'Tap a reel, pick its product, then Add.') . '</p><div class="igg">' . $grid . '</div>'
-      . '<div class="igadd"><select name="product" required aria-label="Product in the reel"><option value="">Product in the reel…</option>' . $opts('') . '<option value="-">No product · Shop Now button</option></select><button class="btn" onclick="if(this.form.checkValidity())this.textContent=\'Adding…\'">Add</button></div>'))
+      . '<div class="igadd">' . $vpick('Product in the reel') . '<button class="btn" onclick="if(this.form.checkValidity())this.textContent=\'Adding…\'">Add</button></div>'))
       . '</div></form>';
   }
   $body .= '<div class="row"><a class="btn line sm" href="' . h(self_url(['tab' => 'products'])) . '">← Products</a><h2 class="sp">Shop videos</h2></div>'
     . $sw('#vidPanes', ['list' => 'Your videos', 'add' => 'Add a video']) . '<div class="vids panes" id="vidPanes"><div class="vleft" data-pane="add">' . $igBox
     . '<form class="box vlink" method="post" onsubmit="this.querySelector(\'.btn\').textContent=\'Adding…\'">' . $csrfField . '<input type="hidden" name="action" value="vid_link"><div class="bh"><h3>Paste a link</h3></div><div class="bb">'
     . '<label>Video link<input type="url" name="url" required inputmode="url" placeholder="https://www.instagram.com/reel/…" spellcheck="false"></label>'
-    . '<div class="igadd"><select name="product" required aria-label="Product in the video"><option value="">Product in the video…</option>' . $opts('') . '<option value="-">No product · Shop Now button</option></select><button class="btn">Add</button></div>'
+    . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Add</button></div>'
     . '<p class="muted small">Any Instagram reel link (no token needed), or a link that opens the video itself. YouTube and TikTok links can’t be added.</p></div></form>'
     . '<form class="box vadd" method="post" enctype="multipart/form-data" data-vshrink data-max="' . $max . '">' . $csrfField . '<input type="hidden" name="action" value="vid_add">'
     . '<div class="bh"><h3>Upload from your phone</h3></div><div class="bb">'
     . '<label>Video<input type="file" name="video" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov" required></label>'
-    . '<label>Product in the video<select name="product" required><option value="">Choose…</option>' . $opts('') . '<option value="-">No product · Shop Now button</option></select></label>'
+    . '<label>Product in the video' . $vpick('Product in the video') . '</label>'
     . '<label>Cover photo (optional)<input type="file" name="cover" accept="image/*"></label>'
     . '<p class="muted small">Upright phone video (9:16), 10 to 30 seconds. A big video is made smaller by itself before it uploads. It plays without sound until the customer taps the sound button. No cover photo = the product photo.</p>'
     . '<div class="vsh muted small" hidden><span></span></div>'

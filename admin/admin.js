@@ -737,7 +737,7 @@ document.addEventListener('click', function (e) {
   var inp = b.parentNode.querySelector('input'); inp.value = c; inp.dispatchEvent(new Event('input', {bubbles: true}));
 });
 
-/* Coupons: the free product box. Typing narrows its dropdown, a tap (or Enter, or the arrow keys) picks a line,
+/* Coupons: the free product box (also Shop videos: Product in the video; a required box only sends once a line is picked). Typing narrows its dropdown, a tap (or Enter, or the arrow keys) picks a line,
    and the hidden input next to it takes that line's "id|size" for the form */
 (function () {
   function parts(f) { var w = f.parentNode; return {hid: w.querySelector('input[type=hidden]'), ul: w.querySelector('.fplist')}; }
@@ -747,9 +747,9 @@ document.addEventListener('click', function (e) {
     Array.prototype.forEach.call(x.ul.children, function (li) { li.hidden = q !== '' && (' ' + li.textContent.toLowerCase()).indexOf(' ' + q) < 0; li.classList.remove('on'); });
     x.ul.hidden = !shown(x.ul).length;
   }
-  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; f.dispatchEvent(new Event('change', {bubbles: true})); }
+  function pick(f, li) { var x = parts(f); f.value = li.textContent; x.hid.value = li.dataset.v; x.ul.hidden = true; f.setCustomValidity(''); f.dispatchEvent(new Event('change', {bubbles: true})); }
   document.addEventListener('focusin', function (e) { if (e.target.matches && e.target.matches('[data-ffind]')) { e.target.select(); filter(e.target, true); } });
-  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; filter(f); } });
+  document.addEventListener('input', function (e) { var f = e.target; if (f.matches && f.matches('[data-ffind]')) { parts(f).hid.value = ''; if (f.required) f.setCustomValidity(f.value.trim() ? 'Pick one from the list' : ''); filter(f); } });
   document.addEventListener('focusout', function (e) {
     var f = e.target; if (!f.matches || !f.matches('[data-ffind]')) return;
     var x = parts(f); x.ul.hidden = true;
