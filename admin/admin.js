@@ -110,7 +110,7 @@ function markSent(btn, day) {
     var f = e.target, b = e.submitter || f.querySelector('button:not([type=button])');
     var ask = (b && b.dataset.confirm) || f.dataset.confirm;
     if (ask && !confirm(ask)) { e.preventDefault(); return; }
-    if ((f.getAttribute('method') || '').toLowerCase() !== 'post' || !b) return;
+    if (e.defaultPrevented || (f.getAttribute('method') || '').toLowerCase() !== 'post' || !b) return;   // a form that saves without reloading keeps its button
     dirty = false;
     setTimeout(function () { b.disabled = true; b.dataset.label = b.textContent; b.textContent = 'Saving…'; }, 0);
   });

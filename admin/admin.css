@@ -131,7 +131,7 @@ table.grid{width:100%;border-collapse:collapse}.grid th{text-align:left;font-siz
 .tgo>label{flex-direction:row;font-size:13px;color:var(--text);letter-spacing:0;white-space:nowrap}
 .tgn{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:13px}.tgn input{width:48px;padding:5px 6px;text-align:right}
 .tgs{flex-direction:row!important;align-items:center;gap:6px!important;cursor:pointer}.tgs b{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--muted);min-width:26px}
-.tgbr{display:none}.tgs .y,.tgo.on .tgs .n{display:none}.tgo.on .tgs .y{display:inline;color:var(--gold)}
+.tgbr{display:none}.tgok{font-size:12px;font-weight:600;white-space:nowrap;color:var(--muted)}.tgok.ok{color:#2e7d32}.tgok.bad{color:#c62828}.tgs .y,.tgo.on .tgs .n{display:none}.tgo.on .tgs .y{display:inline;color:var(--gold)}
 .prod{display:grid;grid-template-columns:40px 56px 200px 1fr auto;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line2)}
 .prod.off>:not(.pvis){opacity:.5}
 /* the ring dot in front of each product (column Show): filled green = on the website, empty grey ring = hidden; one tap saves */
