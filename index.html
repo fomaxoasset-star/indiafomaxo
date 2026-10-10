@@ -1717,7 +1717,12 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .pold{font-family:var(--sans);font-weight:500;font-size:22px;line-height:1.1;color:#e04a3f;text-decoration:line-through;text-decoration-thickness:2px}
 .prow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;width:100%}
 .prow .psave{margin-left:auto}
-.buy .price-rate #pstock{align-self:flex-end;margin-top:-6px}   /* AJAY: the low-stock box sits right under the green You save box */
+.buy .price-rate #pstock{align-self:flex-end;margin-top:-6px}   /* AJAY: the low-stock box sits by the green You save box */
+/* laptop (AJAY): when "Only N left" shows, nothing below moves down. You save goes up beside the old price and the box sits right under it, beside the big price.
+   phone: like fomaxo.com, You save stays beside the big price and the box gets its own line right under it */
+@media(min-width:601px){.buy .price-rate{position:relative}.buy .price-rate:has(.pold):has(#pstock .stk) .psave{position:absolute;top:0;right:0}.buy .price-rate:has(.pold) #pstock{position:absolute;bottom:4px;right:0;margin:0}}
+@media(min-width:961px){.buy .price-rate:has(.pold):has(#pstock .stk) .psave{top:-4px}}
+.stk-x{font-style:normal}
 .buy .price-rate,.buy #pprice,.pnow{width:100%;align-self:stretch}
 .psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
 html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
@@ -2921,7 +2926,7 @@ const STOCK = LIVE.stock || {}, LOW = LIVE.lowStock ?? 5;
 const stockLeft = (p, s) => { const v = STOCK[p.id] && STOCK[p.id][s]; return v === undefined || v === null ? null : +v; };
 const sizeOut = (p, s) => { const v = stockLeft(p, s); return v === null ? !!p.soldOut : v < 1; };
 const isOut = p => !!p && p.sizes.every(s => sizeOut(p, s));
-const stockTag = (p, s, long) => { if (!p || isOut(p)) return ''; if (sizeOut(p, s)) return '<span class="stk out">Out of Stock — Restocking Soon</span>'; const v = stockLeft(p, s); return v !== null && v <= LOW ? `<span class="stk low">Only ${v} left${long ? ' in stock, order soon' : ''}</span>` : ''; };
+const stockTag = (p, s, long) => { if (!p || isOut(p)) return ''; if (sizeOut(p, s)) return '<span class="stk out">Out of Stock — Restocking Soon</span>'; const v = stockLeft(p, s); return v !== null && v <= LOW ? `<span class="stk low">Only ${v} left${long ? '<i class="stk-x"> in stock, order soon</i>' : ''}</span>` : ''; };
 const OUT_BTN = (cls='btn sm', label='Out of stock') => `<button class="${cls} oos" type="button" disabled>${label}</button>`;
 const FRAG = S.products.filter(p => !p.kind);          // perfumes
 const CAR = S.products.filter(p => p.kind === 'car');  // car fragrance
