@@ -2147,6 +2147,49 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .acc summary::after{line-height:1}
   .acc .body{padding-bottom:18px}
 }
+
+/* product page: delivery line, small icon row under the price, and the "Customers bought together" box */
+.pdel-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.pdel{display:flex;align-items:center;gap:10px;margin:0;font-size:14px;color:var(--muted);letter-spacing:.02em}
+.pdel svg{width:18px;height:18px;flex:none;color:var(--gold)}
+.pdel b{color:var(--ivory);font-weight:500}.pdel b:first-child{color:var(--gold)}
+.assure{list-style:none;margin:6px 0 0;padding:12px 0;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.assure li{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font-size:11.5px;line-height:1.3;color:var(--champagne);letter-spacing:.02em}
+.assure i{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--line-2);color:var(--gold);background:rgba(215,170,105,.06)}
+.assure svg{width:20px;height:20px}
+.fbt{padding:56px 0 64px;border-top:1px solid var(--line)}
+.fbt-h{font-family:var(--serif);font-weight:300;font-size:clamp(28px,3vw,40px);margin:0 0 26px;color:var(--ivory);text-align:center}
+.fbt-row{display:grid;grid-template-columns:minmax(0,230px) 40px minmax(0,230px) minmax(240px,320px);gap:0 18px;align-items:start;justify-content:center}
+.fbt-it{display:flex;flex-direction:column;gap:8px;transition:opacity .3s}.fbt-it.off{opacity:.45}
+.fbt-img{position:relative;display:block;aspect-ratio:1;background:var(--panel);border:1px solid var(--line);cursor:pointer;overflow:hidden}
+.fbt-img img{width:100%;height:100%;object-fit:cover}
+.fbt-img input{position:absolute;opacity:0;width:1px;height:1px}
+.fbt-img i{position:absolute;top:10px;right:10px;width:24px;height:24px;display:grid;place-items:center;font-style:normal;font-size:14px;line-height:1;background:var(--gold);color:#050505;box-shadow:0 0 0 1px var(--gold)}
+.fbt-img input:not(:checked)+i{background:rgba(var(--bg-rgb),.75);color:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
+.fbt-img input:focus-visible+i{outline:2px solid var(--gold-hi);outline-offset:2px}
+.fbt-n{margin:4px 0 0;font-size:14.5px;line-height:1.4;color:var(--ivory)}.fbt-n b{font-weight:500;color:var(--gold)}.fbt-n a{color:var(--ivory);text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+.fbt-n small{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.fbt-p{margin:0;font-size:18px;color:var(--gold-hi);font-family:var(--display);font-weight:300;letter-spacing:.03em}
+.fbt-plus{align-self:center;margin-top:-60px;text-align:center;font-size:30px;font-weight:200;color:var(--gold)}
+.fbt-buy{align-self:center;margin-top:-60px;padding-left:18px;display:flex;flex-direction:column;gap:12px}
+.fbt-buy p{margin:0;font-size:14px;color:var(--muted);letter-spacing:.04em}.fbt-buy p b{font-size:24px;color:var(--ivory);font-weight:400;margin-left:6px;font-family:var(--display)}
+.fbt-buy small{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.fbt-buy small svg{width:16px;height:16px;color:var(--gold)}
+.fbt-buy .btn:disabled{opacity:.5;cursor:default}
+html[data-mode="light"] .fbt-img i{color:#fffaf1}
+html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
+@media(max-width:960px){
+  .fbt{padding:40px 0 44px}
+  .fbt-h{margin-bottom:18px}
+  .fbt-row{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:0 8px}
+  .fbt-plus{margin-top:-80px;font-size:24px}
+  .fbt-buy{grid-column:1/-1;margin:20px 0 0;padding:0;align-items:center;text-align:center}.fbt-buy .btn{width:100%}
+  .fbt-n{font-size:13.5px}
+  .assure{padding:10px 0;gap:2px}
+  .assure li{font-size:10.5px;gap:6px}
+  .assure i{width:34px;height:34px}.assure svg{width:17px;height:17px}
+  .pdel{font-size:13px}
+}
+@media(min-width:961px){.buy .pdel{font-size:13px}.buy .stk{padding:4px 8px;font-size:10.5px}.buy .assure{padding:8px 0 0;margin-top:0;border-bottom:0}.buy .assure i{width:30px;height:30px;flex:none}.buy .assure svg{width:16px;height:16px}.buy .assure li{flex-direction:row;justify-content:center;gap:7px;font-size:10.5px;line-height:1.25;text-align:left}}
 /* ================= LIMITED-TIME OFFER (Admin → Offer): popup and slim countdown lines ================= */
 .ofl{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;line-height:1.2;color:var(--gold)}
 .ofl svg{width:14px;height:14px;flex:none}
@@ -2800,7 +2843,7 @@ const STOCK = LIVE.stock || {}, LOW = LIVE.lowStock ?? 5;
 const stockLeft = (p, s) => { const v = STOCK[p.id] && STOCK[p.id][s]; return v === undefined || v === null ? null : +v; };
 const sizeOut = (p, s) => { const v = stockLeft(p, s); return v === null ? !!p.soldOut : v < 1; };
 const isOut = p => !!p && p.sizes.every(s => sizeOut(p, s));
-const stockTag = (p, s) => { if (!p || isOut(p)) return ''; if (sizeOut(p, s)) return '<span class="stk out">Out of Stock — Restocking Soon</span>'; const v = stockLeft(p, s); return v !== null && v <= LOW ? `<span class="stk low">Only ${v} left</span>` : ''; };
+const stockTag = (p, s, long) => { if (!p || isOut(p)) return ''; if (sizeOut(p, s)) return '<span class="stk out">Out of Stock — Restocking Soon</span>'; const v = stockLeft(p, s); return v !== null && v <= LOW ? `<span class="stk low">Only ${v} left${long ? ' in stock, order soon' : ''}</span>` : ''; };
 const OUT_BTN = (cls='btn sm', label='Out of stock') => `<button class="${cls} oos" type="button" disabled>${label}</button>`;
 const FRAG = S.products.filter(p => !p.kind);          // perfumes
 const CAR = S.products.filter(p => p.kind === 'car');  // car fragrance
@@ -3289,7 +3332,9 @@ function product(id, q){
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
           <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div></div>${offerLine(p, 'box')}
-          <div class="stk-row" id="pstock">${stockTag(p, size)}</div>
+          <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p>
+          <div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>
+          ${assureHTML()}
         </div>
         ${p.sizes.length > 1 ? `<div><div class="opt-label"><span>${isSet ? 'Choose your set' : 'Size'}</span><span id="sizeName">${optLabel(p, size)}</span></div>
           <div class="sizes" id="sizes">${p.sizes.map(s => `<button data-s="${s}" class="${s===size?'on':''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}"><b>${isSet ? s + ' vials' : sizeLabel(s)}</b><small>${sizeOut(p, s) && !isOut(p) ? 'Out of stock' : isSet ? (money(p.prices[s]) || '2ml each') : s===10?'Mini · travel':s===50?'Everyday':'Signature'}</small>${!isSet && !(sizeOut(p, s) && !isOut(p)) && hasPrice(p.prices[s]) ? `<span class="sz-p">${money(p.prices[s], curOf(p))}</span>` : ''}</button>`).join('')}</div></div>`
@@ -3301,7 +3346,7 @@ function product(id, q){
           <div class="qty"><button id="qm" aria-label="Decrease quantity">−</button><input id="qty" value="1" inputmode="numeric" aria-label="Quantity"><button id="qp" aria-label="Increase quantity">+</button></div>
           ${isOut(p) ? OUT_BTN('btn') : '<button class="btn line" id="addBtn">Add To Cart</button>'}
         </div>
-        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block" id="buyBtn">Buy Now</button>' + (S.checkout.razorpay ? `<p class="buy-trust">${LOCK_SVG}Secure checkout · UPI · Cards · Netbanking · Wallets</p>` : '')}
+        ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block" id="buyBtn">Buy Now</button>'}
         <a class="pshare" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}Share with a friend on WhatsApp</a>
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
@@ -3312,6 +3357,8 @@ function product(id, q){
         </div>
       </div>
     </div>
+
+    <div id="fbt"></div>
 
     <div class="reviews" id="reviews">
       <div class="rv-sum rv-up"><span class="eyebrow">Customer reviews</span><h2>${esc(p.name)}</h2>
@@ -3332,7 +3379,7 @@ function product(id, q){
   </div>`;
 }
 function bindProduct(p){
-  bindReviews(p);
+  bindReviews(p); renderFbt(p, +($('#sizes .on')?.dataset.s) || defaultSize(p));
   let size = +($('#sizes .on')?.dataset.s) || defaultSize(p);
   const isSet = p.kind === 'set'; let picks = [];
   const qty = $('#qty'), getQ = () => Math.max(1, Math.min(99, parseInt(qty.value) || 1));
@@ -3344,7 +3391,7 @@ function bindProduct(p){
     size = +b.dataset.s; if (isSet) { picks = picks.slice(0, size); updPicks(); } $$('#sizes button').forEach(x => x.classList.toggle('on', x === b));
     $('#sizeName').textContent = optLabel(p, size); $('#pprice').innerHTML = priceHTML(p, size, 'pprice');
     setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
-    renderMbuy();
+    renderMbuy(); renderFbt(p, size);
   });
   const stage = $('#stage');
   stage.onclick = () => stage.classList.toggle('zoom');
@@ -3367,7 +3414,7 @@ function bindProduct(p){
   $('#qp').onclick = () => qty.value = Math.min(99, left() ?? 99, getQ() + 1);
   function sizeState(){
     const out = sizeOut(p, size), a = $('#addBtn'), b = $('#buyBtn');
-    $('#pstock').innerHTML = stockTag(p, size);
+    $('#pstock').innerHTML = stockTag(p, size, true);
     if (a) { a.disabled = out; a.classList.toggle('oos', out); a.textContent = out ? 'Out of stock' : 'Add To Cart'; }
     if (b) b.hidden = out;
     if (left() !== null && getQ() > left()) qty.value = Math.max(1, left());
@@ -3382,6 +3429,57 @@ function bindProduct(p){
   /* the phone buy bar shows from the first screen, whenever the page's own Add To Cart is off screen (below the photos or scrolled past), until the reviews */
   mobileBarCheck = () => { const r = addBtn.getBoundingClientRect(); mb.classList.toggle('show', (r.bottom < 0 || r.top > innerHeight - 70) && $('#reviews').getBoundingClientRect().top > innerHeight*.6); };
   setTimeout(() => mobileBarCheck && mobileBarCheck(), 400);
+}
+/* product page, under the price: when it arrives (the 1–3 days promised at checkout, Sundays skipped) and a row of small icons, only for what is true today:
+   Cash on delivery shows only once COD is open to everyone (no onlyName test gate), with its minimum */
+function delWindow(){
+  const d = new Date(), add = n => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); if (x.getDay()) k++; } return x; };
+  const a = add(1), b = add(3), f = (x, m) => x.toLocaleDateString('en-IN', m ? {weekday:'short', day:'numeric', month:'short'} : {weekday:'short', day:'numeric'});
+  return `<b>${f(a, a.getMonth() !== b.getMonth())} – ${f(b, true)}</b>`;
+}
+const AS_ICON = {
+  free: ICON.truck,
+  fast: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3.5" y="5" width="17" height="15" rx="1"/><path d="M3.5 9.5h17M8 3v4M16 3v4M8.5 14.5l2.3 2.2 4.7-4.7"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="5" y="10.5" width="14" height="10" rx="1"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2.5"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M8.7 12.2l2.3 2.3 4.4-4.5"/></svg>'
+};
+function assureHTML(){
+  const cod = coCod(), it = [[AS_ICON.free, 'Free', 'Delivery'], [AS_ICON.fast, 'Delivered in', '1–3 Days']];
+  if (cod && !cod.onlyName) it.push([CO_ICON.cash, cod.min > 0 ? 'Cash on Delivery' : 'Cash on', cod.min > 0 ? 'over ' + inr(cod.min) : 'Delivery']);
+  if (S.checkout.razorpay) it.push([AS_ICON.lock, 'Secure', 'Payment']);
+  it.push([AS_ICON.shield, 'Original', 'FOMAXO']);
+  return `<ul class="assure" style="--n:${it.length}">${it.map(x => `<li><i>${x[0]}</i><span>${x[1]}<br>${x[2]}</span></li>`).join('')}</ul>`;
+}
+/* "Customers bought together": this item and one more with ticks, the total and one button that adds the ticked ones to the bag.
+   The partner: the same scent in the other range (Passion Sin parfum ↔ Passion Sin shower gel), else the first other item a Combo puts it with,
+   else the most-reviewed one of its own kind. Sold-out, hidden, priced-on-request and gift-set items never show. */
+function fbtPartner(p, size){
+  const ok = x => x && x.id !== p.id && shown(x.id) && x.kind !== 'set' && !isOut(x) && curOf(x) === curOf(p);
+  const optOf = x => [x === p ? size : null, x.sizes.includes(size) ? size : null, defaultSize(x), ...x.sizes].find(s => s !== null && x.sizes.includes(s) && !sizeOut(x, s) && hasPrice(x.prices[s]));
+  const base = String(p.id).replace(/^pc-/, '').split('-')[0];
+  let q = Object.values(P).find(x => ok(x) && x.kind !== p.kind && String(x.id).replace(/^pc-/, '').split('-')[0] === base && optOf(x) !== undefined);
+  if (!q && typeof COMBO_SETS !== 'undefined') for (const g of COMBO_SETS) { const ids = (g.items || []).map(a => a[0]); if (!ids.includes(p.id)) continue; const id = ids.find(i => i !== p.id && ok(P[i]) && optOf(P[i]) !== undefined); if (id) { q = P[id]; break; } }
+  if (!q) q = Object.values(P).filter(x => ok(x) && catOf(x) === catOf(p) && optOf(x) !== undefined).sort((a, b) => (b.reviews || 0) - (a.reviews || 0) || (b.rating || 0) - (a.rating || 0))[0];
+  return q ? [q, optOf(q)] : null;
+}
+function renderFbt(p, size){
+  const box = $('#fbt'); if (!box) return;
+  const q = p.kind === 'set' || isOut(p) || sizeOut(p, size) || !hasPrice(p.prices[size]) ? null : fbtPartner(p, size);
+  if (!q) { box.innerHTML = ''; box.className = ''; return; }
+  const items = [[p, size, true], [q[0], q[1], false]], on = [true, true];
+  const tile = ([x, s, me], i) => `<div class="fbt-it"><label class="fbt-img"><img src="${IMG(imgFor(x, s))}" alt="" loading="lazy"><input type="checkbox" data-fbt="${i}" checked aria-label="Include ${esc(x.name)}"><i aria-hidden="true">✓</i></label>
+    <p class="fbt-n">${me ? '<b>This item:</b> ' + esc(x.name) : `<a href="#/product/${x.id}${x.sizes.length > 1 ? '?size=' + s : ''}">${esc(x.name)}</a>`}${x.sizes.length > 1 || /\d/.test(optLabel(x, s)) ? `<small>${esc(optLabel(x, s))}</small>` : ''}</p>
+    ${x.reviews ? starsHTML(x) : ''}<p class="fbt-p">${money(x.prices[s], curOf(x))}</p></div>`;
+  box.className = 'fbt rv-up in';
+  box.innerHTML = `<h2 class="fbt-h">Customers bought <em class="metal">together</em></h2>
+    <div class="fbt-row">${tile(items[0], 0)}<span class="fbt-plus" aria-hidden="true">+</span>${tile(items[1], 1)}
+      <div class="fbt-buy"><p>Total price: <b id="fbtTot"></b></p><button class="btn block" id="fbtAdd" type="button"></button><small>${AS_ICON.free}Free delivery on both</small></div></div>`;
+  const upd = () => { const n = on.filter(Boolean).length, t = items.reduce((a, x, i) => a + (on[i] ? +x[0].prices[x[1]] : 0), 0);
+    $('#fbtTot').textContent = n ? money(t, curOf(p)) : '—'; const b = $('#fbtAdd'); b.disabled = !n; b.textContent = n === 2 ? 'Add both to Cart' : n ? 'Add to Cart' : 'Tick an item';
+    $$('#fbt .fbt-it').forEach((el, i) => el.classList.toggle('off', !on[i])); };
+  $$('#fbt [data-fbt]').forEach(c => c.onchange = () => { on[+c.dataset.fbt] = c.checked; upd(); });
+  $('#fbtAdd').onclick = () => { const add = items.filter((x, i) => on[i]); add.forEach(x => addToCart(x[0].id, x[1], 1, add.length > 1)); if (add.length > 1) toast(`${add.map(x => x[0].name).join(' and ')} added to your bag`, true); };
+  upd();
 }
 let mobileBarCheck = null;
 
