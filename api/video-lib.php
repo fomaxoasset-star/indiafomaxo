@@ -16,10 +16,15 @@ function video_dir(): string { global $PRIV; $d = "$PRIV/videos"; if (!is_dir($d
 function shop_videos_live(): array {
   if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off
   $cat = fomaxo_catalog()['products']; $out = [];
-  foreach (shop_videos() as $v) { $p = $cat[$v['product'] ?? ''] ?? null; if (empty($v['on']) || !$p || !empty($p['hidden'])) continue;
-    if (!empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
-    $out[] = ['v' => 'api/live.php?vid=' . $v['file'], 'p' => (string)$v['product']] + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []); }
+  foreach (shop_videos() as $v) { if (empty($v['on']) || !empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
+    $all = video_products($v); $ps = array_values(array_filter($all, fn($id) => isset($cat[$id]) && empty($cat[$id]['hidden'])));   // one product, several, or none (a Shop Now button)
+    if (($all || (string)($v['product'] ?? '') !== '') && !$ps) continue;   // every product in it is hidden or deleted
+    $out[] = ['v' => 'api/live.php?vid=' . $v['file']] + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []); }
   return $out;
+}
+/* the products a video sells, first one first ('product' plus 'also'); only those in $cat when it is given */
+function video_products(array $v, ?array $cat = null): array {
+  return array_values(array_unique(array_filter(array_merge([(string)($v['product'] ?? '')], (array)($v['also'] ?? [])), fn($id) => is_string($id) && $id !== '' && ($cat === null || isset($cat[$id])))));
 }
 /* sends a video with Range support (iPhones only play videos that can be asked for in parts) */
 function send_video(string $path): void {
