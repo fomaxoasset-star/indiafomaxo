@@ -455,8 +455,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($pct !== '' && (!preg_match('/^\d{1,2}$/', $pct) || (int)$pct > 50)) go(['tab' => 'products'], '!Please write the together extra off as a whole number from 0 to 50.');
     $pct = (int)$pct;
     shop_set('together', json_encode(['pct' => $pct, 'on' => $on ? 1 : 0]));
-    go(['tab' => 'products'], !$on ? 'Customers bought together: extra off switched off. ' . ($pct ? "Your $pct% is kept for when you switch it on. " : '') . 'It shows within a minute.'
-      : ($pct ? "Customers bought together: $pct% extra off when both are in the bag. It shows within a minute." : 'Customers bought together: no extra off (0%). It shows within a minute.'));
+    go(['tab' => 'products'], !$on ? 'Customers bought together is Off: the box is hidden on every product page. ' . ($pct ? "Your $pct% extra off is kept for when you switch it on. " : '') . 'It shows within a minute.'
+      : ($pct ? "Customers bought together is On with $pct% extra off when both are in the bag. It shows within a minute." : 'Customers bought together is On (no extra off). It shows within a minute.'));
   }
   if ($a === 'cod') {
     $num = fn(string $k) => trim((string)($_POST[$k] ?? ''));
