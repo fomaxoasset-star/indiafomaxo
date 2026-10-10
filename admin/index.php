@@ -231,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
     elseif ($a === 'vid_prods') {   // the products a video sells: remove one, add one, or none (a Shop Now button)
       $ps = video_products($vids[$at], $CAT); $rm = (string)($_POST['rm'] ?? ''); $add = (string)($_POST['add'] ?? '');
-      if ($rm !== '') $ps = array_values(array_diff($ps, [$rm]));
+      if ($rm === '-words') unset($vids[$at]['words']); elseif ($rm !== '') $ps = array_values(array_diff($ps, [$rm]));
       if (isset($CAT[$add]) && !in_array($add, $ps, true)) $ps[] = $add;
       $vids[$at]['product'] = $ps[0] ?? ''; $vids[$at]['also'] = array_slice($ps, 1); if (!$vids[$at]['also']) unset($vids[$at]['also']);
       $nm = array_map(fn($id) => $CAT[$id]['name'], $ps);
