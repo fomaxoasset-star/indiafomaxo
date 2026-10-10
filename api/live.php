@@ -43,6 +43,7 @@ try {
   if ($vids = shop_videos_live()) $live['videos'] = $vids;   // shop videos (Admin → Products → Videos)
   if ($off = shop_pages_off()) $live['pagesOff'] = $off;   // pages turned off on Admin → Settings → Site pages
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
+  if ($tg = fomaxo_together_pct()) $live['together'] = $tg;   // Customers bought together: % off one of each of two products (Admin → Products)
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {
   error_log('FOMAXO live: ' . $e->getMessage());

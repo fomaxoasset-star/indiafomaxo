@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '97';
+const ASSET_V = '98';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -449,6 +449,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fee = trim((string)($_POST['pay_fee'] ?? '2')); if (is_numeric($fee)) shop_set('pay_fee', (string)max(0, min(10, round((float)$fee, 2))));
     go(['tab' => 'settings'], 'Settings saved.');
   }
+  /* Products → Customers bought together: % off one unit of each of two different products in the bag, and its On / Off switch */
+  if ($a === 'together') {
+    $pct = trim((string)($_POST['together_pct'] ?? '')); $on = !empty($_POST['together_on']);
+    if ($pct !== '' && (!preg_match('/^\d{1,2}$/', $pct) || (int)$pct > 50)) go(['tab' => 'products'], '!Please write the together extra off as a whole number from 0 to 50.');
+    $pct = (int)$pct;
+    shop_set('together', json_encode(['pct' => $pct, 'on' => $on ? 1 : 0]));
+    go(['tab' => 'products'], !$on ? 'Customers bought together: extra off switched off. ' . ($pct ? "Your $pct% is kept for when you switch it on. " : '') . 'It shows within a minute.'
+      : ($pct ? "Customers bought together: $pct% extra off when both are in the bag. It shows within a minute." : 'Customers bought together: no extra off (0%). It shows within a minute.'));
+  }
   if ($a === 'cod') {
     $num = fn(string $k) => trim((string)($_POST[$k] ?? ''));
     $min = $num('cod_min'); $max = $num('cod_max'); $fee = $num('cod_fee');
@@ -530,7 +539,7 @@ if ($do === 'excel') {
     $items = json_decode((string)$o['items'], true) ?: [];
     $rows[] = [$o['no'] ?: '(not paid)', substr($o['created'], 0, 16), FOMAXO_STATUSES[$o['status']] ?? $o['status'], pay_label($o), $o['payment_id'],
       implode("\n", array_map(fn($r) => ltrim($r, '• '), explode("\n", (string)$o['rows_text']))), array_sum(array_map(fn($i) => (int)($i['qty'] ?? 0), $items)),
-      ($o['total'] - $o['cod_fee'] + $o['discount']) / 100, $o['coupon'], $o['discount'] / 100, $o['cod_fee'] / 100, $o['total'] / 100, $o['name'], $o['phone'], (int)($o['wa_optin'] ?? 0) ? 'Yes' : 'No', $o['email'], $o['address'], $o['city'], $o['state'], $o['pin'],
+      ($o['total'] - $o['cod_fee'] + $o['discount'] + (int)($o['together'] ?? 0)) / 100, $o['coupon'], $o['discount'] / 100, $o['cod_fee'] / 100, $o['total'] / 100, $o['name'], $o['phone'], (int)($o['wa_optin'] ?? 0) ? 'Yes' : 'No', $o['email'], $o['address'], $o['city'], $o['state'], $o['pin'],
       $o['note'], $o['admin_note'], $o['paid_at'] ? substr($o['paid_at'], 0, 16) : ''];
   }
   send_sheet('FOMAXO-orders-' . date('Y-m-d'), $head, $rows);

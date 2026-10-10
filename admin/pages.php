@@ -664,7 +664,13 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '</div><div class="bf"><span class="muted small">Sells: tap a product to remove it, + Add product for more. No product = a Shop Now button. The first video shows first. A video of a hidden product is left out by itself.</span></div></div></div>';
 } elseif ($tab === 'products') {
   $qq = trim((string)($_GET['q'] ?? ''));
-  $body .= '<div class="row"><form class="row sp" method="get"><input type="hidden" name="tab" value="products"><input type="search" name="q" value="' . h($qq) . '" placeholder="Find a product" style="max-width:280px"></form><a class="btn line" href="' . h(self_url(['tab' => 'products', 'videos' => 1])) . '">Videos</a><a class="btn" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '">+ Add a product</a></div>'
+  $TG = shop_together();
+  $body .= '<div class="row"><form class="row sp" method="get"><input type="hidden" name="tab" value="products"><input type="search" name="q" value="' . h($qq) . '" placeholder="Find a product" style="max-width:280px"></form>'
+    /* Customers bought together on the product page: % off one of each of two different products in the bag (shop_together) */
+    . '<form method="post" class="tgo' . ($TG['on'] ? ' on' : '') . '">' . $csrfField . '<input type="hidden" name="action" value="together"><label for="tgPct">Together extra off</label>'
+    . '<span class="tgn"><input id="tgPct" name="together_pct" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="' . ($TG['pct'] ?: '') . '" placeholder="0" aria-label="Together extra off, %">%</span>'
+    . '<label class="tgs" title="On: the % comes off at checkout. Off: no together saving, the % is kept"><input type="checkbox" class="tgl" name="together_on" value="1"' . ($TG['on'] ? ' checked' : '') . ' aria-label="Together extra off on the website" onchange="this.closest(\'form\').classList.toggle(\'on\', this.checked)"><b class="y">On</b><b class="n">Off</b></label>'
+    . '<button class="btn line sm">Save</button></form><a class="btn line" href="' . h(self_url(['tab' => 'products', 'videos' => 1])) . '">Videos</a><a class="btn" href="' . h(self_url(['tab' => 'products', 'add' => 1])) . '">+ Add a product</a></div>'
     . '<div class="box fill"><div class="bh"><span class="muted small">Tap the ring dot to show or hide a product on the website: filled green = on the website, empty = hidden. Press Edit to change a product’s name, descriptions, notes, sizes, prices, your cost or photos.</span></div><div class="bb"><div class="prod phd" aria-hidden="true"><span class="pvis">Show</span><span></span><span>Product</span><span>Prices</span><span></span></div>';
   foreach ($CAT as $id => $p) {
     if ($qq !== '' && stripos($p['name'] . ' ' . kind_label($p['kind']), $qq) === false) continue;

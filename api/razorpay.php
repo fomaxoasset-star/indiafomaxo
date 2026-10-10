@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* FOMAXO India — online payment (UPI, cards, netbanking, wallets) through Razorpay Checkout.
-   POST {action:"create", lines, customer, coupon} → prices the bag here (less the coupon), creates a Razorpay order, returns what Checkout.js needs
+   POST {action:"create", lines, customer, coupon} → prices the bag here (less the together saving and the coupon), creates a Razorpay order, returns what Checkout.js needs
    POST {action:"verify", razorpay_*}       → checks Razorpay's signature with the Key Secret, then records the paid order
    POST with X-Razorpay-Signature header    → webhook (optional): records a payment even if the customer closed the page
    GET  ?status                             → set-up check: are the keys found, test or live (never shows a key)
@@ -85,10 +85,11 @@ if ($action === 'create') {
   if (isset($order['error'])) fail($order['error']);
   $cust = fomaxo_customer($in);
   if (isset($cust['error'])) fail($cust['error']);
-  $cp = fomaxo_coupon($in, $order['subtotal']);
+  $cp = fomaxo_coupon($in, $order);
   if (isset($cp['error'])) fail($cp['error']);
   if (($e = fomaxo_add_free($order, $cp)) !== '') fail($e);   // a free product coupon: its item joins the order at ₹0
-  $amount = $order['subtotal'] - ($cp['off'] ?? 0);   // what Razorpay charges: worked out here, never taken from the browser
+  $together = fomaxo_together_kept($order, $cp);   // the Customers bought together saving kept: its line joins the order's rows
+  $amount = $order['subtotal'] - ($cp['discount'] ?? 0) - $together;   // what Razorpay charges: worked out here, never taken from the browser
   /* the order number (FMX-IN-…) is given once the payment is confirmed, so unfinished payments leave no gaps */
   $ref = 'web-' . date('ymd') . '-' . bin2hex(random_bytes(4));
   [$code, $ro, $raw] = rzp('POST', '/orders', ['amount' => $amount, 'currency' => 'INR', 'receipt' => $ref,
@@ -96,7 +97,7 @@ if ($action === 'create') {
   if ($code !== 200 || empty($ro['id'])) { error_log('FOMAXO Razorpay create error: ' . $raw); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 502); }
   try {
     shop_insert_order(shop_db(), ['ref' => $ro['id'], 'no' => null, 'created' => shop_now(), 'method' => 'online', 'status' => 'awaiting', 'total' => $amount,
-      'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'test' => $TEST, 'coupon' => $cp['code'] ?? '', 'discount' => $cp['off'] ?? 0]);
+      'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'test' => $TEST, 'coupon' => $cp['code'] ?? '', 'discount' => $cp['discount'] ?? 0, 'together' => $together]);
   } catch (Throwable $e) { error_log('FOMAXO Razorpay save order: ' . $e->getMessage()); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 500); }
   out(['key' => $KEY_ID, 'order_id' => $ro['id'], 'amount' => $amount, 'currency' => 'INR',
        'prefill' => ['name' => $cust['name'], 'email' => $cust['email'], 'contact' => preg_replace('/\s+/', '', $cust['phone'])]]);

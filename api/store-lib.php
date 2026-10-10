@@ -283,7 +283,7 @@ function fomaxo_price_order(array $in): array {
   if (!$lines || count($lines) > 30) return ['error' => 'Your bag is empty.'];
   $items = []; $total = 0;
   try { $STOCK = shop_stock(); $COST = shop_costs(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.']; }
-  $want = [];
+  $want = []; $cheap = [];
   $OFFS = fomaxo_combo_offs($lines, $CAT);
   if (isset($OFFS['error'])) return $OFFS;
   foreach ($lines as $li => $l) {
@@ -305,6 +305,8 @@ function fomaxo_price_order(array $in): array {
     $was = (int)round(($p['was'][$opt] ?? 0) * 100);
     if (isset($OFFS[$li])) { $was = max($was, $unit); $unit -= $OFFS[$li] * 100; $desc = 'Combo: ' . $OFFS["name$li"]; }   // combo price
     $total += $unit * $qty;
+    /* Customers bought together: each product once (not gift sets or combo lines), at its cheapest unit price in the bag, in bag order */
+    if ($p['kind'] !== 'set' && !isset($OFFS[$li]) && $unit > 0 && (!isset($cheap[$id]) || $unit < $cheap[$id])) $cheap[$id] = $unit;
     $name = 'FOMAXO ' . $p['name'] . ($size !== '' ? " — $size" : '');
     $items[] = ['id' => $id, 'opt' => $opt, 'name' => $name, 'desc' => $desc, 'unit' => $unit, 'qty' => $qty]
       + ($was > $unit ? ['was' => $was] : [])                                  // the crossed-out price, for discounts in Reports
@@ -316,7 +318,27 @@ function fomaxo_price_order(array $in): array {
   }
   if ($total < 100) return ['error' => 'This order cannot be paid online. Please order on WhatsApp.'];
   $rows = array_map(fn($it) => "• {$it['qty']} x {$it['name']}" . ($it['desc'] ? " ({$it['desc']})" : '') . ' — ' . rupees($it['unit'] * $it['qty']), $items);
-  return ['items' => $items, 'rows' => $rows, 'subtotal' => $total];
+  $pct = fomaxo_together_pct();
+  return ['items' => $items, 'rows' => $rows, 'subtotal' => $total, 'together' => fomaxo_together(array_values($cheap), $pct), 'togetherPct' => $pct];
+}
+
+/* Customers bought together (Admin → Products): the % off, 0 when it is switched off or nothing is saved */
+function fomaxo_together_pct(): int {
+  try { $t = shop_together(); return $t['on'] ? $t['pct'] : 0; } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return 0; }
+}
+/* What the together % takes off: the products paired two at a time in bag order (1st + 2nd, 3rd + 4th …, an odd one left out),
+   each pair round((unit A + unit B) × % / 100) paise off. The same sums as index.html (togetherOff). */
+function fomaxo_together(array $units, int $pct): int {
+  $off = 0;
+  if ($pct > 0) for ($i = 0; $i + 1 < count($units); $i += 2) $off += (int)round(($units[$i] + $units[$i + 1]) * $pct / 100);
+  return $off;
+}
+/* The together saving this order keeps: with a coupon, what the coupon's choice left of it ("Use the bigger offer" / "Use both");
+   without one, all of it (the bag always keeps at least ₹1 to pay). Adds its line to the order's rows. */
+function fomaxo_together_kept(array &$order, array $cp): int {
+  $t = $cp ? (int)$cp['offer'] : max(0, min($order['together'], $order['subtotal'] - 100));
+  if ($t > 0) $order['rows'][] = "• Together {$order['togetherPct']}% off — −" . rupees($t);
+  return $t;
 }
 
 /* "10ml", "Set of 3", a care product's volume or "Car perfume" */
@@ -344,18 +366,18 @@ function fomaxo_add_free(array &$order, array $cp): string {
   return '';
 }
 
-/* What the website offer (multi-buy) takes off a bag of $subtotal paise. fomaxo.in has no multi-buy offer yet, so 0;
+/* What the website offer takes off a priced order: on fomaxo.in that is the Customers bought together saving (0 when off);
    a coupon's "Use the bigger offer" / "Use both" choice (Admin → Coupons) is weighed against this. */
-function fomaxo_multibuy(int $subtotal): int { return 0; }
+function fomaxo_multibuy(array $order): int { return (int)($order['together'] ?? 0); }
 
-/* The coupon code typed at checkout, checked against this bag (api/shop-db.php): [] when none was typed,
-   ['error' => …], or ['code', 'discount' (coupon, paise), 'offer' (multi-buy kept, paise), 'off' (both together), 'label']. */
-function fomaxo_coupon(array $in, int $subtotal, ?PDO $db = null): array {
+/* The coupon code typed at checkout, checked against this priced order (api/shop-db.php): [] when none was typed,
+   ['error' => …], or ['code', 'discount' (coupon, paise), 'offer' (together saving kept, paise), 'off' (both together), 'label']. */
+function fomaxo_coupon(array $in, array $order, ?PDO $db = null): array {
   $code = is_string($in['coupon'] ?? null) ? trim($in['coupon']) : '';
   if ($code === '') return [];
   /* the shopper's mobile number: from the delivery details when the order is placed, or sent with the code at checkout (api/coupon.php) */
   $phone = is_string($in['customer']['phone'] ?? null) ? $in['customer']['phone'] : (is_string($in['phone'] ?? null) ? $in['phone'] : '');
-  try { $cp = shop_coupon_apply($code, $subtotal, $db, fomaxo_multibuy($subtotal), $phone); return isset($cp['error']) ? $cp : $cp + ['off' => $cp['discount'] + $cp['offer']]; }
+  try { $cp = shop_coupon_apply($code, $order['subtotal'], $db, fomaxo_multibuy($order), $phone); return isset($cp['error']) ? $cp : $cp + ['off' => $cp['discount'] + $cp['offer']]; }
   catch (Throwable $e) { error_log('FOMAXO coupon: ' . $e->getMessage()); return ['error' => 'Coupon codes cannot be checked right now. Please try again, or remove the code.']; }
 }
 
