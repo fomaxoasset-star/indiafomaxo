@@ -27,7 +27,7 @@ header('Content-Type: application/javascript; charset=utf-8');
 header('Cache-Control: no-store');
 try {
   fomaxo_catalog();   // the first time, this copies the products in index.html into the database
-  $live = ['stock' => shop_stock(), 'lowStock' => shop_low_stock(), 'hidden' => [], 'prices' => [], 'compareAt' => [], 'added' => [], 'edits' => []];
+  $live = ['stock' => shop_stock(), 'lowStock' => shop_low_stock(), 'perItem' => shop_max_per_item(), 'hidden' => [], 'prices' => [], 'compareAt' => [], 'added' => [], 'edits' => []];
   foreach (shop_products() as $id => $d) {
     if ($d['hidden']) $live['hidden'][] = $id;
     if ($d['added']) { $p = $d['site'] ?? null; if (is_array($p) && !$d['hidden']) $live['added'][] = $p; continue; }
