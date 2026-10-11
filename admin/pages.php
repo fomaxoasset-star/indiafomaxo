@@ -672,12 +672,13 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
 } elseif ($tab === 'products') {
   $qq = trim((string)($_GET['q'] ?? ''));
   $TG = shop_together();
-  /* Sold: bottles bought per product and size in the dates picked, from real orders only (new, paid, delivered: no test, awaiting payment,
-     cancelled, refunded or trashed orders); free coupon gifts are not counted */
+  /* Sold: bottles bought per product and size in the dates picked, from real orders only (new, paid, delivered, and such orders in Trash: no test,
+     awaiting payment, cancelled or refunded orders); free coupon gifts are not counted */
   $D = pick_dates('products'); $sold = []; $soldAll = 0;
   $sq = shop_db()->prepare("SELECT items FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')" . ($D['r'] === 'all' ? '' : ' AND created >= ? AND created <= ?'));
   $sq->execute($D['r'] === 'all' ? [] : [$D['from'] . ' 00:00:00', $D['to'] . ' 23:59:59']);
-  foreach ($sq as $o) foreach ((array)json_decode((string)$o['items'], true) as $l) { if (!is_array($l) || !empty($l['free']) || ($n = max(0, (int)($l['qty'] ?? 0))) < 1) continue; $id = (string)($l['id'] ?? ''); $op = (string)($l['opt'] ?? ''); $sold[$id]['n'] = ($sold[$id]['n'] ?? 0) + $n; $sold[$id]['s'][$op] = ($sold[$id]['s'][$op] ?? 0) + $n; $soldAll += $n; }
+  $trashed = trash_sales($D['r'] === 'all' ? '' : $D['from'] . ' 00:00:00', $D['r'] === 'all' ? '' : $D['to'] . ' 23:59:59');   // orders in Trash: their bottles still count here
+  foreach ([...$sq->fetchAll(), ...$trashed] as $o) foreach ((array)json_decode((string)$o['items'], true) as $l) { if (!is_array($l) || !empty($l['free']) || ($n = max(0, (int)($l['qty'] ?? 0))) < 1) continue; $id = (string)($l['id'] ?? ''); $op = (string)($l['opt'] ?? ''); $sold[$id]['n'] = ($sold[$id]['n'] ?? 0) + $n; $sold[$id]['s'][$op] = ($sold[$id]['s'][$op] ?? 0) + $n; $soldAll += $n; }
   foreach ($sold as &$x) ksort($x['s'], SORT_NUMERIC); unset($x); uasort($sold, fn($a, $b) => $b['n'] <=> $a['n']); $top = array_key_first($sold);
   $body .= '<div class="row"><form class="row sp" method="get"><input type="hidden" name="tab" value="products"><input type="search" name="q" value="' . h($qq) . '" placeholder="Find a product" style="max-width:280px"></form>'
     /* Customers bought together on the product page: % or ₹ off (one of the two) one of each of two different products in the bag (shop_together) */
