@@ -604,19 +604,19 @@ function shop_import_json_orders(): void {
   }
 }
 
-/* "612 people bought this year" (product page, STORE_LIVE.sold): different customers who really bought each product since 1 January, from real orders only
+/* "612 people bought this week" (product page, STORE_LIVE.sold): different customers who really bought each product in the last 7 days, from real orders only
    (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with 500 or more, with the real number; below 500 nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => 612, …]]
-  $who = []; $year = date('Y') . '-01-01 00:00:00';
+  $who = []; $year = date('Y-m-d H:i:s', time() - 7 * 86400);   // the last 7 days
   foreach (shop_db()->query("SELECT items, phone, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')") as $r) {
     $p10 = substr(preg_replace('/\D/', '', (string)$r['phone']), -10);
     foreach ((array)json_decode((string)$r['items'], true) as $l) {
       $id = is_array($l) ? (string)($l['id'] ?? '') : '';
       if ($id === '' || !empty($l['free']) || !preg_match('/^[a-z0-9-]{1,48}$/', $id)) continue;
-      if ($p10 !== '' && $r['created'] >= $year) $who[$id][$p10] = true;   // "612 people bought this year": different customers (mobile number) since 1 January
+      if ($p10 !== '' && $r['created'] >= $year) $who[$id][$p10] = true;   // "612 people bought this week": different customers (mobile number) in the last 7 days
     }
   }
   $out = [];
-  foreach ($who as $id => $m) if (($c = count($m)) >= 500) $out[$id] = $c;   // the real number, from 500 up ("612 people bought this year")
+  foreach ($who as $id => $m) if (($c = count($m)) >= 500) $out[$id] = $c;   // the real number, from 500 up ("612 people bought this week")
   return ['sold' => $out];
 }
