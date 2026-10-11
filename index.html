@@ -4974,16 +4974,12 @@ function tyMore(){
 /* ============================ ROUTER ============================ */
 let heroTimer, homeGridTimer;
 /* back and forward return to the spot the shopper left on that page (each history step gets a key; its scroll is kept for the visit) */
-/* a reload starts again on the home page, at the very top (phone and laptop). Pages opened from a link still open that page
-   (a product address, a WhatsApp bag or review link, a payment return), and a reload on checkout, an order or review page stays there. */
 try { history.scrollRestoration = 'manual'; } catch(e) {}
-(() => { let t = ''; try { t = performance.getEntriesByType('navigation')[0].type; } catch(e) {}
-  let keep = false; try { keep = sessionStorage.getItem('fx_keep_page') === '1'; sessionStorage.removeItem('fx_keep_page'); } catch(e) {}   // the language switch reloads on purpose
-  if (t !== 'reload') return;
-  const stay = keep || /^#\/(checkout|order-confirmed|thank-you|review|owner)\b/.test(location.hash);
-  try { history.replaceState(null, '', stay ? location.href : '/' + location.search); } catch(e) {} })();
 const SCROLLS = (() => { try { return JSON.parse(sessionStorage.getItem('fx_scroll') || '{}'); } catch(e) { return {}; } })();
 let shownKey = null;
+/* a reload stays on the same page and at the same spot: the spot is also saved when the page is left or hidden */
+const keepSpot = () => { if (!shownKey) return; SCROLLS[shownKey] = Math.round(scrollY); try { sessionStorage.setItem('fx_scroll', JSON.stringify(SCROLLS)); } catch(e) {} };
+addEventListener('pagehide', keepSpot); document.addEventListener('visibilitychange', () => { if (document.hidden) keepSpot(); });
 function stepKey(){ const st = history.state; if (st && st.fk) return [st.fk, true];
   const fk = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); try { history.replaceState({...(st || {}), fk}, ''); } catch(e) {} return [fk, false]; }
 function route(){
@@ -5028,7 +5024,8 @@ function route(){
   window.scrollTo({top: 0, left: 0, behavior: 'instant'});
   after && after();
   bindCommon();
-  if (backTo) { const go = () => window.scrollTo({top: backTo, left: 0, behavior: 'instant'}); go(); requestAnimationFrame(go); }
+  if (backTo) { let left = 50, moved = false; const stop = () => { moved = true; }; ['wheel', 'touchstart', 'keydown'].forEach(k => addEventListener(k, stop, {once: true, passive: true}));
+    const go = () => { if (moved || shownKey !== key) return; window.scrollTo({top: backTo, left: 0, behavior: 'instant'}); if (Math.abs(scrollY - backTo) > 2 && --left > 0) setTimeout(go, 100); }; go(); }   // tries again while pictures load and the page grows, up to 5s or until the shopper scrolls
 }
 /* shop videos (fomaxo.in/admin → Products → Videos): a row of short upright videos on the home page; tapping one opens it full screen
    with its product's sizes, Add To Cart and Buy Now, and a swipe up or down goes to the next video. Videos of hidden products are left out.
