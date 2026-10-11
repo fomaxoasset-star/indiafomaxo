@@ -217,6 +217,8 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:1100px){.grid,.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.grid,.grid.four{grid-template-columns:minmax(0,1fr)}}
+/* product page "You may also like": every product; on phone a sideways swipe row so the page stays short */
+@media(max-width:600px){.grid.four.also-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:4px;gap:18px}.grid.four.also-row::-webkit-scrollbar{display:none}.grid.four.also-row>.card{flex:0 0 80%;scroll-snap-align:start;height:auto;min-width:0}}
 .card{display:flex;flex-direction:column;gap:18px;height:100%}
 .card .acts{margin-top:auto}
 .card .media{position:relative;display:block;aspect-ratio:4/5;overflow:hidden;background:var(--panel);border:1px solid var(--line);transition:border-color .7s}
@@ -2991,6 +2993,15 @@ const HOME_ALL = (f='all') => {
 };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 /* products switched off on Admin → Products (the ring dot) are left out everywhere: shown(id) = the product exists and is not hidden */
+/* "You may also like" order (AJAY 2026-10-11: all products, ordered by previous customer orders): first the products most often bought in the same order as this one,
+   then the best sellers, then the rest in a random order that changes each visit (out of stock last). LIVE.also comes from api/live.php (only the order, no numbers). */
+const ALSO = LIVE.also || {}, ALSO_RND = {};
+function alsoOrder(id, pool){
+  const rank = {}, add = l => (l || []).forEach(x => { if (!(x in rank)) rank[x] = Object.keys(rank).length; });
+  add((ALSO.pairs || {})[id]); add(ALSO.top);
+  const r = x => x.id in rank ? rank[x.id] : 1e4 + (ALSO_RND[x.id] ??= Math.random());
+  return pool.filter((x, i, a) => x.id !== id && a.indexOf(x) === i).sort((a, b) => isOut(a) - isOut(b) || r(a) - r(b));   // out of stock at the end
+}
 const HID = LIVE.hidden || [];
 const shown = id => !!(P[id] && !HID.includes(id));
 const hidImg = k => HID.some(id => ('-' + k + '-').includes('-' + id + '-'));   // a photo named after a hidden product (oldmoney-10-1, king-collection, car-drivenoir)
@@ -3453,7 +3464,7 @@ function product(id, q){
     : isSet
     ? [[ICON.drop,'Try before you buy'],[ICON.travel,'Pocket-friendly, ideal for travel'],[ICON.gift,'Luxury mini-box, ready to gift'],[ICON.truck,'Free delivery across India']]
     : [[ICON.lasting,'Smart Scent Technology for lasting wear'],[ICON.gift,'Premium packaging, ready to gift'],[ICON.drop,'Concentrated Fragrance Oils'],[ICON.truck,'Free delivery across India']];
-  const related = isCar ? [...CAR.filter(x => x.id !== p.id), ...FRAG].slice(0, 4) : isCare ? PC.filter(x => x.id !== p.id).sort((a, b) => (b.cat === p.cat) - (a.cat === p.cat)).slice(0, 4) : FRAG.filter(x => x.id !== p.id).slice(0, 4);
+  const related = alsoOrder(p.id, isCar ? [...CAR, ...FRAG] : isCare ? PC : S.products.filter(x => !x.kind || x.kind === 'set'));   // all of them except this one, ordered by real orders (alsoOrder)
   const ship = S.shipping.length ? S.shipping.map(s => `<p>${esc(s)}</p>`).join('') : `<p class="ph">Add your delivery &amp; returns information in assets/data.js.</p>`;
   document.title = `${p.kind === 'care' ? p.name : p.name + ' ' + String(p.family || '').split(' · ')[0]} — FOMAXO`;   // as on its /fomaxo-<name> address for Google (api/seo.php)
   const wide = matchMedia('(min-width: 961px)').matches;   /* laptop: every section starts closed so the page fits one screen */
@@ -3513,7 +3524,7 @@ function product(id, q){
 
     <section style="padding:80px 0 120px;border-top:1px solid var(--line)">
       <div class="sec-head"><div class="t rv-up"><span class="eyebrow">You may also like</span><h2>Complete your <em class="metal">collection</em></h2></div></div>
-      <div class="grid four${isCare ? ' pc-grid' : ''}">${related.map((r,i) => isCare ? pcCard(r, i) : card(r, {d:'d'+i})).join('')}</div>
+      <div class="grid four${isCare ? ' pc-grid' : ' also-row'}" id="alsoRow">${related.map((r,i) => isCare ? pcCard(r, i) : card(r, {d:'d'+i})).join('')}</div>
     </section>
   </div>`;
 }

@@ -633,6 +633,22 @@ function shop_import_json_orders(): void {
   }
 }
 
+/* "You may also like" order (product page, STORE_LIVE.also, AJAY 2026-10-11): per product, the other products most often in the same real order,
+   and every product by how many real orders it was in. Only the order is sent, never the counts; the website fills the rest at random. */
+function shop_also(): array {   // ['pairs' => [id => [id, …]], 'top' => [id, …]]
+  $pair = []; $top = [];
+  foreach (shop_db()->query("SELECT items FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered') ORDER BY id DESC LIMIT 3000") as $r) {
+    $ids = [];
+    foreach ((array)json_decode((string)$r['items'], true) as $l) { $id = is_array($l) ? (string)($l['id'] ?? '') : ''; if ($id !== '' && empty($l['free']) && preg_match('/^[a-z0-9-]{1,48}$/', $id)) $ids[$id] = true; }
+    $ids = array_keys($ids);
+    foreach ($ids as $a) { $top[$a] = ($top[$a] ?? 0) + 1; foreach ($ids as $b) if ($a !== $b) $pair[$a][$b] = ($pair[$a][$b] ?? 0) + 1; }
+  }
+  $out = [];
+  foreach ($pair as $a => $m) { arsort($m); $out[$a] = array_keys($m); }
+  arsort($top);
+  return ['pairs' => (object)$out, 'top' => array_keys($top)];
+}
+
 /* "14 purchased this week" (product page, STORE_LIVE.sold): bottles of each product really bought in the last 7 days, the same number as Admin → Products → Sold → 7 days, from real orders only
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
