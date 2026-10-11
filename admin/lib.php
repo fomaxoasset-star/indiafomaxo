@@ -43,7 +43,8 @@ function date_box(string $name, string $ymd, string $label = '', bool $required 
 const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
   'sales' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all'],
   'rvreq' => [['today', 'd7', 'd30', 'all'], 'all'],   // Review requests (on the Orders tab): by order date
-  'refill' => [['today', 'd7', 'd30', 'all'], 'all']];   // Refill reminders (on the Orders tab): by reminder day (order date + Days after order)
+  'refill' => [['today', 'd7', 'd30', 'all'], 'all'],   // Refill reminders (on the Orders tab): by reminder day (order date + Days after order)
+  'products' => [['today', 'd7', 'd30', 'all'], 'd30']];   // Products: bottles sold per product, by order date
 const DATE_PRESETS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
 /* the first and last day of a quick button ('' for All); Year is the last 12 months */
 function preset_span(string $r): array {
