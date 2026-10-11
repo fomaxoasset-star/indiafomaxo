@@ -1608,6 +1608,7 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .pc-type{font-family:var(--hfont);font-weight:500;font-size:clamp(16px,1.2vw,19px);line-height:1.3;letter-spacing:.02em;color:var(--gold);text-wrap:balance}
 .pcard h3 a:hover .pc-name{color:var(--ivory)}
 .price-rate{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.pd-sold{display:flex;align-items:center;gap:8px;margin:0;font-size:12.5px;letter-spacing:.06em}.pd-sold:empty{display:none}.pd-sold svg{width:15px;height:15px;color:var(--gold);flex:none}.pd-best{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#1a1408;background:linear-gradient(135deg,#e7c873,#b8862f);padding:5px 9px;line-height:1;flex:none}   /* Bestseller: real orders only */
 .p-rate{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
 .p-rate-stars{color:var(--gold);font-size:22px;letter-spacing:.1em;line-height:1}
 .p-rate-stars i{font-style:normal;opacity:.3}
@@ -3017,6 +3018,9 @@ const starsHTML = p => { const r = Math.round(p.rating || 0), n = p.reviews || 0
 const emblem = (cls='em') => `<svg class="${cls}" aria-hidden="true"><use href="#emblem"/></svg>`;
 const wordmark = (cls='') => `<svg class="${cls}" viewBox="0 0 3196 481" role="img" aria-label="FOMAXO"><use href="#wordmark"/></svg>`;
 const defaultSize = p => { const d = p.kind === 'set' ? p.sizes[0] : p.sizes.includes(50) ? 50 : p.sizes[p.sizes.length-1]; return sizeOut(p, d) ? (p.sizes.find(s => !sizeOut(p, s)) ?? d) : d; };
+/* "Bestseller" / "1000+ bought in the past month" (STORE_LIVE.best / .sold, api/live.php): from real orders of the last 30 days only, never a made-up number */
+const soldHTML = id => { const n = +((LIVE.sold || {})[id]) || 0;
+  return n > 0 ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>${n}+ bought in the past month</span>` : id === LIVE.best ? '<span class="pd-best">Bestseller</span><span>Our most bought this month</span>' : ''; };
 const ICON = {
   truck:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h12v10H2zM14 10h4l4 3v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
   lasting:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -3439,6 +3443,7 @@ function product(id, q){
           <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a>` : esc(CAT_NAME[catOf(p)])}</span>
           <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
+          <p class="pd-sold">${soldHTML(p.id)}</p>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
           <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>${offerLine(p, 'box')}
           <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p><div class="stk-row pstk-del">${stockTag(p, size, true)}</div></div>
