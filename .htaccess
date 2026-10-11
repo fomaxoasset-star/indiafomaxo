@@ -7,6 +7,9 @@
   Require all denied
 </FilesMatch>
 
+# video shrink helper (admin): the converter file must be served as WebAssembly
+AddType application/wasm .wasm
+
 # Send text files compressed.
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/javascript application/json image/svg+xml
