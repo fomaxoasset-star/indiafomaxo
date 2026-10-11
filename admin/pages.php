@@ -167,7 +167,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Trash: orders closed with the ✕ on Orders, newest closed first. Put back (one, or the ticked ones) returns an order as it was. */
   $rows = shop_db()->query('SELECT no, closed, row_json FROM orders_trash ORDER BY closed DESC, no DESC')->fetchAll();
   $body .= '<div class="row ctop trtop"><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">‹ Back to Orders</a><h2 class="trh">Trash <span class="trn">' . count($rows) . '</span></h2></div>'
-    . '<p class="muted small trnote">Closed orders are kept here. They do not count anywhere: not in Sales, the COD and online boxes, status counts, Members, Analytics or Excel. Only the order number stays used, so no new order gets it. Put back returns an order as it was.</p>';
+    . '<p class="muted small trnote">Closed orders are kept here. They leave every list, money total, Analytics and Excel. They still count in the number of orders (Sales, Home, the COD and online boxes, Members), and their order number is never given again. Put back returns an order as it was.</p>';
   $body .= '<form method="post" class="box fill trform">' . $csrfField . '<input type="hidden" name="action" value="untrash">';
   if (!$rows) $body .= '<div class="bb"><p class="empty">Trash is empty.</p></div>';
   else {
@@ -782,7 +782,7 @@ if ($tab === 'analytics' && !$cv) {
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
     . '<div class="kpi"><span>Purchases</span><b>' . $A['purchases'] . '</b><small>orders</small></div>'
-    . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['purchases'] ? rupees(intdiv($A['revenue'], $A['purchases'])) . ' per order' : '&nbsp;') . '</small></div></div>';
+    . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['paid_orders'] ? rupees(intdiv($A['revenue'], $A['paid_orders'])) . ' per order' : '&nbsp;') . '</small></div></div>';
   $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'countries' => 'Countries', 'states' => 'States', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
   /* funnel */
   $body .= '<div class="box p-funnel on" data-pane="funnel"><div class="bh"><h3>From visit to purchase</h3></div><div class="bb"><div class="fun">';

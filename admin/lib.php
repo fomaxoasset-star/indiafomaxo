@@ -245,10 +245,22 @@ function order_where(array $F): array {
   }
   return [' WHERE ' . implode(' AND ', $w), $a];
 }
-/* sales: orders marked New, Paid or Delivered (not cancelled, not unfinished payments, not Razorpay test orders), by order date */
+/* Orders in Trash that were sales (New, Paid or Delivered, not test) when closed, as their saved orders rows, placed between $from and $to ('Y-m-d H:i:s', '' = any),
+   for one method ('' = both). They still count in the number of orders (AJAY, 2026-10-11) but never in money, lists or anything else. */
+function trash_sales(string $from = '', string $to = '', string $method = ''): array {
+  static $all = null;
+  if ($all === null) {
+    $all = [];
+    foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN " . SALE_STATUSES) as $t)
+      if (is_array($o = json_decode((string)$t['row_json'], true)) && !(int)($o['test'] ?? 0)) $all[] = $o;
+  }
+  return array_values(array_filter($all, fn($o) => ($from === '' || $o['created'] >= $from) && ($to === '' || $o['created'] <= $to) && ($method === '' || $o['method'] === $method)));
+}
+/* sales: orders marked New, Paid or Delivered (not cancelled, not unfinished payments, not Razorpay test orders), by order date.
+   [number of orders (Trash included), money (Trash left out), number of orders without Trash] */
 function sales_between(string $from, string $to): array {
   $s = shop_db()->prepare("SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 AND created >= ? AND created <= ?");
-  $s->execute([$from, $to]); $r = $s->fetch(); return [(int)$r['n'], (int)$r['t']];
+  $s->execute([$from, $to]); $r = $s->fetch(); return [(int)$r['n'] + count(trash_sales($from, $to)), (int)$r['t'], (int)$r['n']];
 }
 
 /* the Orders boxes and state row: the same filters, without cancelled orders, unfinished payments or test payments */
@@ -257,6 +269,11 @@ function order_summary(array $F): array {
   $s = shop_db()->prepare("SELECT method, COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders$where$x GROUP BY method"); $s->execute($args);
   $out = ['cod' => [0, 0], 'online' => [0, 0], 'states' => []];
   foreach ($s as $r) $out[$r['method']] = [(int)$r['n'], (int)$r['t']];
+  /* orders in Trash still count in the number of orders (not the money), when only dates or a method are picked */
+  if ($F['q'] === '' && $F['status'] === '' && ($F['state'] ?? '') === '' && ($F['coupon'] ?? '') === '') {
+    $day = fn($k, $t) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($F[$k] ?? '')) ? $F[$k] . $t : '';
+    foreach (['cod', 'online'] as $mt) if (($F['method'] ?? '') === '' || $F['method'] === $mt) $out[$mt][0] += count(trash_sales($day('from', ' 00:00:00'), $day('to', ' 23:59:59'), $mt));
+  }
   [$where, $args] = order_where(['state' => ''] + $F);
   $s = shop_db()->prepare("SELECT state, COUNT(*) n FROM orders$where$x AND state <> '' GROUP BY state ORDER BY n DESC, state"); $s->execute($args);
   foreach ($s as $r) $out['states'][$r['state']] = (int)$r['n'];
@@ -592,14 +609,16 @@ function members(int $min, int $spend, string $q = '', string $from = '', string
     $m['name'] = $o['name']; $m['email'] = $o['email'] ?: ($m['email'] ?? ''); $m['address'] = $o['address']; $m['state'] = $o['state'];
     $m['orders'][] = $o; unset($m);
   }
+  foreach (trash_sales($from !== '' ? "$from 00:00:00" : '', $from !== '' ? "$to 23:59:59" : '') as $o)
+    if (isset($M[$k = customer_key($o)[0]])) $M[$k]['trashed'] = ($M[$k]['trashed'] ?? 0) + 1;
   $q = strtolower(trim($q)); $qd = preg_replace('/\D/', '', $q);
   $out = [];
   foreach ($M as $m) {
     $spent = array_sum(array_map(fn($o) => (int)$o['total'], $m['orders']));
-    if (count($m['orders']) < $min && !($spend > 0 && $spent >= $spend * 100)) continue;
+    if (count($m['orders']) + ($m['trashed'] ?? 0) < $min && !($spend > 0 && $spent >= $spend * 100)) continue;
     if ($q !== '' && !str_contains(strtolower($m['name'] . ' ' . $m['email']), $q) && !(strlen($qd) >= 4 && str_contains($m['phone'], $qd))) continue;
-    $m['count'] = count($m['orders']); $m['spent'] = $spent;
-    $m['avg'] = intdiv($m['spent'], $m['count']); $m['first'] = $m['orders'][0]['created']; $m['last'] = end($m['orders'])['created'];
+    $m['count'] = count($m['orders']) + ($m['trashed'] ?? 0); $m['spent'] = $spent;   // orders in Trash count in the number of orders only
+    $m['avg'] = intdiv($m['spent'], count($m['orders'])); $m['first'] = $m['orders'][0]['created']; $m['last'] = end($m['orders'])['created'];
     $out[] = $m;
   }
   usort($out, fn($a, $b) => $b['spent'] <=> $a['spent'] ?: $b['count'] <=> $a['count']);
@@ -618,7 +637,8 @@ function customer(string $key): ?array {
   $sales = array_values(array_filter($all, fn($o) => in_array($o['status'], ['new', 'paid', 'delivered'], true)));
   $last = end($all); $c = ['key' => $key, 'phone' => customer_key($last)[1], 'name' => $last['name'], 'email' => '', 'address' => $last['address'], 'state' => $last['state'], 'all' => array_reverse($all)];
   foreach ($all as $o) if ($o['email'] !== '') $c['email'] = $o['email'];
-  $c['count'] = count($sales); $c['spent'] = array_sum(array_map(fn($o) => (int)$o['total'], $sales)); $c['avg'] = $c['count'] ? intdiv($c['spent'], $c['count']) : 0;
+  $c['spent'] = array_sum(array_map(fn($o) => (int)$o['total'], $sales)); $c['avg'] = $sales ? intdiv($c['spent'], count($sales)) : 0;
+  $c['count'] = count($sales) + count(array_filter(trash_sales(), fn($o) => customer_key($o)[0] === $key));   // orders in Trash count in the number of orders only
   $c['first'] = $sales ? $sales[0]['created'] : ''; $c['last'] = $sales ? end($sales)['created'] : '';
   $c['cancelled'] = count(array_filter($all, fn($o) => $o['status'] === 'cancelled'));
   $c['reviews'] = reviews_list(['tokens' => array_values(array_filter(array_column($all, 'review'))), 'phone' => $c['phone']]);
@@ -737,6 +757,7 @@ function report_rows(string $from, string $to, string $unit = 'M'): array {
       if ($c === null) $m[$k]['nocost'] += $q; else $m[$k]['cost'] += (int)$c * $q;
     }
   }
+  foreach (trash_sales("$from 00:00:00", "$to 23:59:59") as $o) if (isset($m[$k = substr($o['created'], 0, $len)])) $m[$k]['orders']++;   // Trash: in the number of orders only
   $e = shop_db()->prepare('SELECT day, amount FROM expenses WHERE day >= ? AND day <= ?'); $e->execute([$from, $to]);
   foreach ($e as $x) { $k = substr($x['day'], 0, $len); if (isset($m[$k])) $m[$k]['expenses'] += (int)$x['amount']; }
   foreach ($m as &$r) { $r['fees'] = (int)round($r['online'] * $pct / 100); $r['gross'] = $r['sales'] - $r['fees'] - $r['cost']; $r['net'] = $r['gross'] - $r['expenses']; } unset($r);
@@ -778,7 +799,7 @@ function analytics(string $from, string $to, array $CAT): array {
   $out['sources'] = [];
   foreach ($q('SELECT source, COUNT(DISTINCT vid) v, COUNT(DISTINCT sid) n FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ? GROUP BY source ORDER BY v DESC, n DESC', $a) as $r) $out['sources'][$r['source']] = ['visitors' => (int)$r['v'], 'visits' => (int)$r['n'], 'bought' => 0];
   foreach ($q('SELECT source, COUNT(DISTINCT sid) n FROM events WHERE type = \'buy\' AND ts >= ? AND ts <= ? GROUP BY source', $a) as $r) if (isset($out['sources'][$r['source']])) $out['sources'][$r['source']]['bought'] = (int)$r['n'];
-  [$out['purchases'], $out['revenue']] = sales_between(...$a);
+  [$out['purchases'], $out['revenue'], $out['paid_orders']] = sales_between(...$a);
   $f = $out['funnel'];
   $out['conversion'] = $f['view'] ? $f['buy'] / $f['view'] * 100 : null;
   $out['cart_ab'] = $f['add'] ? max(0, 1 - $f['buy'] / $f['add']) * 100 : null;
