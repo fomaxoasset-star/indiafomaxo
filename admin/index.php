@@ -250,6 +250,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $ok = count($new) === count($vids); if ($ok) shop_videos_save($new);
       header('Content-Type: application/json'); header('Cache-Control: no-store'); echo json_encode(['ok' => $ok, 'msg' => $ok ? 'Order saved' : 'Not saved, try again']); exit;
     }
+    if ($a === 'vid_prev') {   // the small preview for the home page row (made in the browser by vshrink.js): 640px, no sound, first seconds only. The full video loads only when the player opens
+      header('Content-Type: application/json'); header('Cache-Control: no-store'); $f = $_FILES['prev'] ?? null; $ok = false;
+      if ($at !== false && empty($vids[$at]['embed']) && preg_match('~^([a-z0-9-]+-[a-f0-9]{8})\.(mp4|mov|webm)$~', (string)($vids[$at]['file'] ?? ''), $m) && $f && ($f['error'] ?? 1) === UPLOAD_ERR_OK && $f['size'] > 0 && $f['size'] <= 3 * 1048576
+        && is_uploaded_file($f['tmp_name']) && function_exists('finfo_open') && finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) === 'video/mp4') {
+        $pv = "$m[1]-p.mp4"; $to = video_dir() . "/$pv";
+        if ($ok = move_uploaded_file($f['tmp_name'], $to)) { @chmod($to, 0644); $vids[$at]['prev'] = $pv; shop_videos_save($vids); }
+      }
+      exit(json_encode(['ok' => $ok ? 1 : 0]));
+    }
     if ($at === false) go($vb, '!That video was not found. Please try again.');
     if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
     elseif ($a === 'vid_shape') { if (($_POST['shape'] ?? '') === '169') $vids[$at]['wide'] = true; else unset($vids[$at]['wide']); $msg = 'Shape saved: ' . (!empty($vids[$at]['wide']) ? '16:9 wide.' : '9:16 upright.'); }
@@ -267,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $v = $vids[$at]; array_splice($vids, $at, 1);
       if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
       if ((string)$v['file'] !== '') @unlink(video_dir() . '/' . basename((string)$v['file']));
+      if ((string)($v['prev'] ?? '') !== '') @unlink(video_dir() . '/' . basename((string)$v['prev']));
       if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) @unlink("$PRIV/product-images/$m[1]");
       $msg = 'Video deleted.';
     } else go($vb, '!Please try again.');
