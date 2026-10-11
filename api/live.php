@@ -46,6 +46,7 @@ try {
   if ($tg = fomaxo_together_pct()) $live['together'] = $tg;   // Customers bought together: % off one of each of two products (Admin → Products)
   if ($tr = fomaxo_together_rs()) $live['togetherRs'] = $tr;   // … and / or ₹ off each pair
   try { $sm = shop_sold_month(); if ($sm['sold']) $live['sold'] = $sm['sold']; } catch (Throwable $e) {}   // "X purchased this week" on the product page, real orders only
+  try { $live['also'] = shop_also(); } catch (Throwable $e) {}   // "You may also like" order on the product page, from real orders
   if (!shop_together()['on']) $live['fbtOff'] = 1;   // its On / Off switch: Off hides the box on every product page
   echo 'window.STORE_LIVE = ' . json_encode($live, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ";\n";
 } catch (Throwable $e) {
