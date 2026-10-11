@@ -137,6 +137,7 @@ img{display:block;max-width:100%}
 .metal{background:var(--metal);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheen 10s ease-in-out infinite}
 #cart:not(.seen) img{display:none}/* the bag's photos load the first time it opens, not with every page */
 #app:empty{min-height:100vh}/* until the page is drawn, the footer waits below the screen instead of jumping down */
+html:not(.scroll-back) body.home .page-fade>section.sec:not(.vid-sec),html:not(.scroll-back) body.home .page-fade>section.again-home,html:not(.scroll-back) body>footer{content-visibility:auto;contain-intrinsic-size:auto 900px}/* home sections lower down are only laid out and drawn as they come near the screen: much less work for a phone while the page opens (not when Back returns to a scrolled spot, which needs the real heights) */
 .metal.still,.rings.still i{animation-play-state:paused}/* off screen: the sheen and the pulsing rings wait (bindCommon) */
 @keyframes sheen{0%,100%{background-position:0 0}50%{background-position:100% 0}}
 .eyebrow{font-size:11px;font-weight:400;letter-spacing:.42em;text-transform:uppercase;color:var(--gold)}
@@ -2741,6 +2742,11 @@ const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const app = $('#app');
 const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=9`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
+/* product photos that also have a 600px wide copy (<name>-s.webp, about half the data), with the full photo's width: shop cards, video covers and
+   small pictures use the copy whenever it is sharp enough for the screen (most phones and laptops). A new photo without a copy simply uses the full one */
+const SMALL = {'dollar-1': 688, 'gold-1': 688, 'king-1': 688, 'matchacoco-10-1': 688, 'matchacoco-50-main': 688, 'oldmoney-10-1': 688, 'oldmoney-50-main': 1100, 'passionsin-1': 688, 'passionsin-10-1': 688, 'royalcandy-10-1': 688, 'royalcandy-50-main': 688};
+const IMGC = (k, w) => SMALL[k] && w * (window.devicePixelRatio || 1) <= 640 ? IMG(k + '-s') : IMG(k);   // w = how wide it shows, in CSS px
+const CARD_W = () => innerWidth <= 1100 ? innerWidth / 2 : 330;   // a shop card's photo: two across up to 1100px, four across above
 /* changes made on the admin page (fomaxo.in/admin): hidden products, new prices, added products, stock */
 const LIVE = window.STORE_LIVE || {};
 /* pages turned off on Admin → Settings → Site pages (STORE_LIVE.pagesOff): they leave the menus and the footer, and their address opens the home page */
@@ -4057,7 +4063,7 @@ function pcCard(p, i=0, o={}){
   return `<article class="pcard${o.noRv ? '' : ' rv-up d' + (i % 4)}" data-pc="${p.id}">
     <a class="pc-img" href="${href}" aria-label="${esc(p.name)}">
       <span class="pc-badges">${pcBadges(p, isSet ? p.sizes[0] : size)}</span>
-      <img src="${IMG(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, size))}" alt="FOMAXO ${esc(p.name)}" loading="lazy">
+      <img src="${IMGC(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, size), CARD_W())}" alt="FOMAXO ${esc(p.name)}" loading="lazy">
     </a>
     <div class="pc-info">
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
@@ -4096,7 +4102,7 @@ app.addEventListener('click', e => {
   $$('.pc-size', c).forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
   $('.pc-price', c).innerHTML = priceHTML(p, s);
   $('.pc-badges', c).innerHTML = pcBadges(p, s);
-  const im = $('.pc-img img', c), src = IMG(imgFor(p, s)); if (im.getAttribute('src') !== src) im.src = src;
+  const im = $('.pc-img img', c), src = IMGC(imgFor(p, s), CARD_W()); if (im.getAttribute('src') !== src) im.src = src;
   $$('[data-pcadd],[data-pcbuy]', c).forEach(x => x.dataset.opt = s);
   const st = $('[data-stk]', c); if (st) st.innerHTML = stockTag(p, s);
   const out = sizeOut(p, s), pa = $('[data-pcadd]', c), pb = $('[data-pcbuy]', c);
@@ -4967,6 +4973,7 @@ function route(){
   if (seg[0] === 'checkout' && coLines(q).length) { TRK.send('checkout'); ADS.checkout(coLines(q)); }
   if (seg[0] === 'checkout') $('#toast').classList.remove('show');
   document.body.classList.toggle('home', !seg[0]);
+  document.documentElement.classList.toggle('scroll-back', !!backTo);
   app.innerHTML = `<div class="page-fade"${/^(checkout|thank-you|review|owner|contact|partnership)$/.test(seg[0]) ? ' data-clarity-mask="true"' : ''}>${html}</div>`;   // typed and shown customer details stay hidden in Clarity recordings
   const navKey = seg[0] === 'collections' && seg[1] === 'name' ? 'gift' : seg[0];
   $$('#menu a').forEach(a => a.classList.toggle('on', a.dataset.r === navKey || (seg[0] === 'product' && a.dataset.r === (P[seg[1]] && P[seg[1]].kind === 'care' ? 'personal-care' : 'fragrances'))));
@@ -4991,21 +4998,24 @@ const VI = {
   up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 15l6-6 6 6"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 9l6 6 6-6"/></svg>'
 };
-const vidPoster = v => { const p = P[vidProds(v)[0]]; return v.c ? IMG(v.c) : p ? IMG(imgFor(p, defaultSize(p))) : ''; };
+const vidPoster = (v, w = 9999) => { const p = P[vidProds(v)[0]]; return v.c ? IMG(v.c) : p ? IMGC(imgFor(p, defaultSize(p)), w) : ''; };   // w = how wide it shows: a row tile gets the light copy of the product photo
+const VT_W = v => (innerWidth <= 600 ? innerWidth * .4 : 230) * (v.wd ? 2 : 1);   // a row tile's width (see .vt)
 function vidSecHTML(){
   const l = vids(); if (!l.length) return '';
   return `<div class="wrap">${secHead('Watch &amp; shop', 'Shop the <em class="metal">video</em>').replace(/<\/div>$/, '<span class="recs-nav vr-nav" hidden><button type="button" data-vscroll="-1" aria-label="Previous videos">‹</button><button type="button" data-vscroll="1" aria-label="More videos">›</button></span></div>')}
     <div class="vrow" id="vrow">${l.map((v, i) => { const ps = vidProds(v), p = P[ps[0]], s = p && defaultSize(p); return `<button class="vt${v.wd ? ' wide' : ''}${vidPoster(v) ? '' : ' np'}" type="button" data-vi="${i}" aria-label="${p ? esc(p.name) : v.w ? esc(v.w) : 'FOMAXO'} video">
-      ${v.e ? `<img class="vt-img" src="${vidPoster(v)}" alt="" loading="lazy">` : `<video autoplay muted playsinline loop preload="none" poster="${vidPoster(v)}" data-src="${esc(v.pv || v.v)}"></video>`}
+      ${v.e ? `<img class="vt-img" src="${vidPoster(v, VT_W(v))}" alt="" loading="lazy">` : `<video autoplay muted playsinline loop preload="none" data-poster="${vidPoster(v, VT_W(v))}" data-src="${esc(v.pv || v.v)}"></video>`}
       <span class="vt-play" aria-hidden="true">${VI.play}</span>
-      ${p ? `<span class="vt-p"><img src="${IMG(imgFor(p, s))}" alt="" loading="lazy"><span><b>${esc(p.name)}</b>${ps.length > 1 ? `<i class="vt-more">+ ${ps.length - 1} more</i>` : priceHTML(p, s)}</span></span>` : `<span class="vt-p vt-shop"><span><b>${v.w ? esc(v.w) : 'FOMAXO'}</b><i class="vt-more">Shop Now</i></span></span>`}</button>`; }).join('')}</div></div>`;
+      ${p ? `<span class="vt-p"><img src="${IMGC(imgFor(p, s), 36)}" alt="" loading="lazy"><span><b>${esc(p.name)}</b>${ps.length > 1 ? `<i class="vt-more">+ ${ps.length - 1} more</i>` : priceHTML(p, s)}</span></span>` : `<span class="vt-p vt-shop"><span><b>${v.w ? esc(v.w) : 'FOMAXO'}</b><i class="vt-more">Shop Now</i></span></span>`}</button>`; }).join('')}</div></div>`;
 }
 let vrIO = null;
 function bindVids(){
   vrIO && vrIO.disconnect(); vrIO = null;
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
   tiles.forEach(t => t.onclick = () => openReel(+t.dataset.vi));
-  tiles.forEach(t => { const v = $('video', t); if (v) v.addEventListener('playing', () => t.classList.add('playing')); });   // the videos start by themselves as the page opens (autoplay, muted, looping)
+  tiles.forEach(t => { const v = $('video', t); if (v) v.addEventListener('playing', () => t.classList.add('playing')); });
+  const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
+  if ('IntersectionObserver' in window) { const cio = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cio.disconnect(); covers(); } }, {rootMargin: '100% 0px'}); cio.observe($('#vrow')); } else covers();   // the videos start by themselves as the page opens (autoplay, muted, looping)
   const row = $('#vrow'), nav = $('.vr-nav');   // laptop: arrows when the videos are wider than the page
   if (nav) { const fit = () => { nav.hidden = row.scrollWidth <= row.clientWidth + 2; }; fit(); addEventListener('resize', fit, {passive: true}); $$('[data-vscroll]', nav).forEach(b => b.onclick = () => row.scrollBy({left: +b.dataset.vscroll * row.clientWidth * .8, behavior: 'smooth'})); }
   if (navigator.connection && navigator.connection.saveData) return;   // data saver: covers only until tapped
@@ -5030,7 +5040,7 @@ function quiet(v){   // low volume: iPhone ignores video.volume, so the sound go
 function reelCard(p){
   const s = defaultSize(p), out = sizeOut(p, s);
   return `<div class="rl-card" data-id="${p.id}" data-sel="${s}">
-      <a class="rl-pi" href="#/product/${p.id}"><img src="${IMG(imgFor(p, s))}" alt="FOMAXO ${esc(p.name)}"></a>
+      <a class="rl-pi" href="#/product/${p.id}"><img src="${IMGC(imgFor(p, s), 56)}" alt="FOMAXO ${esc(p.name)}"></a>
       <div class="rl-info"><a class="rl-n" href="#/product/${p.id}">${esc(p.name)}</a><span class="rl-f">${esc(typeOf(p) || '')}</span><span data-price>${priceHTML(p, s)}</span></div>
       ${p.sizes.length > 1 ? `<div class="rl-sz">${p.sizes.map(z => `<button type="button" class="chip${z == s ? ' on' : ''}" data-size="${z}">${optLabel(p, z)}</button>`).join('')}</div>` : ''}
       <p class="rl-stk" data-stk>${stockTag(p, s, true)}</p>
@@ -5040,7 +5050,7 @@ function reelCard(p){
 function reelSlide(v, k){
   const ps = vidProds(v).map(id => P[id]), name = ps.length ? ps[0].name : 'FOMAXO';
   return `<section class="rl-s${v.e ? ' emb' : ''}${v.wd ? ' wide' : ''}" data-k="${k}"><div class="rl-stage">
-    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video playsinline loop muted preload="none" poster="${vidPoster(v)}" data-src="${esc(v.v)}"></video>`}
+    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video playsinline loop muted preload="none" data-poster="${vidPoster(v)}" data-src="${esc(v.v)}"></video>`}
     <span class="rl-pause" aria-hidden="true">${VI.play}</span>
     ${!ps.length ? `<div class="rl-cards"><div class="rl-card rl-shop"><div class="rl-info"><span class="rl-n">${v.w ? esc(v.w) : 'FOMAXO'}</span><span class="rl-f">${v.w ? 'FOMAXO' : 'Luxury Care'}</span></div><a class="btn sm tc" href="#/fragrances">Shop Now</a></div></div>`
       : `<div class="rl-cards${ps.length > 1 ? ' many' : ''}">${ps.length > 1 ? `<p class="rl-cnt">${ps.length} products in this video · swipe</p>` : ''}<div class="rl-cs">${ps.map(reelCard).join('')}</div></div>`}
@@ -5064,9 +5074,12 @@ function openReel(i){
   const act = k => { if (k === cur) return; cur = k;
     const sb = $('.rl-snd', el); if (sb) sb.hidden = !$('video', slides[k]);   // Instagram's player has its own sound
     slides.forEach((s, n) => { const v = $('video', s);
+      if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
       if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
-      else { v.pause(); if (Math.abs(n - k) === 1 && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } } });   // the next and previous videos load now, so a swipe plays at once
+      else v.pause(); });
+    const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
+    if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
     $$('.rl-nav button', el).forEach(b => b.disabled = (+b.dataset.rl < 0 && k === 0) || (+b.dataset.rl > 0 && k === slides.length - 1));
   };
   const sio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) act(+e.target.dataset.k); }), {root: track, threshold: .6});
@@ -5088,7 +5101,7 @@ function openReel(i){
     const s = e.target.closest('.rl-card[data-id]');
     if (!s) { if (e.target.closest('a,button,.rl-cards')) return; const v = $('video', sl); if (!v) return; if (v.paused) { v.play().catch(() => {}); sl.classList.remove('paused'); } else { v.pause(); sl.classList.add('paused'); } return; }   // tap the video: pause / play
     const p = P[s.dataset.id], chip = e.target.closest('[data-size]');
-    if (chip) { const z = optOf(p, chip.dataset.size); s.dataset.sel = z; $$('.chip', s).forEach(c => c.classList.toggle('on', c === chip)); $('[data-price]', s).innerHTML = priceHTML(p, z); $('.rl-pi img', s).src = IMG(imgFor(p, z)); $('[data-stk]', s).innerHTML = stockTag(p, z, true); $$('[data-add],[data-buy]', s).forEach(b => b.disabled = sizeOut(p, z)); return; }
+    if (chip) { const z = optOf(p, chip.dataset.size); s.dataset.sel = z; $$('.chip', s).forEach(c => c.classList.toggle('on', c === chip)); $('[data-price]', s).innerHTML = priceHTML(p, z); $('.rl-pi img', s).src = IMGC(imgFor(p, z), 56); $('[data-stk]', s).innerHTML = stockTag(p, z, true); $$('[data-add],[data-buy]', s).forEach(b => b.disabled = sizeOut(p, z)); return; }
     const sel = optOf(p, s.dataset.sel);
     if (p.kind === 'set' && e.target.closest('[data-add],[data-buy]')) { location.hash = `#/product/${p.id}`; return; }   // a set needs its fragrances picked first
     const add = e.target.closest('[data-add]');
@@ -5305,7 +5318,8 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
   /* phones and tablets: wait for the next dust step with a timer, so the browser is not asked to
      redraw the whole page 60 times a second when the dust only moves 24 or 30 times (same look, much less work) */
   function next(){ if (!gap) return requestAnimationFrame(frame); setTimeout(() => requestAnimationFrame(frame), Math.max(0, gap - (performance.now() - last) - 8)); }
-  requestAnimationFrame(frame);
+  const go = () => setTimeout(() => requestAnimationFrame(frame), 400);   // the dust starts once the page has finished opening, so it never slows the first screen
+  if (document.readyState === 'complete') go(); else addEventListener('load', go, {once: true});
 })();
 
 /* premium cursor: gold dot + trailing ring */
