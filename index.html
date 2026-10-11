@@ -1598,6 +1598,8 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .pc-img{position:relative;display:block;aspect-ratio:4/5;overflow:hidden;border-radius:14px;background:var(--panel);box-shadow:0 0 0 1px var(--line),0 30px 60px -36px rgba(0,0,0,.9);transition:box-shadow .6s}
 .pc-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%;transition:transform 1.8s var(--ease)}
 .pcard:hover .pc-img img{transform:scale(1.05)}
+.pc-img img.pc-alt{opacity:0;transition:transform 1.8s var(--ease),opacity .6s ease}
+.pcard .pc-img:hover img.pc-alt{opacity:1}
 .pcard:hover .pc-img{box-shadow:0 0 0 1px var(--line-2),0 30px 60px -30px rgba(215,170,105,.35)}
 .pc-badge{position:absolute;top:0;left:0;z-index:2;background:#0b0a08;color:#f6efe2;font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:13px 18px 12px;border-bottom-right-radius:12px;box-shadow:0 0 0 1px rgba(215,170,105,.25)}
 .pc-info{display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -4055,6 +4057,10 @@ function pcBadges(p, size){
   const right = isOut(p) ? 'Out of stock' : (isNew && left !== 'New' ? 'New' : '');
   return `${left ? `<span class="pc-badge">${esc(left)}</span>` : ''}${right ? `<span class="pc-badge r${isOut(p) ? ' oos' : ''}">${esc(right)}</span>` : ''}`;
 }
+/* laptop: the mouse over a shop card shows the product's second photo, moving away brings the first back (phones skip loading it) */
+const HOVER = matchMedia('(hover:hover)').matches;
+const pcAltKey = (p, s) => p.kind === 'care' || p.kind === 'car' || p.kind === 'set' ? p.images[1] : altFor(p, s);
+const pcAlt = (p, s) => { const k = HOVER && pcAltKey(p, s); return k ? `<img class="pc-alt" src="${IMGC(k, CARD_W())}" alt="" loading="lazy">` : ''; };
 function pcCard(p, i=0, o={}){
   const isSet = p.kind === 'set';
   const multi = !o.size && p.sizes.length > 1 && !isSet;
@@ -4069,6 +4075,7 @@ function pcCard(p, i=0, o={}){
     <a class="pc-img" href="${href}" aria-label="${esc(p.name)}">
       <span class="pc-badges">${pcBadges(p, isSet ? p.sizes[0] : size)}</span>
       <img src="${IMGC(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, size), CARD_W())}" alt="FOMAXO ${esc(p.name)}" loading="lazy">
+      ${pcAlt(p, size)}
     </a>
     <div class="pc-info">
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
@@ -4108,6 +4115,7 @@ app.addEventListener('click', e => {
   $('.pc-price', c).innerHTML = priceHTML(p, s);
   $('.pc-badges', c).innerHTML = pcBadges(p, s);
   const im = $('.pc-img img', c), src = IMGC(imgFor(p, s), CARD_W()); if (im.getAttribute('src') !== src) im.src = src;
+  const al = $('.pc-img img.pc-alt', c), ak = HOVER && pcAltKey(p, s); if (al) { if (ak) { al.src = IMGC(ak, CARD_W()); al.hidden = false; } else al.hidden = true; } else if (ak) $('.pc-img', c).insertAdjacentHTML('beforeend', pcAlt(p, s));
   $$('[data-pcadd],[data-pcbuy]', c).forEach(x => x.dataset.opt = s);
   const st = $('[data-stk]', c); if (st) st.innerHTML = stockTag(p, s);
   const out = sizeOut(p, s), pa = $('[data-pcadd]', c), pb = $('[data-pcbuy]', c);
