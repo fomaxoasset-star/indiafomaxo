@@ -604,19 +604,18 @@ function shop_import_json_orders(): void {
   }
 }
 
-/* "612 people bought this week" (product page, STORE_LIVE.sold): different customers who really bought each product in the last 7 days, from real orders only
+/* "14 purchased this week" (product page, STORE_LIVE.sold): how many real orders had each product in the last 7 days (an order counts once per product), from real orders only
    (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with more than 10 (11 or more), with the real number; 10 or fewer and nothing shows. Never a made-up number. */
-function shop_sold_month(): array {   // ['sold' => [id => 612, …]]
+function shop_sold_month(): array {   // ['sold' => [id => 14, …]]
   $who = []; $year = date('Y-m-d H:i:s', time() - 7 * 86400);   // the last 7 days
-  foreach (shop_db()->query("SELECT items, phone, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')") as $r) {
-    $p10 = substr(preg_replace('/\D/', '', (string)$r['phone']), -10);
+  foreach (shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')") as $o => $r) {
     foreach ((array)json_decode((string)$r['items'], true) as $l) {
       $id = is_array($l) ? (string)($l['id'] ?? '') : '';
       if ($id === '' || !empty($l['free']) || !preg_match('/^[a-z0-9-]{1,48}$/', $id)) continue;
-      if ($p10 !== '' && $r['created'] >= $year) $who[$id][$p10] = true;   // "612 people bought this week": different customers (mobile number) in the last 7 days
+      if ($r['created'] >= $year) $who[$id][$o] = true;   // "14 purchased this week": $o is this order, so two sizes of one product in one order count once
     }
   }
   $out = [];
-  foreach ($who as $id => $m) if (($c = count($m)) > 10) $out[$id] = $c;   // the real number, from 11 up ("612 people bought this week")
+  foreach ($who as $id => $m) if (($c = count($m)) > 10) $out[$id] = $c;   // the real number of orders, from 11 up ("14 purchased this week")
   return ['sold' => $out];
 }
