@@ -657,7 +657,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<p class="muted small">Instagram reel link, or a link that opens the video itself. Not YouTube or TikTok.</p></div></form>'
     . '<form class="box vadd" method="post" enctype="multipart/form-data" data-vshrink data-max="' . $max . '">' . $csrfField . '<input type="hidden" name="action" value="vid_add">'
     . '<div class="bh"><h3>Upload from your phone</h3></div><div class="bb">'
-    . '<label>Video<input type="file" name="video" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov" required></label>'
+    . '<label>Video<input type="file" name="video" accept="video/*,.mp4,.mov,.m4v,.webm,.mkv,.avi" required></label>'
     . '<label>Cover photo (optional)<input type="file" name="cover" accept="image/*"></label>'
     . '<div class="vshape" role="radiogroup" aria-label="Video shape"><span>Shape</span><label><input type="radio" name="shape" value="916" checked><i></i>9:16 upright</label><label><input type="radio" name="shape" value="169"><i></i>16:9 wide</label></div>'
     . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Upload</button></div>'
