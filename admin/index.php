@@ -19,7 +19,7 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '104';
+const ASSET_V = '105';
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -173,6 +173,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
   $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
 
+  if ($a === 'stock_order') {   // Stocks: drag the dots in front of a row (admin.js, without reloading); only this list, the website keeps its own order
+    $keys = array_values(array_unique(array_filter(explode(',', (string)($_POST['keys'] ?? '')), fn($k) => preg_match('/^[a-z0-9-]+\|[a-z0-9]+$/i', $k)))); $ok = (bool)$keys;
+    if ($ok) shop_set('stock_order', json_encode($keys));
+    header('Content-Type: application/json'); header('Cache-Control: no-store'); echo json_encode(['ok' => $ok, 'msg' => $ok ? 'Order saved' : 'Not saved, try again']); exit;
+  }
   /* Products → Videos: shop videos on the home page, uploaded here or copied from Instagram */
   if (str_starts_with($a, 'vid_')) {
     $vb = ['tab' => 'products', 'videos' => 1]; $vids = shop_videos();

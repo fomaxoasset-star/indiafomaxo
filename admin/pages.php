@@ -540,17 +540,21 @@ if ($tab === 'stock') {
     . '<input type="search" class="grow" id="stockFind" placeholder="Find a product" aria-label="Find a product" style="max-width:320px;margin-left:auto"></div>'
     . '<form method="post" class="box fill" data-watch>' . $csrfField . '<input type="hidden" name="action" value="stock"><input type="hidden" name="low_stock" value="' . $low . '">'
     . '<div class="bb np"><table class="grid stock"><thead><tr><th>Product</th><th>Size</th><th>Stock</th><th>Cost ₹</th><th class="hide-m">On the shop</th></tr></thead><tbody>';
-  foreach ($CAT as $id => $p) {
-    foreach ($p['prices'] as $opt => $_) {
+  $lines = []; foreach ($CAT as $id => $p) foreach ($p['prices'] as $opt => $_) $lines[] = [$id, (string)$opt];
+  $at = array_flip((array)(json_decode((string)shop_setting('stock_order'), true) ?: []));   // the order dragged on this page; new sizes go at the end
+  $n0 = count($at); foreach ($lines as $i => $l) $lines[$i][2] = $at["$l[0]|$l[1]"] ?? $n0 + $i;
+  usort($lines, fn($x, $y) => $x[2] <=> $y[2]);
+  foreach ($lines as [$id, $opt]) { $p = $CAT[$id];
+    {
       $v = $STOCK[$id][$opt] ?? null; $c = $COST[$id][$opt] ?? null;
       $state = !empty($p['hidden']) ? '<span class="badge st-awaiting">Hidden</span>' : ($v === null ? ($p['soldOut'] ? '<span class="badge st-cancelled">Sold out</span>' : '<span class="muted small">Not counted</span>')
         : ($v < 1 ? '<span class="badge st-cancelled">Sold out</span>' : ($low && $v <= $low ? '<span class="badge st-new">Only ' . $v . ' left</span>' : '<span class="badge st-paid">In stock</span>')));
-      $body .= '<tr data-s="' . ($v === null ? '' : ($v < 1 ? 'out' : ($low && $v <= $low ? 'low' : ''))) . '" data-name="' . h(mb_strtolower($p['name'] . ' ' . kind_label($p['kind']))) . '"><td><div class="pc">' . $thumbOf($id, 'th sm') . '<div><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small></div></div></td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
+      $body .= '<tr data-s="' . ($v === null ? '' : ($v < 1 ? 'out' : ($low && $v <= $low ? 'low' : ''))) . '" data-k="' . h("$id|$opt") . '" data-name="' . h(mb_strtolower($p['name'] . ' ' . kind_label($p['kind']))) . '"><td><div class="pc"><span class="sdrag" title="Drag to change the order of this list" aria-hidden="true"><svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2" cy="2" r="1.6"/><circle cx="8" cy="2" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="8" cy="8" r="1.6"/><circle cx="2" cy="14" r="1.6"/><circle cx="8" cy="14" r="1.6"/></svg></span>' . $thumbOf($id, 'th sm') . '<div><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . '</small></div></div></td><td>' . h(opt_label($p, (string)$opt)) . '</td>'
         . '<td><input type="number" min="0" max="99999" name="stock[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($v === null ? '' : $v) . '" placeholder="—"></td>'
         . '<td><input type="number" min="0" step="0.01" name="cost[' . h($id) . '][' . h((string)$opt) . ']" value="' . ($c === null ? '' : h((string)round($c / 100, 2))) . '" placeholder="—"></td><td class="hide-m">' . $state . '</td></tr>';
     }
   }
-  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="unsaved" hidden>Not saved yet</span><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Sales uses it to work out your profit.</span></div></form>'
+  $body .= '</tbody></table><p class="empty" id="stockNone" hidden>No product matches.</p></div><div class="bf"><button class="btn">Save</button><span class="unsaved" hidden>Not saved yet</span><span class="muted small"><b>Stock:</b> how many bottles you have. <b>Cost:</b> what one bottle costs you; Sales uses it to work out your profit. <b>Order:</b> drag the dots on the left to move a row.</span><b class="tgok sok" aria-live="polite"></b></div></form>'
     . '<script>(function(){var f=document.getElementById("stockFind"),rows=document.querySelectorAll("table.stock tbody tr"),none=document.getElementById("stockNone"),only="",note=document.querySelector(".sonly");'
     . 'function show(){var q=f.value.trim().toLowerCase(),n=0;rows.forEach(function(r){var on=(!q||r.dataset.name.indexOf(q)>-1)&&(!only||r.dataset.s===only);r.hidden=!on;if(on)n++});none.textContent=only&&!q?(only==="low"?"Nothing is running low.":"Nothing is out of stock."):"No product matches.";none.hidden=n>0;'
     . 'document.querySelectorAll(".sbox").forEach(function(b){var on=b.dataset.only===only;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});note.hidden=!only;note.firstChild.textContent=only?"Showing only "+(only==="low"?"sizes running low.":"sizes out of stock."):""}'
