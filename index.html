@@ -3043,7 +3043,7 @@ const emblem = (cls='em') => `<svg class="${cls}" aria-hidden="true"><use href="
 const wordmark = (cls='') => `<svg class="${cls}" viewBox="0 0 3196 481" role="img" aria-label="FOMAXO"><use href="#wordmark"/></svg>`;
 const defaultSize = p => { const d = p.kind === 'set' ? p.sizes[0] : p.sizes.includes(50) ? 50 : p.sizes[p.sizes.length-1]; return sizeOut(p, d) ? (p.sizes.find(s => !sizeOut(p, s)) ?? d) : d; };
 /* "612 people bought this week" (STORE_LIVE.sold, api/live.php): from real orders only, never a made-up number */
-const soldHTML = id => { const n = +((LIVE.sold || {})[id]) || 0;
+const soldHTML = (id, sz) => { const n = +(((LIVE.sold || {})[id] || {})[sz]) || 0;   // bottles of that one size (10ml and 50ml each counted on their own)
   return n > 0 ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>${n} purchased this week</span>` : ''; };
 const ICON = {
   truck:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h12v10H2zM14 10h4l4 3v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
@@ -3469,7 +3469,7 @@ function product(id, q){
           <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a>` : esc(CAT_NAME[catOf(p)])}</span>
           <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
-          <p class="pd-sold">${soldHTML(p.id)}</p>
+          <p class="pd-sold" id="psold">${soldHTML(p.id, size)}</p>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
           <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>${offerLine(p, 'box')}
           <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p><div class="stk-row pstk-del">${stockTag(p, size, true)}</div></div>
@@ -3532,7 +3532,7 @@ function bindProduct(p){
     size = +b.dataset.s; if (isSet) { picks = picks.slice(0, size); updPicks(); } $$('#sizes button').forEach(x => x.classList.toggle('on', x === b));
     $('#sizeName').textContent = optLabel(p, size); $('#pprice').innerHTML = priceHTML(p, size, 'pprice');
     setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
-    renderMbuy(); renderFbt(p, size); fitPdp();
+    renderMbuy(); renderFbt(p, size); const ps = $('#psold'); if (ps) ps.innerHTML = soldHTML(p.id, size); fitPdp();
   });
   const stage = $('#stage');
   stage.onclick = () => stage.classList.toggle('zoom');
