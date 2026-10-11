@@ -217,8 +217,8 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:1100px){.grid,.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.grid,.grid.four{grid-template-columns:minmax(0,1fr)}}
-/* product page "You may also like": every product; on phone a sideways swipe row so the page stays short */
-@media(max-width:600px){.grid.four.also-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:4px;gap:18px}.grid.four.also-row::-webkit-scrollbar{display:none}.grid.four.also-row>.card{flex:0 0 80%;scroll-snap-align:start;height:auto;min-width:0}}
+/* product page "You may also like": every product; on phone a sideways swipe row (AJAY 2026-10-11), the price lined up with the picture: old price on its left edge, new price on its right edge */
+@media(max-width:600px){.grid.four.also-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:4px;gap:18px}.grid.four.also-row::-webkit-scrollbar{display:none}.grid.four.also-row>.card{flex:0 0 80%;scroll-snap-align:start;height:auto;min-width:0}.grid.four.also-row .row1{flex-direction:column;align-items:stretch;gap:6px}.also-row .row1 [data-price]{display:block;width:100%}.grid.four.also-row .row1 .price,.grid.four.also-row .row1 .price:has(.was){display:flex;align-items:baseline;justify-content:space-between;gap:8px;width:100%}.grid.four.also-row .row1 .price:not(:has(.was)){justify-content:flex-end}}
 .card{display:flex;flex-direction:column;gap:18px;height:100%}
 .card .acts{margin-top:auto}
 .card .media{position:relative;display:block;aspect-ratio:4/5;overflow:hidden;background:var(--panel);border:1px solid var(--line);transition:border-color .7s}
@@ -3002,6 +3002,14 @@ function alsoOrder(id, pool){
   const r = x => x.id in rank ? rank[x.id] : 1e4 + (ALSO_RND[x.id] ??= Math.random());
   return pool.filter((x, i, a) => x.id !== id && a.indexOf(x) === i).sort((a, b) => isOut(a) - isOut(b) || r(a) - r(b));   // out of stock at the end
 }
+// the bag's order: products bought together with what's in the bag (best first), then the best sellers, then a random order kept for this visit
+function bagRank(ids){
+  const rank = {}, add = l => (l || []).forEach(x => { if (!(x in rank)) rank[x] = Object.keys(rank).length; });
+  const pairs = ids.map(id => (ALSO.pairs || {})[id]).filter(Boolean);
+  for (let i = 0; pairs.some(l => l.length > i); i++) pairs.forEach(l => l[i] && add([l[i]]));
+  add(ALSO.top);
+  return id => id in rank ? rank[id] : 1e4 + (ALSO_RND[id] ??= Math.random());
+}
 const HID = LIVE.hidden || [];
 const shown = id => !!(P[id] && !HID.includes(id));
 const hidImg = k => HID.some(id => ('-' + k + '-').includes('-' + id + '-'));   // a photo named after a hidden product (oldmoney-10-1, king-collection, car-drivenoir)
@@ -3122,17 +3130,27 @@ function buyNow(lines){
   goCheckout('#/checkout');
 }
 function goCheckout(h){ closePanels(); if (location.hash === h) route(); else location.hash = h; }
-/* "You may also like" in the bag: every product on sale that is not already in the bag, sold out ones left out.
+/* "You may also like" in the bag (AJAY 2026-10-11, same as fomaxo.com): every size of every perfume the customer doesn't have in that size yet,
+   biggest size first (50ml, then 10ml minis), then the sets, car fragrance and personal care not in the bag; King last; sold out ones left out.
+   Within each group the order follows real orders (bagRank): what people bought together with this bag, then the best sellers, then random each visit.
    Sets need fragrances picked, and priced-on-request items need a size chosen, so those open their product page */
-/* each product is offered in its smallest size in stock (a 10ml mini for fragrances), cheapest first, so it is an easy add to the order */
+/* other items are offered in their smallest size in stock, so they are an easy add to the order */
 const addOnSize = p => p.kind === 'set' ? defaultSize(p) : ([...p.sizes].filter(s => hasPrice(p.prices[s]) && !sizeOut(p, s)).sort((a, b) => p.prices[a] - p.prices[b])[0] ?? defaultSize(p));
 const addOnPrice = p => { const v = p.prices[addOnSize(p)]; return hasPrice(v) ? +v : Infinity; };
-const addOns = skip => HOME_ALL().filter(p => !skip.has(p.id) && !isOut(p)).sort((a, b) => addOnPrice(a) - addOnPrice(b));
+const addOns = skip => HOME_ALL().filter(p => !skip.has(p.id) && !isOut(p)).sort((a, b) => addOnPrice(a) - addOnPrice(b));   // cheapest first (used after an order)
+function bagLikeList(){
+  const haveId = new Set(cart.map(l => l.id)), haveSz = new Set(cart.map(l => l.id + '/' + l.opt)), rank = bagRank([...haveId]), r = p => rank(p.id);
+  const frag = FRAG.filter(p => !isOut(p));
+  const sizes = [...new Set(frag.flatMap(p => p.sizes.filter(s => typeof s === 'number')))].sort((a, b) => b - a);
+  const perf = sizes.flatMap(sz => frag.filter(p => p.sizes.includes(sz) && hasPrice(p.prices[sz]) && !sizeOut(p, sz) && !haveSz.has(p.id + '/' + sz)).sort((a, b) => r(a) - r(b)).map(p => [p, sz]));
+  const rest = HOME_ALL().filter(p => p.kind && !haveId.has(p.id) && !isOut(p)).sort((a, b) => r(a) - r(b)).map(p => [p, addOnSize(p)]);
+  return [...perf, ...rest].sort((a, b) => (a[0].id === 'king') - (b[0].id === 'king'));
+}
 function bagLikeHTML(){
-  const list = addOns(new Set(cart.map(l => l.id)));
+  const list = bagLikeList();
   if (!list.length) return '';
-  return `<div class="bag-like"><h5>You may also like</h5><div class="bl-row">${list.map(p => { const s = addOnSize(p), quick = p.kind !== 'set' && hasPrice(p.prices[s]);
-    return `<div class="bl-card"><a href="#/product/${p.id}" data-close><img src="${IMG(imgFor(p, s))}" alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b></a>
+  return `<div class="bag-like"><h5>You may also like</h5><div class="bl-row">${list.map(([p, s]) => { const quick = p.kind !== 'set' && hasPrice(p.prices[s]);
+    return `<div class="bl-card"><a href="#/product/${p.id}${p.kind ? '' : '?size=' + s}" data-close><img src="${IMG(imgFor(p, s))}" alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b></a>
       <div class="bl-price">${quick ? priceHTML(p, s) : fromHTML(p)}</div>
       ${quick ? `<button type="button" class="bl-add" data-like="${p.id}" data-opt="${s}">Add${p.sizes.length > 1 ? ` · ${optLabel(p, s)}` : ''}</button>` : `<a class="bl-add" href="#/product/${p.id}" data-close>${p.kind === 'set' ? 'Choose' : 'View'}</a>`}</div>`; }).join('')}</div></div>`;
 }
