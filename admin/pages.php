@@ -167,7 +167,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Trash: orders closed with the ✕ on Orders, newest closed first. Put back (one, or the ticked ones) returns an order as it was. */
   $rows = shop_db()->query('SELECT no, closed, row_json FROM orders_trash ORDER BY closed DESC, no DESC')->fetchAll();
   $body .= '<div class="row ctop trtop"><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">‹ Back to Orders</a><h2 class="trh">Trash <span class="trn">' . count($rows) . '</span></h2></div>'
-    . '<p class="muted small trnote">Closed orders are kept here. They do not count anywhere: not in Sales, the COD and online boxes, status counts, Members or Excel. Put back returns an order as it was.</p>';
+    . '<p class="muted small trnote">Closed orders are kept here. They leave every list, money total, Analytics and Excel. They still count in the number of orders (Sales, Home, the COD and online boxes, Members), and their order number is never given again. Put back returns an order as it was.</p>';
   $body .= '<form method="post" class="box fill trform">' . $csrfField . '<input type="hidden" name="action" value="untrash">';
   if (!$rows) $body .= '<div class="bb"><p class="empty">Trash is empty.</p></div>';
   else {
@@ -672,12 +672,13 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
 } elseif ($tab === 'products') {
   $qq = trim((string)($_GET['q'] ?? ''));
   $TG = shop_together();
-  /* Sold: bottles bought per product and size in the dates picked, from real orders only (new, paid, delivered: no test, awaiting payment,
-     cancelled, refunded or trashed orders); free coupon gifts are not counted */
+  /* Sold: bottles bought per product and size in the dates picked, from real orders only (new, paid, delivered, and such orders in Trash: no test,
+     awaiting payment, cancelled or refunded orders); free coupon gifts are not counted */
   $D = pick_dates('products'); $sold = []; $soldAll = 0;
   $sq = shop_db()->prepare("SELECT items FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')" . ($D['r'] === 'all' ? '' : ' AND created >= ? AND created <= ?'));
   $sq->execute($D['r'] === 'all' ? [] : [$D['from'] . ' 00:00:00', $D['to'] . ' 23:59:59']);
-  foreach ($sq as $o) foreach ((array)json_decode((string)$o['items'], true) as $l) { if (!is_array($l) || !empty($l['free']) || ($n = max(0, (int)($l['qty'] ?? 0))) < 1) continue; $id = (string)($l['id'] ?? ''); $op = (string)($l['opt'] ?? ''); $sold[$id]['n'] = ($sold[$id]['n'] ?? 0) + $n; $sold[$id]['s'][$op] = ($sold[$id]['s'][$op] ?? 0) + $n; $soldAll += $n; }
+  $trashed = trash_sales($D['r'] === 'all' ? '' : $D['from'] . ' 00:00:00', $D['r'] === 'all' ? '' : $D['to'] . ' 23:59:59');   // orders in Trash: their bottles still count here
+  foreach ([...$sq->fetchAll(), ...$trashed] as $o) foreach ((array)json_decode((string)$o['items'], true) as $l) { if (!is_array($l) || !empty($l['free']) || ($n = max(0, (int)($l['qty'] ?? 0))) < 1) continue; $id = (string)($l['id'] ?? ''); $op = (string)($l['opt'] ?? ''); $sold[$id]['n'] = ($sold[$id]['n'] ?? 0) + $n; $sold[$id]['s'][$op] = ($sold[$id]['s'][$op] ?? 0) + $n; $soldAll += $n; }
   foreach ($sold as &$x) ksort($x['s'], SORT_NUMERIC); unset($x); uasort($sold, fn($a, $b) => $b['n'] <=> $a['n']); $top = array_key_first($sold);
   $body .= '<div class="row"><form class="row sp" method="get"><input type="hidden" name="tab" value="products"><input type="search" name="q" value="' . h($qq) . '" placeholder="Find a product" style="max-width:280px"></form>'
     /* Customers bought together on the product page: % or ₹ off (one of the two) one of each of two different products in the bag (shop_together) */
@@ -782,7 +783,7 @@ if ($tab === 'analytics' && !$cv) {
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
     . '<div class="kpi"><span>Purchases</span><b>' . $A['purchases'] . '</b><small>orders</small></div>'
-    . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['purchases'] ? rupees(intdiv($A['revenue'], $A['purchases'])) . ' per order' : '&nbsp;') . '</small></div></div>';
+    . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['paid_orders'] ? rupees(intdiv($A['revenue'], $A['paid_orders'])) . ' per order' : '&nbsp;') . '</small></div></div>';
   $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'countries' => 'Countries', 'states' => 'States', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
   /* funnel */
   $body .= '<div class="box p-funnel on" data-pane="funnel"><div class="bh"><h3>From visit to purchase</h3></div><div class="bb"><div class="fun">';
