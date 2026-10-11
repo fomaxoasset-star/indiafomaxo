@@ -217,8 +217,8 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:1100px){.grid,.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.grid,.grid.four{grid-template-columns:minmax(0,1fr)}}
-/* product page "You may also like": every product; on phone a sideways swipe row so the page stays short */
-@media(max-width:600px){.grid.four.also-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding-bottom:4px;gap:18px}.grid.four.also-row::-webkit-scrollbar{display:none}.grid.four.also-row>.card{flex:0 0 80%;scroll-snap-align:start;height:auto;min-width:0}}
+/* product page "You may also like": every product at once; on phone 2 a row with short cards (name, price, sizes, buttons) */
+@media(max-width:600px){.grid.four.also-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 12px}.also-row .desc{display:none}.also-row>.card{gap:10px}.also-row .row1{flex-direction:column;align-items:flex-start;gap:4px}.also-row .row1 h3{font-size:14px}.grid.four.also-row .acts{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px}.grid.four.also-row .acts .btn{width:100%;padding-left:6px;padding-right:6px}.grid.four.also-row .media .tag{display:none}.also-row .chips{flex-wrap:nowrap;gap:4px}.also-row .chip{padding:5px 6px;font-size:11px;letter-spacing:.04em;min-width:0}}
 .card{display:flex;flex-direction:column;gap:18px;height:100%}
 .card .acts{margin-top:auto}
 .card .media{position:relative;display:block;aspect-ratio:4/5;overflow:hidden;background:var(--panel);border:1px solid var(--line);transition:border-color .7s}
