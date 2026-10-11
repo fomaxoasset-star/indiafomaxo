@@ -632,7 +632,7 @@ function shop_import_json_orders(): void {
 }
 
 /* "14 purchased this week" (product page, STORE_LIVE.sold): bottles of each product really bought in the last 7 days, the same number as Admin → Products → Sold → 7 days, from real orders only
-   (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with 5 or more, with the real number; 4 or fewer and nothing shows. Never a made-up number. */
+   (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => 14, …]]
   $who = []; $year = date('Y-m-d', strtotime('-6 day')) . ' 00:00:00';   // the last 7 days: today and the 6 days before, like Admin → 7 days
   $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')")->fetchAll();
@@ -646,6 +646,6 @@ function shop_sold_month(): array {   // ['sold' => [id => 14, …]]
     }
   }
   $out = [];
-  foreach ($who as $id => $c) if ($c >= 5) $out[$id] = $c;   // the real number of bottles, from 5 up ("14 purchased this week")
+  foreach ($who as $id => $c) if ($c > 5) $out[$id] = $c;   // the real number of bottles, from 6 up ("14 purchased this week")
   return ['sold' => $out];
 }
