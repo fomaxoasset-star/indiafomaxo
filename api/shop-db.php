@@ -605,7 +605,7 @@ function shop_import_json_orders(): void {
 }
 
 /* "1000+ people bought this" (product page, STORE_LIVE.sold): different customers who really bought each product, all time, from real orders only
-   (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with 1000 or more, rounded down to the thousand; below that nothing shows. Never a made-up number. */
+   (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Products with 10 or more get the real number (1000 and up rounded down to the thousand, shown as "1000+"); below 10 nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => 1000, …], 'best' => id or null]
   $n = []; $who = []; $since = date('Y-m-d H:i:s', time() - 30 * 86400);
   foreach (shop_db()->query("SELECT items, phone, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')") as $r) {
@@ -618,7 +618,7 @@ function shop_sold_month(): array {   // ['sold' => [id => 1000, …], 'best' =>
     }
   }
   $out = [];
-  foreach ($who as $id => $m) if (count($m) >= 1000) $out[$id] = intdiv(count($m), 1000) * 1000;
+  foreach ($who as $id => $m) if (($c = count($m)) >= 10) $out[$id] = $c >= 1000 ? intdiv($c, 1000) * 1000 : $c;   // the real number from 10 up ("236 people bought this"), "1000+" from 1000
   arsort($n); $top = array_key_first($n);
   return ['sold' => $out, 'best' => $top !== null && $n[$top] >= 5 ? $top : null];   // best: the product that really sold the most bottles in the last 30 days (at least 5), the gold "Bestseller" tag
 }
