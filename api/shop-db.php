@@ -605,7 +605,7 @@ function shop_import_json_orders(): void {
 }
 
 /* "612 people bought this year" (product page, STORE_LIVE.sold): different customers who really bought each product since 1 January, from real orders only
-   (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with 10 or more, with the real number; below 10 nothing shows. Never a made-up number. */
+   (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with 500 or more, with the real number; below 500 nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => 612, …]]
   $who = []; $year = date('Y') . '-01-01 00:00:00';
   foreach (shop_db()->query("SELECT items, phone, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')") as $r) {
@@ -617,6 +617,6 @@ function shop_sold_month(): array {   // ['sold' => [id => 612, …]]
     }
   }
   $out = [];
-  foreach ($who as $id => $m) if (($c = count($m)) >= 10) $out[$id] = $c;   // the real number, from 10 up ("612 people bought this year")
+  foreach ($who as $id => $m) if (($c = count($m)) >= 500) $out[$id] = $c;   // the real number, from 500 up ("612 people bought this year")
   return ['sold' => $out];
 }
