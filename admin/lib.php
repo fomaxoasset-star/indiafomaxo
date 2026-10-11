@@ -634,7 +634,7 @@ function customer_web(string $phone): array {
   foreach ($s as $r) { $vids[$r['vid']] = 1; if (!(int)$r['ordered']) $w['left']++; }
   if (!$vids) return $w;
   $in = implode(',', array_fill(0, count($vids), '?')); $vids = array_keys($vids);
-  $s = $db->prepare("SELECT * FROM visits WHERE vid IN ($in) ORDER BY started DESC LIMIT 300"); $s->execute($vids); $w['visits'] = $s->fetchAll();
+  $s = $db->prepare("SELECT * FROM visits WHERE vid IN ($in) AND started > 0 ORDER BY started DESC LIMIT 300"); $s->execute($vids); $w['visits'] = $s->fetchAll();   // started < 0: the visit of an order in Trash
   $s = $db->prepare("SELECT sid, product, COUNT(*) n FROM events WHERE vid IN ($in) AND type = 'product' AND product <> '' GROUP BY sid, product"); $s->execute($vids);
   $bySid = [];
   foreach ($s as $r) { $w['products'][$r['product']] = ($w['products'][$r['product']] ?? 0) + (int)$r['n']; $bySid[$r['sid']][] = $r['product']; }
@@ -824,7 +824,7 @@ function conversion_stats(string $from, string $to, array $CAT): array {
 
   /* 2. checkout drop-off, per visit */
   $n = fn(string $t) => (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
-  $steps = ['checkout' => $n('checkout'), 'typed' => (int)$q('SELECT COUNT(*) FROM leads WHERE created >= ? AND created <= ?', $a)->fetchColumn(),
+  $steps = ['checkout' => $n('checkout'), 'typed' => (int)$q('SELECT COUNT(*) FROM leads WHERE ordered <> 2 AND created >= ? AND created <= ?', $a)->fetchColumn(),
     'pay' => $n('pay'), 'card' => $n('card'), 'buy' => $n('buy')];
   /* boxes left empty by people who typed details and did not order (then or later) */
   $paidPhones = [];
@@ -878,11 +878,11 @@ function date_span(string $from, string $to): string {
   return date('j M', $a) . (date('Y', $a) !== date('Y', $b) ? date(' Y', $a) : '') . ' – ' . date('j M', $b) . $yr;
 }
 /* "Left at checkout": everyone who typed their details at checkout (kept for good; the page shows the dates picked), newest first, with the order they placed later if any.
-   Lines removed with their ✕ are left out (still in the table, as removed = 1). */
+   Lines removed with their ✕ are left out (still in the table, as removed = 1), and so is the visit of an order in Trash (ordered = 2). */
 function checkout_leads(?string $from = null, ?string $to = null): array {
   $db = shop_db();
-  if ($from !== null && $to !== null) { $s = $db->prepare('SELECT * FROM leads WHERE removed = 0 AND updated >= ? AND updated <= ? ORDER BY updated DESC'); $s->execute(["$from 00:00:00", "$to 23:59:59"]); $leads = $s->fetchAll(); }
-  else $leads = $db->query('SELECT * FROM leads WHERE removed = 0 ORDER BY updated DESC')->fetchAll();
+  if ($from !== null && $to !== null) { $s = $db->prepare('SELECT * FROM leads WHERE removed = 0 AND ordered <> 2 AND updated >= ? AND updated <= ? ORDER BY updated DESC'); $s->execute(["$from 00:00:00", "$to 23:59:59"]); $leads = $s->fetchAll(); }
+  else $leads = $db->query('SELECT * FROM leads WHERE removed = 0 AND ordered <> 2 ORDER BY updated DESC')->fetchAll();
   if (!$leads) return [];
   $orders = [];
   foreach ($db->query("SELECT no, phone, created FROM orders WHERE " . IS_ORDER . " AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;

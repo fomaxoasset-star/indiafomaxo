@@ -343,6 +343,7 @@ function shop_order_trash(int $id): string {
     $db->prepare('INSERT INTO orders_trash(no, closed, created, name, phone, total, method, status, row_json) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)')
       ->execute([$r['no'], shop_now(), $r['created'], $r['name'], $r['phone'], (int)$r['total'], $r['method'], $r['status'], json_encode($r, JSON_UNESCAPED_UNICODE)]);
     $db->prepare('DELETE FROM orders WHERE id = ?')->execute([$id]);
+    shop_trash_visit($db, (string)$r['no'], true);   // and out of Analytics; its number is never given out again
     return (string)$r['no'];
   });
 }
@@ -359,9 +360,35 @@ function shop_order_restore(string $no): bool {
       if (!empty($r['stock_taken'])) { shop_take_stock($db, json_decode((string)$r['items'], true) ?: [], false); $r['stock_taken'] = 1; }
       $db->prepare('INSERT INTO orders(' . implode(',', array_keys($r)) . ') VALUES(' . implode(',', array_fill(0, count($r), '?')) . ')')->execute(array_values($r));
       $db->prepare('DELETE FROM orders_trash WHERE no = ?')->execute([$no]);
+      shop_trash_visit($db, $no, false);
       return true;
     });
   } catch (Throwable $e) { error_log('FOMAXO put back ' . $no . ': ' . $e->getMessage()); return false; }
+}
+/* A trashed order leaves Analytics too. The shop's 'buy' event carries the order number (lower case) as its product; the visit that placed the order
+   (its events, its visits row and its Left at checkout line) is hidden with it: event types get an 'x' (buy → buyx), visits.started turns negative and
+   leads.ordered becomes 2, none of which any report counts. When the same visit placed another order that is still live, only this order's buy is hidden.
+   Put back undoes it all. */
+function shop_trash_visit(PDO $db, string $no, bool $hide): void {
+  $id = preg_replace('/[^a-z0-9-]/', '', strtolower($no));
+  $s = $db->prepare("SELECT sid FROM events WHERE type IN ('buy', 'buyx') AND product = ? LIMIT 1"); $s->execute([$id]); $sid = (string)$s->fetchColumn();
+  if ($id === '' || $sid === '') return;
+  $set = $db->prepare('UPDATE events SET type = ? WHERE id = ?');
+  if ($hide) {
+    $s = $db->prepare("SELECT COUNT(*) FROM events WHERE sid = ? AND type = 'buy' AND product <> ?"); $s->execute([$sid, $id]);
+    $whole = !(int)$s->fetchColumn();
+    $s = $db->prepare("SELECT id, type, product FROM events WHERE sid = ?"); $s->execute([$sid]);
+    foreach ($s->fetchAll() as $e) if (!str_ends_with($e['type'], 'x') && ($whole || ($e['type'] === 'buy' && $e['product'] === $id))) $set->execute([$e['type'] . 'x', $e['id']]);
+    if ($whole) {
+      $db->prepare('UPDATE visits SET started = -started WHERE sid = ? AND started > 0')->execute([$sid]);
+      $db->prepare('UPDATE leads SET ordered = 2 WHERE sid = ? AND ordered = 1')->execute([$sid]);
+    }
+  } else {
+    $s = $db->prepare("SELECT id, type, product FROM events WHERE sid = ?"); $s->execute([$sid]);
+    foreach ($s->fetchAll() as $e) if (str_ends_with($e['type'], 'x') && ($e['type'] !== 'buyx' || $e['product'] === $id)) $set->execute([substr($e['type'], 0, -1), $e['id']]);
+    $db->prepare('UPDATE visits SET started = -started WHERE sid = ? AND started < 0')->execute([$sid]);
+    $db->prepare('UPDATE leads SET ordered = 1 WHERE sid = ? AND ordered = 2')->execute([$sid]);
+  }
 }
 function shop_trash_count(): int { return (int)shop_db()->query('SELECT COUNT(*) FROM orders_trash')->fetchColumn(); }
 

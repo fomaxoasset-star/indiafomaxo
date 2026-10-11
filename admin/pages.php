@@ -167,7 +167,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   /* Trash: orders closed with the ✕ on Orders, newest closed first. Put back (one, or the ticked ones) returns an order as it was. */
   $rows = shop_db()->query('SELECT no, closed, row_json FROM orders_trash ORDER BY closed DESC, no DESC')->fetchAll();
   $body .= '<div class="row ctop trtop"><a class="btn line sm" href="' . h(self_url(['tab' => 'orders'])) . '">‹ Back to Orders</a><h2 class="trh">Trash <span class="trn">' . count($rows) . '</span></h2></div>'
-    . '<p class="muted small trnote">Closed orders are kept here. They do not count anywhere: not in Sales, the COD and online boxes, status counts, Members or Excel. Put back returns an order as it was.</p>';
+    . '<p class="muted small trnote">Closed orders are kept here. They do not count anywhere: not in Sales, the COD and online boxes, status counts, Members, Analytics or Excel. Only the order number stays used, so no new order gets it. Put back returns an order as it was.</p>';
   $body .= '<form method="post" class="box fill trform">' . $csrfField . '<input type="hidden" name="action" value="untrash">';
   if (!$rows) $body .= '<div class="bb"><p class="empty">Trash is empty.</p></div>';
   else {
