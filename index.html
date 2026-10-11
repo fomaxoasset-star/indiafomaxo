@@ -4928,7 +4928,14 @@ function tyMore(){
 /* ============================ ROUTER ============================ */
 let heroTimer, homeGridTimer;
 /* back and forward return to the spot the shopper left on that page (each history step gets a key; its scroll is kept for the visit) */
+/* a reload starts again on the home page, at the very top (phone and laptop). Pages opened from a link still open that page
+   (a product address, a WhatsApp bag or review link, a payment return), and a reload on checkout, an order or review page stays there. */
 try { history.scrollRestoration = 'manual'; } catch(e) {}
+(() => { let t = ''; try { t = performance.getEntriesByType('navigation')[0].type; } catch(e) {}
+  let keep = false; try { keep = sessionStorage.getItem('fx_keep_page') === '1'; sessionStorage.removeItem('fx_keep_page'); } catch(e) {}   // the language switch reloads on purpose
+  if (t !== 'reload') return;
+  const stay = keep || /^#\/(checkout|order-confirmed|thank-you|review|owner)\b/.test(location.hash);
+  try { history.replaceState(null, '', stay ? location.href : '/' + location.search); } catch(e) {} })();
 const SCROLLS = (() => { try { return JSON.parse(sessionStorage.getItem('fx_scroll') || '{}'); } catch(e) { return {}; } })();
 let shownKey = null;
 function stepKey(){ const st = history.state; if (st && st.fk) return [st.fk, true];
