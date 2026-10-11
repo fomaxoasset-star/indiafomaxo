@@ -604,18 +604,21 @@ function shop_import_json_orders(): void {
   }
 }
 
-/* "1000+ bought in the past month" (product page, STORE_LIVE.sold): bottles really sold of each product in the last 30 days, from real orders only
-   (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with 1000 or more, rounded down to the thousand; below that nothing shows. Never a made-up number. */
+/* "612 people bought this year" (product page, STORE_LIVE.sold): different customers who really bought each product since 1 January, from real orders only
+   (test, awaiting-payment, cancelled, refunded and trashed orders don't count). Only products with 500 or more, with the real number; below 500 nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => 1000, …], 'best' => id or null]
-  $n = [];
-  $s = shop_db()->prepare("SELECT items FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered') AND created >= ?");
-  $s->execute([date('Y-m-d H:i:s', time() - 30 * 86400)]);
-  foreach ($s as $r) foreach ((array)json_decode((string)$r['items'], true) as $l) {
-    $id = is_array($l) ? (string)($l['id'] ?? '') : '';
-    if ($id !== '' && preg_match('/^[a-z0-9-]{1,48}$/', $id)) $n[$id] = ($n[$id] ?? 0) + max(0, (int)($l['qty'] ?? 0));
+  $n = []; $who = []; $since = date('Y-m-d H:i:s', time() - 30 * 86400); $year = date('Y') . '-01-01 00:00:00';
+  foreach (shop_db()->query("SELECT items, phone, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')") as $r) {
+    $p10 = substr(preg_replace('/\D/', '', (string)$r['phone']), -10);
+    foreach ((array)json_decode((string)$r['items'], true) as $l) {
+      $id = is_array($l) ? (string)($l['id'] ?? '') : '';
+      if ($id === '' || !empty($l['free']) || !preg_match('/^[a-z0-9-]{1,48}$/', $id)) continue;
+      if ($p10 !== '' && $r['created'] >= $year) $who[$id][$p10] = true;   // "612 people bought this year": different customers (mobile number) since 1 January
+      if ($r['created'] >= $since) $n[$id] = ($n[$id] ?? 0) + max(0, (int)($l['qty'] ?? 0));   // Bestseller: bottles in the last 30 days
+    }
   }
   $out = [];
-  foreach ($n as $id => $q) if ($q >= 1000) $out[$id] = intdiv($q, 1000) * 1000;
+  foreach ($who as $id => $m) if (($c = count($m)) >= 500) $out[$id] = $c;   // the real number, from 500 up ("612 people bought this year")
   arsort($n); $top = array_key_first($n);
   return ['sold' => $out, 'best' => $top !== null && $n[$top] >= 5 ? $top : null];   // best: the product that really sold the most bottles in the last 30 days (at least 5), the gold "Bestseller" tag
 }
