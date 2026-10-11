@@ -1005,3 +1005,39 @@ document.addEventListener('click', function (e) {
   list.addEventListener('pointerdown', function () { rows().forEach(function (x, i) { x.dataset.at = i; }); }, true);
   document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
 })();
+
+/* Stocks: drag the dots (mouse or finger) to change the order of the list; it saves at once, without reloading (the website keeps its own order) */
+(function () {
+  var list = document.querySelector('table.stock tbody'), box = list && list.closest('.bb'); if (!list || !list.querySelector('.sdrag')) return;
+  var row = null, y0 = 0, ok = document.querySelector('.sok');
+  function rows() { return Array.prototype.slice.call(list.querySelectorAll('tr')); }
+  function save() {
+    var d = new FormData(); d.append('csrf', list.closest('form').querySelector('[name=csrf]').value); d.append('action', 'stock_order'); d.append('keys', rows().map(function (x) { return x.dataset.k; }).join(','));
+    ok.className = 'tgok sok'; ok.textContent = 'Saving order…';
+    fetch(location.href, {method: 'POST', body: d, credentials: 'same-origin'}).then(function (r) { return r.json(); })
+      .then(function (j) { ok.className = 'tgok sok ' + (j.ok ? 'ok' : 'bad'); ok.textContent = j.ok ? j.msg + ' ✓' : j.msg; })
+      .catch(function () { ok.className = 'tgok sok bad'; ok.textContent = 'Order not saved, try again'; });
+  }
+  list.addEventListener('pointerdown', function (e) {
+    var h = e.target.closest('.sdrag'); if (!h || e.button > 0) return;
+    e.preventDefault(); rows().forEach(function (x, i) { x.dataset.at = i; });
+    row = h.closest('tr'); y0 = e.clientY; row.classList.add('drag'); document.body.classList.add('vdragging');
+    h.setPointerCapture(e.pointerId);
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!row) return;
+    var prev = row.previousElementSibling, next = row.nextElementSibling, t0 = row.offsetTop;
+    while (next && next.hidden) next = next.nextElementSibling; while (prev && prev.hidden) prev = prev.previousElementSibling;   // rows hidden by the search or a warning box are skipped
+    if (next) { var b = next.getBoundingClientRect(); if (e.clientY > b.top + b.height / 2) list.insertBefore(next, row); }
+    if (prev) { var a = prev.getBoundingClientRect(); if (e.clientY < a.top + a.height / 2) list.insertBefore(row, prev); }
+    y0 += row.offsetTop - t0; row.style.transform = 'translateY(' + (e.clientY - y0) + 'px)';
+    var r = box.getBoundingClientRect(); if (e.clientY < r.top + 40) box.scrollTop -= 12; else if (e.clientY > r.bottom - 40) box.scrollTop += 12;
+  });
+  function end() {
+    if (!row) return;
+    var moved = row.dataset.at !== String(rows().indexOf(row));
+    row.classList.remove('drag'); row.style.transform = ''; document.body.classList.remove('vdragging'); row = null;
+    if (moved) save();
+  }
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+})();
