@@ -1628,6 +1628,7 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .p-rate-num{font-size:15px;color:var(--ivory);letter-spacing:.02em}
 .p-rate-num b{font-size:19px;font-weight:500;color:var(--gold-hi)}
 .p-rate:hover .p-rate-num{color:var(--gold-hi)}
+.pc-rate{display:flex;flex-direction:column-reverse;align-items:center;gap:4px}.pc-rate .card-sold{white-space:nowrap;justify-content:center}@media(max-width:600px){.pc-rate .card-sold{font-size:11px;letter-spacing:.02em;gap:5px}.pc-rate .card-sold svg{width:12px;height:12px}}   /* "X purchased this week" for the card's size, right on top of the stars (cards here are centred) */
 .pc-stars{display:inline-flex;align-items:center;gap:6px;color:var(--gold);font-size:16px;letter-spacing:.12em;line-height:1}
 .pc-stars small{font-size:15px;letter-spacing:.02em;color:var(--ivory)}
 .pc-stars small b{font-weight:500;color:var(--gold-hi)}
@@ -4137,7 +4138,7 @@ function pcCard(p, i=0, o={}){
       <h3><a href="${href}"><span class="pc-name">${esc(p.title || p.name)}</span><span class="pc-type">${esc(o.size ? sizeLabel(o.size) + ' · ' + p.family : typeOf(p))}</span></a></h3>
       <div class="pc-ofl">${offerLine(p, 'card-l')}</div>
       <div class="pc-price">${isSet ? fromHTML(p) : priceHTML(p, size)}</div><div class="stk-row" data-stk>${isSet ? '' : stockTag(p, size)}</div>
-      ${starsHTML(p)}
+      <div class="pc-rate">${starsHTML(p)}<span class="pd-sold card-sold" data-sold>${isSet ? '' : soldHTML(p.id, size)}</span></div>
       <p class="pc-tagline">${esc(p.short || '')}</p>
     </div>
     <div class="pc-buy">${sizes}${btn}</div>
@@ -4169,6 +4170,7 @@ app.addEventListener('click', e => {
   const c = b.closest('.pcard'), p = P[c.dataset.pc], s = isNaN(+b.dataset.psize) ? b.dataset.psize : +b.dataset.psize;
   $$('.pc-size', c).forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
   $('.pc-price', c).innerHTML = priceHTML(p, s);
+  const sd = $('[data-sold]', c); if (sd) sd.innerHTML = soldHTML(p.id, s);
   $('.pc-badges', c).innerHTML = pcBadges(p, s);
   const im = $('.pc-img img', c), src = IMGC(imgFor(p, s), CARD_W()); if (im.getAttribute('src') !== src) im.src = src;
   const al = $('.pc-img img.pc-alt', c), ak = HOVER && pcAltKey(p, s); if (al) { if (ak) { al.src = IMGC(ak, CARD_W()); al.hidden = false; } else al.hidden = true; } else if (ak) $('.pc-img', c).insertAdjacentHTML('beforeend', pcAlt(p, s));
