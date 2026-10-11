@@ -348,7 +348,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), trim($txt) === '' ? 'Reply removed from the website.' : 'Reply is on the website under the review.');
   }
   if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
-  if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5)))); go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
+  if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5))));
+    if (isset($_POST['max_per_item'])) { $mx = trim((string)$_POST['max_per_item']); shop_set('max_per_item', ctype_digit($mx) && (int)$mx >= 1 ? (string)min(999, (int)$mx) : ''); } go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'show') {
     $id = (string)($_POST['id'] ?? ''); $d = $LIVE[$id] ?? null;
     if (!isset($CAT[$id])) go(['tab' => 'products'], 'That product was not found.');

@@ -2960,8 +2960,8 @@ const P = Object.fromEntries([...S.products, ...PC].map(p => [p.id, p]));
    a size without one is never sold out unless the product has soldOut: true */
 const STOCK = LIVE.stock || {}, LOW = LIVE.lowStock ?? 5;
 const stockLeft = (p, s) => { const v = STOCK[p.id] && STOCK[p.id][s]; return v === undefined || v === null ? null : +v; };
-/* most of one item a customer can order online: its stock, never more than MAX_PER_ITEM (same as FX_MAX_PER_ITEM in api/store-lib.php); over that, "Contact FOMAXO for Massive Order" */
-const MAX_PER_ITEM = 30, MASS_TXT = 'Contact FOMAXO for Massive Order';
+/* most of one item a customer can order online: its stock, never more than MAX_PER_ITEM (admin → Stocks "Max per item per order", shop_max_per_item() in api/shop-db.php); over that, "Contact FOMAXO for Massive Order" */
+const MAX_PER_ITEM = +LIVE.perItem >= 1 ? +LIVE.perItem : 30, MASS_TXT = 'Contact FOMAXO for Massive Order';
 const maxQ = (p, s) => Math.min(MAX_PER_ITEM, stockLeft(p, s) ?? MAX_PER_ITEM);
 const massLink = (id, opt) => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(`Hello FOMAXO, I would like to place a massive order of ${P[id].name} ${optLabel(P[id], opt)}.`)}`;
 function massPopup(id, opt){

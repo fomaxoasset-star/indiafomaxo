@@ -12,8 +12,6 @@ require_once __DIR__ . '/shop-db.php';
 $PRIV = getenv('FOMAXO_PRIVATE') ?: dirname(__DIR__, 2) . '/fomaxo-private';
 if (!is_dir($PRIV) && !@mkdir($PRIV, 0750, true)) $PRIV = __DIR__ . '/data';   // fallback: api/data is closed to the web by its .htaccess
 
-/* most of one item (product + size) a customer can order online: its stock, never more than this (AJAY 2026-10-11). Same as MAX_PER_ITEM in index.html. */
-const FX_MAX_PER_ITEM = 30;
 const FOMAXO_STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh',
   'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
   'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
@@ -296,7 +294,7 @@ function fomaxo_price_order(array $in): array {
     /* a stock number set on the admin page wins over soldOut in index.html; a product hidden on the admin page can't be bought */
     if (!$p || !isset($p['prices'][$opt]) || !empty($p['hidden']) || ($p['soldOut'] && !isset($STOCK[$id][$opt])) || $qty < 1)
       return ['error' => 'An item in your bag is no longer available. Please refresh and try again.'];
-    if ($qty > FX_MAX_PER_ITEM) return ['error' => 'You can order up to ' . FX_MAX_PER_ITEM . ' of one item online. Contact FOMAXO for Massive Order on WhatsApp.'];
+    if ($qty > shop_max_per_item()) return ['error' => 'You can order up to ' . shop_max_per_item() . ' of one item online. Contact FOMAXO for Massive Order on WhatsApp.'];
     $size = fomaxo_size_label($p, $opt);
     $desc = '';
     if ($p['kind'] === 'set') {

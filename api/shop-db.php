@@ -210,6 +210,8 @@ function shop_map_query_from_link(string $url): string {
   return '';
 }
 function shop_low_stock(): int { return max(0, (int)(shop_setting('low_stock') ?? 5)); }
+/* most of one item a customer can order (admin → Stocks "Max per item per order"); empty = 30 */
+function shop_max_per_item(): int { $v = (int)(shop_setting('max_per_item') ?? 0); return $v >= 1 ? min(999, $v) : 30; }
 
 /* ---------------- order numbers ---------------- */
 /* Next number in the one sequence shared by cash and online orders. Call inside shop_tx(). */
