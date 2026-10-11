@@ -635,7 +635,7 @@ function shop_import_json_orders(): void {
 
 /* "14 purchased this week" (product page, STORE_LIVE.sold): bottles of each product really bought in the last 7 days, the same number as Admin → Products → Sold → 7 days, from real orders only
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
-function shop_sold_month(): array {   // ['sold' => [id => 14, …]]
+function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
   $who = []; $year = date('Y-m-d', strtotime('-6 day')) . ' 00:00:00';   // the last 7 days: today and the 6 days before, like Admin → 7 days
   $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')")->fetchAll();
   foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year)) as $t)   // orders in Trash still count, like Admin → Sold
@@ -644,10 +644,12 @@ function shop_sold_month(): array {   // ['sold' => [id => 14, …]]
     foreach ((array)json_decode((string)$r['items'], true) as $l) {
       $id = is_array($l) ? (string)($l['id'] ?? '') : '';
       if ($id === '' || !empty($l['free']) || !preg_match('/^[a-z0-9-]{1,48}$/', $id)) continue;
-      if ($r['created'] >= $year) $who[$id] = ($who[$id] ?? 0) + max(0, (int)($l['qty'] ?? 0));   // "14 purchased this week": bottles (free gifts left out)
+      $opt = preg_replace('/[^a-z0-9]/', '', strtolower((string)($l['opt'] ?? ''))); if ($opt === '') continue;
+      if ($r['created'] >= $year) $who[$id][$opt] = ($who[$id][$opt] ?? 0) + max(0, (int)($l['qty'] ?? 0));   // "14 purchased this week": bottles of that size (free gifts left out)
     }
   }
   $out = [];
-  foreach ($who as $id => $c) if ($c > 5) $out[$id] = $c;   // the real number of bottles, from 6 up ("14 purchased this week")
+  foreach ($who as $id => $byOpt) foreach ($byOpt as $opt => $c) if ($c > 5) $out[$id][(string)$opt] = $c;   // the real number of bottles of that size, from 6 up ("14 purchased this week")
+  foreach ($out as $id => $byOpt) $out[$id] = (object)$byOpt;
   return ['sold' => $out];
 }
