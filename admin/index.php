@@ -260,8 +260,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       header('Content-Type: application/json'); header('Cache-Control: no-store'); $f = $_FILES['prev'] ?? null; $ok = false;
       if ($at !== false && empty($vids[$at]['embed']) && preg_match('~^([a-z0-9-]+-[a-f0-9]{8})\.(mp4|mov|webm)$~', (string)($vids[$at]['file'] ?? ''), $m) && $f && ($f['error'] ?? 1) === UPLOAD_ERR_OK && $f['size'] > 0 && $f['size'] <= 3 * 1048576
         && is_uploaded_file($f['tmp_name']) && function_exists('finfo_open') && finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) === 'video/mp4') {
-        $pv = "$m[1]-p.mp4"; $to = video_dir() . "/$pv";
-        if ($ok = move_uploaded_file($f['tmp_name'], $to)) { @chmod($to, 0644); $vids[$at]['prev'] = $pv; shop_videos_save($vids); }
+        $old = basename((string)($vids[$at]['prev'] ?? '')); $pv = $m[1] . ($old !== '' ? '-' . bin2hex(random_bytes(4)) : '') . '-p.mp4'; $to = video_dir() . "/$pv";   // made again: a new name, so phones and the CDN don't keep showing the old one
+        if ($ok = move_uploaded_file($f['tmp_name'], $to)) { @chmod($to, 0644); if ($old !== '' && $old !== $pv && preg_match(VIDEO_FILE, $old)) @unlink(video_dir() . "/$old"); $vids[$at]['prev'] = $pv; shop_videos_save($vids); }
       }
       exit(json_encode(['ok' => $ok ? 1 : 0]));
     }
