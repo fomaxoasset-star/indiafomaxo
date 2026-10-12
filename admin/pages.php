@@ -670,7 +670,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<div class="vsh muted small" hidden><span></span></div></div></form><script>' . @file_get_contents(__DIR__ . '/vshrink.js') . '</script></div>'
     . '<div class="box on vlist' . ($allOn ? '' : ' alloff') . '" data-pane="list"><div class="bh"><h3>Your videos <small class="muted">' . $n . '</small> <b class="tgok vok" aria-live="polite"></b></h3>'
     . '<form method="post" class="vall">' . $csrfField . '<input type="hidden" name="action" value="vid_all"><label class="pg"><span><b>' . ($allOn ? 'On website' : 'Off: row hidden') . '</b></span><input type="checkbox" class="tgl" name="on" value="1"' . ($allOn ? ' checked' : '') . ' aria-label="Show videos on the website" onchange="this.form.submit()"></label></form></div>'
-    . ($allOn ? '' : '<p class="voff">All videos are switched off. Turn the switch on to show the video row again.</p>') . '<div class="bb">'
+    . ($allOn ? '' : '<p class="voff">The video row is hidden on the website. You can still upload, edit, move and delete videos here.</p>') . '<div class="bb">'
     . ($rows ?: '<p class="empty">No videos yet. The home page shows the video row once you add one.</p>')
     . '</div><div class="bf"><span class="muted small">Ring dot filled = on the website. Drag the dots on the left to change the order. Tap a product to remove it. No product = Shop Now button. Hidden products’ videos are left out.</span></div></div></div>';
 } elseif ($tab === 'products') {
