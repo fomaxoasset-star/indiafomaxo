@@ -34,7 +34,7 @@ $csrfField = '<input type="hidden" name="csrf" value="' . h($CSRF) . '">';
 function page(string $title, string $body, bool $in, string $tab = '', array $tabs = []): void {
   $nav = fn($cls) => '<nav class="' . $cls . '">' . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url($k === 'home' ? [] : ['tab' => $k])) . '"' . ($k === $tab ? ' class="on"' : '') . ">$v</a>", array_keys($tabs), $tabs)) . '</nav>';
   echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">'
-    . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Jost:wght@400;500;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap"><link rel="stylesheet" href="/admin/admin.css?v=' . asset_v('admin.css') . '"></head><body' . ($in ? ' class="app"' : '') . '>'
+    . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="stylesheet" href="/admin/admin.css?v=' . asset_v('admin.css') . '"></head><body' . ($in ? ' class="app"' : '') . '>' . (str_contains($body, '#i-wa"') ? WA_SYMBOL : '')
     . '<header><a class="brand" href="/admin/">FOMAXO <span>Admin</span></a>' . ($in ? $nav('tabs') : '<span class="sp"></span>')
     . '<span class="hlinks"><a class="site" href="/" target="_blank" rel="noopener"><span class="full">View website ↗</span><span class="short">Website ↗</span></a>' . ($in ? '<a href="' . h(self_url(['do' => 'logout'])) . '">Sign out</a>' : '') . '</span></header>'
     . ($in ? '<div class="mbar"><button type="button" class="tprev" aria-label="Previous tab">‹</button>' . $nav('mtabs') . '<button type="button" class="tnext" aria-label="Next tab">›</button></div>' : '') . '<main' . ($in ? '' : ' class="center"') . '>' . $body . '</main>'
@@ -343,9 +343,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'review') {
     $st = (string)($_POST['status'] ?? ''); review_set((int)($_POST['id'] ?? 0), $st);
-    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), $st === 'hidden' ? 'Review hidden from the website.' : 'Review is on the website.');
+    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v', 'page'])), $st === 'hidden' ? 'Review hidden from the website.' : 'Review is on the website.');
   }
-  if ($a === 'review_delete') { review_delete((int)($_POST['id'] ?? 0)); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Review deleted.'); }
+  if ($a === 'review_delete') { review_delete((int)($_POST['id'] ?? 0)); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v', 'page'])), 'Review deleted.'); }
   if ($a === 'review_wa') {   // WhatsApp on a 1–3 star review (admin.js asks without reloading): notes the day, and with a coupon makes a GOODWILL- code for that mobile
     $id = (int)($_POST['id'] ?? 0); $ph = '';
     foreach (reviews_list() as $r) if ((int)$r['id'] === $id) $ph = (string)$r['phone'];
@@ -358,11 +358,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'review_reply') {
     $txt = isset($_POST['delete']) ? '' : (string)($_POST['reply'] ?? '');
     /* Save reply with an empty box changes nothing: a reply already there stays (only Delete reply removes it), and no reply is added */
-    if (!isset($_POST['delete']) && trim($txt) === '') go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), review_has_reply((int)($_POST['id'] ?? 0)) ? 'Reply kept as it was.' : 'Nothing saved. The reply box was empty.');
+    if (!isset($_POST['delete']) && trim($txt) === '') go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v', 'page'])), review_has_reply((int)($_POST['id'] ?? 0)) ? 'Reply kept as it was.' : 'Nothing saved. The reply box was empty.');
     review_reply((int)($_POST['id'] ?? 0), $txt);
-    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), trim($txt) === '' ? 'Reply removed from the website.' : 'Reply is on the website under the review.');
+    go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v', 'page'])), trim($txt) === '' ? 'Reply removed from the website.' : 'Reply is on the website under the review.');
   }
-  if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
+  if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v', 'page'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
   if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5))));
     if (isset($_POST['max_per_item'])) { $mx = trim((string)$_POST['max_per_item']); shop_set('max_per_item', ctype_digit($mx) && (int)$mx >= 1 ? (string)min(999, (int)$mx) : ''); } go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'show') {
