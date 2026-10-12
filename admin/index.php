@@ -384,6 +384,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     go(['tab' => 'products']);
   }
+  if ($a === 'photo_edit') {   // the photo editor on the edit page (admin.js, without reloading): the cropped / turned photo is saved at once in its place
+    $id = (string)($_POST['id'] ?? ''); $new = isset($CAT[$id]) ? save_images($id) : 'That product was not found.';
+    $msg = is_string($new) ? $new : (!$new ? 'The photo could not be saved. Please try again.' : product_photo_swap($id, (string)($_POST['old'] ?? ''), 'up/' . $new[0], $CAT, $LIVE));
+    header('Content-Type: application/json'); header('Cache-Control: no-store');
+    exit(json_encode($msg === '' ? ['ok' => true, 'key' => 'up/' . $new[0], 'src' => img_url('up/' . $new[0])] : ['ok' => false, 'msg' => $msg]));
+  }
   if ($a === 'edit') { $id = (string)($_POST['id'] ?? ''); $msg = edit_product($id, $CAT, $LIVE); go(['tab' => 'products'] + ($msg === '' ? [] : ['edit' => $id]), $msg === '' ? trim((string)($_POST['name'] ?? 'The product')) . ' is saved.' : '!' . $msg); }
   if ($a === 'add') { $msg = add_product($CAT); go(['tab' => 'products'] + ($msg === '' ? [] : ['add' => 1]), $msg === '' ? 'Product added.' : '!' . $msg); }
   if ($a === 'expense') {
