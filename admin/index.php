@@ -19,7 +19,8 @@ header('Referrer-Policy: same-origin');
 header('X-Content-Type-Options: nosniff');
 
 const ADMIN_PER_PAGE = 100;
-const ASSET_V = '106';
+/* admin.css / admin.js: the browser keeps them a year (admin/.htaccess); their ?v= changes by itself whenever the file changes */
+function asset_v($f) { $p = __DIR__ . "/$f"; return base_convert((string)(@filemtime($p) ^ @filesize($p)), 10, 36); }
 const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier', 'Ads & marketing', 'Payment gateway fees', 'Rent', 'Salaries', 'Website & software', 'Travel', 'Other'];
 
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -33,11 +34,11 @@ $csrfField = '<input type="hidden" name="csrf" value="' . h($CSRF) . '">';
 function page(string $title, string $body, bool $in, string $tab = '', array $tabs = []): void {
   $nav = fn($cls) => '<nav class="' . $cls . '">' . implode('', array_map(fn($k, $v) => '<a href="' . h(self_url($k === 'home' ? [] : ['tab' => $k])) . '"' . ($k === $tab ? ' class="on"' : '') . ">$v</a>", array_keys($tabs), $tabs)) . '</nav>';
   echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">'
-    . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Jost:wght@400;500;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap"><link rel="stylesheet" href="/admin/admin.css?v=' . ASSET_V . '"></head><body' . ($in ? ' class="app"' : '') . '>'
+    . '<title>' . h($title) . ' · FOMAXO admin</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Jost:wght@400;500;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap"><link rel="stylesheet" href="/admin/admin.css?v=' . asset_v('admin.css') . '"></head><body' . ($in ? ' class="app"' : '') . '>'
     . '<header><a class="brand" href="/admin/">FOMAXO <span>Admin</span></a>' . ($in ? $nav('tabs') : '<span class="sp"></span>')
     . '<span class="hlinks"><a class="site" href="/" target="_blank" rel="noopener"><span class="full">View website ↗</span><span class="short">Website ↗</span></a>' . ($in ? '<a href="' . h(self_url(['do' => 'logout'])) . '">Sign out</a>' : '') . '</span></header>'
     . ($in ? '<div class="mbar"><button type="button" class="tprev" aria-label="Previous tab">‹</button>' . $nav('mtabs') . '<button type="button" class="tnext" aria-label="Next tab">›</button></div>' : '') . '<main' . ($in ? '' : ' class="center"') . '>' . $body . '</main>'
-    . ($in ? '<script src="/admin/admin.js?v=' . ASSET_V . '"></script>' : '') . '</body></html>';
+    . ($in ? '<script src="/admin/admin.js?v=' . asset_v('admin.js') . '"></script>' : '') . '</body></html>';
   exit;
 }
 
