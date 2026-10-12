@@ -192,6 +192,19 @@ function edit_product(string $id, array $CAT, array $LIVE): string {
   save_costs($id, $costs);
   return '';
 }
+/* the photo editor (tap a photo on the edit page): the edited photo $new takes the place of $old; nothing else of the product changes. Returns '' or what is wrong. */
+function product_photo_swap(string $id, string $old, string $new, array $CAT, array $LIVE): string {
+  $now = product_now($id, $LIVE); if (!$now || !isset($CAT[$id])) return 'That product was not found.';
+  $imgs = photos_of($now); $at = array_search($old, $imgs, true); if ($at === false) return 'This photo has changed. Please open the product again.';
+  $imgs[$at] = $new; $kind = (string)($now['kind'] ?? '');
+  $f = $kind === 'care' ? ['image' => $imgs[0], 'extraImages' => array_slice($imgs, 1)] : ['images' => $imgs];
+  $d = $LIVE[$id] ?? ['added' => false, 'hidden' => false, 'sort' => 0];
+  $data = array_diff_key($d, array_flip(['added', 'hidden', 'sort']));
+  if (!empty($d['added'])) $data['site'] = array_merge((array)($data['site'] ?? []), $f);
+  else $data['edit'] = array_merge(array_diff_key((array)($data['edit'] ?? []), ['images' => 1, 'image' => 1, 'extraImages' => 1]), $f);
+  shop_save_product($id, !empty($d['added']), !empty($d['hidden']), $data, (int)($d['sort'] ?? 0));
+  return '';
+}
 /* the biggest upload the server accepts, in bytes (0 = no limit known) */
 function upload_max(): int {
   $b = fn($s) => (int)$s * (['K' => 1024, 'M' => 1048576, 'G' => 1073741824][strtoupper(substr(trim((string)$s), -1))] ?? 1);

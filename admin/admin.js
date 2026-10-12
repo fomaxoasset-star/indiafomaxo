@@ -1042,3 +1042,73 @@ document.addEventListener('click', function (e) {
   }
   document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
 })();
+
+/* product edit page: tap a photo to see it large, crop (Free, Square, 4:5, 3:4) and turn it; Save photo puts the result in its place at once (action photo_edit) */
+(function(){
+  var g=document.getElementById("phs");if(!g||!g.closest("form")||!g.closest("form").querySelector("input[name=id]"))return;
+  var box=document.createElement("div");box.className="pedit";box.hidden=true;
+  box.innerHTML='<div class="pebox" role="dialog" aria-modal="true" aria-label="Edit photo"><div class="pehd"><h2>Edit photo</h2><button type="button" class="pex" data-x aria-label="Close">✕</button></div>'
+   +'<div class="pestage"><canvas></canvas><div class="pecrop"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div>'
+   +'<div class="petools"><span class="seg" data-ar><button type="button" data-a="0" class="on">Free</button><button type="button" data-a="1">Square</button><button type="button" data-a="0.8">4:5</button><button type="button" data-a="0.75">3:4</button></span>'
+   +'<button type="button" class="btn line sm" data-r="-1">↺ Turn left</button><button type="button" class="btn line sm" data-r="1">↻ Turn right</button><button type="button" class="btn line sm" data-reset>Reset</button></div>'
+   +'<div class="peft"><p class="muted small" data-msg>Drag the gold corners to crop, or drag the box to move it.</p><button type="button" class="btn line" data-x>Cancel</button><button type="button" class="btn" data-save>Save photo</button></div></div>';
+  document.body.appendChild(box);
+  var stage=box.querySelector(".pestage"),cv=box.querySelector("canvas"),cr=box.querySelector(".pecrop"),msg=box.querySelector("[data-msg]"),sv=box.querySelector("[data-save]");
+  var img=null,rot=0,ar=0,c=null,sc=1,ox=0,oy=0,ph=null,busy=false;
+  var RW=function(){return rot%2?img.naturalHeight:img.naturalWidth},RH=function(){return rot%2?img.naturalWidth:img.naturalHeight};
+  function full(){var w=RW(),h=RH();if(!ar){c={x:0,y:0,w:w,h:h};return}var cw=w,ch=cw/ar;if(ch>h){ch=h;cw=ch*ar}c={x:(w-cw)/2,y:(h-ch)/2,w:cw,h:ch}}
+  function draw(){
+    var sw=stage.clientWidth-24,sh=stage.clientHeight-24,w=RW(),h=RH();sc=Math.min(sw/w,sh/h);
+    var dw=Math.round(w*sc),dh=Math.round(h*sc),d=window.devicePixelRatio||1;ox=Math.round((stage.clientWidth-dw)/2);oy=Math.round((stage.clientHeight-dh)/2);
+    cv.width=Math.round(dw*d);cv.height=Math.round(dh*d);cv.style.width=dw+"px";cv.style.height=dh+"px";cv.style.left=ox+"px";cv.style.top=oy+"px";
+    var x=cv.getContext("2d");x.setTransform(d*sc,0,0,d*sc,0,0);x.translate(w/2,h/2);x.rotate(rot*Math.PI/2);x.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);
+    place();
+  }
+  function place(){cr.style.left=(ox+c.x*sc)+"px";cr.style.top=(oy+c.y*sc)+"px";cr.style.width=(c.w*sc)+"px";cr.style.height=(c.h*sc)+"px"}
+  function open(p){
+    ph=p;rot=0;ar=0;setAr(0);msg.textContent="Loading the photo…";sv.disabled=true;box.hidden=false;document.body.style.overflow="hidden";
+    img=new Image();img.onload=function(){full();draw();sv.disabled=false;msg.textContent="Drag the gold corners to crop, or drag the box to move it."};
+    img.onerror=function(){msg.textContent="This photo could not be opened."};img.src=p.querySelector("img").src;
+  }
+  function close(){box.hidden=true;document.body.style.overflow="";img=null}
+  function setAr(a){ar=a;box.querySelectorAll("[data-ar] button").forEach(function(b){b.classList.toggle("on",+b.dataset.a===a)})}
+  g.addEventListener("click",function(e){var t=e.target.closest(".ph>img");if(t&&!busy)open(t.closest(".ph"))});
+  box.addEventListener("click",function(e){
+    var b=e.target.closest("button");if(!b||!img)return;
+    if(b.hasAttribute("data-x"))close();
+    else if(b.dataset.a!==undefined){setAr(+b.dataset.a);full();place()}
+    else if(b.dataset.r){rot=(rot+(+b.dataset.r)+4)%4;full();draw()}
+    else if(b.hasAttribute("data-reset")){rot=0;setAr(0);full();draw()}
+    else if(b.hasAttribute("data-save"))save();
+  });
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!box.hidden)close()});
+  window.addEventListener("resize",function(){if(!box.hidden&&img&&img.naturalWidth)draw()});
+  /* dragging: the box moves, a corner resizes (keeping the shape when one is picked) */
+  var dr=null;
+  cr.addEventListener("pointerdown",function(e){e.preventDefault();cr.setPointerCapture(e.pointerId);dr={h:e.target.dataset.h||"",x:e.clientX,y:e.clientY,c:{x:c.x,y:c.y,w:c.w,h:c.h}}});
+  cr.addEventListener("pointermove",function(e){
+    if(!dr)return;var dx=(e.clientX-dr.x)/sc,dy=(e.clientY-dr.y)/sc,o=dr.c,W=RW(),H=RH(),m=Math.max(40,Math.min(W,H)*.06);
+    if(!dr.h){c.x=Math.min(Math.max(0,o.x+dx),W-o.w);c.y=Math.min(Math.max(0,o.y+dy),H-o.h);place();return}
+    var l=dr.h[1]==="w",t=dr.h[0]==="n",ax=l?o.x+o.w:o.x,ay=t?o.y+o.h:o.y;   // the fixed corner
+    var w=Math.max(m,l?o.w-dx:o.w+dx),h=Math.max(m,t?o.h-dy:o.h+dy);
+    w=Math.min(w,l?ax:W-ax);h=Math.min(h,t?ay:H-ay);
+    if(ar){if(w/h>ar)w=h*ar;else h=w/ar}
+    c={x:l?ax-w:ax,y:t?ay-h:ay,w:w,h:h};place();
+  });
+  ["pointerup","pointercancel"].forEach(function(n){cr.addEventListener(n,function(){dr=null})});
+  function save(){
+    var W=RW(),H=RH(),s=Math.min(1,1600/Math.max(c.w,c.h)),ow=Math.max(1,Math.round(c.w*s)),oh=Math.max(1,Math.round(c.h*s));
+    var o=document.createElement("canvas");o.width=ow;o.height=oh;var x=o.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,ow,oh);
+    x.scale(s,s);x.translate(-c.x,-c.y);x.translate(W/2,H/2);x.rotate(rot*Math.PI/2);x.drawImage(img,-img.naturalWidth/2,-img.naturalHeight/2);
+    sv.disabled=true;busy=true;msg.textContent="Saving…";
+    o.toBlob(function(bl){
+      if(!bl){msg.textContent="This browser could not make the photo. Please try Chrome.";sv.disabled=false;busy=false;return}
+      var f=new FormData(),hid=ph.querySelector("input[name='photo_seq[]']"),fm=g.closest("form");
+      f.append("csrf",fm.querySelector("input[name=csrf]").value);f.append("action","photo_edit");f.append("id",fm.querySelector("input[name=id]").value);f.append("old",hid.value);f.append("photos[]",bl,"photo.jpg");
+      fetch(fm.getAttribute("action")||location.href,{method:"POST",body:f,credentials:"same-origin"}).then(function(r){return r.json()}).then(function(j){
+        busy=false;if(!j.ok){msg.textContent=j.msg||"The photo could not be saved. Please try again.";sv.disabled=false;return}
+        hid.value=j.key;ph.querySelectorAll("input[name='remove[]']").forEach(function(i){i.value=j.key});ph.querySelector("img").src=j.src;close();
+      }).catch(function(){busy=false;msg.textContent="The photo could not be saved. Please check the internet and try again.";sv.disabled=false});
+    },"image/jpeg",.93);
+  }
+})();
