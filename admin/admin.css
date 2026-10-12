@@ -1,5 +1,12 @@
 /* FOMAXO India admin (fomaxo.in/admin). Every page fits one screen: the header and tabs stay put, and only lists
    scroll, inside their own boxes. On a phone, pages with several boxes show one at a time with a switch. */
+/* fonts from our own server (were Google Fonts: one less outside connection before the page shows) */
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:400 900;font-display:swap;src:url(/assets/fonts/cinzel-latin-ext.woff2?v=1) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Cinzel';font-style:normal;font-weight:400 900;font-display:swap;src:url(/assets/fonts/cinzel-latin.woff2?v=1) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Jost';font-style:normal;font-weight:100 900;font-display:swap;src:url(/assets/fonts/jost-latin-ext.woff2?v=1) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Jost';font-style:normal;font-weight:100 900;font-display:swap;src:url(/assets/fonts/jost-latin.woff2?v=1) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:200 800;font-display:swap;src:url(/assets/fonts/manrope-latin-ext.woff2?v=1) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:200 800;font-display:swap;src:url(/assets/fonts/manrope-latin.woff2?v=1) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 :root{--bg:#0c0b09;--panel:#16140f;--panel2:#1d1a14;--line:#2e2a21;--line2:#221f18;--text:#efe8da;--muted:#a59c89;--gold:#c9a45c;--gold2:#e3c68a;--red:#d46a5a;--green:#7fb38a;--blue:#7ea4d6;--amber:#d9a648}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%;touch-action:manipulation;overflow-x:hidden}em,i,cite,address,dfn{font-style:normal}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
@@ -637,7 +644,10 @@ button.rqwa,button[data-wabox]{font-family:inherit;cursor:pointer}.btn.wag{gap:6
    the number boxes and the chips become one thin row each (swipe sideways for more), and filters, search, dates and settings fold under one
    "Filters & search" button with Excel beside it, so only the list scrolls and gets most of the screen. Laptop: the button is hidden, nothing folds. */
 .pfbar{display:none}
+@keyframes pfshow{to{visibility:visible}}
 @media (max-width:759px){
+  /* the page under the header shows once this fold is done (admin.js adds pf, or pf0 where nothing folds), so a long list never paints and then jumps up; after 2.5 s it shows anyway */
+  body.app>main:not(.pf):not(.pf0){visibility:hidden;animation:pfshow 0s 2.5s forwards}
   main.pf{gap:6px}
   .pfbar{display:flex;gap:6px;flex:none;align-items:stretch}.pfbar .btn{min-height:36px;padding:6px 12px;font-size:13px}
   .pfbtn{flex:1 1 auto;justify-content:space-between;min-width:0}.pfbtn span{overflow:hidden;text-overflow:ellipsis}.pfbtn b{font-weight:700;color:var(--gold)}

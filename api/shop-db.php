@@ -17,6 +17,10 @@ function shop_db(): PDO {
   $cfg = fomaxo_config();
   if (!empty($cfg['db_name']) && !empty($cfg['db_user'])) $SHOP_DB = shop_mysql($cfg);
   else { $SHOP_DB = new PDO("sqlite:$PRIV/shop.sqlite", null, null, SHOP_PDO); $SHOP_DB->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;'); }
+  /* The tables, new columns and one-time steps below only need checking once after this file changes. Its fingerprint is kept
+     in the settings when they are all done, so every other page view (website, live.php, track.php and admin) skips about 30 database calls. */
+  $sig = (string)@md5_file(__FILE__);
+  if ($sig !== '' && shop_setting('schema_sig') === $sig) return $SHOP_DB;
   shop_schema($SHOP_DB);
   $add = function (string ...$cols) use ($SHOP_DB) { foreach ($cols as $c) try { $SHOP_DB->exec("ALTER TABLE $c"); } catch (Throwable $e) { /* already there */ } };   // columns added later
   if ((int)(shop_setting('schema') ?? '0') < 2) {   // columns added after the tables first went live
@@ -71,6 +75,7 @@ function shop_db(): PDO {
   }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
+  if ($sig !== '' && shop_setting('order_counter') !== null && shop_setting('fresh_start') !== null) shop_set('schema_sig', $sig);
   return $SHOP_DB;
 }
 /* Once, when this version first runs: the owner asked to start from zero. Every order so far (tests) is copied to
@@ -136,7 +141,8 @@ function shop_schema(PDO $db): void {
       name VARCHAR(80) NOT NULL DEFAULT '', phone VARCHAR(24) NOT NULL DEFAULT '', total INT NOT NULL DEFAULT 0, method VARCHAR(8) NOT NULL DEFAULT '',
       status VARCHAR(12) NOT NULL DEFAULT '', row_json $text NOT NULL)$tail",
   ] as $sql) $db->exec($sql);
-  foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)'] as $sql)
+  foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)',
+    'CREATE INDEX od_created ON orders(created)', 'CREATE INDEX vs_started ON visits(started)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
 }
 
@@ -166,7 +172,7 @@ function shop_move_to_mysql(string $name, string $user, string $pass): string {
   $file = "$PRIV/db-config.php";
   if (@file_put_contents($file, "<?php\n/* FOMAXO India shop database (Hostinger MySQL), saved from fomaxo.in/admin. Keep private. */\nreturn " . var_export($cfg, true) . ";\n", LOCK_EX) === false) return 'The database login could not be saved on the server.';
   @chmod($file, 0600);
-  $SHOP_DB = null;
+  $SHOP_DB = null; $GLOBALS['SHOP_SET'] = null;
   return '';
 }
 function shop_is_mysql(): bool { return shop_db()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'; }
@@ -188,8 +194,23 @@ function shop_upsert(string $table, array $keys, array $row): void {
   shop_db()->prepare($sql)->execute(array_values($row));
 }
 
-function shop_setting(string $k): ?string { $s = shop_db()->prepare('SELECT v FROM settings WHERE k = ?'); $s->execute([$k]); $v = $s->fetchColumn(); return $v === false ? null : (string)$v; }
-function shop_set(string $k, string $v): void { shop_upsert('settings', ['k'], ['k' => $k, 'v' => $v]); }
+/* All the settings are read in one go the first time one is needed (a page asks for 15 to 30 of them). A long one (over 4000
+   characters, like the WhatsApp sent lists) is left out of that and read on its own only when asked for. */
+function shop_setting(string $k): ?string {
+  global $SHOP_SET;
+  if ($SHOP_SET === null) {
+    try { $all = []; foreach (shop_db()->query('SELECT k, CASE WHEN LENGTH(v) <= 4000 THEN v END v FROM settings') as $r) $all[(string)$r['k']] = $r['v']; $SHOP_SET = $all; }
+    catch (Throwable $e) { return null; }   // a new database: no settings table yet
+  }
+  if (!array_key_exists($k, $SHOP_SET)) return null;
+  if ($SHOP_SET[$k] !== null) return (string)$SHOP_SET[$k];
+  $s = shop_db()->prepare('SELECT v FROM settings WHERE k = ?'); $s->execute([$k]); $v = $s->fetchColumn(); return $v === false ? null : (string)$v;
+}
+function shop_set(string $k, string $v): void {
+  global $SHOP_SET;
+  shop_upsert('settings', ['k'], ['k' => $k, 'v' => $v]);
+  if ($SHOP_SET !== null) $SHOP_SET[$k] = strlen($v) <= 4000 ? $v : null;
+}
 /* The stores set on the admin page (Settings → Stores), shown on the Contact page with a Google Map each.
    null = never saved, so the site uses STORE.contact.stores in index.html. */
 function shop_store_location(): ?array {
@@ -653,7 +674,7 @@ function shop_also(): array {   // ['pairs' => [id => [id, …]], 'top' => [id, 
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
   $who = []; $year = date('Y-m-d', strtotime('-6 day')) . ' 00:00:00';   // the last 7 days: today and the 6 days before, like Admin → 7 days
-  $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')")->fetchAll();
+  $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year))->fetchAll();   // only the last 7 days are counted, so only they are read
   foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year)) as $t)   // orders in Trash still count, like Admin → Sold
     if (is_array($o = json_decode((string)$t['row_json'], true)) && !(int)($o['test'] ?? 0)) $rows[] = ['items' => $o['items'] ?? '', 'created' => (string)($o['created'] ?? '')];
   foreach ($rows as $r) {

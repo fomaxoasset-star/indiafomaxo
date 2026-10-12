@@ -14,7 +14,8 @@ function markSent(btn, day) {
 }
 (function () {
   /* phones: keep the open tab in view in the scrolling tab strip */
-  var tabOn = document.querySelector('.mtabs .on'); if (tabOn) { var bar = tabOn.parentNode, br = bar.getBoundingClientRect(), tr = tabOn.getBoundingClientRect(); bar.scrollLeft += tr.left - br.left - (br.width - tr.width) / 2; }
+  var tabOn = document.querySelector('.mtabs .on'), midTab = function () { var bar = tabOn.parentNode, br = bar.getBoundingClientRect(), tr = tabOn.getBoundingClientRect(); bar.scrollLeft += tr.left - br.left - (br.width - tr.width) / 2; };
+  if (tabOn) { midTab(); if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(midTab); }   // again once the fonts are in: the tab names change width a little
 
   /* phones: ‹ and › at the ends of the tab strip, and a swipe left / right on the page, open the next / previous tab */
   var tabLinks = Array.prototype.slice.call(document.querySelectorAll('.mtabs a')), tabAt = tabLinks.indexOf(tabOn);
@@ -933,7 +934,7 @@ document.addEventListener('click', function (e) {
     : q('table.stock') ? {fold: ['.row.top>form', '.bf>.muted.small'], at: '.row.top', label: 'Low stock level &amp; help'}
     : q('#expPanes') ? {fold: ['.dbar'], at: '.dbar', label: 'Add an expense &amp; dates', add: true}
     : q('.rtab') ? {fold: ['.dbar'], at: '.kpis.rk + *'} : null;
-  if (!P || !q(P.at)) return;
+  if (!P || !q(P.at)) { main.classList.add('pf0'); return; }
   var F = [];
   P.fold.forEach(function (s) { [].forEach.call(main.querySelectorAll(s), function (e) { F.push(e); }); });
   /* "· on": a search, a filter or other dates are in use behind the button */

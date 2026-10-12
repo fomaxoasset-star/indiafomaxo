@@ -667,7 +667,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<div class="vshape" role="radiogroup" aria-label="Video shape"><span>Shape</span><label><input type="radio" name="shape" value="916" checked><i></i>9:16 upright</label><label><input type="radio" name="shape" value="169"><i></i>16:9 wide</label></div>'
     . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Upload</button></div>'
     . '<p class="muted small">9:16 or 16:9, picked from the video by itself, 10 to 30 seconds. Big videos shrink by themselves. No cover = product photo.</p>'
-    . '<div class="vsh muted small" hidden><span></span></div></div></form><script>' . @file_get_contents(__DIR__ . '/vshrink.js') . '</script></div>'
+    . '<div class="vsh muted small" hidden><span></span></div></div></form><script src="/admin/vshrink.js?v=' . asset_v('vshrink.js') . '"></script></div>'
     . '<div class="box on vlist' . ($allOn ? '' : ' alloff') . '" data-pane="list"><div class="bh"><h3>Your videos <small class="muted">' . $n . '</small> <b class="tgok vok" aria-live="polite"></b></h3>'
     . '<form method="post" class="vall">' . $csrfField . '<input type="hidden" name="action" value="vid_all"><label class="pg"><span><b>' . ($allOn ? 'On website' : 'Off: row hidden') . '</b></span><input type="checkbox" class="tgl" name="on" value="1"' . ($allOn ? ' checked' : '') . ' aria-label="Show videos on the website" onchange="this.form.submit()"></label></form></div>'
     . ($allOn ? '' : '<p class="voff">The video row is hidden on the website. You can still upload, edit, move and delete videos here.</p>') . '<div class="bb">'
@@ -902,9 +902,11 @@ if ($tab === 'reviews') {
   $ri = (string)($_GET['pr'] ?? ''); $ri = in_array($ri, ['bad', 'faulty', 'late', '1'], true) ? $ri : '';   // Bad product / Faulty product / Late delivery chips (old ?pr=1 links: the last two)
   /* the date bar: picking dates shows only the reviews written in them (the counts, stars and top reviewers too) */
   $D = pick_dates('reviews'); $dd = $D['r'] === 'all' ? [] : ['from' => $D['from'], 'to' => $D['to']];
-  $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []) + ($rs !== '' ? ['stars' => (int)$rs] : []) + ($ri !== '' ? ['issue' => $ri] : []));
+  $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []) + ($rs !== '' ? ['stars' => (int)$rs] : []) + ($ri !== '' ? ['issue' => $ri] : []), $ALL);
+  /* 50 reviews a page, newest first (each one carries its reply box, so a long list was slow to open on a phone); the counts above still cover every review */
+  $rpp = 50; $rpages = max(1, (int)ceil(count($list) / $rpp)); $rpage = max(1, min($rpages, (int)($_GET['page'] ?? 1)));
   $nv = count(array_filter($ALL, fn($r) => (int)$r['verified'] === 1)); $nu = count($ALL) - $nv;
-  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri], 'strlen'); $back = h(json_encode($keep));
+  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri], 'strlen'); $back = h(json_encode($keep + ($rpage > 1 ? ['page' => $rpage] : [])));
   $body .= date_bar($D, ['q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri]) . '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '') . ($rs !== '' ? '<input type="hidden" name="s" value="' . $rs . '">' : '') . ($ri !== '' ? '<input type="hidden" name="pr" value="' . $ri . '">' : '')
     . '<input type="search" name="q" value="' . h($rq) . '" placeholder="Words, name or mobile"><button class="btn line sm">Search</button>'
     . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
@@ -919,7 +921,7 @@ if ($tab === 'reviews') {
   if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
   elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' || $rs !== '' || $ri !== '' ? ' match this search.' : ' yet.') . '</p>';
   $rvSent = json_decode((string)shop_setting('review_wa'), true) ?: [];   // review id => day its customer got a WhatsApp
-  foreach ($list as $r) {
+  foreach (array_slice($list, ($rpage - 1) * $rpp, $rpp) as $r) {
     $live = $r['status'] === 'live';
     /* a 1–3 star review from a customer whose mobile we have: WhatsApp them an apology, with a coupon or not (the WhatsApp box, admin.js); a green button at the end of the stars line */
     $issue = ['late' => 'Delivery delay', 'faulty' => 'Faulty product', 'bad' => 'Bad product'][$r['issue'] ?? ''] ?? '';   // picked on the review form, or read from the review's words at any star rating (late / faulty: a coupon is owed); any other 1–3 stars: bad product
@@ -942,6 +944,11 @@ if ($tab === 'reviews') {
       . '<textarea name="reply" rows="3" maxlength="1000" placeholder="Write your reply to this customer…">' . h($r['reply'] ?? '') . '</textarea>'
       . '<div class="emo" role="group" aria-label="Add an emoji">' . implode('', array_map(fn($e) => '<button type="button" data-emo="' . $e . '" aria-label="Add ' . $e . '">' . $e . '</button>', REPLY_EMOJI)) . '</div>'
       . '<div class="row"><button class="btn sm">Save reply</button><button type="button" class="btn line sm" data-sg-next title="Write a different reply that fits this review">↻ Another reply</button><button type="button" class="btn line sm" data-sg-clear title="Empty the box to write your own reply">✕ Clear</button></div></form></div>';
+  }
+  if ($rpages > 1) {
+    $body .= '<div class="pager">';
+    for ($i = 1; $i <= $rpages; $i++) $body .= '<a' . ($i === $rpage ? ' class="on"' : '') . ' href="' . h(self_url($keep + ($i > 1 ? ['page' => $i] : []))) . '">' . $i . '</a>';
+    $body .= '</div>';
   }
   $body .= '</div></div>' . wa_box('rvWa', 'gfree', '', 10, 0, 'A new GOODWILL- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.');
   /* stars by product (live reviews only, as on the website) */

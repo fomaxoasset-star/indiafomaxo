@@ -14,6 +14,12 @@ function img_url(string $k): string { return str_starts_with($k, 'up/') ? '/api/
 /* a product's main photo, as an <img> */
 function thumb(?array $p, string $cls = 'th'): string {
   $src = $p && !empty($p['img']) ? '/' . $p['img'] : '';
+  /* the website's 240px copy (assets/img/s/) when there is one: a 20 KB photo instead of 100 KB+ for a 24–56px picture */
+  static $small = [];
+  if (preg_match('~^/assets/img/([\w.-]+\.webp)$~', $src, $m)) {
+    $f = dirname(__DIR__) . '/assets/img/s/' . $m[1];
+    if ($small[$f] ??= (is_file($f) ? '?v=' . filemtime($f) : '')) $src = '/assets/img/s/' . $m[1] . $small[$f];
+  }
   return $src ? '<img class="' . $cls . '" src="' . h($src) . '" alt="" loading="lazy">' : '<span class="' . $cls . '"></span>';
 }
 const SALE_STATUSES = "('new', 'paid', 'delivered')";
@@ -492,7 +498,9 @@ function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // REFILL
   shop_upsert('coupons', ['code'], $c);
   return [$code, "$code is ready: " . coupon_label($c) . ' for ' . phone_fmt($phone) . '. Tap Send on WhatsApp.'];
 }
-const WA_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></svg>';
+/* the WhatsApp icon: drawn once per page (WA_SYMBOL, added by page() in index.php) and reused, so a list with 200 buttons does not carry 200 copies */
+const WA_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><use href="#i-wa"/></svg>';
+const WA_SYMBOL = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.4-.3Z"/></symbol></svg>';
 /* the WhatsApp box of Left at checkout and Refill reminders (admin.js waBox): coupon choice (first $kind: '' = No coupon), how much, free product,
    optional minimum order ($min ₹ filled in), the ready message, Cancel / Open WhatsApp */
 function wa_box(string $id, string $free, string $kind, int $pct, int $min, string $note, int $endDays = 0): string {   // $endDays: the end date filled in (0 = empty: until they use it)
@@ -682,11 +690,15 @@ function review_issue_from_words(string $text, float $rating): string {
   return '';
 }
 /* reviews with the mobile of the order they came from (verified purchasers), or the optional one typed with the review. $f: q (words, name or mobile), verified (1 / 0), status, tokens, phone, from and to (written in those days) */
-function reviews_list(array $f = []): array {
-  $db = reviews_db(); if (!$db) return [];
-  try {
-    $rows = $db->query("SELECT r.*, COALESCE(o.phone, '') phone, COALESCE(o.token, '') token, COALESCE(o.customer, '') customer FROM reviews r LEFT JOIN orders o ON o.id = r.order_id ORDER BY r.created DESC")->fetchAll();
-  } catch (Throwable $e) { return []; }
+/* $f['after'] = only reviews written after that time (read from the database, for the menu rounds); $rows = a list this already gave, to filter again without reading every review twice */
+function reviews_list(array $f = [], ?array $rows = null): array {
+  if ($rows === null) {
+    $db = reviews_db(); if (!$db) return [];
+    try {
+      $s = $db->prepare("SELECT r.*, COALESCE(o.phone, '') phone, COALESCE(o.token, '') token, COALESCE(o.customer, '') customer FROM reviews r LEFT JOIN orders o ON o.id = r.order_id" . (isset($f['after']) ? ' WHERE r.created > ?' : '') . ' ORDER BY r.created DESC');
+      $s->execute(isset($f['after']) ? [(int)$f['after']] : []); $rows = $s->fetchAll();
+    } catch (Throwable $e) { return []; }
+  }
   $q = mb_strtolower(trim((string)($f['q'] ?? ''))); $qd = preg_replace('/\D/', '', $q);
   $out = [];
   foreach ($rows as $r) {
@@ -1010,7 +1022,7 @@ function admin_badges(): array {
   $s = shop_db()->prepare('SELECT COUNT(*) FROM orders WHERE ' . IS_ORDER . ' AND created > ?'); $s->execute([admin_seen('orders')]);
   $b = ['orders' => (int)$s->fetchColumn(), 'bad' => 0, 'faulty' => 0, 'late' => 0];
   $since = (int)admin_seen('reviews');
-  foreach (reviews_list() as $r) if ((int)$r['created'] > $since && isset($b[$r['issue']])) $b[$r['issue']]++;   // only Bad product, Faulty product and Late delivery
+  foreach (reviews_list(['after' => $since]) as $r) if (isset($b[$r['issue']])) $b[$r['issue']]++;   // only Bad product, Faulty product and Late delivery
   $s = shop_db()->prepare('SELECT phone, email, sid, created FROM leads WHERE removed = 0 AND ordered = 0 AND created > ?'); $s->execute([admin_seen('leads')]);   // customers per day, as the list shows them
   $b['leads'] = count(array_unique(array_map(fn($l) => ($l['phone'] !== '' ? $l['phone'] : ($l['email'] !== '' ? strtolower($l['email']) : $l['sid'])) . '|' . substr($l['created'], 0, 10), $s->fetchAll())));
   return $b;
