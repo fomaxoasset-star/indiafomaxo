@@ -265,12 +265,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
       exit(json_encode(['ok' => $ok ? 1 : 0]));
     }
-    if ($a === 'vid_cover') {   // a cover picked from the video by the Videos page (vshrink.js), for a video uploaded without one; a cover already there is kept
+    if ($a === 'vid_cover') {   // a cover picked from the video by the Videos page (vshrink.js): by itself for a video without one (a cover already there is kept), or the frame chosen with "Pick cover" (pick=1, replaces it)
       header('Content-Type: application/json'); header('Cache-Control: no-store'); $src = '';
-      if ($at !== false && empty($vids[$at]['embed']) && ($vids[$at]['cover'] ?? '') === '' && ($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && $_FILES['cover']['size'] <= 3 * 1048576) {
+      if ($at !== false && empty($vids[$at]['embed']) && (($vids[$at]['cover'] ?? '') === '' || !empty($_POST['pick'])) && ($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && $_FILES['cover']['size'] <= 3 * 1048576) {
         $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
         $img = save_images(((video_products($vids[$at])[0] ?? '') ?: 'fomaxo') . '-cover');
-        if (is_array($img) && $img) { $vids[$at]['cover'] = 'up/' . $img[0]; shop_videos_save($vids); $src = img_url($vids[$at]['cover']); }
+        if (is_array($img) && $img) { if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($vids[$at]['cover'] ?? ''), $om)) @unlink("$PRIV/product-images/$om[1]");   // "Pick cover" replaces the old one
+          $vids[$at]['cover'] = 'up/' . $img[0]; shop_videos_save($vids); $src = img_url($vids[$at]['cover']); }
       }
       exit(json_encode(['ok' => $src !== '' ? 1 : 0, 'src' => $src]));
     }
