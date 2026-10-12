@@ -265,6 +265,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
       exit(json_encode(['ok' => $ok ? 1 : 0]));
     }
+    if ($a === 'vid_cover') {   // a cover picked from the video by the Videos page (vshrink.js), for a video uploaded without one; a cover already there is kept
+      header('Content-Type: application/json'); header('Cache-Control: no-store'); $src = '';
+      if ($at !== false && empty($vids[$at]['embed']) && ($vids[$at]['cover'] ?? '') === '' && ($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && $_FILES['cover']['size'] <= 3 * 1048576) {
+        $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
+        $img = save_images(((video_products($vids[$at])[0] ?? '') ?: 'fomaxo') . '-cover');
+        if (is_array($img) && $img) { $vids[$at]['cover'] = 'up/' . $img[0]; shop_videos_save($vids); $src = img_url($vids[$at]['cover']); }
+      }
+      exit(json_encode(['ok' => $src !== '' ? 1 : 0, 'src' => $src]));
+    }
     if ($at === false) go($vb, '!That video was not found. Please try again.');
     if ($a === 'vid_vis') { $vids[$at]['on'] = !empty($_POST['show']); $msg = $vids[$at]['on'] ? 'The video is on the website.' : 'The video is hidden from the website.'; }
     elseif ($a === 'vid_shape') { if (($_POST['shape'] ?? '') === '169') $vids[$at]['wide'] = true; else unset($vids[$at]['wide']); $msg = 'Shape saved: ' . (!empty($vids[$at]['wide']) ? '16:9 wide.' : '9:16 upright.'); }
