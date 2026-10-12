@@ -2768,6 +2768,11 @@ const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.sl
    small pictures use the copy whenever it is sharp enough for the screen (most phones and laptops). A new photo without a copy simply uses the full one */
 const SMALL = {'dollar-1': 688, 'gold-1': 688, 'king-1': 688, 'matchacoco-10-1': 688, 'matchacoco-50-main': 688, 'oldmoney-10-1': 688, 'oldmoney-50-main': 1100, 'passionsin-1': 688, 'passionsin-10-1': 688, 'royalcandy-10-1': 688, 'royalcandy-50-main': 688};
 const IMGC = (k, w) => SMALL[k] && w * (window.devicePixelRatio || 1) <= 640 ? IMG(k + '-s') : IMG(k);   // w = how wide it shows, in CSS px
+/* photos that also have 240, 480 and (when wider than 900) 720px wide copies in assets/img/s, m and t, with the full photo's width: PIC(k, sizes) lets the browser
+   pick the lightest copy that is still sharp for how wide the photo shows (sizes) and the screen. A new photo without copies simply uses the full one */
+const ED = '(max-width:760px) 100vw, 44vw', SPLIT = '(max-width:760px) 100vw, 54vw', GF = '(max-width:760px) 96vw, 31vw';   /* how wide the editorial, side by side and gift card photos show */
+const IMG_W = {"atelier":1027,"boutique-story":1145,"boutique":984,"car-carrush":568,"car-drivenoir":570,"car-passiondrive":570,"couple-2":768,"couple-3":688,"couple":710,"discovery-1":800,"discovery-2":961,"discovery-3":984,"dollar-1":688,"dollar-2":1043,"dollar-3":1398,"dollar-4":1394,"dollar-5":703,"elite-card":865,"elite-lounge":862,"franchise-boutique":1300,"gift-1":984,"gift-2":984,"gift-3":721,"gift-birthday":688,"gift-box-wishes":1220,"gift-corporate":688,"gift-name-birthday":1254,"gift-name-wishes":960,"gift-set-1":1300,"gift-set-2":1300,"gift-set-3":1218,"gift-set-4":1112,"gift-set-5":1083,"gift-set-6":1300,"gift-set-7":1300,"gift-showroom":1214,"gold-1":688,"gold-2":1046,"gold-3":1110,"gold-feature":688,"gold-model":1198,"king-1":688,"king-2":1048,"king-3":1048,"king-4":1048,"king-5":1400,"king-collection":1048,"logo":997,"matchacoco-1":688,"matchacoco-10-1":688,"matchacoco-10-2":1004,"matchacoco-100":799,"matchacoco-2":785,"matchacoco-3":773,"matchacoco-50-main":688,"matchacoco-model":768,"oldmoney-1":688,"oldmoney-10-1":688,"oldmoney-10-2":859,"oldmoney-10-3":752,"oldmoney-100":953,"oldmoney-100b":1153,"oldmoney-2":912,"oldmoney-3":917,"oldmoney-4":702,"oldmoney-50-main":1100,"oldmoney-collection":1250,"oldmoney-model":688,"passionsin-1":688,"passionsin-10-1":688,"passionsin-10-2":924,"passionsin-10-3":912,"passionsin-2":934,"passionsin-3":1400,"passionsin-model":674,"pc-aloevita-wash":528,"pc-avokiss":528,"pc-kissberry":529,"pc-melondrip":528,"pc-passionsin-gel":528,"pc-passionsin-shampoo":528,"pc-radiant-conditioner":528,"pc-radiant-gel":528,"pc-radiant-shampoo":528,"pc-radiant-wash":529,"personal-care-poster":1024,"personal-care":842,"royalcandy-1":688,"royalcandy-10-1":688,"royalcandy-10-2":858,"royalcandy-10-3":867,"royalcandy-100":1300,"royalcandy-2":1002,"royalcandy-50-main":688,"runway-2":848,"runway-personal-care":1024,"runway":805};
+const PIC = (k, sizes) => { const w = IMG_W[k], t = (d, x) => `assets/img/${d}/${k}.webp?v=11 ${x}w`; return `src="${IMG(k)}"` + (w ? ` srcset="${[t('s', 240), t('m', 480), w > 900 && t('t', 720), `${IMG(k)} ${w}w`].filter(Boolean).join(', ')}" sizes="${sizes}"` : ''); };
 let VW = innerWidth; addEventListener('resize', () => { VW = innerWidth; });   // window width, read once here and on resize: reading innerWidth while a page is being drawn makes the browser lay the whole page out first
 const CARD_W = () => VW <= 1100 ? VW / 2 : 330;   // a shop card's photo: two across up to 1100px, four across above
 /* changes made on the admin page (fomaxo.in/admin): hidden products, new prices, added products, stock */
@@ -3160,7 +3165,7 @@ function bagLikeHTML(){
   const list = bagLikeList();
   if (!list.length) return '';
   return `<div class="bag-like"><h5>You may also like</h5><div class="bl-row">${list.map(([p, s]) => { const quick = p.kind !== 'set' && hasPrice(p.prices[s]);
-    return `<div class="bl-card"><a href="#/product/${p.id}${p.kind ? '' : '?size=' + s}" data-close><img src="${IMG(imgFor(p, s))}" alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b></a>
+    return `<div class="bl-card"><a href="#/product/${p.id}${p.kind ? '' : '?size=' + s}" data-close><img ${PIC(imgFor(p, s), '140px')} alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b></a>
       <div class="bl-price">${quick ? priceHTML(p, s) : fromHTML(p)}</div>
       ${quick ? `<button type="button" class="bl-add" data-like="${p.id}" data-opt="${s}">Add${p.sizes.length > 1 ? ` · ${optLabel(p, s)}` : ''}</button>` : `<a class="bl-add" href="#/product/${p.id}" data-close>${p.kind === 'set' ? 'Choose' : 'View'}</a>`}</div>`; }).join('')}</div></div>`;
 }
@@ -3175,7 +3180,7 @@ function againHTML(cls=''){
   const w = n <= 2 ? 290 : n === 3 ? 220 : n <= 5 ? 190 : 160;   // home tile width by item count; 6+ keeps the full-width swipe row
   return `<div class="again ${cls}${cls ? '' : ` ${n <= 2 ? 'ag-few' : n >= 6 ? 'ag-many' : ''}" style="--oa-w:${w}px`}"><div class="ag-head"><h5>Order again <span><i>· </i>${n} item${n > 1 ? 's' : ''} from your last order</span></h5><div class="ag-acts">${n > 1 ? arrows : ''}${n > 1 ? '<button type="button" class="ag-all" data-again-all>Add all to bag</button>' : ''}</div></div>
     <div class="ag-row">${L.map((l, i) => { const p = P[l.id], o = p.sizes.find(s => String(s) === String(l.opt)) ?? l.opt;
-    return `<div class="ag-card"><div class="ag-ph"><a href="#/product/${l.id}" data-close><img src="${IMG(imgFor(p, o))}" alt="" loading="lazy"></a><button type="button" class="ag-plus" data-again="${i}" aria-label="Add ${esc(p.name)} to bag"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></button></div><b>${esc(p.kind === 'care' ? p.title || p.name : p.name)}</b><small>${esc(optLabel(p, o))} · ${money(p.prices[o], curOf(p))}</small></div>`; }).join('')}</div></div>`;
+    return `<div class="ag-card"><div class="ag-ph"><a href="#/product/${l.id}" data-close><img ${PIC(imgFor(p, o), '160px')} alt="" loading="lazy"></a><button type="button" class="ag-plus" data-again="${i}" aria-label="Add ${esc(p.name)} to bag"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></button></div><b>${esc(p.kind === 'care' ? p.title || p.name : p.name)}</b><small>${esc(optLabel(p, o))} · ${money(p.prices[o], curOf(p))}</small></div>`; }).join('')}</div></div>`;
 }
 const againLine = l => [l.id, P[l.id].sizes.find(s => String(s) === String(l.opt)) ?? l.opt, 1, false, l.picks && l.picks.length ? l.picks : undefined];
 document.addEventListener('click', e => {
@@ -3203,7 +3208,7 @@ function renderCart(){
         <div style="margin-top:10px"><span class="price">${c.worth > c.price ? `<s class="was">${money(c.worth, '₹')}</s> ` : ''}${money(c.price, '₹')}</span></div>
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }
     return `<div class="line-item">
-      <a href="#/product/${p.id}" data-close><img src="${IMG(lineImg(l))}" alt="${esc(p.name)}"></a>
+      <a href="#/product/${p.id}" data-close><img ${PIC(lineImg(l), '80px')} alt="${esc(p.name)}"></a>
       <div><h4>${esc(p.name)}</h4><div class="o">${optLabel(p, l.opt)} · ${esc(p.family.split('·')[0])}</div>${l.picks ? `<div class="o" style="text-transform:none;letter-spacing:.02em;color:var(--champagne)">${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</div>` : ''}
         <div class="q"><button data-q="${i}" data-d="-1" aria-label="${l.qty === 1 ? 'Remove' : 'Decrease'}">${l.qty === 1 ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' : '−'}</button><span>${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Increase">+</button></div>
         <div style="margin-top:10px">${priceHTML(p, l.opt)}${stockTag(p, l.opt)}</div>
@@ -3265,7 +3270,7 @@ let tt; function toast(msg, go){ if (go) warmPay(); $('#toastMsg').textContent =
 function runSearch(q){
   q = q.trim().toLowerCase();
   const res = [...S.products, ...PC].sort((a, b) => (b.id === 'discovery') - (a.id === 'discovery')).filter(p => !q || [p.name, p.short, p.family, ...(p.notes ? Object.values(p.notes) : [])].join(' ').toLowerCase().includes(q));
-  $('#sres').innerHTML = res.length ? res.map(p => `<a href="#/product/${p.id}" data-close><img src="${IMG(p.images[0])}" alt="" loading="lazy"><b>${esc(p.name)}</b><small>${esc(p.notes ? (p.notes.key || p.notes.top) : p.family)}</small></a>`).join('')
+  $('#sres').innerHTML = res.length ? res.map(p => `<a href="#/product/${p.id}" data-close><img ${PIC(p.images[0], '120px')} alt="" loading="lazy"><b>${esc(p.name)}</b><small>${esc(p.notes ? (p.notes.key || p.notes.top) : p.family)}</small></a>`).join('')
     : `<p class="small">No results for “${esc(q)}”. Try a note such as bergamot, amber or vanilla.</p>`;
 }
 $('#q').addEventListener('input', e => runSearch(e.target.value));
@@ -3375,7 +3380,7 @@ function home(){
   <section class="sec" style="padding-top:0" id="tiers"><div class="wrap">
     ${secHead('The house favourites', 'Distinct <em class="metal">blends</em>', '<p class="lead">Four top products from across the house — fragrance, skin, hair and car.</p>')}
     ${(S.featured || []).map(id => P[id]).filter(Boolean).map((p,i) => `<div class="ed ${i%2?'rev':''}">
-      <a class="ed-media rv-up" href="#/product/${p.id}"><img data-parallax="0.08" src="${IMG(p.editorial || p.images[0])}" alt="FOMAXO ${esc(p.name)}" loading="lazy"></a>
+      <a class="ed-media rv-up" href="#/product/${p.id}"><img data-parallax="0.08" ${PIC(p.editorial || p.images[0], ED)} alt="FOMAXO ${esc(p.name)}" loading="lazy"></a>
       <div class="ed-copy rv-up d1">
         <span class="num">0${i+1}</span>
         <span class="eyebrow">${esc(CAT_NAME[catOf(p)])} · ${tierOf(p) ? esc(tierOf(p).name) + ' · ' : ''}${esc(p.kind === 'care' ? p.type.split(' — ')[0] : p.family)}</span>
@@ -3396,7 +3401,7 @@ function home(){
       ['#/collections/name', 'gift-name-birthday', 'Personalized Gifting', '“Your gift. Your scent. Your legacy.”'],
       ['#/collections/gifting', 'gift-set-3', 'Bespoke Gifting', '“A fragrance of memories.”'],
       PC.length && ['#/collections/personal-care', 'personal-care-poster', 'Personal Care Collection', '“Elevating everyday rituals.”']].filter(Boolean);
-      return `<div class="exp rv-up n${tiles.length}">${tiles.map((t, i) => `<a href="${t[0]}"><img src="${IMG(t[1])}" alt="" loading="lazy"><div class="in"><span class="eyebrow">0${i + 1}</span><h3>${t[2]}</h3><p>${t[3]}</p><span class="go">Discover →</span></div></a>`).join('')}`; })()}
+      return `<div class="exp rv-up n${tiles.length}">${tiles.map((t, i) => `<a href="${t[0]}"><img ${PIC(t[1], '(max-width:760px) 92vw, (max-width:1100px) 52vw, 32vw')} alt="" loading="lazy"><div class="in"><span class="eyebrow">0${i + 1}</span><h3>${t[2]}</h3><p>${t[3]}</p><span class="go">Discover →</span></div></a>`).join('')}`; })()}
     </div>
   </div></section>
 
@@ -3431,7 +3436,7 @@ function home(){
   <section class="sec" style="padding-top:0" id="worlds"><div class="wrap">
     <div class="hw">
       <article class="hw-card rv-up">
-        <a class="hw-media" href="#/partnership"><img src="${IMG('franchise-boutique')}" alt="A FOMAXO boutique" loading="lazy"></a>
+        <a class="hw-media" href="#/partnership"><img ${PIC('franchise-boutique', SPLIT)} alt="A FOMAXO boutique" loading="lazy"></a>
         <div class="hw-copy"><span class="eyebrow">Franchise</span><h2>Own a <em class="metal">FOMAXO</em> store</h2>
           <p class="lead">Partner with a Dubai-born luxury brand as a franchise partner, distributor or retail stockist in your city.</p>
           <div class="ctas"><a class="btn" href="${waLink('Hello FOMAXO, I would like to know more about the FOMAXO franchise.')}" target="_blank" rel="noopener">${WA_SVG()}Chat on WhatsApp</a><a class="btn line" href="#/partnership">Send an Enquiry</a></div></div>
@@ -3441,7 +3446,7 @@ function home(){
 
   <section class="sec" style="padding-top:0"><div class="wrap">
     <div class="pc rv-up">
-      <div class="pc-media pc-poster"><img src="${IMG('personal-care-poster')}" alt="FOMAXO Personal Care: car perfume, Radiant Bloom face wash, Passion Sin shower gel, Royal Candy, Matcha Coco, Old Money and pomegranate lip balm" width="1024" height="1536" loading="lazy"></div>
+      <div class="pc-media pc-poster"><img ${PIC('personal-care-poster', '(max-width:1100px) 100vw, 40vw')} alt="FOMAXO Personal Care: car perfume, Radiant Bloom face wash, Passion Sin shower gel, Royal Candy, Matcha Coco, Old Money and pomegranate lip balm" width="1024" height="1536" loading="lazy"></div>
       <div class="pc-copy">
         <span class="soon">Now available</span>
         <span class="eyebrow">Personal Care Collection</span>
@@ -3500,7 +3505,7 @@ function product(id, q){
     <div class="crumbs pdp-crumbs" style="padding-top:34px"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${isCare ? '<a href="#/personal-care">Personal Care</a>' : '<a href="#/fragrances?f=fragrance">Fragrance</a>'}${isCar ? ' &nbsp;/&nbsp; <a href="#/fragrances?f=car">Car Fragrance</a>' : ''} &nbsp;/&nbsp; ${esc(p.name)}</div>
     <div class="pdp">
       <div class="gallery">
-        <div class="thumbs">${gallery.map((g,i) => `<button class="${i?'':'on'}" data-g="${g}" aria-label="Image ${i+1}"><img src="${IMG(g)}" alt="" loading="lazy"></button>`).join('')}</div>
+        <div class="thumbs">${gallery.map((g,i) => `<button class="${i?'':'on'}" data-g="${g}" aria-label="Image ${i+1}"><img ${PIC(g, '72px')} alt="" loading="lazy"></button>`).join('')}</div>
         <div class="stage" id="stage"><span class="zoom-dot" aria-hidden="true">Zoom</span>${p.tag ? `<span class="tag">${esc(p.tag)}</span>` : ''}${isOut(p) ? '<span class="off-tag oos-tag">Out of stock</span>' : ''}<img id="stageImg" src="${IMG(imgFor(p, size))}" alt="FOMAXO ${esc(p.name)}"></div>
       </div>
       <div class="buy">
@@ -3518,7 +3523,7 @@ function product(id, q){
           <div class="sizes" id="sizes">${p.sizes.map(s => `<button data-s="${s}" class="${s===size?'on':''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}"><b>${isSet ? s + ' vials' : sizeLabel(s)}</b><small>${sizeOut(p, s) && !isOut(p) ? 'Out of stock' : isSet ? (money(p.prices[s]) || '2ml each') : s===10?'Mini · travel':s===50?'Everyday':'Signature'}</small>${!isSet && !(sizeOut(p, s) && !isOut(p)) && hasPrice(p.prices[s]) ? `<span class="sz-p">${money(p.prices[s], curOf(p))}</span>` : ''}</button>`).join('')}</div></div>`
           : `<div class="opt-label opt-one" style="margin:0"><span>Size</span><span>${isSet ? '2ml vials' : optLabel(p, size)}</span></div>`}
         ${isSet ? `<div id="picker"><div class="opt-label"><span>Choose your fragrances</span><span id="pickCount">0 / ${size}</span></div>
-          <div class="picks">${pickable(p).map(f => `<button type="button" class="pick" data-pick="${f.id}" aria-pressed="false"><img src="${IMG(f.images[0])}" alt="" loading="lazy"><span>${esc(f.name)}</span><i>✓</i></button>`).join('')}</div>
+          <div class="picks">${pickable(p).map(f => `<button type="button" class="pick" data-pick="${f.id}" aria-pressed="false"><img ${PIC(f.images[0], '(max-width:760px) 45vw, 180px')} alt="" loading="lazy"><span>${esc(f.name)}</span><i>✓</i></button>`).join('')}</div>
           <p class="small" id="pickHint" style="margin-top:12px">Select ${size} fragrances to continue.</p></div>` : ''}
         <div class="qtyrow${isOut(p) ? ' oos-row' : ''}">
           <div class="qty"><button id="qm" aria-label="Decrease quantity">−</button><input id="qty" value="1" inputmode="numeric" aria-label="Quantity"><button id="qp" aria-label="Increase quantity">+</button><small class="qcap" id="qcap" aria-live="polite"></small></div>
@@ -3666,7 +3671,7 @@ function renderFbt(p, size){
     p.kind === 'set' || isOut(p) || sizeOut(p, size) || !hasPrice(p.prices[size]) ? null : fbtPartner(p, size);
   if (!q) { box.innerHTML = ''; box.className = ''; return; }
   const items = [[p, size, true], [q[0], q[1], false]], on = [true, true];
-  const tile = ([x, s, me], i) => `<div class="fbt-it"><label class="fbt-img"><img src="${IMG(imgFor(x, s))}" alt="" loading="lazy"><input type="checkbox" data-fbt="${i}" checked aria-label="Include ${esc(x.name)}"><i aria-hidden="true">✓</i></label>
+  const tile = ([x, s, me], i) => `<div class="fbt-it"><label class="fbt-img"><img ${PIC(imgFor(x, s), '(max-width:760px) 40vw, (max-width:1100px) 44vw, 230px')} alt="" loading="lazy"><input type="checkbox" data-fbt="${i}" checked aria-label="Include ${esc(x.name)}"><i aria-hidden="true">✓</i></label>
     <p class="fbt-n">${me ? '<b>This item:</b> ' + esc(x.name) : `<a href="#/product/${x.id}${x.sizes.length > 1 ? '?size=' + s : ''}">${esc(x.name)}</a>`}${x.sizes.length > 1 || /\d/.test(optLabel(x, s)) ? `<small>${esc(optLabel(x, s))}</small>` : ''}</p>
     ${x.reviews ? starsHTML(x) : ''}<p class="fbt-p">${money(x.prices[s], curOf(x))}</p></div>`;
   box.className = 'fbt rv-up in';
@@ -3688,9 +3693,9 @@ let mobileBarCheck = null;
 const tierOf = p => S.tiers.find(t => t.id === p.tier);
 function tierRow(t, i){
   const ps = t.products.map(id => P[id]);
-  const list = ps.map(p => `<a class="tier-item" href="#/product/${p.id}"><img src="${IMG(p.images[0])}" alt="" loading="lazy"><span><b>${esc(p.name)}</b><small>${esc(p.notes ? (p.notes.key || p.notes.top) : p.family)}</small></span>${fromHTML(p)}</a>`).join('');
+  const list = ps.map(p => `<a class="tier-item" href="#/product/${p.id}"><img ${PIC(p.images[0], '52px')} alt="" loading="lazy"><span><b>${esc(p.name)}</b><small>${esc(p.notes ? (p.notes.key || p.notes.top) : p.family)}</small></span>${fromHTML(p)}</a>`).join('');
   return `<div class="ed tier-row t-${t.id} ${i%2?'rev':''}" id="tier-row-${t.id}">
-    <a class="ed-media rv-up" href="#/collections/tier-${t.id}"><img data-parallax="0.08" src="${IMG(hidImg(t.image) && ps[0] ? ps[0].images[0] : t.image)}" alt="${esc(t.name)}" loading="lazy"><span class="tier-badge">${['I','II','III','IV'][i]}</span></a>
+    <a class="ed-media rv-up" href="#/collections/tier-${t.id}"><img data-parallax="0.08" ${PIC(hidImg(t.image) && ps[0] ? ps[0].images[0] : t.image, ED)} alt="${esc(t.name)}" loading="lazy"><span class="tier-badge">${['I','II','III','IV'][i]}</span></a>
     <div class="ed-copy rv-up d1">
       <span class="num">0${i+1}</span>
       <span class="eyebrow">${esc(t.kicker)} · ${esc(t.sizes)}</span>
@@ -3729,13 +3734,13 @@ function collections(sub){
     ['name','Exclusive Personalized Gifting','Your gift. Your scent. Your legacy. The highest form of personalisation: a perfume gifted after the client themselves.','gift-name-birthday']
   ];
   return pageHead('Collections', 'The <em class="metal">Collections</em>', 'From signature Eau de Parfum to personal care and bespoke gifting — explore the world of FOMAXO.') +
-    `<section style="padding:60px 0 120px"><div class="wrap"><div class="coll">${tiles.filter(Boolean).map(t => `<a class="rv-up" href="#/collections/${t[0]}"><img src="${IMG(t[3])}" alt="" loading="lazy"><div class="in"><span class="eyebrow">Collection</span><h3>${t[1]}</h3><p>${t[2]}</p><span class="link" style="align-self:flex-start">Explore →</span></div></a>`).join('')}</div></div></section>` + finalCTA();
+    `<section style="padding:60px 0 120px"><div class="wrap"><div class="coll">${tiles.filter(Boolean).map((t, i, a) => `<a class="rv-up" href="#/collections/${t[0]}"><img ${PIC(t[3], i === a.length - 1 && i % 2 === 0 ? '88vw' : '(max-width:760px) 100vw, 46vw')} alt="" loading="lazy"><div class="in"><span class="eyebrow">Collection</span><h3>${t[1]}</h3><p>${t[2]}</p><span class="link" style="align-self:flex-start">Explore →</span></div></a>`).join('')}</div></div></section>` + finalCTA();
 }
 
 function gifting(){
   return pageHead('<a href="#/collections">Collections</a> / Bespoke Gifting', 'Bespoke <em class="metal">Gifting</em>', '“A Fragrance of Memories.” Gifting is not just about giving an item — it is about creating a memory, an emotional connection and a symbol of appreciation.') + `
   <section class="sec"><div class="wrap">
-    <div class="split"><div class="img rv-up"><img src="${IMG('gift-showroom')}" alt="FOMAXO bespoke gifting display" loading="lazy"></div>
+    <div class="split"><div class="img rv-up"><img ${PIC('gift-showroom', SPLIT)} alt="FOMAXO bespoke gifting display" loading="lazy"></div>
       <div class="prose rv-up d1"><span class="eyebrow">Why perfume gifting works</span><h2>A lasting <em class="metal">impression</em></h2>
         <p><b class="gold">Emotional memory trigger.</b> Each spray of FOMAXO perfume brings guests back to your special day.</p>
         <p><b class="gold">Luxury with purpose.</b> Unlike typical favours that are quickly forgotten, perfume is personal, useful and treasured.</p>
@@ -3758,11 +3763,11 @@ function gifting(){
       <p><b class="gold">Presentation</b> — premium boxes, velvet pouches or satin-finish cases.</p>
       <p class="small">Standard, Premium and Elite packages. Pricing depends on bottle size, customisation level and quantity — a tailored quotation is provided upon consultation.</p>
       <div><a class="btn" href="#/contact?topic=gifting">Request a consultation</a></div></div>
-      <div class="img rv-up d1"><img src="${IMG('gift-set-7')}" alt="FOMAXO wedding gifting display" loading="lazy"></div></div>
+      <div class="img rv-up d1"><img ${PIC('gift-set-7', SPLIT)} alt="FOMAXO wedding gifting display" loading="lazy"></div></div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap">
     ${secHead('Bespoke setups','Gifting <span class="metal">displays</span>','<p class="lead">FOMAXO gifting stations designed for weddings, private gatherings and corporate events.</p>')}
-    <div class="gallery-g">${['gift-set-1','gift-set-3','gift-set-4','gift-set-5','gift-set-2','gift-set-6','gift-set-7'].map((k,i) => `<figure class="rv-up d${i%3}"><img src="${IMG(k)}" alt="FOMAXO bespoke gifting setup" loading="lazy"></figure>`).join('')}</div>
+    <div class="gallery-g">${['gift-set-1','gift-set-3','gift-set-4','gift-set-5','gift-set-2','gift-set-6','gift-set-7'].map((k,i) => `<figure class="rv-up d${i%3}"><img ${PIC(k, '(max-width:760px) 100vw, 44vw')} alt="FOMAXO bespoke gifting setup" loading="lazy"></figure>`).join('')}</div>
   </div></section>` + finalCTA();
 }
 /* GIFT page — gift sets are built from shop products; [product id, size]. Prices come from the product list, so they stay in sync. */
@@ -3914,7 +3919,7 @@ const cbSlot = (id, sz) => { const p = P[id]; return p
   ? `<img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
   : `<span class="ph0"></span><span class="t"><b>No product</b><small>Tap to add one</small></span><span class="go">Add ›</span>`; };
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" src="${IMG(g.img)}" alt="" loading="lazy"><img class="fg" src="${IMG(g.img)}" alt="FOMAXO ${esc(g.name)}" loading="lazy">` : (g.flex ? Array.from({length: g.slots}, (_, k) => g.items[k] || []) : g.items.slice(0, 4)).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
+    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" ${PIC(g.img, GF)} alt="" loading="lazy"><img class="fg" ${PIC(g.img, GF)} alt="FOMAXO ${esc(g.name)}" loading="lazy">` : (g.flex ? Array.from({length: g.slots}, (_, k) => g.items[k] || []) : g.items.slice(0, 4)).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
       <div class="gf-pick"><small${g.flex ? ' class="cb-hint"' : ''}>${g.flex ? `Add or remove products, up to ${g.slots}` : 'Choose your products'}</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items.filter(x => x.length))}</div>` : ''}
@@ -3939,7 +3944,7 @@ function giftPage(){
       <p class="lead rv-up d1">Gifting, made your way. Choose FOMAXO fragrances and personal care, and we build a custom box around them for your occasion, your style and your budget, delivered anywhere in India.</p>
       <div class="ctas rv-up d2"><a class="btn" href="#gf-sets" data-gjump="gf-sets">Shop gift sets</a><a class="btn line" href="${waLink('Hello FOMAXO, I would like to create a custom gift box.')}" target="_blank" rel="noopener">Create a custom gift</a></div>
     </div>
-    <div class="gf-media"><img src="${IMG('gift-name-birthday')}" alt="FOMAXO Happy Birthday keepsake box with Old Money, a rose and a personal card" fetchpriority="high"></div>
+    <div class="gf-media"><img ${PIC('gift-name-birthday', '(max-width:760px) 100vw, 56vw')} alt="FOMAXO Happy Birthday keepsake box with Old Money, a rose and a personal card" fetchpriority="high"></div>
   </section>
   <div class="gf-promise">
     <div>${ICON.gift}<p><b>Custom boxes</b><span>Designed around what you need.</span></p></div>
@@ -3948,7 +3953,7 @@ function giftPage(){
     <div>${ICON.truck}<p><b>Free delivery</b><span>Across India, on every order.</span></p></div>
   </div>
   <section class="sec"><div class="wrap"><div class="split">
-    <div class="img rv-up"><img src="${IMG('couple-3')}" alt="A couple holding a FOMAXO Best Wishes gift box" loading="lazy" style="object-position:center 45%"></div>
+    <div class="img rv-up"><img ${PIC('couple-3', SPLIT)} alt="A couple holding a FOMAXO Best Wishes gift box" loading="lazy" style="object-position:center 45%"></div>
     <div class="prose rv-up d1"><span class="eyebrow">Customise &amp; gift</span><h2>Gifting made <em class="metal">around you</em></h2>
       <p><b class="gold">Custom boxes.</b> Every box is made to your needs: the products inside, the size, the style and the finish, chosen for the person and the occasion.</p>
       <p><b class="gold">Fragrance curation.</b> Choose a signature scent from the FOMAXO portfolio, or at Elite level a bespoke blend inspired by personality, lifestyle or event theme.</p>
@@ -3967,7 +3972,7 @@ function giftPage(){
       </div>
       <p class="small">Custom boxes are made to order, and pricing depends on the customisation. Send us your needs on WhatsApp and we reply with a design and a quote.</p>
       <div><a class="btn line" href="${waLink('Hello FOMAXO, I would like to design a custom gift box.')}" target="_blank" rel="noopener">Design your custom box</a></div></div>
-    <div class="img rv-up d1"><img src="${IMG('gift-box-wishes')}" alt="FOMAXO custom gift box with Royal Candy, Old Money, pink flowers and Best Wishes in gold" loading="lazy"></div>
+    <div class="img rv-up d1"><img ${PIC('gift-box-wishes', SPLIT)} alt="FOMAXO custom gift box with Royal Candy, Old Money, pink flowers and Best Wishes in gold" loading="lazy"></div>
   </div></div></section>
   <section class="sec" id="gf-sets" style="padding-top:0"><div class="wrap">
     ${secHead('Gift sets', 'Curated <em class="metal">to give</em>', '<p class="lead">Gift sets from the FOMAXO house, made up in a custom box. Choose the products for any set, tap Personalise and send it to us on WhatsApp.</p>')}
@@ -3975,7 +3980,7 @@ function giftPage(){
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap">
     ${secHead('Occasions', 'For every <em class="metal">moment</em>')}
-    <div class="gf-occ">${occ.map((o, i) => `<a class="rv-up d${i % 4}" href="${waLink(`Hello FOMAXO, I am looking for ${o[1].toLowerCase()} gifts.`)}" target="_blank" rel="noopener"><img src="${IMG(o[3])}" alt="" loading="lazy"><span class="eyebrow">${o[0]}</span><h3>${o[1]}</h3><p>${o[2]}</p><span class="go">Enquire →</span></a>`).join('')}</div>
+    <div class="gf-occ">${occ.map((o, i) => `<a class="rv-up d${i % 4}" href="${waLink(`Hello FOMAXO, I am looking for ${o[1].toLowerCase()} gifts.`)}" target="_blank" rel="noopener"><img ${PIC(o[3], '(max-width:760px) 92vw, (max-width:1100px) 58vw, 30vw')} alt="" loading="lazy"><span class="eyebrow">${o[0]}</span><h3>${o[1]}</h3><p>${o[2]}</p><span class="go">Enquire →</span></a>`).join('')}</div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap">
     ${secHead('How it works', 'Four steps to <em class="metal">a perfect gift</em>')}
@@ -4010,7 +4015,7 @@ function comboPage(){
       <p class="lead rv-up d1">Parfums and personal care, paired the way you use them. Every combo costs less than its products bought one by one. Pick a combo, change any product in it, and add it to your bag.</p>
       <div class="ctas rv-up d2"><a class="btn" href="#cb-sets" data-gjump="cb-sets">Shop combos</a><a class="btn line" href="${waLink('Hello FOMAXO, I would like to build my own combo.')}" target="_blank" rel="noopener">Build your own combo</a></div>
     </div>
-    <div class="gf-media"><img src="${IMG('personal-care')}" alt="FOMAXO parfums, shower gels, shampoos, face washes and lip balms together" fetchpriority="high" style="object-position:center 40%"></div>
+    <div class="gf-media"><img ${PIC('personal-care', '(max-width:760px) 100vw, 56vw')} alt="FOMAXO parfums, shower gels, shampoos, face washes and lip balms together" fetchpriority="high" style="object-position:center 40%"></div>
   </section>
   <div class="gf-promise">
     <div>${ICON.gift}<p><b>Save up to 17%</b><span>Every combo costs less than buying each product.</span></p></div>
@@ -4032,7 +4037,7 @@ function comboPage(){
     <div class="gf-sets">${sets.map((g, i) => gfCard(g, i, 'Order combo')).join('')}</div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
-    <div class="img rv-up"><img src="${IMG('boutique')}" alt="A FOMAXO boutique with parfums on display" loading="lazy"></div>
+    <div class="img rv-up"><img ${PIC('boutique', SPLIT)} alt="A FOMAXO boutique with parfums on display" loading="lazy"></div>
     <div class="prose rv-up d1"><span class="eyebrow">Your own combo</span><h2>Build your <em class="metal">own</em></h2>
       <p>Want something different? Mix any FOMAXO parfums, personal care and car fragrance into one combo. Tell us what you would like inside and we put it together for you.</p>
       <div class="gf-opts">
@@ -4198,7 +4203,7 @@ function personalCare(q){
     ${list.length ? `<div class="pc-grid">${list.map((p, i) => pcCard(p, i, {top: true})).join('')}</div>` : `<p class="small" style="padding:40px 0">No products in this category yet.</p>`}
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="pc rv-up">
-    <div class="pc-media pc-poster"><img src="${IMG('personal-care-poster')}" alt="FOMAXO Personal Care: car perfume, Radiant Bloom face wash, Passion Sin shower gel, Royal Candy, Matcha Coco, Old Money and pomegranate lip balm" width="1024" height="1536" loading="lazy"></div>
+    <div class="pc-media pc-poster"><img ${PIC('personal-care-poster', '(max-width:1100px) 100vw, 40vw')} alt="FOMAXO Personal Care: car perfume, Radiant Bloom face wash, Passion Sin shower gel, Royal Candy, Matcha Coco, Old Money and pomegranate lip balm" width="1024" height="1536" loading="lazy"></div>
     <div class="pc-copy"><span class="eyebrow">Personal Care Collection</span><h2>Elevating <em class="metal">everyday rituals</em></h2>
       <p class="lead">Our ambition extends beyond fragrance: a growing range of high-end personal care, designed to elevate everyday rituals and inspire aspirational minds.</p>
       <p class="lead">Every product is guided by the same principles as our perfumes: simplicity, quality and recognisability.</p>
@@ -4221,7 +4226,7 @@ function about(){
       <p>At FOMAXO, our name stands for “For Outstanding Minds, Acquiring Xtraordinary Opulence”, embodying our commitment to excellence and ambition. Our vision is to become the biggest fashion brand in the Middle East and India, inspiring and empowering individuals who strive to achieve extraordinary things in life.</p>
       <p>We began our journey with perfume, setting a new benchmark in craftsmanship and luxury. Founded in the vibrant city of Dubai, FOMAXO reflects the elegance and opulence the city is renowned for. Our perfumes, crafted with refinement and masterful blends, have become a hallmark of sophistication.</p>
       <p>Today, FOMAXO brings the same luxury to India — our fragrances, personal care and car fragrances, delivered across the country, with the craftsmanship and opulence of Dubai in every product.</p></div>
-    <div class="img rv-up d1"><img src="${IMG('boutique-story')}" alt="FOMAXO boutique" loading="lazy"></div>
+    <div class="img rv-up d1"><img ${PIC('boutique-story', SPLIT)} alt="FOMAXO boutique" loading="lazy"></div>
   </div></div></section>
   <section class="sec" style="padding-top:0"><div class="wrap">
     <div class="rv-up">${wordmark('acro-mark')}<div class="acro">${['For','Outstanding','Minds','Acquiring','Xtraordinary','Opulence.'].map(w=>`<div><span>${w}</span></div>`).join('')}</div></div>
@@ -4243,14 +4248,14 @@ function about(){
     </div>
   </div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="split">
-    <div class="img rv-up"><img src="${IMG('runway-personal-care')}" alt="FOMAXO couture runway show" loading="lazy"></div>
+    <div class="img rv-up"><img ${PIC('runway-personal-care', SPLIT)} alt="FOMAXO couture runway show" loading="lazy"></div>
     <div class="prose rv-up d1"><span class="eyebrow">A growing brand universe</span><h2>From fragrance to <em class="metal">fashion identity</em></h2>
       <p>FOMAXO™ is a contemporary brand built on clarity of design, strength of identity and a vision for expansion. Rooted in fragrance, it is a developing platform for fashion, accessories and lifestyle products, unified by a consistent design language and brand philosophy.</p>
       <p>Every creation is an extension of personal presence. Clean design, balanced intensity and lasting character define the FOMAXO collection — products that integrate seamlessly into everyday style while maintaining a distinct edge.</p>
       <p class="quote" style="font-size:26px;color:var(--ivory)">FOMAXO is more than a brand; it’s a celebration of elegance, ambition and success.</p></div>
   </div></div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="pc rv-up">
-    <div class="pc-media"><img src="${IMG('franchise-boutique')}" alt="" loading="lazy"></div>
+    <div class="pc-media"><img ${PIC('franchise-boutique', SPLIT)} alt="" loading="lazy"></div>
     <div class="pc-copy"><span class="eyebrow">Franchise</span><h2>Build your <em class="metal">FOMAXO empire</em></h2>
       <p class="lead">Join us as an exclusive distributor, franchise partner or retail stockist and bring a high-potential luxury brand to your territory.</p>
       <div><a class="btn" href="#/partnership">Become a partner</a></div></div>
@@ -4339,7 +4344,7 @@ function partnership(){
     </form>
   </div></div></section>
   <section class="sec" style="padding-top:0"><div class="wrap"><div class="pc rv-up">
-    <div class="pc-media"><img src="${IMG('franchise-boutique')}" alt="FOMAXO boutique partners" loading="lazy"></div>
+    <div class="pc-media"><img ${PIC('franchise-boutique', SPLIT)} alt="FOMAXO boutique partners" loading="lazy"></div>
     <div class="pc-copy"><span class="eyebrow">Become a FOMAXO partner</span><h2>Let’s build your <em class="metal">business empire</em></h2>
       <p class="lead">If you believe in premium luxury experiences and strong brand storytelling — we want to work with you.</p>
       <div class="p-contact"><a href="mailto:${C.email}"><small>Email</small><b>${C.email}</b></a><a href="tel:${ph.replace(/\s/g,'')}"><small>Phone</small><b>${ph}</b></a></div>
@@ -4647,7 +4652,7 @@ async function bindReviewOrder(token){
     /* left: the order with each item and how far the reviews are; right: the form of the item being reviewed (laptop side by side, phone one under the other) */
     box.innerHTML = `<div class="rwp"><aside class="rwp-side"><span class="eyebrow">Your order</span>${d.order ? `<b class="rwp-no">${esc(d.order)}</b>` : ''}
         <span class="rwp-bar"><span></span></span><p class="small rwp-cnt"></p>
-        <div class="rwp-list">${items.map(({p}) => `<button type="button" class="rwp-it" data-opw="${p.id}"><img src="${IMG(p.images[0])}" alt=""><span class="rwp-nm"><b>${esc(p.name)}</b><span class="rwp-st"></span></span></button>`).join('')}</div>
+        <div class="rwp-list">${items.map(({p}) => `<button type="button" class="rwp-it" data-opw="${p.id}"><img ${PIC(p.images[0], '44px')} alt=""><span class="rwp-nm"><b>${esc(p.name)}</b><span class="rwp-st"></span></span></button>`).join('')}</div>
         <p class="rwp-note"><span class="rv-ver">✓ Verified Purchaser</span></p><p class="small rwp-note2">Shows on every review from this page.</p>
         <a class="btn line rwp-shop" href="#/fragrances">Continue Shopping</a></aside>
       <div class="rwp-main"></div></div>`;
@@ -4662,7 +4667,7 @@ async function bindReviewOrder(token){
       const l = $('.rwp-list', side), b = cur && $(`[data-opw="${cur}"]`, side);
       if (b) { const lr = l.getBoundingClientRect(), br = b.getBoundingClientRect(); l.scrollLeft += br.left - lr.left - 16; l.scrollTop += br.top - lr.top - (lr.height - br.height) / 2; }
     };
-    const head = (p, k) => `<div class="rwp-head"><img src="${IMG(p.images[0])}" alt=""><div><span class="eyebrow">${k}</span><b>${esc(p.name)}</b><span class="small">${esc(p.family || '')}</span></div><span class="rv-ver">✓ Verified Purchaser</span></div>`;
+    const head = (p, k) => `<div class="rwp-head"><img ${PIC(p.images[0], '72px')} alt=""><div><span class="eyebrow">${k}</span><b>${esc(p.name)}</b><span class="small">${esc(p.family || '')}</span></div><span class="rv-ver">✓ Verified Purchaser</span></div>`;
     const allDone = msg => { draw(''); main.innerHTML = `${msg}<div class="rwp-done"><span class="eyebrow">Thank you</span><h3>Every item is reviewed</h3><p class="small">Your honest words help others choose their FOMAXO.</p><a class="btn" href="#/fragrances">Continue Shopping</a></div>`; };
     const open = (id, msg = '') => { const x = items.find(y => y.p.id === id); if (!x) return; const p = x.p;
       draw(id);
@@ -4766,7 +4771,7 @@ function checkoutPage(q){
       <div class="co-it"><b>${esc(k.g.name)}</b><small class="cb-in">Combo · ${k.ls.length} products</small></div>
       <div class="co-ip">${k.worth > k.price ? `<s>${inr(k.worth * l.qty)}</s>` : ''}<span>${inr(k.price * l.qty)}</span></div></div>`; }
       return `<div class="co-item"${coBuy(q) ? '' : ' role="button" tabindex="0" title="Open your bag"'}>
-      <div class="co-img"><img src="${IMG(lineImg(l))}" alt="">${`<i>${l.qty}</i>`}</div>
+      <div class="co-img"><img ${PIC(lineImg(l), '80px')} alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > u ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(u * l.qty)}</span></div></div>`; }).join('')}</div>
     <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div><div class="co-cpnrow" id="coMbRow"${tog > 0 ? '' : ' hidden'}><span>Together extra off (${TG_TXT})</span><b id="coMbRowOff">−${inr(tog)}</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
@@ -4929,7 +4934,7 @@ function bindCheckout(q){
     const fv = cpn && cpn.free, fp = fv && P[fv.id], old = $('#coFreeIt'); if (old) old.remove();
     $('#coCpnFree').hidden = !fv; if (fv) $('#coCpnFreeOff').textContent = `worth ${inr(fv.worth)}`;
     if (fv) $('.co-items').insertAdjacentHTML('beforeend', `<div class="co-item co-gift" id="coFreeIt">
-      <div class="co-img">${fp ? `<img src="${IMG(imgFor(fp, fv.opt))}" alt="">` : ''}<i>1</i></div>
+      <div class="co-img">${fp ? `<img ${PIC(imgFor(fp, fv.opt), '80px')} alt="">` : ''}<i>1</i></div>
       <div class="co-it"><b>${esc(fp ? (fp.kind === 'care' ? fp.title : fp.name) : fv.name)}</b><small>${esc(fp ? optLabel(fp, fv.opt) : fv.size)} · Free with ${esc(cpn.code)}</small></div>
       <div class="co-ip"><s>${inr(fv.worth)}</s><span class="co-gift-tag">Free</span></div></div>`);
     cpnEnd(); upd();
