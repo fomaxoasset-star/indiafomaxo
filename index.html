@@ -663,6 +663,8 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .split .img{position:relative;aspect-ratio:4/5;overflow:hidden;border:1px solid var(--line)}
 .split .img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .prose{display:flex;flex-direction:column;gap:20px;color:var(--muted);font-size:16px;line-height:1.9}
+.ret{max-width:760px;display:flex;flex-direction:column;gap:28px}.ret-i h3{margin:0 0 8px;color:var(--ivory);font-size:22px}.ret-i p{margin:0;color:var(--muted);font-size:16px;line-height:1.8}
+.ret-c{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}   /* Returns page (#/returns) */
 .prose h2{color:var(--ivory)}
 @media(max-width:900px){.split{grid-template-columns:minmax(0,1fr)}}
 .form{display:grid;gap:14px}
@@ -2428,7 +2430,7 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
       </div>
       <div><h5>Shop</h5><div id="footShop"></div></div>
       <div><h5>Discover</h5><a href="#/collections/fragrance">Fragrance Collection</a><a href="#/collections/mini">Mini Collection</a><a href="#/collections/personal-care">Personal Care Collection</a><a href="#/collections/name">Personalized Gifting</a><a href="#/collections/gifting">Bespoke Gifting</a><a href="#/combo">Combos</a></div>
-      <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
+      <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/returns">Returns</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
     </div>
     <div class="fbase"><span>© 2026 FOMAXO™. All rights reserved.</span><span>Inspire greatness</span></div>
     <p class="fstat" id="fstat">We count visits anonymously on our own server to improve the shop. No advertising trackers.</p>
@@ -3313,6 +3315,22 @@ app.addEventListener('click', e => {
   const bb = e.target.closest('[data-buy]'); if (bb) buyNow([{id:p.id, opt:sel, qty:1}], bb);
 });
 const secHead = (eyebrow, title, extra='', center) => `<div class="sec-head${center?' c':''}"><div class="t rv-up"><span class="eyebrow">${eyebrow}</span><h2>${title}</h2>${extra}</div></div>`;
+/* Returns: the shop's return policy (also the policy page Google Merchant Center links to, fomaxo.in/returns → api/seo.php?p=returns) */
+function returnsPage(){
+  const wa = S.checkout.whatsapp;
+  const items = [
+    ['7-day returns', 'You can return any FOMAXO product within 7 days of delivery if it is unopened, with its seal and box intact.'],
+    ['Damaged or wrong item', 'If your order arrives damaged, or you received the wrong item, tell us within 7 days of delivery and we will replace it or refund you in full.'],
+    ['Free pickup', 'We pick up the item from your address anywhere in India, free of charge.'],
+    ['Refunds', 'We refund you within 5 working days of receiving the item: to the card or UPI you paid with, or by bank transfer for cash on delivery orders.'],
+    ['Opened products', 'For hygiene reasons, opened or used perfumes and personal care products cannot be returned unless they arrived damaged or faulty.']];
+  return pageHead('Returns', 'Returns &amp; <em class="metal">refunds</em>', 'Simple, fair returns on every FOMAXO order in India.') + `
+  <section class="sec" style="padding-top:40px"><div class="wrap"><div class="ret">
+    ${items.map(([h, p]) => `<div class="ret-i"><h3>${h}</h3><p>${p}</p></div>`).join('')}
+    <div class="ret-i"><h3>How to return</h3><p>Message us on WhatsApp or email us with your order number and we will arrange the pickup.</p>
+      <div class="ret-c"><a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">Chat on WhatsApp</a><a class="btn line" href="mailto:${esc(S.checkout.email)}">Email us</a></div></div>
+  </div></div></section>`;
+}
 const pageHead = (crumb, title, lead='') => `<div class="phead"><div class="wrap"><div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${crumb}</div><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
 const finalCTA = () => `<section class="final"><div class="wrap">${emblem('fin-em rv-up')}<span class="eyebrow rv-up">Inspire greatness</span><h2 class="rv-up d1">Define your<br><span class="metal">signature luxury</span></h2><div class="ctas rv-up d2"><a class="btn" href="#/fragrances">Shop FOMAXO</a><a class="btn line" href="#/collections">Explore the collections</a></div></div></section>`;
 const pyramid = n => n.key ? `<div class="pyramid one"><div>Key notes<span>${esc(n.key)}</span></div></div>` : `<div class="pyramid"><div>Top<span>${esc(n.top)}</span></div><div>Heart<span>${esc(n.heart)}</span></div><div>Base<span>${esc(n.base)}</span></div></div>`;
@@ -3502,7 +3520,7 @@ function product(id, q){
     : [[ICON.lasting,'Smart Scent Technology for lasting wear'],[ICON.gift,'Premium packaging, ready to gift'],[ICON.drop,'Concentrated Fragrance Oils'],[ICON.truck,'Free delivery across India']];
   const related = alsoOrder(p.id, isCar ? [...CAR, ...FRAG] : isCare ? PC : S.products.filter(x => !x.kind || x.kind === 'set'));   // all of them except this one, ordered by real orders (alsoOrder)
   const ship = S.shipping.length ? S.shipping.map(s => `<p>${esc(s)}</p>`).join('') : `<p class="ph">Add your delivery &amp; returns information in assets/data.js.</p>`;
-  document.title = `${p.kind === 'care' ? p.name : p.name + ' ' + String(p.family || '').split(' · ')[0]} — FOMAXO`;   // as on its /fomaxo-<name> address for Google (api/seo.php)
+  document.title = (window.FX_TITLE && FX_TITLE[p.id]) || `${p.kind === 'care' ? p.name : p.name + ' ' + String(p.family || '').split(' · ')[0]} — FOMAXO`;   // as on its /fomaxo-<name> address for Google (api/seo.php)
   const wide = matchMedia('(min-width: 961px)').matches;   /* laptop: every section starts closed so the page fits one screen */
   return `<div class="wrap page-fade">
     <div class="crumbs pdp-crumbs" style="padding-top:34px"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${isCare ? '<a href="#/personal-care">Personal Care</a>' : '<a href="#/fragrances?f=fragrance">Fragrance</a>'}${isCar ? ' &nbsp;/&nbsp; <a href="#/fragrances?f=car">Car Fragrance</a>' : ''} &nbsp;/&nbsp; ${esc(p.name)}</div>
@@ -5056,6 +5074,7 @@ function route(){
     case 'gift': html = giftPage(); after = bindGift; break;
     case 'combo': html = comboPage(); after = bindGift; break;
     case 'about': html = about(); break;
+    case 'returns': html = returnsPage(); document.title = 'Returns & refunds — FOMAXO'; break;
     case 'contact': html = contact(q); after = bindContact; break;
     case 'partnership': html = partnership(); after = bindPartner; break;
     case 'review': html = reviewOrderPage(); after = () => bindReviewOrder(q.get('t') || ''); break;

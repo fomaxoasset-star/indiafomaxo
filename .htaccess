@@ -48,6 +48,9 @@ AddType font/woff2 .woff2
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^fomaxo-([a-z0-9-]{1,80})/?$ api/seo.php?p=name&id=$1 [L,QSA]
   RewriteRule ^sitemap\.xml$ api/seo.php?p=sitemap [L]
+  # product list for free Google Shopping listings (Merchant Center), and the Returns page at its own address
+  RewriteRule ^google-shopping\.xml$ api/seo.php?p=feed [L]
+  RewriteRule ^returns/?$ api/seo.php?p=returns [L,QSA]
 </IfModule>
 
 # The link preview picture changes with the reader (see above), so caches keep one copy per reader, for an hour.
