@@ -465,6 +465,14 @@ function markSent(btn, day) {
     var ofShow = function () { var m = (ofr.querySelector('input[name=mode]:checked') || {}).value;
       ofr.querySelector('.ofend').hidden = m !== 'end'; };
     ofr.addEventListener('change', function (e) { if (e.target.name === 'mode') ofShow(); });
+    /* % off fixes itself: more than the biggest real saving of the picked products = that saving, 0 or less = empty (biggest saving), no browser error */
+    var pctFix = function () {
+      var i = ofr.querySelector('input[name=pct]'); if (!i || i.disabled || i.value.trim() === '') return;
+      var picked = [].slice.call(ofr.querySelectorAll('input[name="items[]"]:checked')), best = picked.length ? Math.max.apply(null, picked.map(function (x) { return +x.dataset.pct; })) : +ofr.dataset.best;
+      var n = Math.round(parseFloat(i.value)); i.value = !(n >= 1) || !best ? '' : Math.min(n, best);
+    };
+    ofr.addEventListener('change', function (e) { if (e.target.name === 'pct' || e.target.name === 'items[]') pctFix(); });
+    ofr.addEventListener('submit', pctFix, true);
     /* Products (popup and line): type or pick a name to add it; untick a picked one to take it out */
     ofr.querySelectorAll('.ofpick').forEach(function (pk) {
       var add = pk.querySelector('.ofadd');
@@ -513,7 +521,7 @@ function markSent(btn, day) {
     var picked = [].slice.call(sale.querySelectorAll('input[name="items[]"]:checked'));
     var best = picked.length ? Math.max.apply(null, picked.map(function (i) { return +i.dataset.pct; })) : +sale.dataset.best;
     var typed = parseInt(val(sale, 'pct'), 10), pct = typed > 0 ? Math.min(typed, best) : best;
-    var note = mode === 'off' ? 'The timer is Off, so this popup will not show.' : !sale.querySelector('input[name=popup]').checked ? 'Popup is not ticked, so this popup will not show.' : typed > best ? 'You typed ' + typed + '%, but the biggest real saving is ' + best + '%, so it shows ' + best + '%.' : '';
+    var note = mode === 'off' ? 'The timer is Off, so this popup will not show.' : !sale.querySelector('input[name=popup]').checked ? 'Popup is not ticked, so this popup will not show.' : typed > best ? 'You typed ' + typed + '%, but the biggest real saving is ' + best + '%, so it changes to ' + best + '%.' : '';
     var end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
     var cd = mode === 'end' ? '<div class="pv-cd">' + [Math.floor(left / 86400), pad(Math.floor(left % 86400 / 3600)), pad(Math.floor(left % 3600 / 60)), pad(left % 60)].map(function (n, i) {
       return '<div><b>' + (end ? n : '–') + '</b><span>' + ['Days', 'Hours', 'Min', 'Sec'][i] + '</span></div>'; }).join('') + '</div>' : '';
