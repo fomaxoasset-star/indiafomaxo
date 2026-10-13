@@ -1455,6 +1455,7 @@ html[data-mode="light"].cur-dark .cur-link .cur-ring{border-color:#f0d3a0;backgr
 /* home: shop the collection */
 .hg-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:-20px 0 34px}
 .hg-bar .home-filters{padding:0;margin:0}
+.hg-sort{margin-left:auto}
 .hg-pager{display:flex;align-items:center;gap:14px;font-size:13px;letter-spacing:.14em;color:var(--muted)}
 .hg-pager button{width:44px;height:44px;border:1px solid var(--line-2);color:var(--gold-hi);font-size:16px;transition:border-color .3s,background .3s}
 .hg-pager button:hover{border-color:var(--gold);background:rgba(215,170,105,.08)}
@@ -3421,6 +3422,7 @@ function home(){
   <section class="sec"><div class="wrap">
     <div class="sec-head"><div class="t rv-up"><span class="eyebrow">Shop the collection</span><h2>Featured <em class="metal">FOMAXO</em></h2></div><a class="link rv-up" id="hgAll" href="#/fragrances">View all fragrances →</a></div>
     <div class="hg-bar rv-up"><div class="filters home-filters" id="hgFilters">${[['all','All'],['fragrance','Fragrance'],['care','Personal Care'],['car','Car Fragrance']].filter(x => x[0] === 'all' || HOME_ALL(x[0]).length).map((x,i) => `<button class="chip${i?'':' on'}" type="button" data-hf="${x[0]}">${x[1]}</button>`).join('')}</div>
+      <label class="sort-by hg-sort"><span>Sort by</span><select id="homeSort" aria-label="Sort by">${[['','Featured'], ...SORTS].map(x => `<option value="${x[0]}">${x[1]}</option>`).join('')}</select></label>
       <div class="hg-pager" id="hgPager"><button type="button" data-hp="-1" aria-label="Previous products">←</button><span id="hgCount"></span><button type="button" data-hp="1" aria-label="Next products">→</button></div></div>
     <div class="pc-grid hg-grid" id="homeGrid"></div>
   </div></section>
@@ -5337,17 +5339,18 @@ function bindHome(){
     if (shown) void btns[i].offsetWidth; shown = true; btns[i].classList.add('run');   // restart the bar's fill (not needed the first time, which saves a full layout while the page opens)
     const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = s.name || P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add To Cart'; $('#hcBuyNow').hidden = o; ahead(); };
   /* shop the collection: 8 boxes, paging through every product */
-  let hf = 'all', hp = 0;
+  let hf = 'all', hp = 0, hs = '';
   const grid = $('#homeGrid'), per = 8;
   const pages = () => Math.max(1, Math.ceil(HOME_ALL(hf).length / per));
   const draw = (fade) => {
-    const list = HOME_ALL(hf), n = pages(); hp = (hp + n) % n;
+    const list = hs ? [...HOME_ALL(hf)].sort((a, b) => sortVal(b, hs) - sortVal(a, hs)) : HOME_ALL(hf), n = pages(); hp = (hp + n) % n;
     const put = () => { grid.innerHTML = list.slice(hp * per, hp * per + per).map((p, k) => pcCard(p, k, {noRv: true})).join(''); grid.classList.remove('swap'); };
     $('#hgCount').textContent = `${hp + 1} / ${n}`; $('#hgPager').hidden = n < 2;
     if (fade) { grid.classList.add('swap'); setTimeout(put, 280); } else put();
   };
   const auto = () => { clearInterval(homeGridTimer); homeGridTimer = setInterval(() => { if (!grid.matches(':hover') && !document.hidden && pages() > 1) { hp++; draw(true); } }, 20000); };
   $$('#hgFilters [data-hf]').forEach(b => b.onclick = () => { hf = b.dataset.hf; hp = 0; const la = $('#hgAll'); if (la) { la.href = hf === 'care' ? '#/personal-care' : hf === 'car' ? '#/fragrances?f=car' : '#/fragrances'; la.textContent = hf === 'care' ? 'View all personal care →' : hf === 'car' ? 'View all car fragrance →' : 'View all fragrances →'; } $$('#hgFilters .chip').forEach(x => x.classList.toggle('on', x === b)); draw(true); auto(); });
+  $('#homeSort').onchange = e => { hs = e.target.value; hp = 0; draw(true); auto(); };
   $$('#hgPager [data-hp]').forEach(b => b.onclick = () => { hp += +b.dataset.hp; draw(true); auto(); });
   draw(false); auto();
   $('#hcAdd').onclick = () => { const p = P[HERO_SLIDES[i].id]; addToCart(p.id, defaultSize(p)); };
