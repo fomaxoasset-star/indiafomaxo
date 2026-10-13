@@ -73,6 +73,10 @@ function shop_db(): PDO {
     $add("orders ADD together INT NOT NULL DEFAULT 0");
     shop_set('schema', '12');
   }
+  if (shop_setting('schema') === '12') {   // coupons: wa_to = the mobile (last 10 digits) a coupon is sent to on WhatsApp from Make a coupon; anyone can still use the code
+    $add("coupons ADD wa_to VARCHAR(10) NOT NULL DEFAULT ''");
+    shop_set('schema', '13');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   if ($sig !== '' && shop_setting('order_counter') !== null && shop_setting('fresh_start') !== null) shop_set('schema_sig', $sig);
@@ -134,7 +138,7 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
       starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '',
-      free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '', per_cust INT NOT NULL DEFAULT 0)$tail",
+      free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '', per_cust INT NOT NULL DEFAULT 0, wa_to VARCHAR(10) NOT NULL DEFAULT '')$tail",
     /* Trash on admin Orders: an order closed with its ✕ is moved here whole (row = the orders row as JSON), so it leaves every list, count and report;
        Put back inserts it again as it was. The other columns are for the Trash page. */
     "CREATE TABLE IF NOT EXISTS orders_trash(no VARCHAR(24) NOT NULL PRIMARY KEY, closed VARCHAR(19) NOT NULL, created VARCHAR(19) NOT NULL DEFAULT '',
