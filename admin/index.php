@@ -416,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ->execute([$day, $cat, mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['note'] ?? ''))), 0, 200), (int)round((float)$amt * 100), shop_now()]);
     go($back, 'Expense added: ' . rupees((int)round((float)$amt * 100)) . ' on ' . date('d M Y', strtotime($day)) . '.');
   }
-  if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' ? (!empty($_POST['editing']) ? ['edit' => $code] : []) : ['made' => $code]), $msg); }   // made: the saved coupon shows on top with Send on WhatsApp
+  if ($a === 'coupon_save') { $msg = save_coupon(); $code = coupon_clean((string)($_POST['code'] ?? '')); go(['tab' => 'coupons'] + ($msg[0] === '!' ? (!empty($_POST['editing']) ? ['edit' => $code] : []) : (!empty($_POST['sendwa']) ? ['made' => $code] : [])), $msg); }   // WhatsApp next to Add coupon: saved first, then (made) the WhatsApp box opens by itself
   if ($a === 'coupon_goodwill') { [$code, $msg] = make_goodwill_coupon(); go(['tab' => 'coupons'] + ($code !== '' ? ['made' => $code] : []), $msg); }
   if ($a === 'wa_coupon') {   // Open WhatsApp in the shared box (admin.js gWa, without reloading): with a coupon picked, a new THANKS- code for this mobile only
     header('Content-Type: application/json');   // (one use); then the review request (rq:<order no>) or the coupon (cp:<code>) shows Sent dd/mm

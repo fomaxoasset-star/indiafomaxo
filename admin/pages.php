@@ -316,7 +316,8 @@ if ($tab === 'coupons') {
     . '<label class="cprow"><span>Ends</span>' . $tbox('ends', $E ? coupon_ends($E) : '', '23:59') . '</label>'
     . '<label class="cprow cpuse"><span>Usage limit</span><input type="number" name="max_uses" min="1" step="1" inputmode="numeric" value="' . h($E && $E['max_uses'] ? (string)$E['max_uses'] : '') . '" placeholder="No limit (total orders)"></label></div>'
     . '<label class="cpon"><input type="checkbox" name="per_cust" value="1"' . (!empty($E['per_cust']) ? ' checked' : '') . '> One use per customer (mobile number)</label>'
-    . '<button class="btn" style="width:100%">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button>'
+    . '<label>WhatsApp mobile<input name="wa_to" type="tel" inputmode="tel" maxlength="16" value="' . h(($E['wa_to'] ?? '') !== '' ? phone_fmt($E['wa_to']) : '') . '" placeholder="Optional · 98765 43210" autocomplete="off"></label>'
+    . '<div class="cpsave"><button class="btn">' . ($E ? 'Save ' . h($E['code']) : 'Add coupon') . '</button><button class="btn wag" name="sendwa" value="1">' . WA_SVG . '<span>WhatsApp</span></button></div>'
     . '<p class="muted small" style="margin:0">Shoppers type the code in “Have a coupon code?” at checkout. It works for cash on delivery and online payment, and the discount is worked out on the server.</p></div></form>'
     . '<div class="box' . ($E ? '' : ' on') . '" data-pane="list"><div class="bh"><h3>Your coupons · ' . count($CP) . '</h3></div>';
   /* Goodwill coupon: the owner types a customer's mobile number and picks % off, ₹ off or a free product; a new one-use code for that number only, no end date */
@@ -332,8 +333,9 @@ if ($tab === 'coupons') {
     . ($M ? '<div class="sry-done"><span><b class="cpn">' . h($M['code']) . '</b> ' . h(coupon_label($M)) . ' · ' . h(phone_fmt($M['phone'])) . (coupon_ends($M) !== '' ? ' · till ' . h(date('j M Y', strtotime(coupon_ends($M)))) : '') . '</span>'
       . wa_btn((string)$M['phone'], phone_fmt($M['phone']), goodwill_text($M), '', 'cp:' . $M['code'], 'Send on WhatsApp', 'btn sm wag', true) . '</div>' : '')
     . '</form>'
-    /* a coupon just added or saved: on top, ready to send on WhatsApp */
-    . ($N ? '<div class="sry-done cpmade"><span><b class="cpn">' . h($N['code']) . '</b> ' . h(coupon_label($N)) . ' is ready</span>' . wa_btn((string)($N['phone'] ?? ''), $N['code'], (string)($N['phone'] ?? '') !== '' ? goodwill_text($N) : coupon_share_text($N), '', 'cp:' . $N['code'], 'Send on WhatsApp', 'btn sm wag', true) . '</div>' : '')
+    /* WhatsApp next to Add coupon: the coupon is saved, then its WhatsApp box opens by itself (to the WhatsApp mobile, if one was typed) */
+    . ($N ? '<span hidden>' . wa_btn((string)$N['wa_to'], (string)$N['wa_to'] !== '' ? phone_fmt($N['wa_to']) : $N['code'], coupon_share_text($N), '', 'cp:' . $N['code'], 'WhatsApp', 'btn sm wag cpopen', true) . '</span>'
+      . '<script>addEventListener("load",function(){var b=document.querySelector(".cpopen");if(b)b.click()})</script>' : '')
     . '<div class="bb np">';
   if (!$CP) $body .= '<p class="empty">No coupons yet. Add one, like WELCOME10 for 10% off.</p>';
   else {
@@ -347,13 +349,13 @@ if ($tab === 'coupons') {
         . ($goodwill($c) ? '<td>' . h(coupon_label($c)) . ' <span class="cpstag goodwill">' . (['REFILL-' => 'Refill', 'CART-' => 'Left cart', 'REVIEW-' => 'Review', 'COMEBACK-' => 'Left at checkout', 'THANKS-' => 'WhatsApp'][preg_replace('/^([A-Z]+-).*$/', '$1', $c['code'])] ?? 'Goodwill') . '</span><small class="sry-ph">For ' . h(phone_fmt($c['phone'])) . '</small>' . ($limit($c) !== '' ? '<small class="show-m">' . h($limit($c)) . '</small>' : '') . '</td>'
           . '<td class="hide-m"><span class="muted">None</span></td><td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No end date</span>') . '</td>'
         : '<td>' . h(coupon_label($c)) . ($c['kind'] === 'free' ? ' <span class="cpstag free">Free product</span>' : (!empty($c['stack']) ? ' <span class="cpstag both">' . coupon_stack_label($c) . '</span>' : ''))   // only "Use both" is tagged; the bigger offer is the usual
-          . (!empty($c['per_cust']) ? ' <span class="cpstag">1 per customer</span>' : '') . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
+          . (!empty($c['per_cust']) ? ' <span class="cpstag">1 per customer</span>' : '') . (($c['wa_to'] ?? '') !== '' ? '<small class="sry-ph">WhatsApp ' . h(phone_fmt($c['wa_to'])) . '</small>' : '') . '<small class="show-m">' . h(implode(' · ', array_filter([(int)$c['min_order'] ? 'Min ' . rupees((int)$c['min_order']) : '', $limit($c)]))) . '</small></td>'
           . '<td class="hide-m">' . ((int)$c['min_order'] ? rupees((int)$c['min_order']) : '<span class="muted">None</span>') . '</td>'
           . '<td class="hide-m">' . ($limit($c) !== '' ? h($limit($c)) : '<span class="muted">No limit</span>') . '</td>')
         . '<td class="r"><a href="' . h(self_url(['tab' => 'orders', 'coupon' => $c['code']])) . '" title="See the orders">' . $used . '</a></td>'
         . '<td class="r hide-m">' . rupees($c['sales']) . '</td><td class="r hide-m">' . rupees($c['given']) . '</td>'
         . '<td class="r nw"><form method="post" class="cpa" data-csrf="' . h($CSRF) . '">' . $csrfField . '<input type="hidden" name="code" value="' . h($c['code']) . '"><input type="hidden" name="on" value="' . ((int)$c['active'] ? '0' : '1') . '">'
-        . ($wa !== '' ? wa_btn((string)($c['phone'] ?? ''), $goodwill($c) ? phone_fmt($c['phone']) : $c['code'], $wa, '', 'cp:' . $c['code'], ($sd = $cpSent[$c['code']] ?? '') !== '' ? 'Sent ' . date('d/m', strtotime($sd)) : 'WhatsApp', 'btn sm wag sry-wa' . ($sd !== '' ? ' line' : ''), true) : '')   // once tapped, the button itself says Sent dd/mm
+        . ($wa !== '' ? wa_btn((string)($goodwill($c) ? $c['phone'] : ($c['wa_to'] ?? '')), $goodwill($c) ? phone_fmt($c['phone']) : (($c['wa_to'] ?? '') !== '' ? phone_fmt($c['wa_to']) : $c['code']), $wa, '', 'cp:' . $c['code'], ($sd = $cpSent[$c['code']] ?? '') !== '' ? 'Sent ' . date('d/m', strtotime($sd)) : 'WhatsApp', 'btn sm wag sry-wa' . ($sd !== '' ? ' line' : ''), true) : '')   // once tapped, the button itself says Sent dd/mm
         . '<button class="btn line sm" name="action" value="coupon_on">' . ((int)$c['active'] ? 'Turn off' : 'Turn on') . '</button>'
         . (!$goodwill($c) ? '<a class="btn line sm" href="' . h(self_url(['tab' => 'coupons', 'edit' => $c['code']])) . '">Edit</a>' : '')
         . '<button class="linkbtn" name="action" value="coupon_delete" data-confirm="Delete coupon ' . h($c['code']) . '?' . ($c['uses'] ? ' Orders that used it keep the code.' : '') . '">Delete</button></form></td></tr>';
