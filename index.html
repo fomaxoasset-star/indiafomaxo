@@ -2826,6 +2826,10 @@ const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/
     S.products.push(p);
     const t = p.tier && (S.tiers || []).find(x => x.id === p.tier); if (t && !t.products.includes(p.id)) t.products.push(p.id);
   });
+  /* Discount Off (Admin → Products, AJAY 2026-10-13): these products show and sell at their Original price, nothing crossed out (the server prices the order the same way) */
+  const so = new Set(LIVE.saleOff || []);
+  S.products.forEach(p => { if (!so.has(p.id)) return; for (const [k, c] of Object.entries(p.compareAt || {})) if (+c > +p.prices[k]) p.prices[k] = +c; p.compareAt = {}; });
+  pcs.forEach(c => { if (!so.has(c.id)) return; if (+c.was > +c.price) c.price = +c.was; c.was = null; });
   if (!hid.size) return;
   S.products = S.products.filter(p => !hid.has(p.id));
   if (S.personalCare) S.personalCare.products = pcs.filter(c => !hid.has(c.id));

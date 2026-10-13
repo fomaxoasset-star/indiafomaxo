@@ -206,6 +206,11 @@ function shop_setting(string $k): ?string {
   if ($SHOP_SET[$k] !== null) return (string)$SHOP_SET[$k];
   $s = shop_db()->prepare('SELECT v FROM settings WHERE k = ?'); $s->execute([$k]); $v = $s->fetchColumn(); return $v === false ? null : (string)$v;
 }
+/* Discount Off (Admin → Products, AJAY 2026-10-13): the ids of products that sell at their Original ("was") price, nothing crossed out. Both prices stay saved. */
+function shop_sale_off(): array {
+  try { $v = json_decode((string)shop_setting('sale_off'), true); } catch (Throwable $e) { return []; }
+  return is_array($v) ? array_values(array_filter($v, 'is_string')) : [];
+}
 function shop_set(string $k, string $v): void {
   global $SHOP_SET;
   shop_upsert('settings', ['k'], ['k' => $k, 'v' => $v]);

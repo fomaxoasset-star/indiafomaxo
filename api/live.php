@@ -35,6 +35,7 @@ try {
     if (!empty($d['prices'])) $live['prices'][$id] = $d['prices'];
     if (!empty($d['compareAt'])) $live['compareAt'][$id] = $d['compareAt'];
   }
+  if ($so = shop_sale_off()) $live['saleOff'] = $so;   // Discount Off on Admin → Products: those products show and sell at their Original price
   if (($loc = shop_store_location()) !== null)
     $live['stores'] = $loc['show'] ? array_map(fn($st) => $st + ['mapQuery' => shop_map_query_from_link((string)($st['link'] ?? ''))], $loc['stores']) : false;
   if (($offer = shop_offer_live()) !== null) $live['offer'] = $offer;   // the limited-time offer popup and countdown lines

@@ -259,6 +259,11 @@ function fomaxo_catalog(): array {
     catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); }
   }
   if (preg_match('/\bcheckout:\s*\{[^}]*?\bemail:\s*"([^"]+)"/s', $src, $x)) $cat['email'] = $x[1];
+  /* Discount Off: the Original price is the price, nothing crossed out; 'sale' keeps both saved prices for the admin list */
+  foreach (shop_sale_off() as $id) if (isset($cat['products'][$id])) { $p = &$cat['products'][$id];
+    $p['sale'] = ['prices' => $p['prices'], 'was' => $p['was']]; $p['saleOff'] = true;
+    foreach ($p['was'] as $k => $w) if (isset($p['prices'][$k]) && $w > $p['prices'][$k]) $p['prices'][$k] = $w;
+    $p['was'] = []; unset($p); }
   return $cat;
 }
 
