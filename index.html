@@ -1773,6 +1773,7 @@ html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d4
 .zoom-dot{position:absolute;right:24px;top:50%;z-index:2;width:68px;height:68px;margin-top:-34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:9px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:#1a140b;background:radial-gradient(circle at 35% 30%,#e9c98b,#b8883f);box-shadow:0 8px 24px -8px rgba(0,0,0,.6);pointer-events:none;transition:opacity .3s}
 .stage.zoom .zoom-dot{opacity:0}
 html.cur-ready .zoom-dot{display:none} /* laptop: the mouse itself turns into the ZOOM circle over the photo, so no fixed circle when the mouse is away */
+@media(hover:none){.zoom-dot{display:none}}   /* AJAY: phones show the whole photo with no zoom: no ZOOM circle, a tap doesn't enlarge it */
 @media(max-width:600px){.zoom-dot{width:54px;height:54px;margin-top:-27px;right:14px;font-size:8px}}
 .buy #addBtn{flex:1}
 .buy .p-rate{margin-top:2px}
@@ -3608,7 +3609,7 @@ function bindProduct(p){
     renderMbuy(); renderFbt(p, size); const ps = $('#psold'); if (ps) ps.innerHTML = soldHTML(p.id, size); fitPdp();
   });
   const stage = $('#stage');
-  stage.onclick = () => stage.classList.toggle('zoom');
+  stage.onclick = () => { if (matchMedia('(hover: hover)').matches) stage.classList.toggle('zoom'); };   // laptop only: phones swipe instead
   stage.onmousemove = e => { if (!stage.classList.contains('zoom')) return; const r = stage.getBoundingClientRect(); $('#stageImg').style.transformOrigin = `${(e.clientX-r.left)/r.width*100}% ${(e.clientY-r.top)/r.height*100}%`; };
   stage.onmouseleave = () => stage.classList.remove('zoom');
   /* phone: swipe the big photo left / right for the next / previous photo (goes round at the ends); the neighbour photo slides in beside it */
