@@ -473,6 +473,10 @@ function markSent(btn, day) {
         if (hit) { hit.checked = true; add.value = ''; hit.dispatchEvent(new Event('change', {bubbles: true})); }
       });
     });
+    /* phones: Timer / Popup / Line by prices show one at a time; the part stays picked after Save */
+    var ofPart = function (k) { ofr.dataset.ofp = k; ofr.querySelectorAll('.ofpt button').forEach(function (b) { b.classList.toggle('on', b.dataset.ofp === k); }); try { sessionStorage.setItem('fx_ofp', k); } catch (e) {} };
+    ofr.querySelectorAll('.ofpt button').forEach(function (b) { b.addEventListener('click', function () { ofPart(b.dataset.ofp); }); });
+    try { ofPart(sessionStorage.getItem('fx_ofp') || 't'); } catch (e) { ofPart('t'); }
     /* Line by prices: "Same as popup" picks the popup's products */
     var same = ofr.querySelector('[data-ofsame]');
     if (same) same.addEventListener('click', function () {
