@@ -28,9 +28,7 @@ function seo_products(): array {
     if (!empty($c['added'])) $p = (array)($d['site'] ?? []);
     else {
       $p = fomaxo_store_product((string)$id) ?? [];
-      $main = !empty($p['lockMain']) ? ($p['images'][0] ?? null) : null;
       if (!empty($d['edit']) && is_array($d['edit'])) $p = $d['edit'] + $p;
-      if ($main) $p['images'] = array_values(array_unique([$main, ...(array)($p['images'] ?? [])]));
     }
     $care = $c['kind'] === 'care';
     $imgs = $care ? array_merge([(string)($p['image'] ?? '')], (array)($p['extraImages'] ?? [])) : (array)($p['images'] ?? []);
