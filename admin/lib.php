@@ -148,7 +148,7 @@ function product_photos(string $id, array $old) {
   $new = array_map(fn($f) => "up/$f", $new);
   $main = (string)($_POST['main'] ?? '');
   $images = $main === 'new' && $new ? array_merge($new, $keep) : array_merge($keep, $new);
-  $images = array_slice($images, 0, 8);
+  $images = array_slice(fomaxo_photos_dedupe($images), 0, 8);   // a photo uploaded again keeps one copy, the sharper one
   return $images ?: 'Please keep or add at least one photo.';
 }
 function photos_of(array $p): array { return ($p['kind'] ?? '') === 'care' ? array_values(array_filter([$p['image'] ?? '', ...($p['extraImages'] ?? [])])) : array_values($p['images'] ?? []); }
@@ -210,6 +210,7 @@ function product_photo_add_drop(string $id, string $add, string $drop, array $CA
   return product_photos_set($id, $imgs, $now, $LIVE);
 }
 function product_photos_set(string $id, array $imgs, array $now, array $LIVE): string {
+  $imgs = fomaxo_photos_dedupe($imgs);
   $kind = (string)($now['kind'] ?? '');
   $f = $kind === 'care' ? ['image' => $imgs[0], 'extraImages' => array_slice($imgs, 1)] : ['images' => $imgs];
   $d = $LIVE[$id] ?? ['added' => false, 'hidden' => false, 'sort' => 0];

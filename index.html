@@ -2593,7 +2593,7 @@ window.STORE = {
       ],
       notes: { top: "Bergamot · Pepper", heart: "Agarwood · Rosemary", base: "Leather · Vetiver · Musk" },
       sizes: [100], prices: { 100: 1750 }, compareAt: { 100: 2200 },   // compareAt = original price shown crossed out
-      images: ["gold-1", "gold-2", "gold-3"], editorial: "gold-feature",   // editorial: the photo in the home Distinct Blends row
+      images: ["gold-1", "gold-2", "gold-3"],
       url: "https://fomaxo.com/fomaxo-gold-eau-de-parfum"
     },
     {
@@ -2606,7 +2606,7 @@ window.STORE = {
       ],
       notes: { top: "Lemon · Bergamot · Vervain", heart: "Star Anise · Olive Blossom · Guaiac Wood", base: "Ambergris · Leather · Sandalwood" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["oldmoney-50-main", "oldmoney-model", "oldmoney-2", "oldmoney-3", "oldmoney-4"], addImages: ["oldmoney-model"], lockMain: true, dropImages: ["oldmoney-1"], miniImage: "oldmoney-10-1", miniImages: ["oldmoney-10-1", "oldmoney-10-2", "oldmoney-10-3"],
+      images: ["oldmoney-50-main", "oldmoney-model", "oldmoney-2", "oldmoney-3", "oldmoney-4"], miniImage: "oldmoney-10-1", miniImages: ["oldmoney-10-1", "oldmoney-10-2", "oldmoney-10-3"],
       url: "https://fomaxo.com/fomaxo-old-money"
     },
     {
@@ -2618,7 +2618,7 @@ window.STORE = {
       ],
       notes: { top: "Green Tangerine · Lemon · Sage", heart: "Candy · Gardenia · Cinnamon · Praline", base: "Black Amber · Rosewood · Musk" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["royalcandy-50-main", "royalcandy-2"], lockMain: true, dropImages: ["royalcandy-1"], miniImage: "royalcandy-10-1", miniImages: ["royalcandy-10-1", "royalcandy-10-2", "royalcandy-10-3"],
+      images: ["royalcandy-50-main", "royalcandy-2"], miniImage: "royalcandy-10-1", miniImages: ["royalcandy-10-1", "royalcandy-10-2", "royalcandy-10-3"],
       url: "https://fomaxo.com/fomaxo-royal-candy"
     },
     {
@@ -2642,7 +2642,7 @@ window.STORE = {
       ],
       notes: { top: "Matcha Tea · Rose · Cinnamon", heart: "Orange Blossom · Lily of the Valley · Tea Rose", base: "Coconut · Vanilla · Amber" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2200 },
-      images: ["matchacoco-50-main", "matchacoco-model", "matchacoco-2", "matchacoco-3"], addImages: ["matchacoco-model"], lockMain: true, dropImages: ["matchacoco-1"], miniImage: "matchacoco-10-1", miniImages: ["matchacoco-10-1", "matchacoco-10-2"],
+      images: ["matchacoco-50-main", "matchacoco-model", "matchacoco-2", "matchacoco-3"], miniImage: "matchacoco-10-1", miniImages: ["matchacoco-10-1", "matchacoco-10-2"],
       url: ""
     },
     {
@@ -2654,7 +2654,7 @@ window.STORE = {
       ],
       notes: { top: "Passion Fruit · Lemon · Apple", heart: "Litchi · Patchouli · Bergamot", base: "Juniper Berry · Vetiver · Cedar" },
       sizes: [10, 50], prices: { 10: 450, 50: 1750 }, compareAt: { 10: 600, 50: 2300 },
-      images: ["passionsin-1", "passionsin-model", "passionsin-2", "passionsin-3"], addImages: ["passionsin-model"], miniImage: "passionsin-10-1", miniImages: ["passionsin-10-1", "passionsin-10-2", "passionsin-10-3"],
+      images: ["passionsin-1", "passionsin-model", "passionsin-2", "passionsin-3"], miniImage: "passionsin-10-1", miniImages: ["passionsin-10-1", "passionsin-10-2", "passionsin-10-3"],
       url: ""
     },
 
@@ -2785,7 +2785,7 @@ const IMGC = (k, w) => SMALL[k] && w * (window.devicePixelRatio || 1) <= 640 ? I
 /* photos that also have 240, 480 and (when wider than 900) 720px wide copies in assets/img/s, m and t, with the full photo's width: PIC(k, sizes) lets the browser
    pick the lightest copy that is still sharp for how wide the photo shows (sizes) and the screen. A new photo without copies simply uses the full one */
 const ED = '(max-width:760px) 100vw, 44vw', SPLIT = '(max-width:760px) 100vw, 54vw', GF = '(max-width:760px) 96vw, 31vw';   /* how wide the editorial, side by side and gift card photos show */
-const IMG_W = {"atelier":1027,"boutique-story":1145,"boutique":984,"car-carrush":568,"car-drivenoir":570,"car-passiondrive":570,"couple-2":768,"couple-3":688,"couple":710,"discovery-1":800,"discovery-2":961,"discovery-3":984,"dollar-1":688,"dollar-2":1043,"dollar-3":1398,"dollar-4":1394,"dollar-5":703,"elite-card":865,"elite-lounge":862,"franchise-boutique":1300,"gift-1":984,"gift-2":984,"gift-3":721,"gift-birthday":688,"gift-box-wishes":1220,"gift-corporate":688,"gift-name-birthday":1254,"gift-name-wishes":960,"gift-set-1":1300,"gift-set-2":1300,"gift-set-3":1218,"gift-set-4":1112,"gift-set-5":1083,"gift-set-6":1300,"gift-set-7":1300,"gift-showroom":1214,"gold-1":688,"gold-2":1046,"gold-3":1110,"gold-feature":688,"gold-model":1198,"king-1":688,"king-2":1048,"king-3":1048,"king-4":1048,"king-5":1400,"king-collection":1048,"logo":997,"matchacoco-1":688,"matchacoco-10-1":688,"matchacoco-10-2":1004,"matchacoco-100":799,"matchacoco-2":785,"matchacoco-3":773,"matchacoco-50-main":688,"matchacoco-model":768,"oldmoney-1":688,"oldmoney-10-1":688,"oldmoney-10-2":859,"oldmoney-10-3":752,"oldmoney-100":953,"oldmoney-100b":1153,"oldmoney-2":912,"oldmoney-3":917,"oldmoney-4":702,"oldmoney-50-main":1100,"oldmoney-collection":1250,"oldmoney-model":688,"passionsin-1":688,"passionsin-10-1":688,"passionsin-10-2":924,"passionsin-10-3":912,"passionsin-2":934,"passionsin-3":1400,"passionsin-model":674,"pc-aloevita-wash":528,"pc-avokiss":528,"pc-kissberry":529,"pc-melondrip":528,"pc-passionsin-gel":528,"pc-passionsin-shampoo":528,"pc-radiant-conditioner":528,"pc-radiant-gel":528,"pc-radiant-shampoo":528,"pc-radiant-wash":529,"personal-care-poster":1024,"personal-care":842,"royalcandy-1":688,"royalcandy-10-1":688,"royalcandy-10-2":858,"royalcandy-10-3":867,"royalcandy-100":1300,"royalcandy-2":1002,"royalcandy-50-main":688,"runway-2":848,"runway-personal-care":1024,"runway":805};
+const IMG_W = {"atelier":1027,"boutique-story":1145,"boutique":984,"car-carrush":568,"car-drivenoir":570,"car-passiondrive":570,"couple-2":768,"couple-3":688,"couple":710,"discovery-1":800,"discovery-2":961,"discovery-3":984,"dollar-1":688,"dollar-2":1043,"dollar-3":1398,"dollar-4":1394,"dollar-5":703,"elite-card":865,"elite-lounge":862,"franchise-boutique":1300,"gift-1":984,"gift-2":984,"gift-3":721,"gift-birthday":688,"gift-box-wishes":1220,"gift-corporate":688,"gift-name-birthday":1254,"gift-name-wishes":960,"gift-set-1":1300,"gift-set-2":1300,"gift-set-3":1218,"gift-set-4":1112,"gift-set-5":1083,"gift-set-6":1300,"gift-set-7":1300,"gift-showroom":1214,"gold-1":688,"gold-2":1046,"gold-3":1110,"gold-model":1198,"king-1":688,"king-2":1048,"king-3":1048,"king-4":1048,"king-5":1400,"king-collection":1048,"logo":997,"matchacoco-10-1":688,"matchacoco-10-2":1004,"matchacoco-100":799,"matchacoco-2":785,"matchacoco-3":773,"matchacoco-50-main":688,"matchacoco-model":768,"oldmoney-10-1":688,"oldmoney-10-2":859,"oldmoney-10-3":752,"oldmoney-100":953,"oldmoney-100b":1153,"oldmoney-2":912,"oldmoney-3":917,"oldmoney-4":702,"oldmoney-50-main":1100,"oldmoney-collection":1250,"oldmoney-model":688,"passionsin-1":688,"passionsin-10-1":688,"passionsin-10-2":924,"passionsin-10-3":912,"passionsin-2":934,"passionsin-3":1400,"passionsin-model":674,"pc-aloevita-wash":528,"pc-avokiss":528,"pc-kissberry":529,"pc-melondrip":528,"pc-passionsin-gel":528,"pc-passionsin-shampoo":528,"pc-radiant-conditioner":528,"pc-radiant-gel":528,"pc-radiant-shampoo":528,"pc-radiant-wash":529,"personal-care-poster":1024,"personal-care":842,"royalcandy-10-1":688,"royalcandy-10-2":858,"royalcandy-10-3":867,"royalcandy-100":1300,"royalcandy-2":1002,"royalcandy-50-main":688,"runway-2":848,"runway-personal-care":1024};
 const PIC = (k, sizes) => { const w = IMG_W[k], t = (d, x) => `assets/img/${d}/${k}.webp?v=11 ${x}w`; return `src="${IMG(k)}"` + (w ? ` srcset="${[t('s', 240), t('m', 480), w > 900 && t('t', 720), `${IMG(k)} ${w}w`].filter(Boolean).join(', ')}" sizes="${sizes}"` : ''); };
 let VW = innerWidth; addEventListener('resize', () => { VW = innerWidth; });   // window width, read once here and on resize: reading innerWidth while a page is being drawn makes the browser lay the whole page out first
 const CARD_W = () => VW <= 1100 ? VW / 2 : 330;   // a shop card's photo: two across up to 1100px, four across above
@@ -2799,7 +2799,7 @@ const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/
   /* cash on delivery minimum, hidden maximum and fee from Admin → Settings */
   if (LIVE.cod && S.checkout.cod && typeof S.checkout.cod === 'object') Object.assign(S.checkout.cod, LIVE.cod);
   /* details and photos edited on the admin page */
-  S.products.forEach(p => { const e = ed[p.id]; if (!e) return; const main = p.lockMain && p.images[0], add = p.addImages || [];
+  S.products.forEach(p => { const e = ed[p.id]; if (!e) return;
     /* an editorial photo that is one of the product photos follows the admin edit; a separate one (not in images) stays */
     if (e.images && p.editorial && p.images.includes(p.editorial) && !e.images.includes(p.editorial)) p.editorial = e.images[Math.min(2, e.images.length - 1)];
     if ('tier' in e && !p.kind && (e.tier || '') !== (p.tier || '')) { (S.tiers || []).forEach(t => { if (t.id !== 'car') t.products = t.products.filter(x => x !== p.id); }); const t = e.tier && (S.tiers || []).find(x => x.id === e.tier); if (t) t.products.push(p.id); }
@@ -2807,11 +2807,6 @@ const pageOff = h => { if (!h || !PAGES_OFF.size) return false; if (/^https:\/\/
     Object.assign(p, e, {prices: {...e.prices}, compareAt: {...e.compareAt}});
     if (e.sizes) p.sizes = e.sizes.map(x => x === 'one' ? x : +x);
     if (!e.notes) delete p.notes; if (!e.tier) delete p.tier;
-    if (main) p.images = [main, ...(p.images || []).filter(k => k !== main)];
-    /* addImages: photos added in index.html after the admin database was filled; they go right after the main photo unless the admin list already has them */
-    if (add.length) { const im = [...(p.images || [])]; add.filter(k => !im.includes(k)).reverse().forEach(k => im.splice(1, 0, k)); p.images = im; }
-    /* dropImages: old photos replaced in index.html that an admin photo snapshot still lists */
-    if (p.dropImages) p.images = (p.images || []).filter(k => !p.dropImages.includes(k));
     /* the admin page never sets the editorial photo; products copied into the admin database carry an old one, so index.html's wins */
     if (edPhoto) p.editorial = edPhoto; else delete p.editorial;
   });

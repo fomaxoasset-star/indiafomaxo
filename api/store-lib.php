@@ -113,6 +113,63 @@ function fomaxo_seed_products(array $live): void {
   }
   shop_set('products_seeded', shop_now());
 }
+/* a photo's picture fingerprint (64-bit difference hash), size in pixels and file size; null when the file can't be read.
+   $k is a photo name as kept in a product's list: "oldmoney-2" (assets/img) or "up/…" (uploaded on the admin page) */
+function fomaxo_photo_sig(string $k): ?array {
+  global $PRIV; static $memo = [];
+  if (array_key_exists($k, $memo)) return $memo[$k];
+  $path = str_starts_with($k, 'up/') ? "$PRIV/product-images/" . basename(substr($k, 3)) : dirname(__DIR__) . '/assets/img/' . basename($k) . '.webp';
+  $im = is_file($path) ? @imagecreatefromstring((string)@file_get_contents($path)) : false; if (!$im) return $memo[$k] = null;
+  $w = imagesx($im); $h = imagesy($im); $s = imagecreatetruecolor(9, 8); imagecopyresampled($s, $im, 0, 0, 0, 0, 9, 8, $w, $h);
+  $g = []; for ($y = 0; $y < 8; $y++) for ($x = 0; $x < 9; $x++) { $c = imagecolorat($s, $x, $y); $g[$y][$x] = (($c >> 16) & 255) * 299 + (($c >> 8) & 255) * 587 + ($c & 255) * 114; }
+  $bits = ''; for ($y = 0; $y < 8; $y++) for ($x = 0; $x < 8; $x++) $bits .= $g[$y][$x] > $g[$y][$x + 1] ? '1' : '0';
+  return $memo[$k] = [$bits, $w * $h, (int)filesize($path)];
+}
+/* a product's photo list with each picture once: a name listed twice, or the same picture under two names (an upload of a
+   photo that is already there), keeps one copy, the one with the most pixels (then the bigger, less squeezed file), in the place of the first. Photos that are
+   all different come back as they were. Different photos of the shop differ in 11+ of 64 bits; copies in 0–2. */
+function fomaxo_photos_dedupe(array $imgs): array {
+  $imgs = array_values(array_unique(array_filter(array_map('strval', $imgs), fn($k) => $k !== '')));
+  if (count($imgs) < 2 || !function_exists('imagecreatefromstring')) return $imgs;
+  $sig = array_map('fomaxo_photo_sig', $imgs); $out = [];
+  foreach ($imgs as $i => $k) {
+    $same = null;
+    if ($sig[$i]) foreach ($out as $j => [$kk, $ss]) if ($ss && count(array_diff_assoc(str_split($ss[0]), str_split($sig[$i][0]))) <= 4) { $same = $j; break; }
+    if ($same === null) $out[] = [$k, $sig[$i]];
+    elseif ([$sig[$i][1], $sig[$i][2]] > [$out[$same][1][1], $out[$same][1][2]]) $out[$same] = [$k, $sig[$i]];   // the sharper copy takes the first one's place
+  }
+  return array_column($out, 0);
+}
+/* Once: the photo lists saved on the admin page become exactly what the website shows. Old index.html fixes that were
+   applied over the admin list on every visit (new main photo first, model photo added, old photo dropped) are folded into
+   the saved list, and duplicate photos are taken out, so Admin → Products shows and edits the real gallery. */
+function fomaxo_tidy_photos(array $live): void {
+  $fix = ['oldmoney' => ['oldmoney-50-main', ['oldmoney-model'], ['oldmoney-1']], 'royalcandy' => ['royalcandy-50-main', [], ['royalcandy-1']],
+    'matchacoco' => ['matchacoco-50-main', ['matchacoco-model'], ['matchacoco-1']], 'passionsin' => ['', ['passionsin-model'], []]];
+  foreach ($live as $id => $d) {
+    $added = !empty($d['added']); $box = $added ? (array)($d['site'] ?? []) : (array)($d['edit'] ?? []);
+    $care = ($d['kind'] ?? '') === 'care' || isset($box['image']);
+    $imgs = $care ? array_values(array_filter([(string)($box['image'] ?? ''), ...(array)($box['extraImages'] ?? [])])) : array_values((array)($box['images'] ?? []));
+    if (!$imgs) continue;
+    if (!$added && isset($fix[$id])) {
+      [$main, $add, $drop] = $fix[$id];
+      if ($main !== '') $imgs = [$main, ...array_diff($imgs, [$main])];
+      foreach (array_reverse($add) as $k) if (!in_array($k, $imgs, true)) array_splice($imgs, 1, 0, [$k]);
+      $imgs = array_values(array_diff($imgs, $drop));
+    }
+    $new = fomaxo_photos_dedupe($imgs);
+    if (!$new || $new === array_values($care ? array_filter([(string)($box['image'] ?? ''), ...(array)($box['extraImages'] ?? [])]) : (array)($box['images'] ?? []))) continue;
+    $f = $care ? ['image' => $new[0], 'extraImages' => array_slice($new, 1)] : ['images' => $new];
+    $data = array_diff_key($d, array_flip(['added', 'hidden', 'sort']));
+    if ($added) $data['site'] = array_merge($box, $f);
+    else {
+      $orig = fomaxo_store_product((string)$id); $orig = $orig ? ($care ? array_values(array_filter([(string)($orig['image'] ?? ''), ...(array)($orig['extraImages'] ?? [])])) : array_values((array)($orig['images'] ?? []))) : null;
+      $data['edit'] = array_diff_key($box, ['images' => 1, 'image' => 1, 'extraImages' => 1]) + ($new === $orig ? [] : $f);   // the same as index.html: no copy needed
+    }
+    shop_save_product((string)$id, $added, !empty($d['hidden']), $data, (int)($d['sort'] ?? 0));
+  }
+  shop_set('photos_tidy', shop_now());
+}
 /* the biggest real % saving among products on the website with an old price (only those in $only, when given), and that product's name: what the offer popup shows */
 function fomaxo_best_pct(array $only = []): array {
   $best = [0, ''];
@@ -161,13 +218,14 @@ function fomaxo_catalog(): array {
       elseif (preg_match('/\bwas:\s*([\d.]+)/', $o, $x)) $was['one'] = (float)$x[1];
       $cat['products'][$id] = ['name' => $get('name') . ($kind === 'care' ? ' ' . explode(' — ', $get('type'))[0] : ''),
         'kind' => $kind, 'vol' => $get('vol'), 'tier' => $get('tier'), 'cat' => $get('cat'), 'prices' => $prices, 'was' => $was, 'soldOut' => (bool)preg_match('/\bsoldOut:\s*true/', $o),
-        'img' => preg_match('/\bimages?:\s*\[?\s*"([^"]+)"/', $o, $x) ? 'assets/img/' . $x[1] . '.webp' : '', 'hidden' => false, 'added' => false, 'lockMain' => (bool)preg_match('/\blockMain:\s*true/', $o)];
+        'img' => preg_match('/\bimages?:\s*\[?\s*"([^"]+)"/', $o, $x) ? 'assets/img/' . $x[1] . '.webp' : '', 'hidden' => false, 'added' => false];
     }
   }
   /* products added, hidden or re-priced on the admin page (fomaxo.in/admin) */
   try {
     $live = shop_products();
     if (shop_setting('products_seeded') === null) { fomaxo_seed_products($live); $live = shop_products(); }
+    if (shop_setting('photos_tidy') === null) { fomaxo_tidy_photos($live); $live = shop_products(); }
   } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); $live = []; }
   foreach ($live as $id => $d) {
     if ($d['added']) {
@@ -184,7 +242,7 @@ function fomaxo_catalog(): array {
       if (isset($e['vol'])) $p['vol'] = (string)$e['vol'];
       $p['prices'] = array_map('floatval', (array)($d['prices'] ?? $p['prices'])); $p['was'] = array_map('floatval', (array)($d['compareAt'] ?? []));
       $img = (string)($e['images'][0] ?? $e['image'] ?? '');
-      if ($img !== '' && empty($p['lockMain'])) $p['img'] = str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : "assets/img/$img.webp";
+      if ($img !== '') $p['img'] = str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : "assets/img/$img.webp";
       unset($p);
     }
     else foreach (['prices' => 'prices', 'compareAt' => 'was'] as $from => $to)
