@@ -366,7 +366,7 @@ if ($tab === 'coupons') {
 /* ============ Offer: the limited-time offer popup and countdown lines, and the New product popup, on the website ============ */
 if ($tab === 'offer') {
   $O = shop_offer(); $left = $O['mode'] === 'end' && $O['end'] !== '' ? strtotime($O['end']) - time() : 0;
-  $what = implode(' + ', array_filter([$O['popup'] ? 'popup' : '', $O['lines'] ? 'line by prices on ' . count($O['lines']) . ' product' . (count($O['lines']) > 1 ? 's' : '') : '']));
+  $what = implode(' + ', array_filter([$O['popup'] ? 'popup' : '', $O['lines'] ? 'line by prices on ' . ($O['linesAll'] ? 'all ' : '') . count($O['lines']) . ' product' . (count($O['lines']) > 1 ? 's' : '') : '']));
   $best = fomaxo_best_pct($O['items'])[0];
   [$sk, $status] = match (true) {
     $O['mode'] === 'off' => ['off', 'Off. Nothing shows on the website.'],
@@ -428,7 +428,9 @@ if ($tab === 'offer') {
     . $word('btn', 'Button', 24, 'Shop the offer', ['Shop the offer', 'Shop now', 'Grab the deal', 'Shop fragrances', 'See the offer'])
     . '</div>' . ($sale ? $picker('items', $O['items'], 'None picked: the popup counts every product with an old price.', 'Add a product to the popup') : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div></div>'
     . '<div class="ofrow"><div class="ofk"><b>Line by prices</b></div>'
-    . ($sale ? $picker('lines', $O['lines'], 'None picked: no line shows.', 'Add a product', '<button type="button" class="btn line sm" data-ofsame title="Pick the same products as the popup">Same as popup</button>') : '<p class="muted small" style="margin:0">Needs products with an old price.</p>') . '</div>'
+    . ($sale ? '<div class="ofcol oflines">' . $picker('lines', $O['lines'], 'None picked: no line shows.', 'Add a product', '<button type="button" class="btn line sm" data-ofsame title="Pick the same products as the popup">Same as popup</button>'
+        . '<label class="btn line sm ofall" title="Show the line on every product with an old price, new ones too"><input type="checkbox" name="lines_all" value="1"' . ($O['linesAll'] ? ' checked' : '') . '>All products</label>')
+      . '<p class="ofallon muted small">On all ' . count($sale) . ' products with an old price. Products you give an old price later get it too.</p></div>' : '<p class="muted small" style="margin:0">Needs products with an old price.</p>') . '</div>'
     . ($sale ? '<datalist id="ofw-items">' . implode('', array_map(fn($id, $n) => '<option value="' . h($CAT[$id]['name']) . '" label="' . $n . '% off">', array_keys($sale), $sale)) . '</datalist>' : '')
     . '<div class="row ofbtns"><button class="btn">Save</button><button type="button" class="btn line" data-preview="sale">Preview</button><button class="btn danger sm" name="action" value="offer_off" formnovalidate data-confirm="Turn the sale offer off? The popup and lines leave the website.">Turn off</button></div>'
     . '</form></div></div>'
