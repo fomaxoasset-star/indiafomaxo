@@ -416,18 +416,20 @@ if ($tab === 'offer') {
     . '<input type="hidden" name="size_l" value="' . $O['sizeL'] . '" data-min="' . SHOP_OFFER_SIZE['L'][0] . '" data-def="' . SHOP_OFFER_SIZE['L'][1] . '" data-max="' . SHOP_OFFER_SIZE['L'][2] . '">'
     . '<input type="hidden" name="size_p" value="' . $O['sizeP'] . '" data-min="' . SHOP_OFFER_SIZE['P'][0] . '" data-def="' . SHOP_OFFER_SIZE['P'][1] . '" data-max="' . SHOP_OFFER_SIZE['P'][2] . '">'
     . implode('', array_map(fn($d) => implode('', array_map(fn($k) => '<input type="hidden" name="fs[' . $d . '][' . $k . ']" value="' . $O['fs'][strtoupper($d)][$k] . '" data-min="' . SHOP_OFFER_FS[$k][0] . '" data-def="100" data-max="' . SHOP_OFFER_FS[$k][1] . '">', array_keys(SHOP_OFFER_FS))), ['l', 'p']))
-    . '<div class="ofrow"><b>Timer</b><span class="seg ck ofm">' . $radio('end', 'Countdown') . $radio('always', 'Always on') . $radio('off', 'Off') . '</span></div>'
-    . '<div class="ofend"' . ($O['mode'] === 'end' ? '' : ' hidden') . '><b>Ends</b><div class="ofendin">'
+    /* phones: one part of the sale offer at a time (Timer / Popup / Line by prices), so it fits the screen */
+    . '<div class="seg ofpt" role="group" aria-label="Part"><button type="button" class="on" data-ofp="t">Timer</button><button type="button" data-ofp="p">Popup</button><button type="button" data-ofp="l">Line by prices</button></div>'
+    . '<div class="ofrow" data-ofp="t"><b>Timer</b><span class="seg ck ofm">' . $radio('end', 'Countdown') . $radio('always', 'Always on') . $radio('off', 'Off') . '</span></div>'
+    . '<div class="ofend" data-ofp="t"' . ($O['mode'] === 'end' ? '' : ' hidden') . '><b>Ends</b><div class="ofendin">'
     . '<span class="qbtns">' . implode('', array_map(fn($hh, $l) => '<button class="btn line sm" name="quick" value="' . $hh . '" title="Save, ending ' . $l . ' from now">' . $l . '</button>', [24, 48, 72, 168], ['24h', '48h', '3 days', '7 days'])) . '</span>'
     . '<span class="cpt2">' . date_box('end', substr($end, 0, 10), 'Ends on')
     . '<input type="time" name="end_time" value="' . h(strlen($end) > 10 ? substr($end, 11, 5) : '') . '" aria-label="End time (India time)" title="India time; empty = 11:59 pm"></span></div></div>'
-    . '<div class="ofrow"><div class="ofk"><b>Popup</b>' . $tick('popup', 'On') . '</div><div class="ofcol"><div class="ofwords">'
+    . '<div class="ofrow" data-ofp="p"><div class="ofk"><b>Popup</b>' . $tick('popup', 'On') . '</div><div class="ofcol"><div class="ofwords">'
     . $word('title', 'Top line', 30, 'LIMITED TIME OFFER', ['Limited time offer', 'Flash sale', 'Festive sale', 'Diwali offer', 'Weekend sale', 'Mega sale', 'Special offer', 'New launch offer'])
     . '<label>% off<input type="number" name="pct" min="1" max="' . max(1, $best) . '" step="1" inputmode="numeric" value="' . ($O['pct'] ? (int)$O['pct'] : '') . '" placeholder="' . ($best ? "max $best" : 'No old prices') . '"' . ($best ? '' : ' disabled') . '></label>'
     . $word('sub', 'Under the %', 40, 'ON SELECTED FRAGRANCES', ['ON SELECTED PRODUCTS', 'ON SELECTED FRAGRANCES', 'ON SELECTED PERSONAL CARE', 'ON ALL FRAGRANCES', 'ON PERFUMES', 'ON GIFT SETS', 'ON EVERYTHING', 'ON YOUR FIRST ORDER'])
     . $word('btn', 'Button', 24, 'Shop the offer', ['Shop the offer', 'Shop now', 'Grab the deal', 'Shop fragrances', 'See the offer'])
     . '</div>' . ($sale ? $picker('items', $O['items'], 'None picked: the popup counts every product with an old price.', 'Add a product to the popup') : '<p class="warn small" style="margin:0">No product has an old price on Products yet, so the popup stays hidden.</p>') . '</div></div>'
-    . '<div class="ofrow"><div class="ofk"><b>Line by prices</b></div>'
+    . '<div class="ofrow" data-ofp="l"><div class="ofk"><b>Line by prices</b></div>'
     . ($sale ? '<div class="ofcol oflines">' . $picker('lines', $O['lines'], 'None picked: no line shows.', 'Add a product', '<button type="button" class="btn line sm" data-ofsame title="Pick the same products as the popup">Same as popup</button>'
         . '<label class="btn line sm ofall" title="Show the line on every product with an old price, new ones too"><input type="checkbox" name="lines_all" value="1"' . ($O['linesAll'] ? ' checked' : '') . '>All products</label>')
       . '<p class="ofallon muted small">On all ' . count($sale) . ' products with an old price. Products you give an old price later get it too.</p></div>' : '<p class="muted small" style="margin:0">Needs products with an old price.</p>') . '</div>'
