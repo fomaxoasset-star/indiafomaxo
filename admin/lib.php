@@ -411,10 +411,10 @@ function save_offer(): string {
   $o['line'] = $o['linesAll'] || $o['lines'];
   /* the % in the popup: empty = the biggest real saving; never more than that */
   $pct = trim((string)($_POST['pct'] ?? '')); $note = '';
+  if ($pct !== '') { $n = is_numeric($pct) ? (int)round((float)$pct) : 0; $pct = $n < 1 ? '' : (string)min($n, 99); }   // a wrong % fixes itself: 0 or not a number = empty (biggest saving)
+  [$best] = $pct !== '' ? fomaxo_best_pct($o['items']) : [0];
+  if ($pct !== '' && $best < 1) $pct = '';   // no old price = no real saving to show, so the % stays empty
   if ($pct !== '') {
-    if (!ctype_digit($pct) || (int)$pct < 1 || (int)$pct > 99) return '!Please type the % as a whole number from 1 to 99, or leave it empty for the biggest real saving.';
-    [$best] = fomaxo_best_pct($o['items']);
-    if ($best < 1) return '!' . ($o['items'] ? 'None of the ticked products has' : 'No product has') . ' an old price on Products yet, so there is no real saving to show. Leave the % empty, or add old prices first.';
     if ((int)$pct > $best) { $note = " You typed {$pct}%, but the biggest real saving is {$best}%, so the popup shows {$best}% OFF."; $pct = (string)$best; }
     $o['pct'] = (int)$pct;
   }
