@@ -3514,7 +3514,7 @@ function product(id, q){
   const p = P[id]; if (!p) return notFound();
   let size = q.get('size') ? (isNaN(+q.get('size')) ? q.get('size') : +q.get('size')) : defaultSize(p);
   if (!p.sizes.includes(size)) size = defaultSize(p);
-  const gallery = [...p.images, ...Object.values(p.sizeImages || {}), ...(p.extraImages || []), ...(p.miniImages || (p.miniImage ? [p.miniImage] : []))];
+  const gallery = [...new Set([...p.images, ...Object.values(p.sizeImages || {}), ...(p.extraImages || []), ...(p.miniImages || (p.miniImage ? [p.miniImage] : []))])];   // each photo once (personal care images already hold extraImages)
   const isSet = p.kind === 'set', isCare = p.kind === 'care', isCar = p.kind === 'car';
   const perks = isCar
     ? [[ICON.lasting,'Long-lasting fragrance, 4–6 weeks'],[ICON.drop,'Superior fragrance diffusion'],[ICON.unisex,'Made with 90% renewable ingredients'],[ICON.truck,'Safe &amp; low flammability for car use']]
