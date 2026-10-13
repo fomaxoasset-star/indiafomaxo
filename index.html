@@ -1758,6 +1758,9 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .pold{font-family:var(--sans);font-weight:500;font-size:22px;line-height:1.1;color:#e04a3f;text-decoration:line-through;text-decoration-thickness:2px}
 .prow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;width:100%}
 .prow .psave{margin-left:auto}
+.pnow.plab{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;justify-items:start;gap:4px 16px}.pnow.plab .prow{min-width:0}
+.plb{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;line-height:1.2;color:var(--muted);white-space:nowrap}
+@media(max-width:600px){.plb{font-size:11px;letter-spacing:.14em}.pnow.plab .prow{display:contents}.pnow.plab .psave{grid-column:1/-1;margin:8px 0 0}}   /* phone: the saving line goes under the prices, so each word stays centred with its number */
 .buy .price-rate #pstock{align-self:flex-end;margin-top:-6px}   /* AJAY: the low-stock box sits by the green You save box */
 /* laptop (AJAY): "Only N left" sits on the FREE delivery line, at the right under You save, so nothing below moves down.
    phone: like fomaxo.com, the box gets its own line right under You save */
@@ -3057,7 +3060,7 @@ const wasHTML = (p, size) => { const c = p.compareAt && p.compareAt[size]; retur
 const pctOff = (p, s) => { const c = p.compareAt && p.compareAt[s], v = p.prices[s]; return hasPrice(c) && hasPrice(v) && c > v ? Math.round((c - v) / c * 100) : 0; };
 const offTag = (p, s) => { const n = pctOff(p, s); return n ? `<span class="off-tag">${n}% off</span>` : ''; };
 const priceHTML = (p, size, cls='price') => { const m = money(p.prices[size], curOf(p)), n = pctOff(p, size);
-  if (m && cls === 'pprice') return `<span class="pnow">${n ? `<s class="pold">${money(p.compareAt[size], curOf(p))}</s>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: crossed-out old price, big new price, then one saving line */
+  if (m && cls === 'pprice') return `<span class="pnow${n ? ' plab' : ''}">${n ? `<span class="plb">Original price</span><s class="pold">${money(p.compareAt[size], curOf(p))}</s><span class="plb">Exclusive price</span>` : ''}<span class="prow"><span class="pprice">${m}</span>${n ? `<span class="psave">You save ${money(p.compareAt[size] - p.prices[size], curOf(p))}<i>·</i>${n}% off</span>` : ''}</span></span>`; /* product page, like fomaxo.com: "Original price" with the crossed-out old price, "Exclusive price" with the big new price (each word centred with its number, AJAY 2026-10-13), then one saving line */
   return m ? `<span class="${cls}">${wasHTML(p, size)}${m}</span>` : `<span class="${cls} na">Price on request</span>`; };
 /* the limited-time offer set on Admin → Offer (STORE_LIVE.offer): end = the moment it ends (ms), 0 = always on with no clock.
    Prices are never changed here. The big % is the one typed on Admin → Offer, else the biggest real saving among products with an
