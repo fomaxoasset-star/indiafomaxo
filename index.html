@@ -2322,8 +2322,8 @@ html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
 }
 /* AJAY: on phone the product photos show whole, not cut or zoomed in: each photo frame takes the photo's own shape (--ar, set by fitPhoto) */
 @media(max-width:960px){
-  .stage{aspect-ratio:var(--ar,688/1024)}
-  .stage::before{content:"";position:absolute;inset:-24px;z-index:0;background:var(--bg) center/cover no-repeat;filter:blur(22px) brightness(.75);pointer-events:none}.stage img{z-index:1;object-fit:contain}
+  .stage{aspect-ratio:3/4}
+  .stage img{object-fit:cover}
   .pc-img,.card .media{aspect-ratio:var(--ar-row,var(--ar,688/1024))}   /* a row with different photo shapes takes the tallest */
   .pc-img img{object-position:50% 50%}
   .pc-img.fit-c{background:#0b0a08}.pc-img.fit-c img{object-fit:contain}
@@ -4255,11 +4255,9 @@ let evFrame = 0;
 const PHOTO_BOX = '.stage,.pc-img,.card .media';
 const fitPhoto = im => {
   const box = im.parentElement; if (!box || !box.matches(PHOTO_BOX) || im.classList.contains('alt') || im.classList.contains('pc-alt') || im.classList.contains('peek') || !im.naturalWidth) return;
-  const r = Math.min(box.matches('.stage') ? 1.4 : 1, Math.max(.55, im.naturalWidth / im.naturalHeight));
-  if (box.matches('.stage')) {   // phone: the big photo frame keeps the first photo's shape, so swiping doesn't change its size; other photos show whole on a soft blurred copy of themselves
-    box.style.setProperty('--bg', `url("${im.src}")`); if (box.style.getPropertyValue('--ar')) return;
-  }
-  box.style.setProperty('--ar', r.toFixed(4)); if (!box.matches('.stage')) evenSoon();
+  if (box.matches('.stage')) return;   // phone: the big photo frame is always 3:4 and every photo fills it, so all photos look the same size when swiping
+  const r = Math.min(1, Math.max(.55, im.naturalWidth / im.naturalHeight));
+  box.style.setProperty('--ar', r.toFixed(4)); evenSoon();
 };
 document.addEventListener('load', e => { if (e.target.tagName === 'IMG') fitPhoto(e.target); }, true);
 
