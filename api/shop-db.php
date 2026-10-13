@@ -540,7 +540,7 @@ function shop_offer(): array {
   $r = ['mode' => in_array($o['mode'] ?? '', ['end', 'always'], true) ? $o['mode'] : 'off', 'end' => (string)($o['end'] ?? ''),
     'popup' => (bool)($o['popup'] ?? true), 'line' => (bool)($o['line'] ?? true), 'pct' => max(0, min(99, (int)($o['pct'] ?? 0))),
     'items' => array_values(array_map('strval', array_filter((array)($o['items'] ?? []), 'is_scalar'))),
-    'lines' => array_values(array_map('strval', array_filter((array)($o['lines'] ?? []), 'is_scalar'))),
+    'lines' => array_values(array_map('strval', array_filter((array)($o['lines'] ?? []), 'is_scalar'))), 'linesAll' => (bool)($o['linesAll'] ?? false),
     /* the popup's words ('' = the standard ones: LIMITED TIME OFFER / on selected fragrances / Shop the offer) */
     'title' => (string)($o['title'] ?? ''), 'sub' => (string)($o['sub'] ?? ''), 'btn' => (string)($o['btn'] ?? ''),
     /* how wide each product picture is in the popup, in px, on a laptop and on a phone (set in the admin Preview) */
@@ -549,6 +549,8 @@ function shop_offer(): array {
     'fs' => ['L' => shop_offer_fs($o['fs']['L'] ?? []), 'P' => shop_offer_fs($o['fs']['P'] ?? [])]];   // items: products in the popup ([] = every product with an old price); lines: products with the line by prices
   /* saved before the line had its own products: it showed on the popup's products, or on every product with an old price */
   if (!array_key_exists('lines', $o) && $r['line']) $r['lines'] = $r['items'] ?: fomaxo_sale_ids();
+  /* "All products": the line goes on every product with an old price, worked out now, so products given an old price later get it too */
+  if ($r['linesAll']) $r['lines'] = fomaxo_sale_ids();
   $r['line'] = (bool)$r['lines'];
   return $r;
 }

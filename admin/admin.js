@@ -477,6 +477,7 @@ function markSent(btn, day) {
     var same = ofr.querySelector('[data-ofsame]');
     if (same) same.addEventListener('click', function () {
       ofr.querySelectorAll('input[name="lines[]"]').forEach(function (i) { i.checked = !!ofr.querySelector('input[name="items[]"][value="' + i.value + '"]:checked'); });
+      var all = ofr.querySelector('input[name=lines_all]'); if (all) all.checked = false;
       ofr.dispatchEvent(new Event('change', {bubbles: true}));
     });
   }
@@ -525,8 +526,8 @@ function markSent(btn, day) {
   };
   /* the line by sale prices: on a shop card for each product picked for the line, and on a product page */
   var lineHTML = function () {
-    var mode = (sale.querySelector('input[name=mode]:checked') || {}).value;
-    var picked = [].slice.call(sale.querySelectorAll('input[name="lines[]"]:checked'));
+    var mode = (sale.querySelector('input[name=mode]:checked') || {}).value, all = sale.querySelector('input[name=lines_all]');
+    var picked = [].slice.call(sale.querySelectorAll('input[name="lines[]"]' + (all && all.checked ? '' : ':checked')));
     var note = mode === 'off' ? 'The timer is Off, so the line will not show.' : !picked.length ? 'No product is picked for the line, so it will not show.' : '';
     if (!picked.length) return [note, '<p class="pv-on">Pick products under Line by prices.</p>'];
     var end = endAt(), left = Math.max(0, Math.floor((end - Date.now()) / 1000));
