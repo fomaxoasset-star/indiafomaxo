@@ -236,6 +236,10 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .card .media:hover img.alt{opacity:1}
 .card .media::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.55));pointer-events:none}
 .tag{position:absolute;top:16px;left:16px;z-index:2;font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);border:1px solid var(--line-2);padding:6px 10px;background:rgba(var(--bg-rgb),.65);backdrop-filter:blur(6px)}
+.pcard{position:relative}   /* the Best seller badge sits on the photo's top right corner, a little outside the frame */
+.best{position:absolute;top:-14px;right:-14px;z-index:5;display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#0a0805;background:var(--metal,#d7aa69);padding:6px 10px 6px 9px;box-shadow:0 6px 18px -8px rgba(0,0,0,.6);pointer-events:none}.best svg{width:11px;height:11px;flex:none}.best[hidden]{display:none}
+html[data-mode="light"] .best{color:#fff8ea}
+@media(max-width:560px){.best{top:-11px;right:-11px;font-size:9px;letter-spacing:.16em;padding:5px 7px;gap:4px}.best svg{width:9px;height:9px}}
 .card .quick{position:absolute;left:16px;right:16px;bottom:16px;z-index:2;opacity:0;transform:translateY(10px);transition:.6s var(--ease)}
 .card:hover .quick{opacity:1;transform:none}
 @media(hover:none){.card .quick{display:none}}
@@ -396,7 +400,7 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .notes-list div{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:baseline}
 .notes-list b{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:400}
 .notes-list span{font-family:var(--serif);font-size:20px;color:var(--ivory)}
-@media(max-width:960px){.stage{touch-action:pan-y pinch-zoom}.pdp{grid-template-columns:minmax(0,1fr)}.gallery{position:static;grid-template-columns:minmax(0,1fr)}.thumbs{flex-direction:row;order:2}.thumbs button{width:72px}}
+@media(max-width:960px){.stage{touch-action:pan-y pinch-zoom}.pdp{grid-template-columns:minmax(0,1fr)}.gallery{position:relative;grid-template-columns:minmax(0,1fr)}.thumbs{flex-direction:row;order:2}.thumbs button{width:72px}}
 /* mobile sticky buy */
 .mbuy{position:fixed;left:0;right:0;bottom:0;z-index:35;background:rgba(var(--bg-rgb),.94);backdrop-filter:blur(14px);border-top:1px solid var(--line-2);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;gap:12px;align-items:center;transform:translateY(110%);transition:transform .5s var(--ease)}
 .mbuy.show{transform:none}
@@ -3096,6 +3100,10 @@ const defaultSize = p => { const d = p.kind === 'set' ? p.sizes[0] : p.sizes.inc
 /* "612 people bought this week" (STORE_LIVE.sold, api/live.php): from real orders only, never a made-up number */
 const soldHTML = (id, sz) => { const n = +(((LIVE.sold || {})[id] || {})[sz]) || 0;   // bottles of that one size (10ml and 50ml each counted on their own)
   return n > 0 ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>${n} purchased this week</span>` : ''; };
+/* "Best seller" on the product photo, top right, a little outside the frame: shows exactly when that size shows "X purchased this week" (real bottles). Never made up. */
+const soldN = (id, sz) => +(((LIVE.sold || {})[id] || {})[sz]) || 0;
+const bestHTML = (id, sz) => `<span class="best" data-best="${id}" data-k="${sz}"${soldN(id, sz) > 0 ? '' : ' hidden'}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7.3L12 17.8 5.8 21.5l1.6-7.3L2 9.5l7.1-.6z"/></svg><span>Best seller</span></span>`;
+const bestSet = (el, id, sz) => { if (el) { el.dataset.k = sz; el.hidden = !(soldN(id, sz) > 0); } };
 const ICON = {
   truck:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h12v10H2zM14 10h4l4 3v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
   lasting:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -3537,7 +3545,7 @@ function product(id, q){
   return `<div class="wrap page-fade">
     <div class="crumbs pdp-crumbs" style="padding-top:34px"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${isCare ? '<a href="#/personal-care">Personal Care</a>' : '<a href="#/fragrances?f=fragrance">Fragrance</a>'}${isCar ? ' &nbsp;/&nbsp; <a href="#/fragrances?f=car">Car Fragrance</a>' : ''} &nbsp;/&nbsp; ${esc(p.name)}</div>
     <div class="pdp">
-      <div class="gallery">
+      <div class="gallery">${bestHTML(p.id, size)}
         <div class="thumbs">${gallery.map((g,i) => `<button class="${i?'':'on'}" data-g="${g}" aria-label="Image ${i+1}"><img ${PIC(g, '72px')} alt="" loading="lazy"></button>`).join('')}</div>
         <div class="stage" id="stage">${p.tag ? `<span class="tag">${esc(p.tag)}</span>` : ''}${isOut(p) ? '<span class="off-tag oos-tag">Out of stock</span>' : ''}<img id="stageImg" src="${IMG(imgFor(p, size))}" alt="FOMAXO ${esc(p.name)}"></div>
       </div>
@@ -3609,7 +3617,7 @@ function bindProduct(p){
     size = +b.dataset.s; if (isSet) { picks = picks.slice(0, size); updPicks(); } $$('#sizes button').forEach(x => x.classList.toggle('on', x === b));
     $('#sizeName').textContent = optLabel(p, size); $('#pprice').innerHTML = priceHTML(p, size, 'pprice');
     setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
-    renderMbuy(); renderFbt(p, size); const ps = $('#psold'); if (ps) ps.innerHTML = soldHTML(p.id, size); fitPdp();
+    renderMbuy(); renderFbt(p, size); const ps = $('#psold'); if (ps) ps.innerHTML = soldHTML(p.id, size); bestSet($('.gallery > [data-best]'), p.id, size); fitPdp();
   });
   const stage = $('#stage');
   /* laptop: a click zooms. Phone: only a double tap zooms (at the tapped spot) and a double tap zooms back out; a single tap does nothing */
@@ -4220,6 +4228,7 @@ function pcCard(p, i=0, o={}){
     : sizeOut(p, size) ? `<div class="pc-btns"><button class="pc-add pc-line oos" type="button" data-pcadd="${p.id}" data-opt="${size}" disabled>Out of stock</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}" hidden>Buy Now</button></div>`
     : `<div class="pc-btns"><button class="pc-add pc-line" type="button" data-pcadd="${p.id}" data-opt="${size}">Add To Cart</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}">Buy Now</button></div>`;
   return `<article class="pcard${o.noRv ? '' : ' rv-up d' + (i % 4)}" data-pc="${p.id}">
+    ${isSet ? '' : bestHTML(p.id, size)}
     <a class="pc-img" href="${href}" aria-label="${esc(p.name)}"${p.kind === 'care' || p.kind === 'car' ? ' style="--ar:.8"' : ''}>
       <span class="pc-badges">${pcBadges(p, isSet ? p.sizes[0] : size)}</span>
       <img ${cardImg(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, size))} alt="FOMAXO ${esc(p.name)}" ${o.top && i < (VW <= 1100 ? 2 : 4) ? 'fetchpriority="high"' : 'loading="lazy"'}>
@@ -4272,7 +4281,7 @@ app.addEventListener('click', e => {
   const c = b.closest('.pcard'), p = P[c.dataset.pc], s = isNaN(+b.dataset.psize) ? b.dataset.psize : +b.dataset.psize;
   $$('.pc-size', c).forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
   $('.pc-price', c).innerHTML = priceHTML(p, s);
-  const sd = $('[data-sold]', c); if (sd) sd.innerHTML = soldHTML(p.id, s);
+  const sd = $('[data-sold]', c); if (sd) sd.innerHTML = soldHTML(p.id, s); bestSet($('[data-best]', c), p.id, s);
   $('.pc-badges', c).innerHTML = pcBadges(p, s);
   const im = $('.pc-img img', c), src = IMGC(imgFor(p, s), CARD_W()); if (im.getAttribute('src') !== src) setCardImg(im, imgFor(p, s));
   const al = $('.pc-img img.pc-alt', c), ak = HOVER && pcAltKey(p, s); if (al) { if (ak) { setCardImg(al, ak); al.hidden = false; } else al.hidden = true; } else if (ak) $('.pc-img', c).insertAdjacentHTML('beforeend', pcAlt(p, s));
