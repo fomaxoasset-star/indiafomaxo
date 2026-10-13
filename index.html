@@ -2316,6 +2316,14 @@ html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
   .thumbs{overflow-y:auto;scrollbar-width:none}.thumbs::-webkit-scrollbar{display:none}.thumbs button{flex:none}
   .picks{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.pick span{padding:5px 6px;font-size:9.5px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+/* AJAY: on phone the product photos show whole, not cut or zoomed in: each photo frame takes the photo's own shape (--ar, set by fitPhoto) */
+@media(max-width:960px){
+  .stage{aspect-ratio:var(--ar,688/1024)}
+  .pc-img,.card .media{aspect-ratio:var(--ar-row,var(--ar,688/1024))}   /* a row with different photo shapes takes the tallest */
+  .pc-img img{object-position:50% 50%}
+  .pc-img.fit-c{background:#0b0a08}.pc-img.fit-c img{object-fit:contain}
+}
+@media(hover:none){.pcard:hover .pc-img img,.card:hover .media img{transform:none}}   /* a tap on a phone doesn't leave the card photo enlarged */
 /* ================= LIMITED-TIME OFFER (Admin → Offer): popup and slim countdown lines ================= */
 .ofl{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;font-family:var(--sans);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;line-height:1.2;color:var(--gold)}
 .ofl svg{width:14px;height:14px;flex:none}
@@ -4170,7 +4178,7 @@ function pcCard(p, i=0, o={}){
     : sizeOut(p, size) ? `<div class="pc-btns"><button class="pc-add pc-line oos" type="button" data-pcadd="${p.id}" data-opt="${size}" disabled>Out of stock</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}" hidden>Buy Now</button></div>`
     : `<div class="pc-btns"><button class="pc-add pc-line" type="button" data-pcadd="${p.id}" data-opt="${size}">Add To Cart</button><button class="pc-add" type="button" data-pcbuy="${p.id}" data-opt="${size}">Buy Now</button></div>`;
   return `<article class="pcard${o.noRv ? '' : ' rv-up d' + (i % 4)}" data-pc="${p.id}">
-    <a class="pc-img" href="${href}" aria-label="${esc(p.name)}">
+    <a class="pc-img" href="${href}" aria-label="${esc(p.name)}"${p.kind === 'care' || p.kind === 'car' ? ' style="--ar:.8"' : ''}>
       <span class="pc-badges">${pcBadges(p, isSet ? p.sizes[0] : size)}</span>
       <img ${cardImg(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, size))} alt="FOMAXO ${esc(p.name)}" ${o.top && i < (VW <= 1100 ? 2 : 4) ? 'fetchpriority="high"' : 'loading="lazy"'}>
       ${pcAlt(p, size)}
@@ -4193,6 +4201,7 @@ function evenCards(){
     const cards = [...g.children].filter(c => c.classList.contains('pcard')), rows = new Map();
     cards.forEach(c => EV_PARTS.forEach(sel => { const el = $(sel, c); if (el) { el.style.minHeight = ''; el.classList.remove('ev0'); } }));
     cards.forEach(c => { const t = c.offsetTop; rows.has(t) ? rows.get(t).push(c) : rows.set(t, [c]); });
+    rows.forEach(row => { const ims = row.map(c => $('.pc-img', c)).filter(Boolean); ims.forEach(m => { m.style.removeProperty('--ar-row'); m.classList.remove('fit-c'); }); const rs = ims.map(m => parseFloat(m.style.getPropertyValue('--ar')) || .672), lo = Math.min(...rs); if (Math.max(...rs) - lo > .01) ims.forEach((m, i) => { m.style.setProperty('--ar-row', lo); m.classList.toggle('fit-c', rs[i] - lo > .01); }); });   // a wider photo in a taller row shows whole, not cut at the sides
     rows.forEach(row => EV_PARTS.forEach(sel => {
       const els = row.map(c => $(sel, c)).filter(Boolean), h = Math.max(0, ...els.map(el => el.classList.contains('none') ? 0 : parseFloat(getComputedStyle(el).height) || 0));   // no-review stars only hold space beside real ones
       els.forEach(el => { if (h) el.style.minHeight = h + 'px'; else el.classList.add('ev0'); });
@@ -4200,6 +4209,15 @@ function evenCards(){
   });
 }
 let evFrame = 0;
+/* phone: a product photo frame takes the shape of its photo, so the whole photo shows (see .stage / .pc-img CSS) */
+const PHOTO_BOX = '.stage,.pc-img,.card .media';
+const fitPhoto = im => {
+  const box = im.parentElement; if (!box || !box.matches(PHOTO_BOX) || im.classList.contains('alt') || im.classList.contains('pc-alt') || !im.naturalWidth) return;
+  const r = Math.min(box.matches('.stage') ? 1.4 : 1, Math.max(.55, im.naturalWidth / im.naturalHeight));
+  box.style.setProperty('--ar', r.toFixed(4)); if (!box.matches('.stage')) evenSoon();
+};
+document.addEventListener('load', e => { if (e.target.tagName === 'IMG') fitPhoto(e.target); }, true);
+
 // home Order again: hide the arrows when every tile already fits
 const agFit = () => $$('.again-home .again').forEach(a => { const r = $('.ag-row', a); if (r) a.classList.toggle('ag-fits', r.scrollWidth <= r.clientWidth + 1); });
 const evenSoon = () => { cancelAnimationFrame(evFrame); evFrame = requestAnimationFrame(() => { evenCards(); agFit(); }); };
