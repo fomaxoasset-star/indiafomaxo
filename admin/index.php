@@ -390,7 +390,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json'); header('Cache-Control: no-store');
     exit(json_encode($msg === '' ? ['ok' => true, 'key' => 'up/' . $new[0], 'src' => img_url('up/' . $new[0])] : ['ok' => false, 'msg' => $msg]));
   }
-  if ($a === 'edit') { $id = (string)($_POST['id'] ?? ''); $msg = edit_product($id, $CAT, $LIVE); go(['tab' => 'products'] + ($msg === '' ? [] : ['edit' => $id]), $msg === '' ? trim((string)($_POST['name'] ?? 'The product')) . ' is saved.' : '!' . $msg); }
+  if ($a === 'photo_add' || $a === 'photo_drop') {   // Add photos / Remove on the edit page (admin.js, without reloading): saved at once
+    $id = (string)($_POST['id'] ?? ''); $new = $a === 'photo_add' ? (isset($CAT[$id]) ? save_images($id) : 'That product was not found.') : [];
+    $msg = is_string($new) ? $new : ($a === 'photo_add' && !$new ? 'This photo could not be added. Please try again.' : product_photo_add_drop($id, $new ? 'up/' . $new[0] : '', $a === 'photo_drop' ? (string)($_POST['key'] ?? '') : '', $CAT, $LIVE));
+    header('Content-Type: application/json'); header('Cache-Control: no-store');
+    exit(json_encode($msg === '' ? ['ok' => true] + ($new ? ['key' => 'up/' . $new[0], 'src' => img_url('up/' . $new[0])] : []) : ['ok' => false, 'msg' => $msg]));
+  }
+  if ($a === 'edit') { $id = (string)($_POST['id'] ?? ''); $msg = edit_product($id, $CAT, $LIVE); go(['tab' => 'products', 'edit' => $id], $msg === '' ? trim((string)($_POST['name'] ?? 'The product')) . ' is saved.' : '!' . $msg); }   // stays on the product (AJAY 13/10/2026)
   if ($a === 'add') { $msg = add_product($CAT); go(['tab' => 'products'] + ($msg === '' ? [] : ['add' => 1]), $msg === '' ? 'Product added.' : '!' . $msg); }
   if ($a === 'expense') {
     $day = parse_day($_POST['day'] ?? ''); $amt = (string)($_POST['amount'] ?? ''); $cat = (string)($_POST['category'] ?? '');

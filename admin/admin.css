@@ -756,3 +756,4 @@ label.ofall:has(input:checked){background:var(--gold,#c9a45c);color:#1a1408;bord
 .ofallon{display:none;margin:-4px 0 0}.oflines:has(input[name=lines_all]:checked){gap:6px}.oflines:has(input[name=lines_all]:checked) .ofpick{gap:0}.oflines:has(input[name=lines_all]:checked) .ofallon{display:block}
 .oflines:has(input[name=lines_all]:checked) :is(.ofadd,.ofits,[data-ofsame]){display:none!important}
 @media (max-width:820px){.oflines .ofaddrow{flex-wrap:wrap}.oflines .ofaddrow .ofadd{flex-basis:100%}}
+.phrm{width:100%;margin-top:4px;min-height:30px;padding:5px 2px;font-size:11px}#phs .ph.up>img{opacity:.45}#phs .ph.up .phb,#phs .ph.up .phrm,#phs .ph.up .pedt{visibility:hidden}#phs .ph.up::after{content:"Adding…";position:absolute;left:0;right:0;top:40%;text-align:center;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000}

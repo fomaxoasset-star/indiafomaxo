@@ -455,7 +455,7 @@ function markSent(btn, day) {
     else if (mv === '1' && ph.nextElementSibling) box.insertBefore(ph.nextElementSibling, ph);
     mark(); ph.querySelector('input').dispatchEvent(new Event('input', {bubbles: true}));
   });
-  mark();
+  box.fxMark = mark; mark();
 })();
 
 (function () {
@@ -1073,7 +1073,7 @@ document.addEventListener('click', function (e) {
   }
   function close(){box.hidden=true;document.body.style.overflow="";img=null}
   function setAr(a){ar=a;box.querySelectorAll("[data-ar] button").forEach(function(b){b.classList.toggle("on",+b.dataset.a===a)})}
-  g.addEventListener("click",function(e){var t=e.target.closest(".ph>img");if(t&&!busy)open(t.closest(".ph"))});
+  g.addEventListener("click",function(e){var t=e.target.closest(".ph>img");if(t&&!busy&&!t.closest(".ph.up"))open(t.closest(".ph"))});
   box.addEventListener("click",function(e){
     var b=e.target.closest("button");if(!b||!img)return;
     if(b.hasAttribute("data-x"))close();
@@ -1108,8 +1108,44 @@ document.addEventListener('click', function (e) {
       f.append("csrf",fm.querySelector("input[name=csrf]").value);f.append("action","photo_edit");f.append("id",fm.querySelector("input[name=id]").value);f.append("old",hid.value);f.append("photos[]",bl,"photo.jpg");
       fetch(fm.getAttribute("action")||location.href,{method:"POST",body:f,credentials:"same-origin"}).then(function(r){return r.json()}).then(function(j){
         busy=false;if(!j.ok){msg.textContent=j.msg||"The photo could not be saved. Please try again.";sv.disabled=false;return}
-        hid.value=j.key;ph.querySelectorAll("input[name='remove[]']").forEach(function(i){i.value=j.key});ph.querySelector("img").src=j.src;close();
+        hid.value=j.key;ph.querySelector("img").src=j.src;close();
       }).catch(function(){busy=false;msg.textContent="The photo could not be saved. Please check the internet and try again.";sv.disabled=false});
     },"image/jpeg",.93);
   }
+})();
+
+/* product edit page: a photo picked in Add photos shows at once and is saved at once (action photo_add, one photo per request, made a JPG of
+   at most 2400px in the browser first, so iPhone HEIC photos work too); Remove takes a photo away at once (action photo_drop) */
+(function(){
+  var g=document.getElementById("phs"),inp=document.getElementById("phadd"),f=g&&g.closest("form");if(!inp||!f||!f.querySelector("input[name=id]"))return;
+  var msg=f.querySelector("[data-phmsg]"),say=function(t,bad){msg.textContent=t||"";msg.style.color=bad?"var(--bad,#c0392b)":""};
+  inp.removeAttribute("name");inp.removeAttribute("required");   // Save changes no longer sends them again
+  function jpg(file){return new Promise(function(ok){
+    var u=URL.createObjectURL(file),im=new Image();
+    im.onload=function(){var s=Math.min(1,2400/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement("canvas");c.width=Math.round(im.naturalWidth*s);c.height=Math.round(im.naturalHeight*s);
+      var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(function(b){ok(b||file)},"image/jpeg",.92)};
+    im.onerror=function(){URL.revokeObjectURL(u);ok(file)};im.src=u})}
+  function post(d){d.append("csrf",f.querySelector("input[name=csrf]").value);d.append("id",f.querySelector("input[name=id]").value);
+    return fetch(f.getAttribute("action")||location.href,{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json()})}
+  function tile(src){var d=document.createElement("div");d.className="ph up";
+    d.innerHTML='<input type="hidden" name="photo_seq[]"><b class="phl"></b><img alt=""><span class="pedt" aria-hidden="true">✎</span>'
+     +'<div class="phb"><button type="button" class="btn line sm" data-mv="-1" aria-label="Move left">‹</button><button type="button" class="btn line sm mk" data-mv="0">Make main</button><button type="button" class="btn line sm" data-mv="1" aria-label="Move right">›</button></div>'
+     +'<button type="button" class="btn line sm phrm" data-rm>Remove</button>';
+    d.querySelector("img").src=src;return d}
+  var q=Promise.resolve(),busy=0,left=function(){return busy?"Adding "+busy+" photo"+(busy>1?"s":"")+"…":""};
+  inp.addEventListener("change",function(){
+    var fs=[].slice.call(inp.files);inp.value="";
+    fs.forEach(function(fl){
+      var t=tile(URL.createObjectURL(fl));g.appendChild(t);g.fxMark&&g.fxMark();t.scrollIntoView({block:"nearest"});busy++;say(left());
+      q=q.then(function(){return jpg(fl)}).then(function(b){var d=new FormData();d.append("action","photo_add");d.append("photos[]",b,"photo.jpg");return post(d)}).finally(function(){busy--}).then(function(j){
+        if(!j.ok)throw j.msg;t.querySelector("input").value=j.key;t.querySelector("img").src=j.src;t.classList.remove("up");say(left()||"Added. It is saved.")
+      }).catch(function(e){t.remove();g.fxMark&&g.fxMark();say(typeof e==="string"?e:"The photo could not be added. Please check the internet and try again.",true)});
+    });
+  });
+  g.addEventListener("click",function(e){
+    var b=e.target.closest("[data-rm]");if(!b)return;var p=b.closest(".ph");
+    if(p.classList.contains("up")||!confirm("Remove this photo?"))return;
+    b.disabled=true;var d=new FormData();d.append("action","photo_drop");d.append("key",p.querySelector("input[name='photo_seq[]']").value);
+    post(d).then(function(j){if(!j.ok)throw j.msg;p.remove();g.fxMark&&g.fxMark();say("Removed. It is saved.")}).catch(function(e){b.disabled=false;say(typeof e==="string"?e:"Please check the internet and try again.",true)});
+  });
 })();

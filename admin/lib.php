@@ -196,7 +196,21 @@ function edit_product(string $id, array $CAT, array $LIVE): string {
 function product_photo_swap(string $id, string $old, string $new, array $CAT, array $LIVE): string {
   $now = product_now($id, $LIVE); if (!$now || !isset($CAT[$id])) return 'That product was not found.';
   $imgs = photos_of($now); $at = array_search($old, $imgs, true); if ($at === false) return 'This photo has changed. Please open the product again.';
-  $imgs[$at] = $new; $kind = (string)($now['kind'] ?? '');
+  $imgs[$at] = $new; return product_photos_set($id, $imgs, $now, $LIVE);
+}
+/* Add photos / Remove on the edit page (admin.js, without reloading): one photo added at the end, or one taken away; saved at once */
+function product_photo_add_drop(string $id, string $add, string $drop, array $CAT, array $LIVE): string {
+  $now = product_now($id, $LIVE); if (!$now || !isset($CAT[$id])) return 'That product was not found.';
+  $imgs = photos_of($now);
+  if ($drop !== '') {
+    if (!in_array($drop, $imgs, true)) return 'This photo has changed. Please open the product again.';
+    if (count($imgs) < 2) return 'A product needs at least one photo. Add another photo first.';
+    $imgs = array_values(array_diff($imgs, [$drop]));   // the file itself stays where it is
+  } else { if (count($imgs) >= 8) return 'A product can have up to 8 photos. Remove one first.'; $imgs[] = $add; }
+  return product_photos_set($id, $imgs, $now, $LIVE);
+}
+function product_photos_set(string $id, array $imgs, array $now, array $LIVE): string {
+  $kind = (string)($now['kind'] ?? '');
   $f = $kind === 'care' ? ['image' => $imgs[0], 'extraImages' => array_slice($imgs, 1)] : ['images' => $imgs];
   $d = $LIVE[$id] ?? ['added' => false, 'hidden' => false, 'sort' => 0];
   $data = array_diff_key($d, array_flip(['added', 'hidden', 'sort']));
