@@ -3100,10 +3100,12 @@ const defaultSize = p => { const d = p.kind === 'set' ? p.sizes[0] : p.sizes.inc
 /* "612 people bought this week" (STORE_LIVE.sold, api/live.php): from real orders only, never a made-up number */
 const soldHTML = (id, sz) => { const n = +(((LIVE.sold || {})[id] || {})[sz]) || 0;   // bottles of that one size (10ml and 50ml each counted on their own)
   return n > 0 ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>${n} purchased this week</span>` : ''; };
-/* "Best seller" on the product photo, top right, a little outside the frame: shows exactly when that size shows "X purchased this week" (real bottles). Never made up. */
+/* "Best seller" on the product photo, top right, a little outside the frame: only the product that sold the most real bottles this week (the "X purchased this week" numbers, all sizes together). Never made up. */
 const soldN = (id, sz) => +(((LIVE.sold || {})[id] || {})[sz]) || 0;
-const bestHTML = (id, sz) => `<span class="best" data-best="${id}" data-k="${sz}"${soldN(id, sz) > 0 ? '' : ' hidden'}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7.3L12 17.8 5.8 21.5l1.6-7.3L2 9.5l7.1-.6z"/></svg><span>Best seller</span></span>`;
-const bestSet = (el, id, sz) => { if (el) { el.dataset.k = sz; el.hidden = !(soldN(id, sz) > 0); } };
+const soldAll = id => Object.values((LIVE.sold || {})[id] || {}).reduce((t, n) => t + (+n || 0), 0);   // all sizes of one product this week
+const isBest = id => { const t = soldAll(id); return t > 0 && Object.keys(LIVE.sold || {}).every(x => soldAll(x) <= t); };   // only the product(s) that sold the most bottles this week
+const bestHTML = (id, sz) => `<span class="best" data-best="${id}" data-k="${sz}"${isBest(id) ? '' : ' hidden'}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7.3L12 17.8 5.8 21.5l1.6-7.3L2 9.5l7.1-.6z"/></svg><span>Best seller</span></span>`;
+const bestSet = (el, id, sz) => { if (el) { el.dataset.k = sz; el.hidden = !isBest(id); } };
 const ICON = {
   truck:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h12v10H2zM14 10h4l4 3v3h-8z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
   lasting:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
