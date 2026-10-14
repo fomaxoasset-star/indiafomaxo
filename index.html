@@ -1178,6 +1178,10 @@ h3{font-size:clamp(19px,1.5vw,23px);letter-spacing:.08em;line-height:1.25}
 .hc-buy .btn{min-height:46px}
 @media(max-width:1180px){.hc-bar{grid-template-columns:1fr auto auto}}
 @media(max-width:980px){.hc-now{display:none}.hc-bar{grid-template-columns:1fr auto}}
+/* laptops 981–1400px wide (1280 / 1366 screens): the slide names sit a little closer so Add To Cart and Buy Now stay on the
+   screen (they were pushed past the right edge); the names row never pushes the buttons out, it slides sideways if it must */
+@media(min-width:981px) and (max-width:1400px){.hc-bar{gap:clamp(16px,2vw,28px)}.hc-now{padding-right:clamp(16px,2vw,28px)}.hc-nav{gap:clamp(10px,1.1vw,16px)}}
+@media(min-width:981px){.hc-bar{grid-template-columns:minmax(0,1fr) auto auto}.hc-nav{min-width:0;overflow-x:auto;scrollbar-width:none}.hc-nav::-webkit-scrollbar{display:none}}
 @media(max-width:760px){
   .hc-bar{grid-template-columns:1fr}
   .hc-buy{justify-content:space-between;padding:14px 16px;background:rgba(5,5,5,.62);border:1px solid rgba(215,170,105,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -1939,6 +1943,9 @@ html.cur-ready .zoom-dot{display:none} /* laptop: the mouse itself turns into th
 .cb-fit .gf-pick{gap:6px;padding-top:10px;padding-bottom:0}.cb-fit .cb-two .gf-body{display:flex;flex-direction:column}.cb-fit .cb-two .gf-pick{flex:1;min-height:0;gap:8px}.cb-fit .cb-two .cb-slot{flex:1 1 0;min-height:50px;max-height:104px}.gf-set .ctas .btn.cb-soon{padding-top:9px;padding-bottom:9px;line-height:1.3}.cb-fit .cb-two .cb-slot img,.cb-fit .cb-two .cb-slot .ph0{width:auto;height:min(100%,64px);aspect-ratio:1;max-height:64px;min-height:40px}.cb-fit .gf-pick > small:first-child{display:none}
 .cb-fit .cb-slot{gap:10px;padding:5px 12px 5px 5px}.cb-fit .cb-slot img,.cb-fit .cb-slot .ph0{width:40px;height:40px}.cb-fit .cb-slot b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cb-fit .cb-slot small{font-size:9.5px}
 .cb-fit .cb-price{padding-top:10px}.cb-fit .cb-price b{font-size:24px}.cb-fit .ctas .btn{padding-top:12px;padding-bottom:12px}
+/* small laptops and tablets lying flat (901–1180px): the festival tabs slide sideways inside their row instead of pushing the
+   page wider than the screen, and the two combo cards stack, so product names and Change are not squeezed on top of each other */
+@media(max-width:1180px){.cb-fit .cb-tabs{justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding:3px 2px}.cb-fit .cb-tabs::-webkit-scrollbar{display:none}.cb-fit .cb-tab{flex:none}.cb-fit .gf-sets.cb-two{grid-template-columns:minmax(0,1fr)}}
 }
 .cb-tag{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-hi);margin-bottom:-6px}
 .cb-price{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 22px;border-top:1px solid var(--line);padding-top:14px;margin-top:auto}
@@ -4322,10 +4329,12 @@ function evenCards(){
     cards.forEach(c => EV_PARTS.forEach(sel => { const el = $(sel, c); if (el) { el.style.minHeight = ''; el.classList.remove('ev0'); } }));
     cards.forEach(c => { const t = c.offsetTop; rows.has(t) ? rows.get(t).push(c) : rows.set(t, [c]); });
     rows.forEach(row => { const ims = row.map(c => $('.pc-img', c)).filter(Boolean); ims.forEach(m => { m.style.removeProperty('--ar-row'); m.classList.remove('fit-c'); }); const rs = ims.map(m => parseFloat(m.style.getPropertyValue('--ar')) || .672), lo = Math.min(...rs); if (Math.max(...rs) - lo > .01) ims.forEach((m, i) => { m.style.setProperty('--ar-row', lo); m.classList.toggle('fit-c', rs[i] - lo > .01); }); });   // a wider photo in a taller row shows whole, not cut at the sides
+    const sets = [];   // read every height first, then set them, so the page is measured once instead of once per part
     rows.forEach(row => EV_PARTS.forEach(sel => {
-      const els = row.map(c => $(sel, c)).filter(Boolean), h = Math.max(0, ...els.map(el => el.classList.contains('none') ? 0 : parseFloat(getComputedStyle(el).height) || 0));   // no-review stars only hold space beside real ones
-      els.forEach(el => { if (h) el.style.minHeight = h + 'px'; else el.classList.add('ev0'); });
+      const els = row.map(c => $(sel, c)).filter(Boolean);
+      sets.push([els, Math.max(0, ...els.map(el => el.classList.contains('none') ? 0 : parseFloat(getComputedStyle(el).height) || 0))]);   // no-review stars only hold space beside real ones
     }));
+    sets.forEach(([els, h]) => els.forEach(el => { if (h) el.style.minHeight = h + 'px'; else el.classList.add('ev0'); }));
   });
 }
 let evFrame = 0;
