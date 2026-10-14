@@ -1399,7 +1399,13 @@ html[data-mode="light"] .hero-cine .ctas .btn:not(.line) .sub{color:#f0d3a0;opac
 .pwx{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 10px;border:1px solid var(--line-2);color:var(--champagne);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;text-align:center;line-height:1.25;transition:border-color .2s,color .2s,background .2s}
 .pwx svg{width:16px;height:16px;flex:none;color:var(--gold)}.pwt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:start}.pwt b{font-weight:inherit}.pwt small{font-size:11px;letter-spacing:.02em;text-transform:none;color:var(--muted);opacity:.9}.pwx:hover .pwt small{color:inherit}.pwx:hover{border-color:var(--gold);color:var(--gold)}
 .pwx-gold{border-color:var(--gold);color:var(--gold)}.pwx-gold:hover{background:var(--gold);color:var(--black)}.pwx-gold:hover svg{color:var(--black)}
-@media (max-width:520px){.pwrow{grid-template-columns:1fr;gap:8px}}   /* phone: one per line, each label on one line */
+@media (max-width:520px){.pwrow{gap:8px}.pwx{flex-direction:column;justify-content:flex-start;gap:6px;padding:10px 6px;font-size:10.5px;letter-spacing:.08em}.pwt{align-items:center;text-align:center}.pwt small{font-size:10.5px;letter-spacing:0}}   /* phone: side by side, icon on top, words centred */
+/* the Invite Friends box: asks the sharer's WhatsApp number once, so their coupon can reach them */
+.invd{border:1px solid var(--gold);background:rgb(var(--bg-rgb));color:var(--champagne);padding:26px 22px 18px;width:min(400px,calc(100vw - 32px));max-width:none;max-height:calc(100vh - 32px);position:fixed;inset:0;margin:auto;height:fit-content;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.invd::backdrop{background:rgba(0,0,0,.6)}.invd form{display:flex;flex-direction:column;gap:12px}.invd h3{margin:0;padding-right:22px;color:var(--gold);font-size:17px;letter-spacing:.1em;text-transform:uppercase;font-weight:500}
+.invd p{margin:0;font-size:14px;line-height:1.5}.invd input{font-size:16px;padding:12px;border:1px solid var(--line-2);background:transparent;color:inherit;width:100%;box-sizing:border-box}
+.invd-err{color:#d26a6a}.invd-x{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--gold);font-size:24px;cursor:pointer;line-height:1}
+.invd-skip{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer;padding:4px}
 .buy-trust{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:12.5px;color:var(--muted);letter-spacing:.02em;text-align:center}
 .buy-trust .lk{width:14px;height:14px;flex:none;color:var(--gold)}
 .sizes button .sz-p{font-family:var(--sans);font-style:normal;font-size:14px;letter-spacing:.02em;color:var(--gold);margin-top:2px}
@@ -2958,6 +2964,10 @@ const ADS = (() => {
 (() => { const m = location.search.match(/[?&]w=([6-9]\d{9}-[a-f0-9]{12})(?=&|$)/); if (!m) return;
   try { localStorage.setItem('fomaxo_who', m[1]); sessionStorage.setItem('fomaxo_who_visit', m[1]); } catch(e) {}
   try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])w=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch(e) {} })();
+/* a friend's shared link carries the sharer's visitor id (?ref=): kept on this device for 30 days, sent with the order so the shop can thank the sharer, and taken out of the address */
+(() => { const m = location.search.match(/[?&]ref=([a-z0-9]{8,16})(?=&|$)/); if (!m) return;
+  try { if (m[1] !== localStorage.getItem('fx_vid')) localStorage.setItem('fomaxo_ref', JSON.stringify({v: m[1], t: Date.now()})); } catch(e) {}
+  try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])ref=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch(e) {} })();
 const TRK = (() => {
   const rid = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8);
   const get = (st, k) => { try { return st.getItem(k); } catch(e) { return null; } }, put = (st, k, v) => { try { st.setItem(k, v); } catch(e) {} };
@@ -3601,7 +3611,7 @@ function product(id, q){
           ${isOut(p) ? OUT_BTN('btn') : '<button class="btn line" id="addBtn">Add To Cart</button>'}
         </div>
         ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block" id="buyBtn">Buy Now</button>'}
-        <div class="pwrow"><a class="pwx" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}<span class="pwt"><b>Share with a friend</b><small>Refer a Friend</small></span></a><a class="pwx pwx-gold" href="https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(`Hi FOMAXO, please send me your latest offers. (I am looking at ${p.name})`)}" target="_blank" rel="noopener">${WA_SVG()}<span class="pwt"><b>Get offers on WhatsApp</b><small>Get Exclusive Offers &amp; Coupons</small></span></a></div>
+        <div class="pwrow"><a class="pwx" data-invite href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp${invRef('&')}#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}<span class="pwt"><b>Share with friends</b><small>Invite Friends, Get Coupons</small></span></a><a class="pwx pwx-gold" href="https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(`Hi FOMAXO, please send me your latest offers. (I am looking at ${p.name})`)}" target="_blank" rel="noopener">${WA_SVG()}<span class="pwt"><b>Get offers on WhatsApp</b><small>Get Exclusive Offers &amp; Coupons</small></span></a></div>
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
           <details${wide ? '' : ' open'}><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
@@ -4018,6 +4028,35 @@ const giftOptions = (selId, selSize, only, none) => (only && !none ? '' : `<opti
   return `<option value="${v}"${p.id === selId && String(sz) === String(selSize) ? ' selected' : ''}>${esc(label)}</option>`;
 })).join('');
 const waLink = text => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(text)}`;
+/* Invite Friends, Get Coupons: the Share link carries this visitor's id (?ref=). When a friend orders through it, the admin sees who invited them
+   (Analytics → Left at checkout, "Invited a friend") and sends their coupon on WhatsApp. That needs the sharer's mobile: known from their last checkout
+   or a link from our WhatsApp, else asked once when they tap Share (they can also share without a coupon). */
+const invRef = sep => { try { const v = localStorage.getItem('fx_vid') || ''; return /^[a-z0-9]{8,16}$/.test(v) ? sep + 'ref=' + v : ''; } catch(e) { return ''; } };
+function invMe(){ try { const d = JSON.parse(localStorage.getItem('fomaxo_details') || '{}'); if (d && d.phone) return {ph: String(d.phone), n: String(d.name || '')};
+  const w = localStorage.getItem('fomaxo_who'); if (w) return {w}; const i = JSON.parse(localStorage.getItem('fomaxo_inviter') || 'null'); if (i && i.ph) return {ph: String(i.ph)}; } catch(e) {} return null; }
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[data-invite]'); if (!a) return;
+  const me = invMe(); if (me) { TRK.send('invite', me); return; }   // WhatsApp opens as usual
+  e.preventDefault(); invAsk(a.href);
+});
+function invAsk(href){
+  let d = $('#invD');
+  if (!d) { document.body.insertAdjacentHTML('beforeend', `<dialog class="invd" id="invD"><form method="dialog"><button type="button" class="invd-x" data-inv-x aria-label="Close">×</button>
+    <h3>Invite Friends, Get Coupons</h3><p>Add your WhatsApp number. When your friend places an order, we send your coupon there.</p>
+    <input type="tel" inputmode="tel" autocomplete="tel" id="invPh" placeholder="98XXX XXXXX" aria-label="Your WhatsApp number">
+    <p class="invd-err" hidden>Please add your 10-digit WhatsApp number.</p>
+    <button type="button" class="btn block" data-inv-go>Share with friends</button><button type="button" class="invd-skip" data-inv-skip>Share without a coupon</button></form></dialog>`);
+    d = $('#invD');
+    d.addEventListener('click', ev => {
+      const t = ev.target.closest('button'); if (!t) { if (ev.target === d) d.close(); return; }
+      if (t.hasAttribute('data-inv-x')) return d.close();
+      if (t.hasAttribute('data-inv-go')) { const ph = $('#invPh').value.replace(/\D/g, '').slice(-10); if (!/^[6-9]\d{9}$/.test(ph)) { $('.invd-err', d).hidden = false; $('#invPh').focus(); return; }
+        try { localStorage.setItem('fomaxo_inviter', JSON.stringify({ph})); } catch(x) {} TRK.send('invite', {ph}); }
+      if (t.hasAttribute('data-inv-go') || t.hasAttribute('data-inv-skip')) { d.close(); window.open(d.dataset.href, '_blank', 'noopener'); }
+    });
+  }
+  d.dataset.href = href; $('.invd-err', d).hidden = true; d.showModal();
+}
 const WA_SVG = () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${SOC_ICON.whatsapp.replace(/^<g transform="[^"]*">/, '<g>')}</svg>`;
 /* one gift set or combo card: pictures, words, product dropdowns and the WhatsApp button (combos: Add to bag and Buy now) */
 /* combo cards: short scent words under each parfum, and the "Change" row that stands in for the dropdown */
@@ -5044,7 +5083,8 @@ function bindCheckout(q){
   }
   const busy = (on, label) => { btn.disabled = on; if (on) $('#coPayTxt').textContent = label; else upd(); };
   const done = (no, pay, review, total) => {
-    TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, '')}); ADS.buy(no, total, lines);
+    let iv = ''; try { const r = JSON.parse(localStorage.getItem('fomaxo_ref') || 'null'); if (r && /^[a-z0-9]{8,16}$/.test(r.v) && Date.now() - r.t < 2592e6) iv = r.v; localStorage.removeItem('fomaxo_ref'); } catch(e) {}   // ordered from a friend's shared link
+    TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, ''), ...(iv ? {iv} : {})}); ADS.buy(no, total, lines);
     try { localStorage.setItem(LAST_KEY, JSON.stringify({at: Date.now(), lines: lines.map(l => l.picks ? {id: l.id, opt: l.opt, picks: l.picks} : {id: l.id, opt: l.opt})})); } catch(e) {}
     try { sessionStorage.removeItem('fx_coupon'); } catch(e) {}
     if (coBuy(q)) { try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {} } else { cart = []; save(); }
