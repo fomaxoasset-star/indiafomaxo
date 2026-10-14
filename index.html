@@ -1394,8 +1394,12 @@ html:not([data-mode="light"]){color-scheme:only dark}
 @media (prefers-color-scheme: light){:root{--sys-scheme:light}}
 html[data-mode="light"] .hero-cine .btn:not(.line){background:linear-gradient(100deg,#5e3f12 0%,#7d561c 30%,#9a6c2a 50%,#7d561c 70%,#5e3f12 100%);background-size:200% 100%;color:#fff8ea;box-shadow:inset 0 0 0 1px rgba(240,211,160,.45)}
 html[data-mode="light"] .hero-cine .ctas .btn:not(.line) .sub{color:#f0d3a0;opacity:1}
-.pshare{display:flex;align-items:center;justify-content:center;gap:9px;font-size:12.5px;letter-spacing:.04em;color:var(--champagne);margin:-8px 0 0}
-.pshare svg{width:16px;height:16px;color:var(--gold)}.pshare:hover{color:var(--gold-hi)}
+/* WhatsApp pair under Buy now: Share with a friend + Get offers (the customer sends us a ready message, so we have their number, no form) */
+.pwrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pwx{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 10px;border:1px solid var(--line-2);color:var(--champagne);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;text-align:center;line-height:1.25;transition:border-color .2s,color .2s,background .2s}
+.pwx svg{width:16px;height:16px;flex:none;color:var(--gold)}.pwx:hover{border-color:var(--gold);color:var(--gold)}
+.pwx-gold{border-color:var(--gold);color:var(--gold)}.pwx-gold:hover{background:var(--gold);color:var(--black)}.pwx-gold:hover svg{color:var(--black)}
+@media (max-width:520px){.pwrow{grid-template-columns:1fr;gap:8px}}   /* phone: one per line, each label on one line */
 .buy-trust{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:12.5px;color:var(--muted);letter-spacing:.02em;text-align:center}
 .buy-trust .lk{width:14px;height:14px;flex:none;color:var(--gold)}
 .sizes button .sz-p{font-family:var(--sans);font-style:normal;font-size:14px;letter-spacing:.02em;color:var(--gold);margin-top:2px}
@@ -2273,7 +2277,6 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .qty{height:44px}
   .buy .btn{min-height:44px}
   .buy-trust{margin:-4px 0 0;font-size:12px}
-  .pshare{margin:-6px 0 0;font-size:12px}
   .perks div{padding:4px 14px;font-size:12.5px;line-height:1.4;gap:10px}
   .perks svg{width:16px;height:16px}
   .acc summary{padding:6px 0;font-size:11.5px;line-height:1.4}
@@ -3598,7 +3601,7 @@ function product(id, q){
           ${isOut(p) ? OUT_BTN('btn') : '<button class="btn line" id="addBtn">Add To Cart</button>'}
         </div>
         ${isOut(p) ? '<p class="oos-note">King is currently out of stock. <a class="gold" href="#/contact?topic=order">Contact us</a> to reserve one from the next batch.</p>'.replace('King', esc(p.name)) : '<button class="btn block" id="buyBtn">Buy Now</button>'}
-        <a class="pshare" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}Share with a friend on WhatsApp</a>
+        <div class="pwrow"><a class="pwx" href="https://wa.me/?text=${encodeURIComponent(`${p.name} by FOMAXO, have a look: ${location.origin}${location.pathname}?utm_source=whatsapp#/product/${p.id}`)}" target="_blank" rel="noopener">${WA_SVG()}<span>Share with a friend</span></a><a class="pwx pwx-gold" href="https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(`Hi FOMAXO, please send me your latest offers. (I am looking at ${p.name})`)}" target="_blank" rel="noopener">${WA_SVG()}<span>Get offers on WhatsApp</span></a></div>
         <div class="perks">${perks.map(x => `<div>${x[0]}<span>${x[1]}</span></div>`).join('')}</div>
         <div class="acc">
           <details${wide ? '' : ' open'}><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
