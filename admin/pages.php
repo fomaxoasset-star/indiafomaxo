@@ -1033,7 +1033,7 @@ if ($tab === 'settings') {
     . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box' . ($adsFirst ? ' on' : '') . '" data-pane="ads" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="ads"><div class="bh"><h3>Ad tracking</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . '<p class="muted small" style="margin:0">Paste an ID to turn it on; an empty box stays off. The website then tells Meta, TikTok and Google about product views, adds to bag, checkouts and purchases (with the ₹ value), so ads learn who buys.</p>'
-    . $adIn('meta', 'Meta Pixel ID', '123456789012345', 'Facebook and Instagram. Events Manager → your pixel.')
+    . $adIn('meta', 'Meta Pixel ID', '123456789012345', 'Facebook and Instagram. Events Manager → your pixel. 1050618291345073 is built into the website and runs even when this is empty; an ID typed here is used instead.')
     . $adIn('tiktok', 'TikTok Pixel ID', 'C1ABCDEFGH2IJKLMNOP3', 'Ads Manager → Tools → Events → Web events.')
     . $adIn('ga4', 'Google Analytics ID', 'G-XXXXXXXXXX', 'Analytics → Admin → Data streams. Starts with G-. G-C1TFB0MT5N is built into the website and runs even when this is empty; an ID typed here is used instead.')
     . $adIn('gads', 'Google Ads ID', 'AW-123456789', 'Goals → Conversions → Tag setup. Starts with AW-.')
