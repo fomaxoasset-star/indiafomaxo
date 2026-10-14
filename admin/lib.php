@@ -972,7 +972,7 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
   return array_values($by);
 }
 function lead_items(array $l): string {
-  if (($l['step'] ?? '') === 'visit') {   // opened our WhatsApp link: the products they looked at on that visit
+  if (in_array($l['step'] ?? '', ['visit', 'buyer'], true)) {   // opened our WhatsApp link, or a past buyer back: the products they looked at on that visit
     $ph = implode(',', array_fill(0, count($l['sids'] ?? [$l['sid']]), '?')); $s = shop_db()->prepare("SELECT product FROM events WHERE type = 'product' AND product <> '' AND sid IN ($ph) GROUP BY product ORDER BY MIN(id)");
     $s->execute($l['sids'] ?? [$l['sid']]); $cat = fomaxo_catalog()['products'];
     $names = array_map(fn($id) => $cat[$id]['name'] ?? $id, $s->fetchAll(PDO::FETCH_COLUMN));
@@ -989,7 +989,7 @@ function lead_bag_code(array $l): string {
    their bag and opens checkout + the delivery line]. The WhatsApp box (admin.js) puts the coupon paragraph between them when a coupon is picked. */
 function lead_wa_parts(array $l): array {
   $n2 = "\n\n"; $first = first_name((string)$l['name']); $bag = lead_bag_code($l);
-  if (($l['step'] ?? '') === 'visit') return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . 'Thank you for visiting FOMAXO.',   // opened our WhatsApp link, never reached checkout
+  if (in_array($l['step'] ?? '', ['visit', 'buyer'], true)) return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . ($l['step'] === 'buyer' ? 'Thank you for coming back to FOMAXO.' : 'Thank you for visiting FOMAXO.'),   // opened our WhatsApp link or a past buyer back, never reached checkout
     $n2 . "You can order here anytime:\nhttps://fomaxo.in/" . $n2 . 'Free delivery across India in 1–3 days.' . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO'];
   $items = implode("\n", array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));
   return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . ($items !== '' ? "You left these in your FOMAXO bag:\n" . $items : 'We noticed you did not finish your FOMAXO order.'),
