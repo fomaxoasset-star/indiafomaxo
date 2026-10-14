@@ -2994,7 +2994,10 @@ const TRK = (() => {
   return {
     send,
     view(path, seg){ ADS.page(path, seg); if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]});
-      const who = get(sessionStorage, 'fomaxo_who_visit'); if (who) { send('lead', {lead: {step: 'visit', who}}); try { sessionStorage.removeItem('fomaxo_who_visit'); } catch(e) {} } },
+      const who = get(sessionStorage, 'fomaxo_who_visit'); if (who) { send('lead', {lead: {step: 'visit', who}}); try { sessionStorage.removeItem('fomaxo_who_visit'); } catch(e) {} }
+      else if (get(localStorage, 'fomaxo_last') && !get(sessionStorage, 'fomaxo_buyer_seen')) {   // ordered before on this device: the admin sees them by name when they come back, once per visit
+        put(sessionStorage, 'fomaxo_buyer_seen', '1'); let phone = ''; try { phone = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
+        if (phone) send('lead', {lead: {step: 'buyer', phone}}); } },
     lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', email: c.email || '', state: c.state || '',
       address: [c.house, c.street, c.landmark, c.city, c.pin].filter(Boolean).join(', '), total: subtotal(lines) || 0,
       bag: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, name: P[l.id] ? `${P[l.id].name} · ${optLabel(P[l.id], l.opt)}` : l.id}))}}); }

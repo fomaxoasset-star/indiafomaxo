@@ -45,6 +45,15 @@ try {
         'phone' => $phone, 'step' => 'visit', 'bag' => '[]', 'total' => 0, 'ordered' => 0, 'email' => '', 'state' => '', 'address' => '']);
       exit;
     }
+    if (($l['step'] ?? '') === 'buyer') {   // came back on the device they ordered from: in Left at checkout right away, only if that mobile really has an order
+      $phone = substr(preg_replace('/\D/', '', (string)($l['phone'] ?? '')), -10); if (!preg_match('/^[6-9]\d{9}$/', $phone)) exit;
+      $s = $db->prepare('SELECT 1 FROM leads WHERE sid = ?'); $s->execute([$sid]); if ($s->fetchColumn()) exit;   // checkout or a WhatsApp link already noted this visit
+      $s = $db->prepare("SELECT name FROM orders WHERE status NOT IN ('awaiting', 'cancelled', 'refunded') AND COALESCE(no, '') <> '' AND test = 0 AND phone LIKE ? ORDER BY created DESC LIMIT 1"); $s->execute(['%' . $phone]);
+      $name = $s->fetchColumn(); if ($name === false) exit;
+      shop_upsert('leads', ['sid'], ['sid' => $sid, 'vid' => $vid, 'created' => shop_now(), 'updated' => shop_now(), 'name' => mb_substr((string)$name, 0, 80),
+        'phone' => $phone, 'step' => 'buyer', 'bag' => '[]', 'total' => 0, 'ordered' => 0, 'email' => '', 'state' => '', 'address' => '']);
+      exit;
+    }
     $txt = fn($v, $n) => trim(mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', is_string($v) ? $v : '') ?? '', 0, $n));
     $phone = substr(preg_replace('/\D/', '', (string)($l['phone'] ?? '')), -10);
     $name = $txt($l['name'] ?? '', 80);
