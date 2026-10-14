@@ -2396,6 +2396,8 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
   .ofp-new .ofp-k{font-size:calc(12px * var(--fkp,1))}.ofp-new .ofp-img{width:calc(120px * var(--fip,1));height:calc(150px * var(--fip,1))}.ofp-new .ofp-name{font-size:calc(24px * var(--fnp,1))}.ofp-new .ofp-on{font-size:calc(15px * var(--flp,1))}.ofp-new .ofp-go{min-height:calc(48px * var(--fbp,1));font-size:calc(11px * var(--fbp,1))}
   .ofp-sale .ofp-k{font-size:calc(12px * var(--fkp,1))}.ofp-sale .ofp-pct{font-size:calc(48px * var(--fpp,1))}.ofp-sale .ofp-on{font-size:calc(15px * var(--fsp,1))}.ofp-sale .ofp-go{min-height:calc(48px * var(--fbp,1));font-size:calc(11px * var(--fbp,1))}.ofp-name{font-size:24px}.ofp-hurry{margin-top:14px;font-size:15px}.ofp-go{margin-top:14px}}
 @media(prefers-reduced-motion:reduce){.ofp,.ofp-box{transition:none}}
+/* phone and tablet: typing boxes at 16px, so iPhone doesn't zoom the page in when a box is tapped (same rule as fomaxo.com) */
+@media(max-width:900px){input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}}
 </style>
 </head><body>
 <script>document.body.classList.add("home")</script>
