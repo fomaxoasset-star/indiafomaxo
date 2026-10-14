@@ -442,7 +442,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($a === 'offer_off') { shop_set('offer', json_encode(['mode' => 'off'] + array_diff_key(shop_offer(), ['mode' => 1]))); go(['tab' => 'offer'], 'The offer is off. Nothing shows on the website.'); }
   if ($a === 'lead_coupon') {   // Left at checkout WhatsApp box (admin.js asks without reloading): with a coupon, a new COMEBACK- code, one use, only this customer's mobile,
     header('Content-Type: application/json');   // till the end date picked (7 days filled in); the line then shows Sent dd/mm
-    $code = box_code('COMEBACK-', (string)($_POST['phone'] ?? ''));
+    $s = shop_db()->prepare('SELECT step FROM leads WHERE sid = ?'); $s->execute([(string)($_POST['sid'] ?? '')]);   // a thank you for inviting a friend gets a THANKS- code
+    $code = box_code($s->fetchColumn() === 'invite' ? 'THANKS-' : 'COMEBACK-', (string)($_POST['phone'] ?? ''));
     day_mark('wa_sent', 'lt:' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($_POST['sid'] ?? '')));
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
@@ -648,7 +649,7 @@ if ($do === 'leads_excel') {
   $okDay = fn(string $d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $d);
   $dd = $okDay($F['from']) && $okDay($F['to']) ? [min($F['from'], $F['to']), max($F['from'], $F['to'])] : [];   // the dates picked on Analytics
   $rows = array_map(fn($l) => [substr($l['updated'], 0, 16), $l['name'], $l['phone'] ? phone_fmt($l['phone']) : '', $l['email'], $l['state'], $l['address'], lead_items($l), round($l['total'] / 100, 2),
-    ['payment' => 'Payment page', 'visit' => 'Opened WhatsApp link', 'buyer' => 'Past buyer visiting'][$l['step']] ?? 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later']), $l['tries']], checkout_leads(...$dd));
+    ['payment' => 'Payment page', 'visit' => 'Opened WhatsApp link', 'buyer' => 'Past buyer visiting', 'invite' => 'Invited a friend who ordered'][$l['step']] ?? 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later']), $l['tries']], checkout_leads(...$dd));
   send_sheet('FOMAXO-left-at-checkout-' . ($dd ? implode('-to-', $dd) : date('Y-m-d')), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later', 'Tries'], $rows, 'Left at checkout');
 }
 if ($do === 'expenses_excel') {

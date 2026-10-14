@@ -23,7 +23,7 @@ $in = json_decode($raw, true); if (!is_array($in)) exit;
 $t = (string)($in['t'] ?? '');
 $id = fn($k) => preg_match('/^[a-z0-9]{8,16}$/', (string)($in[$k] ?? '')) ? (string)$in[$k] : '';
 $vid = $id('v'); $sid = $id('s');
-if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping'], true)) exit;
+if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping', 'invite'], true)) exit;
 
 try {
   $db = shop_db(); $now = time();
@@ -35,6 +35,17 @@ try {
     $db->prepare('DELETE FROM visits WHERE last < ?')->execute([$now - 800 * 86400]);
   }
   if ($t === 'ping') exit;
+  /* Invite friends (Share with friends on a product page): this device's visitor id is kept with the sharer's WhatsApp number. The link they share carries
+     ?ref=<their visitor id>; when a friend orders from it, the sharer shows in Left at checkout as "Invited a friend" so the shop can send their coupon. */
+  $db->exec('CREATE TABLE IF NOT EXISTS inviters(vid VARCHAR(16) PRIMARY KEY, phone VARCHAR(24) NOT NULL, name VARCHAR(80) NOT NULL DEFAULT \'\', at INT NOT NULL DEFAULT 0)');
+  if ($t === 'invite') {
+    $phone = wa_who_phone((string)($in['w'] ?? '')) ?: substr(preg_replace('/\D/', '', (string)($in['ph'] ?? '')), -10);
+    if (!preg_match('/^[6-9]\d{9}$/', $phone)) exit;
+    $name = trim(mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)($in['n'] ?? '')) ?? '', 0, 80));
+    if ($name === '') { $s = $db->prepare("SELECT name FROM orders WHERE phone LIKE ? ORDER BY created DESC LIMIT 1"); $s->execute(['%' . $phone]); $name = mb_substr((string)$s->fetchColumn(), 0, 80); }
+    shop_upsert('inviters', ['vid'], ['vid' => $vid, 'phone' => $phone, 'name' => $name, 'at' => $now]);
+    exit;
+  }
   if ($t === 'lead') {   // name, mobile and bag typed at checkout, for "Left at checkout"
     $l = is_array($in['lead'] ?? null) ? $in['lead'] : [];
     if (($l['step'] ?? '') === 'visit') {   // opened the site from a link in our WhatsApp (?w= personal code): in Left at checkout right away, with the number we wrote to
@@ -83,4 +94,13 @@ try {
   $db->prepare('INSERT INTO events(ts, vid, sid, type, source, path, product, qty, device) VALUES(?,?,?,?,?,?,?,?,?)')
     ->execute([shop_now(), $vid, $sid, $t, $src, $path, $product, $qty, $device]);
   if ($t === 'buy') $db->prepare('UPDATE leads SET ordered = 1 WHERE sid = ?')->execute([$sid]);
+  if ($t === 'buy' && ($iv = $id('iv')) !== '' && $iv !== $vid) try {   // a friend's order from a shared link: the sharer shows in Left at checkout with "Invited a friend"
+    $s = $db->prepare('SELECT phone, name FROM inviters WHERE vid = ?'); $s->execute([$iv]); $inv = $s->fetch();
+    $s = $db->prepare('SELECT no, name, phone FROM orders WHERE UPPER(no) = UPPER(?) AND created >= ? LIMIT 1'); $s->execute([$product, date('Y-m-d H:i:s', $now - 3 * 3600)]); $o = $s->fetch();
+    if ($inv && $o && substr(preg_replace('/\D/', '', (string)$o['phone']), -10) !== $inv['phone']) {   // not their own order
+      $friend = trim(explode(' ', trim((string)$o['name']))[0] ?? '');
+      shop_upsert('leads', ['sid'], ['sid' => substr(md5('invite:' . $o['no']), 0, 16), 'vid' => $iv, 'created' => shop_now(), 'updated' => shop_now(), 'name' => (string)$inv['name'],
+        'phone' => (string)$inv['phone'], 'step' => 'invite', 'bag' => json_encode(['friend' => mb_substr($friend, 0, 40), 'order' => (string)$o['no']], JSON_UNESCAPED_UNICODE), 'total' => 0, 'ordered' => 0, 'email' => '', 'state' => '', 'address' => '']);
+    }
+  } catch (Throwable $e) { error_log('FOMAXO invite: ' . $e->getMessage()); }
 } catch (Throwable $e) { error_log('FOMAXO track: ' . $e->getMessage()); }
