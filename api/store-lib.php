@@ -519,6 +519,17 @@ function fomaxo_review_url(string $token): string {
 }
 
 /* Emails the store and the customer about a confirmed order (paid online, or cash on delivery). */
+/* the personal code on fomaxo.in links in the WhatsApp messages sent from the admin (?w=): the customer's own 10-digit mobile, signed, so checkout fills it in
+   by itself and the admin sees them in Left at checkout as soon as they open the link. A changed or made-up code gives '' (nothing filled, nothing kept). */
+function wa_who_key(): string { $k = shop_setting('who_key'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('who_key', $k); } return $k; }
+function wa_who_token(string $phone): string {
+  $p = substr(preg_replace('/\D/', '', $phone), -10);
+  return preg_match('/^[6-9]\d{9}$/', $p) ? $p . '-' . substr(hash_hmac('sha256', 'who:' . $p, wa_who_key()), 0, 12) : '';
+}
+function wa_who_phone(string $t): string {
+  return preg_match('/^([6-9]\d{9})-([a-f0-9]{12})$/', $t, $m) && hash_equals(substr(hash_hmac('sha256', 'who:' . $m[1], wa_who_key()), 0, 12), $m[2]) ? $m[1] : '';
+}
+
 /* The shop owner's own browser: marked by a cookie set while signed in to /admin, so analytics leave those visits out. */
 function fomaxo_owner_token(): string {
   $k = shop_setting('track_secret'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('track_secret', $k); }

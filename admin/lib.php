@@ -599,9 +599,11 @@ function coupon_share_text(array $c): string {
 function wa_btn(string $phone, string $who, string $head, string $tail = "\n\nThank you,\nFOMAXO", string $mark = '', string $label = 'WhatsApp', string $cls = 'btn sm wag', bool $nocoupon = false): string {
   $ph = coupon_phone($phone);
   if (!preg_match('/^[6-9]\d{9}$/', $ph)) { if (!$nocoupon) return ''; $ph = ''; }
-  return '<button type="button" class="' . $cls . '" data-wabox data-phone="' . $ph . '" data-who="' . h($who) . '" data-head="' . h($head) . '" data-tail="' . h($tail) . '"'
+  return '<button type="button" class="' . $cls . '" data-wabox data-phone="' . $ph . '"' . wt_attr($ph) . ' data-who="' . h($who) . '" data-head="' . h($head) . '" data-tail="' . h($tail) . '"'
     . ($mark !== '' ? ' data-mark="' . h($mark) . '"' : '') . ($nocoupon ? ' data-nocoupon' : '') . ' title="Send on WhatsApp">' . WA_SVG . '<span>' . h($label) . '</span></button>';
 }
+/* the customer's personal code for the fomaxo.in links in a WhatsApp message (wa_who_token, api/store-lib.php): admin.js adds ?w= to each link when the message is sent */
+function wt_attr(string $phone): string { $t = wa_who_token($phone); return $t !== '' ? ' data-wt="' . $t . '"' : ''; }
 /* when a WhatsApp was last sent from the admin to a mobile (ph:<mobile>) or a Left at checkout line (lt:<sid>): Sent dd/mm inside its button */
 function wa_sent_all(): array { static $s = null; return $s ??= json_decode((string)shop_setting('wa_sent'), true) ?: []; }
 function wa_sent_day(string $key): string { $d = wa_sent_all()[$key] ?? ''; return $d !== '' ? date('d/m', strtotime($d)) : ''; }
@@ -969,7 +971,15 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
   }
   return array_values($by);
 }
-function lead_items(array $l): string { return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: [])); }
+function lead_items(array $l): string {
+  if (($l['step'] ?? '') === 'visit') {   // opened our WhatsApp link: the products they looked at on that visit
+    $ph = implode(',', array_fill(0, count($l['sids'] ?? [$l['sid']]), '?')); $s = shop_db()->prepare("SELECT product FROM events WHERE type = 'product' AND product <> '' AND sid IN ($ph) GROUP BY product ORDER BY MIN(id)");
+    $s->execute($l['sids'] ?? [$l['sid']]); $cat = fomaxo_catalog()['products'];
+    $names = array_map(fn($id) => $cat[$id]['name'] ?? $id, $s->fetchAll(PDO::FETCH_COLUMN));
+    return $names ? 'Looked at ' . implode(', ', $names) : '';
+  }
+  return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: []));
+}
 /* the bag they left as a short code for the website link (product.size.qty for each line, joined with _): fomaxo.in/#/checkout?bag=… fills the bag again */
 function lead_bag_code(array $l): string {
   $c = implode('_', array_map(fn($b) => $b['id'] . '.' . $b['opt'] . '.' . (int)$b['qty'], array_filter(json_decode((string)$l['bag'], true) ?: [], fn($b) => preg_match('/^[a-z0-9-]{1,48}$/', (string)($b['id'] ?? '')) && preg_match('/^[a-z0-9]{1,16}$/', (string)($b['opt'] ?? '')))));
@@ -979,6 +989,8 @@ function lead_bag_code(array $l): string {
    their bag and opens checkout + the delivery line]. The WhatsApp box (admin.js) puts the coupon paragraph between them when a coupon is picked. */
 function lead_wa_parts(array $l): array {
   $n2 = "\n\n"; $first = first_name((string)$l['name']); $bag = lead_bag_code($l);
+  if (($l['step'] ?? '') === 'visit') return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . 'Thank you for visiting FOMAXO.',   // opened our WhatsApp link, never reached checkout
+    $n2 . "You can order here anytime:\nhttps://fomaxo.in/" . $n2 . 'Free delivery across India in 1–3 days.' . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO'];
   $items = implode("\n", array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));
   return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . ($items !== '' ? "You left these in your FOMAXO bag:\n" . $items : 'We noticed you did not finish your FOMAXO order.'),
     $n2 . ($bag !== '' ? "Your bag is saved. Tap here to finish your order:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=left-checkout#/checkout?bag=" . $bag
