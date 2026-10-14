@@ -625,6 +625,8 @@ function waBox(id, sel, o) {
       min: m ? ' of ₹' + m.toLocaleString('en-IN') + ' or more' : '',
       till: e && M[+e[2] - 1] ? ', valid till ' + (+e[1]) + ' ' + M[+e[2] - 1] + ' ' + e[3] : ''} : null);   // the end date, if one is picked
   }
+  /* every fomaxo.in link in the message gets the customer's personal code (?w=, data-wt), so their number fills in at checkout and they show in Left at checkout */
+  function withW(t) { var w = btn.dataset.wt; return !w ? t : t.replace(/https:\/\/(?:www\.)?fomaxo\.in(\/[^\s?#*]*)?(\?[^\s#*]*)?(#[^\s*]*)?/g, function (u, p, q, h) { return 'https://fomaxo.in' + (p || '/') + (q ? q + '&' : '?') + 'w=' + w + (h || ''); }); }
   function wa(t) { return 'https://wa.me/' + (btn.dataset.phone ? '91' + btn.dataset.phone : '') + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
   /* On a phone the WhatsApp app opens straight away (whatsapp://, on Android an intent that falls back to wa.me when there's no app), in this tab;
      a new tab opened from a script after the server answers only loads the wa.me website. If the app doesn't open, the box shows both links to tap. */
@@ -651,7 +653,7 @@ function waBox(id, sel, o) {
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
   send.addEventListener('click', function () {
     var k = kind.value; err.hidden = true;
-    if (!k && !o.always) { if (PHONE) openApp(text.value); else { window.open(wa(text.value), '_blank'); dlg.close(); } return; }
+    if (!k && !o.always) { if (PHONE) openApp(withW(text.value)); else { window.open(wa(withW(text.value)), '_blank'); dlg.close(); } return; }
     var w = PHONE ? null : window.open('', '_blank');   // laptop: opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
     var f = o.fields(btn.dataset);
     f.action = o.action; f.gkind = k; f.pct = val.value || (k === 'pct' ? PCT : '200'); f.gfree = freeV.value; f.gmin = min.value; f.gend = end.value.trim();
@@ -661,8 +663,8 @@ function waBox(id, sel, o) {
       if (d.error || (k && !d.code)) throw new Error(d.error || 'The code could not be made.');
       if (d.code) text.value = text.value.split('[CODE]').join(d.code);
       if (o.done) o.done(d, btn);
-      if (PHONE) { openApp(text.value); return; }   // the box closes once WhatsApp has opened
-      if (w) w.location = wa(text.value); else location.href = wa(text.value);
+      if (PHONE) { openApp(withW(text.value)); return; }   // the box closes once WhatsApp has opened
+      if (w) w.location = wa(withW(text.value)); else location.href = wa(withW(text.value));
       dlg.close();
     }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
   });

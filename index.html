@@ -2950,6 +2950,11 @@ const ADS = (() => {
 /* Visitor analytics on our own server (api/track.php): a random visitor id kept on this device and a visit id that ends
    after 30 minutes without activity. No names or IP addresses; checkout details are sent only when typed at checkout,
    so the shop can follow up on orders that were not finished. Ad tags (ADS above) are separate and off until an ID is set. */
+/* a link from our WhatsApp carries the customer's personal code (?w=): kept on this device for checkout to fill in their mobile, told to the admin once
+   (Left at checkout, as soon as they open it), and taken out of the address */
+(() => { const m = location.search.match(/[?&]w=([6-9]\d{9}-[a-f0-9]{12})(?=&|$)/); if (!m) return;
+  try { localStorage.setItem('fomaxo_who', m[1]); sessionStorage.setItem('fomaxo_who_visit', m[1]); } catch(e) {}
+  try { history.replaceState(history.state, '', location.pathname + location.search.replace(/([?&])w=[^&]*&?/, '$1').replace(/[?&]$/, '') + location.hash); } catch(e) {} })();
 const TRK = (() => {
   const rid = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8);
   const get = (st, k) => { try { return st.getItem(k); } catch(e) { return null; } }, put = (st, k, v) => { try { st.setItem(k, v); } catch(e) {} };
@@ -2988,7 +2993,8 @@ const TRK = (() => {
   let lastView = '';
   return {
     send,
-    view(path, seg){ ADS.page(path, seg); if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]}); },
+    view(path, seg){ ADS.page(path, seg); if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]});
+      const who = get(sessionStorage, 'fomaxo_who_visit'); if (who) { send('lead', {lead: {step: 'visit', who}}); try { sessionStorage.removeItem('fomaxo_who_visit'); } catch(e) {} } },
     lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', email: c.email || '', state: c.state || '',
       address: [c.house, c.street, c.landmark, c.city, c.pin].filter(Boolean).join(', '), total: subtotal(lines) || 0,
       bag: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, name: P[l.id] ? `${P[l.id].name} · ${optLabel(P[l.id], l.opt)}` : l.id}))}}); }
@@ -5001,6 +5007,11 @@ function bindCheckout(q){
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
+  /* opened from a link in our WhatsApp (?w=): the Mobile box fills in by itself with the number we wrote to, unless one is already there */
+  let who = ''; try { who = localStorage.getItem('fomaxo_who') || ''; } catch(e) {}
+  if (who && !E.phone.value) fetch('api/who.php', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({who})}).then(r => r.json()).then(j => {
+    if (/^[6-9]\d{9}$/.test(j.phone || '') && !E.phone.value) { E.phone.value = j.phone; E.phone.dispatchEvent(new Event('input', {bubbles: true})); }
+    else if (!j.phone) try { localStorage.removeItem('fomaxo_who'); } catch(e) {} }).catch(() => {});
   E.pin.oninput = () => { E.pin.value = E.pin.value.replace(/\D/g, '').slice(0, 6); };
   f.addEventListener('input', e => { const lb = e.target.closest('label'); if (lb) { lb.classList.remove('bad'); const fe = lb.querySelector('.co-fe'); if (fe) fe.remove(); } });
   upd();

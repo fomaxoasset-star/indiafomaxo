@@ -37,6 +37,14 @@ try {
   if ($t === 'ping') exit;
   if ($t === 'lead') {   // name, mobile and bag typed at checkout, for "Left at checkout"
     $l = is_array($in['lead'] ?? null) ? $in['lead'] : [];
+    if (($l['step'] ?? '') === 'visit') {   // opened the site from a link in our WhatsApp (?w= personal code): in Left at checkout right away, with the number we wrote to
+      $phone = wa_who_phone((string)($l['who'] ?? '')); if ($phone === '') exit;
+      $s = $db->prepare('SELECT 1 FROM leads WHERE sid = ?'); $s->execute([$sid]); if ($s->fetchColumn()) exit;   // checkout already noted this visit
+      $s = $db->prepare("SELECT name FROM orders WHERE phone LIKE ? ORDER BY created DESC LIMIT 1"); $s->execute(['%' . $phone]);   // their name from their last order
+      shop_upsert('leads', ['sid'], ['sid' => $sid, 'vid' => $vid, 'created' => shop_now(), 'updated' => shop_now(), 'name' => mb_substr((string)$s->fetchColumn(), 0, 80),
+        'phone' => $phone, 'step' => 'visit', 'bag' => '[]', 'total' => 0, 'ordered' => 0, 'email' => '', 'state' => '', 'address' => '']);
+      exit;
+    }
     $txt = fn($v, $n) => trim(mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', is_string($v) ? $v : '') ?? '', 0, $n));
     $phone = substr(preg_replace('/\D/', '', (string)($l['phone'] ?? '')), -10);
     $name = $txt($l['name'] ?? '', 80);
