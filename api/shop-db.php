@@ -77,6 +77,10 @@ function shop_db(): PDO {
     $add("coupons ADD wa_to VARCHAR(10) NOT NULL DEFAULT ''");
     shop_set('schema', '13');
   }
+  if (shop_setting('schema') === '13') {   // Left at checkout: 1 = the WhatsApp tick at checkout was on while they typed (the automatic cart reminder goes only to these)
+    $add("leads ADD wa INT NOT NULL DEFAULT 0");
+    shop_set('schema', '14');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   if ($sig !== '' && shop_setting('order_counter') !== null && shop_setting('fresh_start') !== null) shop_set('schema_sig', $sig);

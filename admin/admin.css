@@ -547,6 +547,7 @@ body.zooming{overflow:hidden}
 .rfsw{display:inline-flex;border:1px solid var(--gold);border-radius:999px;overflow:hidden;flex:none}.rfsw label{display:block;cursor:pointer}.rfsw input{position:absolute;opacity:0;pointer-events:none}
 .rfsw span{display:block;padding:6px 22px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold2)}.rfsw input:checked+span{background:var(--gold);color:#17130b}.rfsw input:focus-visible+span{outline:2px solid var(--gold2);outline-offset:-3px}
 .rferr{color:var(--red);margin:0;font-weight:600}
+.ltauto{border-bottom:1px solid var(--line)}.ltauto .rqsw .rqn select{width:96px}
 .rfk{flex:none;grid-template-columns:repeat(2,minmax(0,220px))}.rflist td{padding:8px 10px}.rflist th:first-child,.rflist td:first-child{padding-left:14px}.rflist th:last-child,.rflist td:last-child{padding-right:14px}.rflist .btn{width:auto;display:inline-flex}.rflist tr.dim2 td>*:not(.ra){opacity:.75}.rfk.rq3{grid-template-columns:repeat(3,minmax(0,220px))}
 .rdue{font-size:12px;font-weight:600;color:var(--gold);margin-right:10px}.rstop{font-size:12px;font-weight:700;color:var(--red)}
 .wtag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:1px 7px;margin-left:8px;border-radius:20px;border:1px solid color-mix(in srgb,var(--green) 45%,transparent);color:var(--green);background:color-mix(in srgb,var(--green) 10%,transparent);white-space:nowrap;vertical-align:1px}

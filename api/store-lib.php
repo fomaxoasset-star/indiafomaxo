@@ -530,6 +530,11 @@ function wa_who_phone(string $t): string {
   return preg_match('/^([6-9]\d{9})-([a-f0-9]{12})$/', $t, $m) && hash_equals(substr(hash_hmac('sha256', 'who:' . $m[1], wa_who_key()), 0, 12), $m[2]) ? $m[1] : '';
 }
 
+/* Left at checkout (admin WhatsApp box and the automatic cart reminder, api/whatsapp-lib.php): the bag they left as a short code for the website link (product.size.qty for each line, joined with _): fomaxo.in/#/checkout?bag=… fills the bag again */
+function lead_bag_code(array $l): string {
+  $c = implode('_', array_map(fn($b) => $b['id'] . '.' . $b['opt'] . '.' . (int)$b['qty'], array_filter(json_decode((string)$l['bag'], true) ?: [], fn($b) => preg_match('/^[a-z0-9-]{1,48}$/', (string)($b['id'] ?? '')) && preg_match('/^[a-z0-9]{1,16}$/', (string)($b['opt'] ?? '')))));
+  return strlen($c) <= 600 ? $c : '';
+}
 /* The shop owner's own browser: marked by a cookie set while signed in to /admin, so analytics leave those visits out. */
 function fomaxo_owner_token(): string {
   $k = shop_setting('track_secret'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('track_secret', $k); }
