@@ -1767,6 +1767,12 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .mnav nav a.dubai{justify-content:center;margin-top:22px;border:1px solid var(--gold);color:var(--gold-hi);padding:14px 0}
 .mnav nav a.dubai::after{display:none}
 .mnav nav a.dubai:active{background:var(--gold);color:#0a0805}
+/* phone menu: the rows shrink with the screen height so every link, Visit Dubai and the email/phone lines fit on one screen (tall phones keep the full size); it scrolls if a screen is shorter still */
+.mnav{overflow-y:auto;overscroll-behavior:contain;padding-bottom:clamp(14px,4vh,32px);padding-bottom:clamp(14px,4dvh,32px)}
+.mnav .top{margin-bottom:clamp(12px,3vh,24px);margin-bottom:clamp(12px,3dvh,24px)}
+.mnav nav a{line-height:1.3;font-size:clamp(17px,2.9vh,22px);padding:clamp(7px,1.6vh,16px) 0;font-size:clamp(17px,2.9dvh,22px);padding:clamp(7px,1.6dvh,16px) 0}
+.mnav nav a.dubai{margin-top:clamp(10px,2.6vh,22px);padding:clamp(9px,1.6vh,14px) 0;margin-top:clamp(10px,2.6dvh,22px);padding:clamp(9px,1.6dvh,14px) 0}
+.mnav .foot{padding-top:12px;line-height:1.5}
 /* ================= PREMIUM PRODUCT PAGES =================
    Elegant serif (Cormorant Garamond) for product names and story copy,
    light Jost for prices and details, quieter sale marks, more air. */
