@@ -552,6 +552,8 @@ html[data-mode="light"] .sort-by select option{background:#fff;color:#1a140c}
 .rv-emoji button{font-size:20px;line-height:1;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;transition:border-color .2s,transform .2s;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .rv-emoji button:hover{border-color:var(--line-2);transform:scale(1.1)}
 .rv-text,.rv-head b{font-variant-emoji:emoji}
+/* review words bold (AJAY 2026-10-15); the name stays as it was */
+.rv-text{-webkit-text-stroke:.45px currentColor}   /* the serif has no weight above 600, so a thin outline in the text colour makes it bolder */
 .rv-pick button{font-size:30px;line-height:1;color:var(--line-2);padding:2px;transition:color .2s}
 .rv-pick button.on{color:var(--gold)}
 .rv-form .rv-check{display:flex;align-items:center;gap:10px;letter-spacing:.12em}
