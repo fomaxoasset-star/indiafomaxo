@@ -177,6 +177,13 @@ try {
       out(['products' => (object)$o]);
     }
 
+    /* home page "Loved by our customers" row: newest 4–5 star reviews with words or a photo, and the rating across every live review */
+    case 'latest': {
+      $all = db()->query("SELECT AVG(rating) a, COUNT(*) n FROM reviews WHERE status = 'live'")->fetch();
+      $rows = db()->query("SELECT * FROM reviews WHERE status = 'live' AND rating >= 4 AND (body != '' OR photos != '[]') ORDER BY created DESC LIMIT 16")->fetchAll();
+      out(['reviews' => array_map('publicReview', $rows), 'count' => (int)$all['n'], 'rating' => $all['n'] ? round((float)$all['a'], 1) : 0]);
+    }
+
     case 'list': {
       $p = validProduct($_GET['product'] ?? '');
       $order = ($_GET['sort'] ?? '') === 'helpful' ? 'helpful DESC, created DESC' : 'created DESC';
