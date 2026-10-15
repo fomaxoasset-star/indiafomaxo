@@ -413,6 +413,7 @@ html[data-mode="light"] .sort-by select option{background:#fff;color:#1a140c}
 .mbuy .n{flex:1;min-width:0}
 .mbuy .n b{display:block;font-family:var(--display);font-weight:300;font-size:15px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mbuy .n small{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.mbuy .n small{white-space:nowrap}.mbuy .n small .was{display:inline;margin:0 2px 0 0;font-size:.95em;line-height:1}   /* original price struck, then the sale price (AJAY 2026-10-15) */
 @media(max-width:960px){.mbuy{display:flex}}
 /* reviews */
 .reviews{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(30px,5vw,80px);padding:80px 0;border-top:1px solid var(--line)}
@@ -3735,7 +3736,7 @@ function bindProduct(p){
   $('#addBtn').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); };
   $('#buyBtn').onclick = () => { if (ready()) buyNow([isSet ? {id:p.id, opt:size, qty:getQ(), picks:[...picks]} : {id:p.id, opt:size, qty:getQ()}], $('#buyBtn')); };
   const mb = $('#mbuy');
-  function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) || 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : sizeOut(p, size) ? OUT_BTN('btn sm') : '<button class="btn line sm tc" id="mbAdd">Add To Cart</button><button class="btn sm tc" id="mbBuy">Buy Now</button>'}`; if (isOut(p) || sizeOut(p, size)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; $('#mbBuy').onclick = () => $('#buyBtn').click(); }
+  function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small>${optLabel(p, size)} · ${money(p.prices[size], curOf(p)) ? wasHTML(p, size) + money(p.prices[size], curOf(p)) : 'Price on request'}</small></div>${isOut(p) ? OUT_BTN() : sizeOut(p, size) ? OUT_BTN('btn sm') : '<button class="btn line sm tc" id="mbAdd">Add To Cart</button><button class="btn sm tc" id="mbBuy">Buy Now</button>'}`; if (isOut(p) || sizeOut(p, size)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; $('#mbBuy').onclick = () => $('#buyBtn').click(); }
   renderMbuy();
   const addBtn = $('#addBtn');
   /* the phone buy bar shows from the first screen, whenever the page's own Add To Cart is off screen (below the photos or scrolled past), until the reviews */
