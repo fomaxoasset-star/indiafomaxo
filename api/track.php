@@ -79,7 +79,7 @@ try {
     if ($old && $old['step'] === 'payment') $step = 'payment';   // never step back
     shop_upsert('leads', ['sid'], ['sid' => $sid, 'vid' => $vid, 'created' => $old['created'] ?? shop_now(), 'updated' => shop_now(), 'name' => $name,
       'phone' => strlen($phone) === 10 ? $phone : '', 'step' => $step, 'bag' => json_encode($bag, JSON_UNESCAPED_UNICODE), 'total' => max(0, min(100000000, (int)round((float)($l['total'] ?? 0) * 100))), 'ordered' => 0,
-      'email' => $email, 'state' => $state, 'address' => $txt($l['address'] ?? '', 300)]);
+      'email' => $email, 'state' => $state, 'address' => $txt($l['address'] ?? '', 300), 'wa' => !empty($l['wa']) ? 1 : 0]);   // wa: the WhatsApp tick, for the automatic cart reminder
     exit;
   }
   $src = preg_match('/^[a-z]{1,16}$/', (string)($in['src'] ?? '')) ? (string)$in['src'] : 'direct';

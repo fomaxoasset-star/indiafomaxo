@@ -3019,7 +3019,7 @@ const TRK = (() => {
       else if (get(localStorage, 'fomaxo_last') && !get(sessionStorage, 'fomaxo_buyer_seen')) {   // ordered before on this device: the admin sees them by name when they come back, once per visit
         put(sessionStorage, 'fomaxo_buyer_seen', '1'); let phone = ''; try { phone = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
         if (phone) send('lead', {lead: {step: 'buyer', phone}}); } },
-    lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', email: c.email || '', state: c.state || '',
+    lead(step, c, lines){ send('lead', {lead: {step, name: c.name || '', phone: c.phone || '', email: c.email || '', state: c.state || '', wa: c.wa ? 1 : 0,
       address: [c.house, c.street, c.landmark, c.city, c.pin].filter(Boolean).join(', '), total: subtotal(lines) || 0,
       bag: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, name: P[l.id] ? `${P[l.id].name} · ${optLabel(P[l.id], l.opt)}` : l.id}))}}); }
   };
@@ -5055,8 +5055,8 @@ function bindCheckout(q){
   $$('input[name=pay]', f).forEach(r => r.onchange = upd);
   f.addEventListener('input', upd); f.addEventListener('change', upd);
   /* "Left at checkout" in the admin: the details and bag, sent a moment after they are typed */
-  let leadT; const leadOf = () => ({name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin')});
-  f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin'].includes(e.target.name)) return; clearTimeout(leadT);
+  let leadT; const leadOf = () => ({name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin'), wa: E.wa.checked ? 1 : 0});
+  f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin', 'wa'].includes(e.target.name)) return; clearTimeout(leadT);
     leadT = setTimeout(() => { const c = leadOf(); TRK.lead('details', c, lines);
       try { localStorage.setItem(CO_KEY, JSON.stringify({...coSaved(), ...c})); } catch(e) {} }, 1500); });   // kept on this device as typed, so going back to the bag or a product and returning finds the form filled in
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });

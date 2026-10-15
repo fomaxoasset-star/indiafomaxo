@@ -981,11 +981,6 @@ function lead_items(array $l): string {
   }
   return implode(', ', array_map(fn($b) => $b['qty'] . ' × ' . $b['name'], json_decode((string)$l['bag'], true) ?: []));
 }
-/* the bag they left as a short code for the website link (product.size.qty for each line, joined with _): fomaxo.in/#/checkout?bag=… fills the bag again */
-function lead_bag_code(array $l): string {
-  $c = implode('_', array_map(fn($b) => $b['id'] . '.' . $b['opt'] . '.' . (int)$b['qty'], array_filter(json_decode((string)$l['bag'], true) ?: [], fn($b) => preg_match('/^[a-z0-9-]{1,48}$/', (string)($b['id'] ?? '')) && preg_match('/^[a-z0-9]{1,16}$/', (string)($b['opt'] ?? '')))));
-  return strlen($c) <= 600 ? $c : '';
-}
 /* the ready WhatsApp message for someone who left checkout, in two parts: [what they left (qty × product size, one per line), the link that refills
    their bag and opens checkout + the delivery line]. The WhatsApp box (admin.js) puts the coupon paragraph between them when a coupon is picked. */
 function lead_wa_parts(array $l): array {

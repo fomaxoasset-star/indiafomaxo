@@ -132,3 +132,83 @@ function wa_send_rvreqs(int $max = 20): array {
   flock($lock, LOCK_UN); fclose($lock);
   return ['reviews' => $sent, 'reviews_failed' => $failed];
 }
+
+/* ---- automatic cart reminders (admin → Analytics → Left at checkout → Automatic WhatsApp): a set number of hours after someone left checkout with a bag,
+   only when they ticked "Send me order updates and offers on WhatsApp" while typing, have not ordered since and never replied STOP. One message per mobile
+   every 7 days, never when the admin already sent one from the WhatsApp box in that time, within the sending hours (India time), up to 2 days after they left.
+   Approved templates (Marketing, English): cart_reminder: {{1}} first name, {{2}} what is in the bag, {{3}} the link that fills the bag again and opens checkout;
+   cart_reminder_coupon (coupon on): the same + {{4}} the offer ("10% off"), {{5}} a new one-use COMEBACK- code for that mobile only. ---- */
+function cart_set(): array {
+  $t = json_decode((string)shop_setting('cart_auto'), true) ?: [];
+  $f = max(0, min(23, (int)($t['from'] ?? 10))); $to = max($f + 1, min(24, (int)($t['to'] ?? 21)));
+  return ['auto' => !empty($t['auto']), 'hours' => max(1, min(24, (int)($t['hours'] ?? 1))), 'from' => $f, 'to' => $to,
+          'coupon' => !empty($t['coupon']), 'pct' => max(1, min(99, (int)($t['pct'] ?? 10))), 'valid' => max(1, min(30, (int)($t['valid'] ?? 3)))];
+}
+const CART_GAP_DAYS = 7, CART_MAX_HOURS = 48, CART_TRIES = 3;
+/* the leads due now: oldest first, one per mobile (their latest visit), with what the message needs */
+function cart_due(array $set): array {
+  $db = shop_db(); $now = time();
+  $s = $db->prepare("SELECT * FROM leads WHERE wa = 1 AND removed = 0 AND ordered = 0 AND step IN ('details', 'payment') AND total > 0 AND phone <> '' AND updated >= ? AND updated <= ? ORDER BY updated DESC");
+  $s->execute([date('Y-m-d H:i:s', $now - CART_MAX_HOURS * 3600), date('Y-m-d H:i:s', $now - $set['hours'] * 3600)]);
+  $by = [];
+  foreach ($s->fetchAll() as $l) if (!isset($by[$l['phone']])) $by[$l['phone']] = $l;
+  if (!$by) return [];
+  $since = date('Y-m-d', $now - CART_GAP_DAYS * 86400); $sent = json_decode((string)shop_setting('cart_sent'), true) ?: [];
+  $admin = json_decode((string)shop_setting('wa_sent'), true) ?: []; $stop = wa_stops(); $out = [];
+  $o = $db->prepare("SELECT 1 FROM orders WHERE status <> 'awaiting' AND COALESCE(no, '') <> '' AND phone LIKE ? AND created >= ? LIMIT 1");
+  $lt = $db->prepare('SELECT sid FROM leads WHERE phone = ? AND updated >= ?');
+  foreach (array_reverse($by) as $l) {
+    $ph = (string)$l['phone'];   // not the array key: PHP turns a 10-digit key into a number, and array_reverse renumbers those
+    if (isset($stop[$ph]) || ($sent[$ph] ?? '') >= $since || ($admin["ph:$ph"] ?? '') >= $since) continue;
+    $lt->execute([$ph, "$since 00:00:00"]); foreach ($lt->fetchAll(PDO::FETCH_COLUMN) as $sid) if (($admin["lt:$sid"] ?? '') >= $since) continue 2;   // the admin wrote to them from Left at checkout
+    $o->execute(['%' . $ph, substr((string)$l['created'], 0, 16)]); if ($o->fetchColumn()) continue;   // ordered after all (another visit or device)
+    $out[] = $l;
+  }
+  return $out;
+}
+/* the template's words: first name, "1 × Gold 50ml, 2 × Oud 10ml" (WhatsApp takes no line breaks in a variable), the bag link with their personal code (?w=) */
+function cart_parts(array $l): array {
+  $items = implode(', ', array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));
+  $bag = lead_bag_code($l); $w = wa_who_token((string)$l['phone']);
+  $link = 'https://fomaxo.in/?utm_source=whatsapp&utm_campaign=cart-auto' . ($w !== '' ? "&w=$w" : '') . ($bag !== '' ? "#/checkout?bag=$bag" : '#/checkout');
+  return ['first' => first_name((string)$l['name']) ?: 'there', 'items' => mb_substr($items !== '' ? $items : 'your FOMAXO picks', 0, 300), 'link' => $link];
+}
+/* a new one-use % off code for this mobile only, valid for the set days */
+function cart_code(string $phone, array $set): string {
+  $abc = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; $s = shop_db()->prepare('SELECT 1 FROM coupons WHERE code = ?');
+  do { $code = 'COMEBACK-'; for ($i = 0; $i < 4; $i++) $code .= $abc[random_int(0, 31)]; $s->execute([$code]); } while ($s->fetchColumn());
+  phone_coupon($code, $set['pct'], $phone, 0, date('Y-m-d', strtotime('+' . $set['valid'] . ' days')) . ' 23:59');
+  return $code;
+}
+function wa_send_carts(int $max = 20): array {
+  global $PRIV;
+  $set = cart_set();
+  if (!$set['auto']) return ['carts' => 0, 'note' => 'automatic cart reminders are off'];
+  if (!wa_ready()) return ['carts' => 0, 'note' => 'WhatsApp Business details missing'];
+  $h = (int)date('G');
+  if ($h < $set['from'] || $h >= $set['to']) return ['carts' => 0, 'note' => 'outside sending hours'];
+  $lock = @fopen("$PRIV/whatsapp-cart.lock", 'c'); if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) return ['carts' => 0, 'note' => 'already running'];
+  $c = wa_config(); $tries = json_decode((string)shop_setting('cart_tries'), true) ?: []; $sent = 0; $failed = 0;
+  foreach (cart_due($set) as $l) {
+    if ($sent + $failed >= $max) break;
+    $sid = (string)$l['sid'];
+    if (($tries[$sid] ?? 0) >= CART_TRIES || !($to = wa_number((string)$l['phone']))) continue;
+    $p = cart_parts($l); $vars = [$p['first'], $p['items'], $p['link']]; $code = '';
+    if ($set['coupon']) { $code = cart_code((string)$l['phone'], $set); $vars[] = $set['pct'] . '% off'; $vars[] = $code; }
+    [$ok, $info] = wa_template($to, $set['coupon'] ? 'cart_reminder_coupon' : 'cart_reminder', 'en', $vars, $c);
+    if ($ok) {
+      $cs = array_filter(json_decode((string)shop_setting('cart_sent'), true) ?: [], fn($d) => $d >= date('Y-m-d', strtotime('-400 days')));
+      $cs[(string)$l['phone']] = date('Y-m-d'); shop_set('cart_sent', json_encode($cs));
+      $ws = json_decode((string)shop_setting('wa_sent'), true) ?: []; $ws["lt:$sid"] = date('Y-m-d'); shop_set('wa_sent', json_encode($ws));   // its line on Left at checkout shows Sent dd/mm
+      $sent++; unset($tries[$sid]); shop_set('cart_auto_err', '');
+    } else {
+      if ($code !== '') shop_db()->prepare('DELETE FROM coupons WHERE code = ?')->execute([$code]);   // not sent: no code left behind
+      $tries[$sid] = ($tries[$sid] ?? 0) + 1; $failed++;
+      shop_set('cart_auto_err', date('d/m g:i A') . ' · ' . $l['phone'] . ': ' . mb_substr($info, 0, 200));
+      error_log("FOMAXO cart WhatsApp {$l['phone']}: $info");
+    }
+    shop_set('cart_tries', json_encode(array_slice($tries, -500, null, true)));
+  }
+  flock($lock, LOCK_UN); fclose($lock);
+  return ['carts' => $sent, 'carts_failed' => $failed];
+}

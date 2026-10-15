@@ -499,6 +499,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'auto' => $auto, 'drop' => ($_POST['rq_drop'] ?? '') === '1', 'drop_days' => $n('rq_drop_days', 1, 365, $q0['drop_days'])]));
     go($back, $want && !$auto ? '!Saved, but automatic sending stays off until the WhatsApp details are saved on Refill reminders.' : 'Saved.');
   }
+  if ($a === 'cart_set') {   // Automatic WhatsApp box on Left at checkout: on / off, hours after they leave, sending hours, coupon
+    require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
+    $back = ['tab' => 'analytics']; $c0 = cart_set();
+    $n = fn(string $k, int $lo, int $hi, int $def) => ctype_digit($x = trim((string)($_POST[$k] ?? ''))) ? max($lo, min($hi, (int)$x)) : $def;
+    $tf = $n('cw_from', 0, 23, $c0['from']); $tt = $n('cw_to', 1, 24, $c0['to']);
+    if ($tt <= $tf) go($back, '!The Until hour must be after the Send from hour.');
+    $want = ($_POST['cw_auto'] ?? '') === '1'; $auto = $want && wa_ready();
+    shop_set('cart_auto', json_encode(['auto' => $auto, 'hours' => $n('cw_hours', 1, 24, $c0['hours']), 'from' => $tf, 'to' => $tt,
+      'coupon' => ($_POST['cw_coupon'] ?? '') === '1', 'pct' => $n('cw_pct', 1, 99, $c0['pct']), 'valid' => $n('cw_valid', 1, 30, $c0['valid'])]));
+    go($back, $want && !$auto ? '!Saved, but automatic sending stays off until the WhatsApp details are saved on Refill reminders.' : ($auto ? 'Saved. Automatic WhatsApp to people who left checkout is on.' : 'Saved.'));
+  }
   if ($a === 'wa_stop') {   // Stop on a customer's page: no more WhatsApp offers or automatic messages
     require_once dirname(__DIR__) . '/api/whatsapp-lib.php';
     $ph = (string)($_POST['phone'] ?? '');
