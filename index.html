@@ -4645,6 +4645,7 @@ function rvSuggest(input, find, onFocus){
   if (btn) { btn.onmousedown = e => e.preventDefault();
     btn.onclick = () => { if (input.disabled) return; if (!ul.hidden) return show([]); input.focus(); show(find('')); ul.scrollTop = 0; }; }
 }
+let rvLast = null;   // the details of the last review posted from an order link, for that order's next item
 function bindRvForm(form, p, token, done){
   let rating = 0; const stars = $$('[data-star]', form), err = $('.rv-err', form);
   const word = $('.rv-word', form), paint = n => { word.textContent = RV_WORDS[n]; stars.forEach(b => { const on = +b.dataset.star <= n; b.classList.toggle('on', on); b.setAttribute('aria-checked', +b.dataset.star === n); }); };
@@ -4653,6 +4654,8 @@ function bindRvForm(form, p, token, done){
   anon.onchange = () => { name.disabled = form.elements.city.disabled = form.elements.country.disabled = anon.checked; };   // anonymous hides name, place and flag
   const city = form.elements.city, nation = form.elements.country;
   rvSuggest(city, q => { if (!q) return []; const st = RV_CITIES.filter(c => c.toLowerCase().startsWith(q)); return [...st, ...RV_CITIES.filter(c => !st.includes(c) && c.toLowerCase().includes(q))].slice(0, 6).map(c => [c, esc(c)]); });
+  /* order review page: name, anonymous, City / State and Nation from the review just posted fill in the next item's form (all can still be changed) */
+  if (token && rvLast && rvLast.t === token) { name.value = rvLast.name; city.value = rvLast.city; nation.value = rvLast.nation; anon.checked = rvLast.anon; anon.onchange(); }
   rvSuggest(nation, q => { const st = RV_NATIONS.filter(([c]) => c.toLowerCase().startsWith(q)); return (q ? [...st, ...RV_NATIONS.filter(n => !st.includes(n) && n[0].toLowerCase().includes(q))] : RV_NATIONS).map(([c, cc]) => [c, `<span class="rv-flag">${rvFlag(cc)}</span>${esc(c)}`]); }, true);
   /* reviews without an order link only (verified purchasers have their order and mobile already): for 1–3 stars, "Any problem with your order?"
      Late delivery needs a mobile, a faulty product a mobile and a photo, for its coupon. No problem with words about one asks them to pick it. */
@@ -4696,7 +4699,7 @@ function bindRvForm(form, p, token, done){
     if (form.elements.mobile) fd.append('mobile', form.elements.mobile.value); fd.append('issue', issue.value);
     if (token) fd.append('token', token); files.forEach(f => fd.append('photos[]', f));
     const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
-    try { const d = await rvPost('submit', fd); done(d); }
+    try { const d = await rvPost('submit', fd); if (token) rvLast = {t: token, name: name.value, city: city.value, nation: nation.value, anon: anon.checked}; done(d); }
     catch(x){ err.textContent = x.message; btn.disabled = false; btn.textContent = 'Post review'; }
   };
   /* chosen photos show as small pictures under the box */
