@@ -3292,11 +3292,11 @@ document.addEventListener('click', e => {
     const added = cart.reduce((a, l) => a + l.qty, 0) - before; if (added) toast(`${added} item${added > 1 ? 's' : ''} from your last order added to your bag`, true); return; }
   const b = e.target.closest('[data-again]'); if (!b) return; const l = lastOrder()[+b.dataset.again]; if (!l) return;
   addToCart(...againLine(l)); });
-/* bag: a new customer can type their own WhatsApp number to get a ₹200 off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden once we already have their number. */
+/* bag: a new customer can type their own WhatsApp number to get a 10% off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden once we already have their number. */
 function bagWaHTML(){
-  let known = ''; try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your ₹200 coupon on WhatsApp.</p>'; known = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
+  let known = ''; try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; known = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
   if (known) return '';
-  return `<form class="bag-wa" id="bagWa" novalidate><label for="bagWaIn">New here? ₹200 off orders · Coupon on WhatsApp</label><div class="bag-wa-row"><input id="bagWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="Your WhatsApp number" aria-label="Your WhatsApp number"><button class="btn sm" type="submit">Send</button></div></form>`;
+  return `<form class="bag-wa" id="bagWa" novalidate><label for="bagWaIn">New here? 10% off orders · Coupon on WhatsApp</label><div class="bag-wa-row"><input id="bagWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="Your WhatsApp number" aria-label="Your WhatsApp number"><button class="btn sm" type="submit">Send</button></div></form>`;
 }
 function bagWaWire(){
   const f = $('#bagWa'); if (!f) return;
