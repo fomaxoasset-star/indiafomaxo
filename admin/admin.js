@@ -749,6 +749,12 @@ document.addEventListener('click', function (e) {
   var inp = b.parentNode.querySelector('input'); inp.value = c; inp.dispatchEvent(new Event('input', {bubbles: true}));
 });
 
+/* Coupons: the code box turns small letters into capitals as you type (the server saves codes in capitals too) */
+document.addEventListener('input', function (e) {
+  var f = e.target; if (!f.matches || !f.matches('.cpcode input') || f.value === f.value.toUpperCase()) return;
+  var a = f.selectionStart, b = f.selectionEnd; f.value = f.value.toUpperCase(); try { f.setSelectionRange(a, b); } catch (x) {}
+});
+
 /* Coupons: the free product box (also Shop videos: Product in the video; a required box only sends once a line is picked). Typing narrows its dropdown, a tap (or Enter, or the arrow keys) picks a line,
    and the hidden input next to it takes that line's "id|size" for the form */
 (function () {
