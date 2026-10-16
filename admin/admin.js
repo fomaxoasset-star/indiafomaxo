@@ -647,7 +647,7 @@ function waBox(id, sel, o) {
     e.preventDefault(); e.stopPropagation();   // a Left at checkout button sits in the line's summary: don't open the line
     btn = b; q('.ltwa-who').textContent = b.dataset.who;
     var noc = b.hasAttribute('data-nocoupon'); dlg.classList.toggle('noc', noc);   // the message already carries its coupon: no choice
-    kind.value = noc ? '' : (b.dataset.k0 || K0); val.value = ''; min.value = dlg.dataset.min || ''; end.value = dlg.dataset.ends || ''; free.value = ''; freeV.value = ''; err.hidden = true; go.hidden = true; send.disabled = false; build(); dlg.showModal();
+    kind.value = noc ? '' : (b.dataset.k0 || K0); val.value = kind.value === 'amt' && dlg.dataset.amt || ''; min.value = dlg.dataset.min || ''; end.value = dlg.dataset.ends || ''; free.value = ''; freeV.value = ''; err.hidden = true; go.hidden = true; send.disabled = false; build(); dlg.showModal();
   });
   kind.addEventListener('change', build); val.addEventListener('input', build); min.addEventListener('input', build); end.addEventListener('input', build); free.addEventListener('change', build);
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
