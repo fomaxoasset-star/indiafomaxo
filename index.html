@@ -787,6 +787,7 @@ html[data-mode="light"] .dr-foot .bag-wa-ok{color:#1e7a47}
 /* toast */
 .toast{position:fixed;left:50%;bottom:28px;z-index:80;transform:translate(-50%,40px);opacity:0;visibility:hidden;background:var(--panel);border:1px solid var(--gold);padding:14px 22px;display:flex;gap:16px;align-items:center;font-size:13px;transition:transform .6s var(--ease);max-width:calc(100vw - 32px)}
 .toast{transition:transform .6s var(--ease),opacity .4s,visibility .4s}.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
+body.mx-wait,body.mx-wait *{cursor:progress}
 @media(max-width:600px){.toast{left:16px;right:16px;transform:translateY(40px);justify-content:space-between}.toast.show{transform:none}}
 .toast #toastGo{background:var(--gold);color:var(--black);padding:8px 12px;margin:-4px -8px -4px 0}
 .toast a{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);white-space:nowrap}
@@ -3247,7 +3248,54 @@ function buyNow(lines){
   try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {}
   goCheckout('#/checkout');
 }
-function goCheckout(h){ closePanels(); if (location.hash === h) route(); else location.hash = h; }
+function goCheckout(h){ closePanels(); if (h === '#/checkout' && magicCheckout()) return; if (location.hash === h) route(); else location.hash = h; }
+/* Razorpay Magic Checkout (Admin → Settings → Magic Checkout, STORE_LIVE.magic): Checkout and Buy Now open Razorpay's one-tap window over the page
+   instead of our checkout page. api/magic.php prices the bag, checks coupons and COD and saves the order. If it can't open, our checkout page opens. */
+let mxBusy = false, mxLoad;
+const loadMagic = () => window.Razorpay && window.Razorpay.magic ? Promise.resolve() : (mxLoad = mxLoad || new Promise((ok, no) => {
+  const sc = document.createElement('script'); sc.src = 'https://checkout.razorpay.com/v1/magic-checkout.js'; sc.async = true;
+  sc.onload = () => { window.Razorpay.magic = 1; ok(); }; sc.onerror = () => { mxLoad = null; sc.remove(); no(new Error('load')); }; document.head.appendChild(sc);
+}));
+function magicCheckout(){
+  const lines = cart.slice();
+  if (!LIVE.magic || !lines.length || subtotal(lines) === null || cartCur(lines) !== '₹') return false;
+  if (mxBusy) return true;
+  mxBusy = true; document.body.classList.add('mx-wait'); toast('Opening secure checkout…');
+  const back = () => { mxBusy = false; document.body.classList.remove('mx-wait'); };
+  const page = () => { back(); location.hash = '#/checkout'; };   // our own checkout page, as when Magic Checkout is off
+  const ask = async body => { const r = await fetch('api/magic.php', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.'); return d; };
+  let sid = '', vid = ''; try { sid = sessionStorage.getItem('fx_sid') || ''; vid = localStorage.getItem('fx_vid') || ''; } catch(e) {}
+  TRK.send('checkout'); ADS.checkout(lines);
+  Promise.all([ask({action: 'create', sid, vid, lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks, cb: l.cb, cs: l.cs}))}), loadMagic()]).then(([o]) => {
+    const d = coSaved(), phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
+    let coupon = ''; try { coupon = sessionStorage.getItem('fx_coupon') || ''; } catch(e) {}
+    const rzp = new window.Razorpay({
+      key: o.key, order_id: o.order_id, one_click_checkout: true, show_coupons: true, name: 'FOMAXO', description: 'Your FOMAXO order',
+      prefill: {...(phone.length === 10 ? {contact: '+91' + phone} : {}), ...(d.name ? {name: d.name} : {}), ...(d.email ? {email: d.email} : {}), ...(coupon ? {coupon_code: coupon} : {}),
+        ...(o.together > 0 ? {prediscount: [{label: 'Together extra off', value: inr(o.together)}]} : {})},
+      theme: {color: '#a8792f'},
+      handler: async r => {
+        toast('Confirming your order…');
+        try { const x = await ask({action: 'verify', ...r}); back(); magicDone(x, lines); }
+        catch(e) { back(); toast(e.message); }
+      },
+      modal: {ondismiss: back}
+    });
+    rzp.on('mx-analytics', e => { const n = e && (e.event_name || e.event || e.name); if (n === 'payment_initiated') { TRK.send('pay'); ADS.pay(lines); } });
+    rzp.on('payment.failed', r => toast((r.error && r.error.description ? r.error.description + '. ' : '') + 'No money was taken. Please try again.'));
+    TRK.send('card'); $('#toast').classList.remove('show'); rzp.open();
+  }).catch(page);
+  return true;
+}
+/* after Magic Checkout: the same as finishing our checkout page (bag emptied, purchase counted, thank-you page) */
+function magicDone(x, lines){
+  let iv = ''; try { const r = JSON.parse(localStorage.getItem('fomaxo_ref') || 'null'); if (r && /^[a-z0-9]{8,16}$/.test(r.v) && Date.now() - r.t < 2592e6) iv = r.v; localStorage.removeItem('fomaxo_ref'); } catch(e) {}
+  TRK.send('buy', {id: String(x.order || '').toLowerCase().replace(/[^a-z0-9-]/g, ''), ...(iv ? {iv} : {})}); ADS.buy(x.order, x.total, lines);
+  try { localStorage.setItem(LAST_KEY, JSON.stringify({at: Date.now(), lines: lines.map(l => l.picks ? {id: l.id, opt: l.opt, picks: l.picks} : {id: l.id, opt: l.opt})})); } catch(e) {}
+  try { sessionStorage.removeItem('fx_coupon'); if (x.review) sessionStorage.setItem('fx_rv', JSON.stringify({no: String(x.order), rv: x.review})); } catch(e) {}
+  cart = []; save();
+  location.hash = `#/thank-you?order=${encodeURIComponent(x.order)}&pay=${x.pay === 'cod' ? 'cod' : 'online'}`;
+}
 /* "You may also like" in the bag (AJAY 2026-10-11, same as fomaxo.com): every size of every perfume the customer doesn't have in that size yet,
    biggest size first (50ml, then 10ml minis), then the sets, car fragrance and personal care not in the bag; King last; sold out ones left out.
    Within each group the order follows real orders (bagRank): what people bought together with this bag, then the best sellers, then random each visit.

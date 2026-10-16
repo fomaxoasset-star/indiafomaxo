@@ -1004,11 +1004,11 @@ if ($tab === 'stores') {
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
   $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
-  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $first = $adsFirst || $codFirst || $pgFirst;
+  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $mgFirst = $pane === 'magic'; $first = $adsFirst || $codFirst || $pgFirst || $mgFirst;
   $COD = fomaxo_catalog()['cod'] ?? null;
   $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => '', 'clarity' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
-  $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'magic' => 'Magic Checkout', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
   $OFF = shop_pages_off();
   $pgAddr = ['dubai' => 'fomaxo.com'];
   if ($first) $setPanes = [$pane => $setPanes[$pane]] + $setPanes;
@@ -1032,6 +1032,7 @@ if ($tab === 'settings') {
     . '<label>Maximum order (₹)<input type="number" name="cod_max" min="0" step="1" value="' . (($COD['max'] ?? 0) ? h($rs((int)$COD['max'])) : '') . '" placeholder="No limit"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only for orders under this amount, after any coupon. Customers don’t see it until their order reaches it. Empty or 0 = no limit.</p>'
     . '<label>Cash on delivery fee (₹)<input type="number" name="cod_fee" min="0" step="1" required value="' . h($rs((int)($COD['fee'] ?? 5000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Added to every cash on delivery order. 0 = no fee.</p>'
     . '<button class="btn">Save</button></div></form>'
+    . magic_pane($csrfField, $mgFirst)
     . '<form method="post" class="box' . ($adsFirst ? ' on' : '') . '" data-pane="ads" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="ads"><div class="bh"><h3>Ad tracking</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . '<p class="muted small" style="margin:0">Paste an ID to turn it on; an empty box stays off. The website then tells Meta, TikTok and Google about product views, adds to bag, checkouts and purchases (with the ₹ value), so ads learn who buys.</p>'
     . $adIn('meta', 'Meta Pixel ID', '123456789012345', 'Facebook and Instagram. Events Manager → your pixel. 1050618291345073 is built into the website and runs even when this is empty; an ID typed here is used instead.')
@@ -1053,4 +1054,23 @@ if ($tab === 'settings') {
     . '<label>Database name<input name="db_name" value="u934663824_fomaxoin" required></label><label>Database user<input name="db_user" value="u934663824_fomaxoin" required></label>'
     . '<label>Database password<input type="password" name="db_pass" required autocomplete="new-password"></label><button class="btn">Connect</button></div></form>';
   $body .= '</div>';
+}
+
+/* Settings → Magic Checkout: Off / Only me (signed in to the admin) / On, and the addresses to paste in the Razorpay Dashboard */
+function magic_pane(string $csrfField, bool $on): string {
+  require_once dirname(__DIR__) . '/api/magic-lib.php';
+  $v = shop_magic(); $api = magic_site() . '/api/magic.php'; $k = magic_hook_key();
+  $opt = fn(string $val, string $t, string $d) => '<label class="pg"><span><b>' . $t . '</b><small style="white-space:normal">' . $d . '</small></span><input type="radio" name="magic" value="' . $val . '" style="flex:none;width:20px;height:20px;accent-color:#a8792f"' . ($v === $val ? ' checked' : '') . '></label>';
+  $url = fn(string $label, string $u, string $where) => '<label>' . $label . '<input readonly value="' . h($u) . '" onclick="this.select()"></label><p class="muted small" style="margin:-4px 0 0">' . $where . '</p>';
+  return '<form method="post" class="box' . ($on ? ' on' : '') . '" data-pane="magic" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="magic"><div class="bh"><h3>Razorpay Magic Checkout</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . '<p class="muted small" style="margin:0">Checkout opens Razorpay’s one-tap window instead of your checkout page. Shoppers who used Magic Checkout on any store get their mobile number and address filled in. Your prices, coupons, COD limits and orders work as before.</p>'
+    . '<div class="pgs">' . $opt('off', 'Off', 'Everyone uses your own checkout page.') . $opt('admin', 'Only me', 'Magic Checkout only in browsers signed in to this admin, for trying it with real payments.') . $opt('on', 'On', 'Every shopper gets Magic Checkout.') . '</div>'
+    . '<button class="btn">Save</button>'
+    . '<p class="small" style="margin:8px 0 0"><b>Paste these in Razorpay</b> (Dashboard → Magic Checkout → Setup &amp; Settings)</p>'
+    . $url('URL for shipping info', "$api?shipping", 'Shipping Setup → Shipping service type API.')
+    . $url('URL for get promotions', "$api?promotions", 'Coupon Settings. Leave its secret key Disabled.')
+    . $url('URL for apply promotions', "$api?apply", 'Coupon Settings. Leave its secret key Disabled.')
+    . ($k !== '' ? $url('Abandoned webhook URL', "$api?abandoned&k=$k", 'Switch on “Enable the Abandoned webhook”. Shoppers who leave show in Left at checkout.') : '<p class="small" style="margin:0;color:var(--red,#e5484d)">Add your Razorpay keys first to see the Abandoned webhook address.</p>')
+    . '<p class="muted small" style="margin:0">Also in Razorpay → Account &amp; Settings → Webhooks, on the webhook to ' . h(magic_site()) . '/api/razorpay.php, tick <b>order.placed</b> and <b>payment.pending</b> as well, so cash on delivery orders are saved even if the shopper closes the page. While the COD test name is set in index.html, Magic Checkout does not offer COD.</p>'
+    . '</div></form>';
 }

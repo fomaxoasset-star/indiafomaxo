@@ -557,6 +557,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('cod', json_encode(['min' => $min, 'max' => $max, 'fee' => $fee]));
     go($back, 'Saved. Cash on delivery from ₹' . number_format($min) . ($max ? ', under ₹' . number_format($max) : '') . ($fee ? ', fee ₹' . number_format($fee) : ', no fee') . '.');
   }
+  if ($a === 'magic') {
+    $v = (string)($_POST['magic'] ?? 'off'); if (!in_array($v, ['off', 'admin', 'on'], true)) $v = 'off';
+    shop_set('magic', $v);
+    go(['tab' => 'settings', 'pane' => 'magic'], ['off' => 'Magic Checkout is Off. Shoppers use your own checkout page.',
+      'admin' => 'Magic Checkout is on only in this browser and others signed in to the admin. Shoppers still use your own checkout page.',
+      'on' => 'Magic Checkout is On for every shopper.'][$v]);
+  }
   if ($a === 'ads') {
     $ads = []; $names = ['meta' => 'Meta Pixel ID', 'tiktok' => 'TikTok Pixel ID', 'ga4' => 'Google Analytics ID', 'gads' => 'Google Ads ID', 'gadsLabel' => 'Purchase conversion label', 'clarity' => 'Microsoft Clarity project ID'];
     foreach (SHOP_ADS as $k => $re) {

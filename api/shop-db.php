@@ -144,9 +144,13 @@ function shop_schema(PDO $db): void {
     "CREATE TABLE IF NOT EXISTS orders_trash(no VARCHAR(24) NOT NULL PRIMARY KEY, closed VARCHAR(19) NOT NULL, created VARCHAR(19) NOT NULL DEFAULT '',
       name VARCHAR(80) NOT NULL DEFAULT '', phone VARCHAR(24) NOT NULL DEFAULT '', total INT NOT NULL DEFAULT 0, method VARCHAR(8) NOT NULL DEFAULT '',
       status VARCHAR(12) NOT NULL DEFAULT '', row_json $text NOT NULL)$tail",
+    /* Razorpay Magic Checkout (api/magic.php): one row per bag sent to Magic Checkout. receipt = our id Razorpay sends back to the shipping and coupon
+       addresses, rzp = the Razorpay order, cart = the bag priced when it opened (JSON), coupon = the code applied in Magic Checkout, sid / vid = the visit (Left at checkout). */
+    "CREATE TABLE IF NOT EXISTS magic(receipt VARCHAR(40) NOT NULL PRIMARY KEY, rzp VARCHAR(40) NOT NULL, created VARCHAR(19) NOT NULL, cart $text NOT NULL,
+      coupon VARCHAR(24) NOT NULL DEFAULT '', phone VARCHAR(16) NOT NULL DEFAULT '', sid VARCHAR(16) NOT NULL DEFAULT '', vid VARCHAR(16) NOT NULL DEFAULT '')$tail",
   ] as $sql) $db->exec($sql);
   foreach (['CREATE INDEX ev_ts ON events(ts)', 'CREATE INDEX ev_type ON events(type, ts)', 'CREATE INDEX ld_up ON leads(updated)', 'CREATE INDEX vs_vid ON visits(vid)', 'CREATE INDEX ev_vid ON events(vid)',
-    'CREATE INDEX od_created ON orders(created)', 'CREATE INDEX vs_started ON visits(started)'] as $sql)
+    'CREATE INDEX od_created ON orders(created)', 'CREATE INDEX vs_started ON visits(started)', 'CREATE INDEX mg_rzp ON magic(rzp)'] as $sql)
     try { $db->exec($my ? $sql : str_replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS', $sql)); } catch (Throwable $e) { /* already there (MySQL) */ }
 }
 
@@ -630,6 +634,10 @@ function shop_pages_off(): array {
   $o = json_decode((string)shop_setting('pages_off'), true);
   return is_array($o) ? array_values(array_intersect(array_keys(SHOP_PAGES), $o)) : [];
 }
+
+/* Razorpay Magic Checkout (Admin → Settings → Magic Checkout): 'off' = our own checkout page for everyone (never saved = off),
+   'admin' = Magic Checkout only in a browser signed in to the admin (for trying it), 'on' = Magic Checkout for every shopper. */
+function shop_magic(): string { $v = (string)shop_setting('magic'); return in_array($v, ['admin', 'on'], true) ? $v : 'off'; }
 
 /* Cash on delivery limits set on Admin → Settings → Cash on delivery, in rupees: min = COD from this order amount,
    max = COD only for orders under this amount after any coupon (0 = no limit), fee = added to every COD order (0 = none).

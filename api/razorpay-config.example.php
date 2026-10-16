@@ -6,7 +6,8 @@
 return [
   'razorpay_key_id'     => 'rzp_test_PASTE_YOUR_KEY_ID',
   'razorpay_key_secret' => 'PASTE_YOUR_KEY_SECRET',
-  // Optional: Razorpay → Settings → Webhooks → URL https://fomaxo.in/api/razorpay.php, events payment.captured and order.paid,
+  // Optional: Razorpay → Settings → Webhooks → URL https://fomaxo.in/api/razorpay.php, events payment.captured and order.paid
+  // (with Magic Checkout on, also order.placed and payment.pending, for cash on delivery orders),
   // with this same secret. It records a payment even if the customer closes the page before returning.
   'razorpay_webhook_secret' => '',
 ];
