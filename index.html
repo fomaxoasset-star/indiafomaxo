@@ -1616,20 +1616,20 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .hc-nav button{color:rgba(246,239,226,.78)}
   .hero-cine .hc-nav button.on{color:#f0d3a0}
 }
-/* every banner shows whole, nothing cut and nothing on top of it: the picture keeps its own 2400×1357 shape and the 01–07 list, price and Buy Now sit right under it.
-   laptop: the picture is only as tall as leaves that row on the first screen; any room beside it is a soft blurred copy of the same banner */
-.hc-slide .hc-blur{display:none}
-.hero-cine .hc-slide .hc-bg,.hero-cine .hc-slide.on .hc-bg,.hero-cine .hc-slide.prev .hc-bg{object-fit:contain;object-position:50% 50%!important;width:100%;transform:none!important;filter:none}
+/* laptop, like fomaxo.com: the banner fills the whole first screen from the top bar down, behind the see-through menu, edge to edge; it is never taller than its own
+   2400×1357 shape, so at most a thin strip top and bottom is trimmed (at each banner's pos) and nothing is cut at the sides. The 01–07 list, price and Buy Now sit on its bottom edge.
+   phone: the whole banner, with the list under it */
+.hero-cine .hc-slide .hc-bg,.hero-cine .hc-slide.on .hc-bg,.hero-cine .hc-slide.prev .hc-bg{width:100%;transform:none!important;filter:none}
 @media(min-width:761px){
-  .hero-cine .hc-slides{aspect-ratio:auto;height:min(calc(100vw * 1357 / 2400),max(380px,calc(100svh - 236px)));max-height:none}
-  .hero-cine .hc-slide .hc-bg{position:relative;z-index:1}
-  .hero-cine .hc-slide .hc-blur{display:block;position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;filter:blur(32px) brightness(.45) saturate(1.1);transform:scale(1.15)!important}
-  .hero-cine .hc-bar{grid-row:2;align-self:auto;padding:18px clamp(24px,4vw,72px) 20px;background:#050505}
-  .hero-cine .hc-copy{grid-row:3}
+  .hero-cine{padding-top:0}
+  .hero-cine .hc-slides{aspect-ratio:auto;height:min(max(520px,calc(100svh - 40px)),calc(100vw * 1357 / 2400));max-height:none}
+  .hero-cine .hc-bar{padding-top:clamp(64px,7vw,110px);background:linear-gradient(180deg,rgba(5,5,5,0) 0%,rgba(5,5,5,.72) 42%,rgba(5,5,5,.92) 100%)}
+  /* a soft dark shade behind the see-through menu, so it reads over bright banners too */
+  .hero-cine .hc-slides::after{content:"";display:block;position:absolute;left:0;right:0;top:0;height:150px;z-index:3;pointer-events:none;background:linear-gradient(180deg,rgba(5,5,5,.78) 0%,rgba(5,5,5,.45) 55%,rgba(5,5,5,0) 100%)}
 }
-@media(min-width:761px) and (max-width:1240px){.hero-cine .hc-slides{height:min(calc(100vw * 1357 / 2400),max(380px,calc(100svh - 296px)))}}   /* here the row runs onto two lines */
 @media(max-width:760px){
   .hero-cine .hc-slides{aspect-ratio:2400/1357}
+  .hero-cine .hc-slide .hc-bg{object-fit:contain;object-position:50% 50%!important}
   .hero-cine .hc-veil{display:none}
 }
 /* size boxes above Add to cart */
@@ -2490,7 +2490,7 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 <main id="app" tabindex="-1"></main>
 <script>/* home only: the first banner shows as soon as the page arrives, before the shop's code below has downloaded and run (same picture and sizes as
    HERO_SLIDES[0] / heroBg and the preload in the head: change all three together). route() then puts the full hero in its place without the page fade, so nothing flickers */
-(function(){if(/^#\/./.test(location.hash))return;var b="assets/img/banner-gold-3",v=".webp?v=11";document.getElementById("app").innerHTML='<section class="hero-cine hc-early" aria-hidden="true"><div class="hc-slides"><figure class="hc-slide on"><img class="hc-blur" src="'+b+v+'" srcset="'+b+'-1600'+v+' 1600w, '+b+v+' 2400w" sizes="100vw" alt=""><img class="hc-bg" src="'+b+v+'" srcset="'+b+'-1600'+v+' 1600w, '+b+v+' 2400w" sizes="100vw" alt="" fetchpriority="high"></figure></div></section>'})();</script>
+(function(){if(/^#\/./.test(location.hash))return;var b="assets/img/banner-gold-3",v=".webp?v=11";document.getElementById("app").innerHTML='<section class="hero-cine hc-early" aria-hidden="true"><div class="hc-slides"><figure class="hc-slide on"><img class="hc-bg" src="'+b+v+'" srcset="'+b+'-1600'+v+' 1600w, '+b+v+' 2400w" sizes="100vw" alt="" fetchpriority="high"></figure></div></section>'})();</script>
 
 <footer>
   <div class="wrap">
@@ -3449,8 +3449,8 @@ const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAA
 const heroSrc = (s, i) => i ? `src="${BLANK}" data-src="${IMG(s.img)}"` : `src="${IMG(s.img)}"`;
 const heroSet = (s, i, set) => set ? (i ? ` srcset="${BLANK}" data-srcset="${set}"` : ` srcset="${set}"`) + ' sizes="100vw"' : '';
 const heroBg = (s, i) => { const set = s.w && `${IMG(s.img + '-1600')} 1600w, ${IMG(s.img)} 2400w`;
-  /* every screen shows the whole banner (the square -m phone crops cut its words off), so phones take the 1600px copy; laptops fill any room beside it with a soft blurred copy of the same file */
-  return `<img class="hc-blur" ${heroSrc(s, i)}${heroSet(s, i, set)} alt="" aria-hidden="true"><img class="hc-bg" ${heroSrc(s, i)}${heroSet(s, i, set)} alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}"${i ? '' : ' fetchpriority="high"'}>`; };
+  /* every screen shows the whole banner (the square -m phone crops cut its words off), so phones take the 1600px copy */
+  return `<img class="hc-bg" ${heroSrc(s, i)}${heroSet(s, i, set)} alt="FOMAXO ${esc(s.p.name)}" style="object-position:${s.pos}${s.mpos ? `;--mpos:${s.mpos}` : ''}"${i ? '' : ' fetchpriority="high"'}>`; };
 function home(){
   const slides = HERO_SLIDES.map(s => ({...s, p:P[s.id]}));
   return `
