@@ -557,6 +557,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('cod', json_encode(['min' => $min, 'max' => $max, 'fee' => $fee]));
     go($back, 'Saved. Cash on delivery from ₹' . number_format($min) . ($max ? ', under ₹' . number_format($max) : '') . ($fee ? ', fee ₹' . number_format($fee) : ', no fee') . '.');
   }
+  if ($a === 'magic') {
+    $on = ($_POST['magic'] ?? '') === '1';
+    shop_set('magic', $on ? '1' : '0');
+    go(['tab' => 'settings', 'pane' => 'magic'], $on ? 'Magic Checkout is On: the bag’s Checkout now opens Razorpay’s one-tap window. Turn it Off if Razorpay hasn’t switched it on for your account yet.'
+      : 'Magic Checkout is Off: customers use your own checkout page.');
+  }
   if ($a === 'ads') {
     $ads = []; $names = ['meta' => 'Meta Pixel ID', 'tiktok' => 'TikTok Pixel ID', 'ga4' => 'Google Analytics ID', 'gads' => 'Google Ads ID', 'gadsLabel' => 'Purchase conversion label', 'clarity' => 'Microsoft Clarity project ID'];
     foreach (SHOP_ADS as $k => $re) {

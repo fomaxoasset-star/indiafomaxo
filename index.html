@@ -3052,6 +3052,7 @@ const TRK = (() => {
   let lastView = '';
   return {
     send,
+    ids(){ const [s] = visit(); return {v: vid, s}; },
     view(path, seg){ ADS.page(path, seg); if (path === lastView) return; lastView = path; send('view'); if (seg[0] === 'product' && seg[1]) send('product', {id: seg[1]});
       const who = get(sessionStorage, 'fomaxo_who_visit'); if (who) { send('lead', {lead: {step: 'visit', who}}); try { sessionStorage.removeItem('fomaxo_who_visit'); } catch(e) {} }
       else if (get(localStorage, 'fomaxo_last') && !get(sessionStorage, 'fomaxo_buyer_seen')) {   // ordered before on this device: the admin sees them by name when they come back, once per visit
@@ -3247,7 +3248,36 @@ function buyNow(lines){
   try { sessionStorage.removeItem('fomaxo_buy'); } catch(e) {}
   goCheckout('#/checkout');
 }
-function goCheckout(h){ closePanels(); if (location.hash === h) route(); else location.hash = h; }
+function goCheckout(h){ closePanels(); if (h === '#/checkout' && magicOk()) { magicPay(); return; } if (location.hash === h) route(); else location.hash = h; }
+/* Razorpay Magic Checkout (Admin → Settings → Razorpay, STORE_LIVE.magic): the bag's Checkout opens Razorpay's one-tap window, which asks for the mobile
+   number first, then the address and payment (or cash on delivery). api/razorpay.php prices the bag and reads the result from Razorpay.
+   Closing the window after typing a number keeps it in Admin → Analytics → Left at checkout. Anything goes wrong: our own checkout page opens. */
+const magicOk = () => !!(LIVE.magic && S.checkout.razorpay && cart.length && cartCur(cart) === '₹' && subtotal(cart) !== null);
+let magicBusy = false;
+async function magicPay(){
+  if (magicBusy) return; magicBusy = true;
+  const lines = cart.slice(), url = S.checkout.razorpay, fallback = () => { magicBusy = false; location.hash = '#/checkout?std=1'; };
+  const post = async body => { const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.'); return d; };
+  toast('Opening secure checkout…'); TRK.send('checkout'); TRK.send('pay'); ADS.pay(lines);
+  let o; try { [o] = await Promise.all([post({action: 'magic_create', lines: lines.map(l => ({id: l.id, opt: l.opt, qty: l.qty, picks: l.picks, cb: l.cb, cs: l.cs}))}), loadRazorpay()]); }
+  catch(x) { return fallback(); }
+  let finished = false;
+  const rzp = new window.Razorpay({
+    key: o.key, order_id: o.order_id, amount: o.amount, currency: o.currency, one_click_checkout: true, show_coupons: true,
+    name: 'FOMAXO', description: 'Your FOMAXO order', theme: {color: '#a8792f'},
+    handler: async r => { finished = true; toast('Confirming your order…');
+      try { const d = await post({action: 'magic_done', ...r, razorpay_order_id: r.razorpay_order_id || o.order_id});
+        TRK.send('buy', {id: String(d.order || '').toLowerCase().replace(/[^a-z0-9-]/g, '')}); ADS.buy(d.order, d.total, lines);
+        try { localStorage.setItem(LAST_KEY, JSON.stringify({at: Date.now(), lines: lines.map(l => l.picks ? {id: l.id, opt: l.opt, picks: l.picks} : {id: l.id, opt: l.opt})})); } catch(e) {}
+        try { if (d.review) sessionStorage.setItem('fx_rv', JSON.stringify({no: String(d.order), rv: d.review})); } catch(e) {}
+        cart = []; save(); magicBusy = false;
+        location.hash = `#/thank-you?order=${encodeURIComponent(d.order)}&pay=${d.pay === 'cod' ? 'cod' : 'online'}`; }
+      catch(x) { magicBusy = false; toast(x.message); } },
+    modal: {ondismiss: () => { magicBusy = false; if (finished) return;
+      try { const body = JSON.stringify({action: 'magic_left', order_id: o.order_id, ...TRK.ids()}); fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body, keepalive: true}).catch(() => {}); } catch(e) {} }}
+  });
+  rzp.open();
+}
 /* "You may also like" in the bag (AJAY 2026-10-11, same as fomaxo.com): every size of every perfume the customer doesn't have in that size yet,
    biggest size first (50ml, then 10ml minis), then the sets, car fragrance and personal care not in the bag; King last; sold out ones left out.
    Within each group the order follows real orders (bagRank): what people bought together with this bag, then the best sellers, then random each visit.

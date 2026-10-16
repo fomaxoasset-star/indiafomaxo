@@ -44,6 +44,7 @@ try {
   if ($vids = shop_videos_live()) $live['videos'] = $vids;   // shop videos (Admin → Products → Videos)
   if ($off = shop_pages_off()) $live['pagesOff'] = $off;   // pages turned off on Admin → Settings → Site pages
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
+  if (shop_setting('magic') === '1') $live['magic'] = 1;   // Razorpay Magic Checkout (Admin → Settings → Razorpay): the bag's Checkout opens Razorpay's one-tap window
   if ($tg = fomaxo_together_pct()) $live['together'] = $tg;   // Customers bought together: % off one of each of two products (Admin → Products)
   if ($tr = fomaxo_together_rs()) $live['togetherRs'] = $tr;   // … and / or ₹ off each pair
   try { $sm = shop_sold_month(); if ($sm['sold']) $live['sold'] = $sm['sold']; } catch (Throwable $e) {}   // "X purchased this week" on the product page, real orders only

@@ -1004,11 +1004,11 @@ if ($tab === 'stores') {
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
   $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
-  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $first = $adsFirst || $codFirst || $pgFirst;
+  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $mgFirst = $pane === 'magic'; $first = $adsFirst || $codFirst || $pgFirst || $mgFirst;
   $COD = fomaxo_catalog()['cod'] ?? null;
   $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => '', 'clarity' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
-  $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'magic' => 'Razorpay', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
   $OFF = shop_pages_off();
   $pgAddr = ['dubai' => 'fomaxo.com'];
   if ($first) $setPanes = [$pane => $setPanes[$pane]] + $setPanes;
@@ -1031,6 +1031,12 @@ if ($tab === 'settings') {
     . '<label>Minimum order (₹)<input type="number" name="cod_min" min="0" step="1" required value="' . h($rs((int)($COD['min'] ?? 100000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only from this amount.</p>'
     . '<label>Maximum order (₹)<input type="number" name="cod_max" min="0" step="1" value="' . (($COD['max'] ?? 0) ? h($rs((int)$COD['max'])) : '') . '" placeholder="No limit"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only for orders under this amount, after any coupon. Customers don’t see it until their order reaches it. Empty or 0 = no limit.</p>'
     . '<label>Cash on delivery fee (₹)<input type="number" name="cod_fee" min="0" step="1" required value="' . h($rs((int)($COD['fee'] ?? 5000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Added to every cash on delivery order. 0 = no fee.</p>'
+    . '<button class="btn">Save</button></div></form>'
+    . '<form method="post" class="box' . ($mgFirst ? ' on' : '') . '" data-pane="magic">' . $csrfField . '<input type="hidden" name="action" value="magic"><input type="hidden" name="magic" value="0"><div class="bh"><h3>Razorpay Magic Checkout</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . '<label class="pg"><span><b>Magic Checkout</b><small style="white-space:normal">The bag’s Checkout opens Razorpay’s one-tap window</small></span><input type="checkbox" class="tgl" name="magic" value="1"' . (shop_setting('magic') === '1' ? ' checked' : '') . ' aria-label="Magic Checkout"></label>'
+    . '<p class="muted small" style="margin:0">Razorpay asks for the mobile number first and fills in saved details. Anyone who types a number and closes the window shows in Analytics → Left at checkout.</p>'
+    . '<p class="muted small" style="margin:0">Turn on only after Razorpay enables it for you. In Razorpay Dashboard → Magic Checkout, choose Custom E-Commerce Platform and paste:</p>'
+    . '<p class="small" style="margin:0;word-break:break-all;line-height:1.5">Shipping: <b>https://fomaxo.in/api/razorpay.php?magic=shipping</b><br>Promotions: <b>https://fomaxo.in/api/razorpay.php?magic=promos</b><br>Apply: <b>https://fomaxo.in/api/razorpay.php?magic=apply</b></p>'
     . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box' . ($adsFirst ? ' on' : '') . '" data-pane="ads" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="ads"><div class="bh"><h3>Ad tracking</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . '<p class="muted small" style="margin:0">Paste an ID to turn it on; an empty box stays off. The website then tells Meta, TikTok and Google about product views, adds to bag, checkouts and purchases (with the ₹ value), so ads learn who buys.</p>'
