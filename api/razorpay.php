@@ -72,7 +72,16 @@ if (isset($_SERVER['HTTP_X_RAZORPAY_SIGNATURE'])) {
   if ($ws === '' || !hash_equals(hash_hmac('sha256', $raw, $ws), (string)$_SERVER['HTTP_X_RAZORPAY_SIGNATURE'])) fail('Bad signature', 401);
   $ev = json_decode($raw, true) ?: [];
   $pay = $ev['payload']['payment']['entity'] ?? [];
-  if (in_array($ev['event'] ?? '', ['payment.captured', 'order.paid'], true) && !empty($pay['order_id'])) mark_paid((string)$pay['order_id'], (string)($pay['id'] ?? ''), 'webhook');
+  $oid = (string)($pay['order_id'] ?? $ev['payload']['order']['entity']['id'] ?? '');
+  /* a Magic Checkout order (api/magic.php): saved from Razorpay's own record; order.placed / payment.pending = cash on delivery chosen there */
+  $known = $oid !== '' ? shop_find_order($oid) : null;
+  if ($known && $known['method'] === 'cod') out(['ok' => true]);   // a Magic Checkout COD order already saved: Razorpay's later events change nothing here
+  if ($oid !== '' && !$known) {
+    require_once __DIR__ . '/magic-lib.php';
+    if (magic_row_by_rzp($oid) && in_array($ev['event'] ?? '', ['payment.captured', 'order.paid', 'order.placed', 'payment.pending'], true)) magic_finalize($oid, (string)($pay['id'] ?? ''), 'webhook');
+    out(['ok' => true]);
+  }
+  if (in_array($ev['event'] ?? '', ['payment.captured', 'order.paid'], true) && $oid !== '') mark_paid($oid, (string)($pay['id'] ?? ''), 'webhook');
   out(['ok' => true]);
 }
 
