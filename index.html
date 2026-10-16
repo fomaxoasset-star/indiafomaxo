@@ -2442,6 +2442,14 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
   .ofp-new .ofp-k{font-size:calc(12px * var(--fkp,1))}.ofp-new .ofp-img{width:calc(120px * var(--fip,1));height:calc(150px * var(--fip,1))}.ofp-new .ofp-name{font-size:calc(24px * var(--fnp,1))}.ofp-new .ofp-on{font-size:calc(15px * var(--flp,1))}.ofp-new .ofp-go{min-height:calc(48px * var(--fbp,1));font-size:calc(11px * var(--fbp,1))}
   .ofp-sale .ofp-k{font-size:calc(12px * var(--fkp,1))}.ofp-sale .ofp-pct{font-size:calc(48px * var(--fpp,1))}.ofp-sale .ofp-on{font-size:calc(15px * var(--fsp,1))}.ofp-sale .ofp-go{min-height:calc(48px * var(--fbp,1));font-size:calc(11px * var(--fbp,1))}.ofp-name{font-size:24px}.ofp-hurry{margin-top:14px;font-size:15px}.ofp-go{margin-top:14px}}
 @media(prefers-reduced-motion:reduce){.ofp,.ofp-box{transition:none}}
+/* welcome box: a new visitor's name + WhatsApp number for the 10% coupon (welDue) */
+.ofp-wel .ofp-pct{white-space:nowrap}
+@media(max-width:400px){.ofp-wel .ofp-pct{font-size:42px}}
+.wel-form{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.wel-form input{width:100%;box-sizing:border-box;padding:11px 12px;text-align:center;border:1px solid var(--line-2);border-radius:4px;background:var(--black);color:var(--ivory);font:inherit;font-size:16px}
+.wel-form .btn{min-height:44px;background:#25D366;border-color:#25D366;color:#fff}
+.wel-ok{margin-top:18px;font-size:14px;line-height:1.5;color:#5fc48c}
+html[data-mode="light"] .wel-ok{color:#1e7a47}
 </style>
 </head><body>
 <script>document.body.classList.add("home")</script>
@@ -5533,6 +5541,35 @@ if (ADS.on) { const a = ADS.ids, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Googl
   $('#fstat').textContent = `We count visits anonymously on our own server to improve the shop, and ${[ads, cl].filter(Boolean).join('. We also ')}.`; }
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;
 addEventListener('hashchange', route);
+/* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, after 20 seconds or half a page;
+   the offer popups wait for a later visit. The name + number go to Admin → Left at checkout like the bag box (same 10% coupon, sent from there on WhatsApp) */
+const welDue = () => { try { return !(localStorage.getItem('fx_wel') || localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return false; } };
+if (welDue()) {
+  let welT = 0;
+  const half = () => { const h = document.documentElement.scrollHeight - innerHeight; if (h > 400 && scrollY / h >= .5) go(); };
+  const go = () => { clearTimeout(welT); removeEventListener('scroll', half);
+    if (/^#\/(checkout|thank-you|review)/.test(location.hash) || document.querySelector('.ofp,#cart.open,.drawer.open')) { welT = setTimeout(go, 20000); return; }
+    try { if (!welDue()) return; localStorage.setItem('fx_wel', '1'); sessionStorage.setItem('fx_offer', '1'); } catch(e) { return; }
+    const back = document.activeElement, pop = document.createElement('div'); pop.className = 'ofp ofp-wel';
+    pop.innerHTML = `<div class="ofp-box" role="dialog" aria-modal="true" aria-labelledby="welK" tabindex="-1"><button class="ofp-x" type="button" aria-label="Close">×</button>
+      <p class="ofp-k" id="welK">New here?</p><p class="ofp-pct"><span class="metal">Get 10% off</span></p><p class="ofp-on">YOUR FIRST ORDER</p>
+      <p class="ofp-on">Get your coupon on WhatsApp</p>
+      <form class="wel-form" id="welWa" novalidate><input id="welName" type="text" autocomplete="name" maxlength="60" placeholder="NAME" aria-label="Your name"><input id="welWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WHATSAPP" aria-label="Your WhatsApp number"><button class="btn block" type="submit">Send</button></form>
+      <button class="ofp-no" type="button">No thanks</button></div>`;
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    const close = () => { pop.classList.remove('on'); document.body.classList.remove('lock'); removeEventListener('keydown', onKey); setTimeout(() => pop.remove(), 350); if (back && back.focus) back.focus({preventScroll: true}); };
+    pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('.ofp-x,.ofp-no')) close(); });
+    document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey);
+    requestAnimationFrame(() => { pop.classList.add('on'); $('.ofp-box', pop).focus({preventScroll: true}); });
+    $('#welWa', pop).onsubmit = e => { e.preventDefault(); const nm = $('#welName', pop).value.trim(); let d = $('#welWaIn', pop).value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+      if (!nm) { toast('Please enter your name'); return; }
+      if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
+      try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
+      TRK.lead('details', {name: nm, phone: d}, cart); renderCart();
+      e.target.outerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; $('.ofp-no', pop).textContent = 'Continue shopping'; };
+  };
+  welT = setTimeout(go, 20000); addEventListener('scroll', half, {passive: true});
+}
 /* the popups set on Admin → Offer. Only one per visit, never on the checkout or thank-you page, about 2.5 seconds after arrival:
    the New product popup first (once per visitor for that product), else the sale popup (once per visit).
    One clock runs the sale popup and every countdown line; they hide by themselves at the end and never restart. */
@@ -5564,7 +5601,7 @@ if (OFFER || NEWP) {
       <a class="btn block ofp-go" href="${isNew ? '#/product/' + encodeURIComponent(NEWP.id) : '#/fragrances'}">${isNew ? 'Shop now' : 'Explore FOMAXO'}</a>
       <button class="ofp-no" type="button">Close</button>`; };
   const openPop = () => {
-    if (pop || visitUsed() || onCheckout()) return;
+    if (pop || visitUsed() || onCheckout() || welDue()) return;
     const which = newpDue() ? 'new' : OFFER && OFFER.popup ? 'sale' : '';
     if (!which) return;
     due = false; put(sessionStorage, 'fx_offer', '1'); if (which === 'new') put(localStorage, 'fx_newp', NEWP.key);
