@@ -726,6 +726,13 @@ html[data-mode="light"] .store-map .map iframe{filter:saturate(.6) sepia(.12)}
 .dr-head{display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid var(--line)}
 .dr-head h3{font-size:18px}
 .dr-body{flex:1;overflow:auto;padding:8px 28px}
+.dr-foot .bag-wa{display:flex;flex-direction:column;gap:6px;margin:0}
+.dr-foot .bag-wa label{font-size:12px;letter-spacing:.02em;color:var(--muted);text-align:center;text-transform:none}
+.dr-foot .bag-wa-row{display:flex;gap:8px}
+.dr-foot .bag-wa input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line-2);background:var(--black);color:var(--ivory);font:inherit;font-size:16px}
+.dr-foot .bag-wa .btn{flex:none;min-height:40px;padding:0 18px;background:#25D366;border-color:#25D366;color:#fff}
+.dr-foot .bag-wa-ok{font-size:12px;color:#5fc48c;text-align:center;margin:0}
+html[data-mode="light"] .dr-foot .bag-wa-ok{color:#1e7a47}
 .dr-foot{border-top:1px solid var(--line);padding:24px 28px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
 .line-item{display:grid;grid-template-columns:78px 1fr;gap:16px;padding:20px 0;border-bottom:1px solid var(--line);align-items:start}
 .line-item img{width:78px;aspect-ratio:4/5;object-fit:cover;border:1px solid var(--line)}
@@ -3285,6 +3292,19 @@ document.addEventListener('click', e => {
     const added = cart.reduce((a, l) => a + l.qty, 0) - before; if (added) toast(`${added} item${added > 1 ? 's' : ''} from your last order added to your bag`, true); return; }
   const b = e.target.closest('[data-again]'); if (!b) return; const l = lastOrder()[+b.dataset.again]; if (!l) return;
   addToCart(...againLine(l)); });
+/* bag: a new customer can type their own WhatsApp number to get a 10% off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden once we already have their number. */
+function bagWaHTML(){
+  let known = ''; try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; known = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
+  if (known) return '';
+  return `<form class="bag-wa" id="bagWa" novalidate><label for="bagWaIn">New here? 10% off orders · Coupon on WhatsApp</label><div class="bag-wa-row"><input id="bagWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="Your WhatsApp number" aria-label="Your WhatsApp number"><button class="btn sm" type="submit">Send</button></div></form>`;
+}
+function bagWaWire(){
+  const f = $('#bagWa'); if (!f) return;
+  f.onsubmit = e => { e.preventDefault(); let d = $('#bagWaIn').value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+    if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
+    try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
+    TRK.lead('details', {phone: d}, cart); renderCart(); };
+}
 function renderCart(){
   const n = cart.reduce((a, l) => a + l.qty, 0);
   const cc = $('#cartCount'); cc.textContent = n; cc.classList.toggle('on', n > 0);
@@ -3311,11 +3331,12 @@ function renderCart(){
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
   const r = $('.bl-row', body); if (r && rowX) r.scrollLeft = rowX;
   const t0 = subtotal(cart), tog = t0 !== null ? togetherOff(cart) : 0, t = t0 !== null ? r2(t0 - tog) : null;   // less the Customers bought together saving
-  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div>${tog > 0 ? `<div class="sub-row tg-row"><span>Together extra off (${TG_TXT})</span><span class="gold">−${money(tog, '₹')}</span></div>` : ''}<div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
+  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div>${bagWaHTML()}${tog > 0 ? `<div class="sub-row tg-row"><span>Together extra off (${TG_TXT})</span><span class="gold">−${money(tog, '₹')}</span></div>` : ''}<div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
     ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
     <a class="btn line block bag-more" href="#/fragrances" data-close>Continue shopping</a>`;
   const dc = $('#doCheckout'); if (dc) dc.onclick = () => checkout(cart);
   const gc = $('#goCheckout'); if (gc) gc.onclick = () => goCheckout('#/checkout');
+  bagWaWire();
 }
 $('#cartBody').addEventListener('click', e => {
   const q = e.target.closest('[data-q]'), rm = e.target.closest('[data-rm]'), lk = e.target.closest('[data-like]');
