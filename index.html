@@ -5200,7 +5200,8 @@ function bindCheckout(q){
   if (cIn) {
     $('#coCpnApply').onclick = () => cpnApply(cIn.value);
     cIn.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); cpnApply(cIn.value); } };
-    cIn.oninput = () => { $('#coCpnMsg').hidden = true; };
+    cIn.oninput = () => { $('#coCpnMsg').hidden = true;   // small letters turn into capitals as the shopper types
+      const v = cIn.value.toUpperCase(); if (v !== cIn.value) { const a = cIn.selectionStart, b = cIn.selectionEnd; cIn.value = v; try { cIn.setSelectionRange(a, b); } catch(e) {} } };
     $('#coCpnDel').onclick = () => { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} cIn.value = ''; cpnShow(''); };
     let keep = ''; try { keep = sessionStorage.getItem(CPN) || ''; } catch(e) {}
     if (keep) cpnApply(keep, true);
