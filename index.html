@@ -746,6 +746,8 @@ html[data-mode="light"] .dr-foot .bag-wa-ok{color:#1e7a47}
 .sub-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
 .sub-row .price{font-size:28px}
 .sub-free{display:none}
+.bag-save{margin:-10px 0 0;text-align:right;font-size:13px;font-weight:600;color:#2fa863}
+html[data-mode="light"] .bag-save{color:#1f7d45}
 /* phone bag: the items get the room and scroll freely; the bottom is one compact block */
 @media(max-width:600px){
   .dr-head{padding:14px 16px}
@@ -755,6 +757,7 @@ html[data-mode="light"] .dr-foot .bag-wa-ok{color:#1e7a47}
   .dr-foot>.sub-row:first-child{display:none}
   .dr-foot .sub-free{display:inline;font-size:10px;letter-spacing:.14em;color:var(--gold)}
   .dr-foot .sub-row .price{font-size:22px}
+  .dr-foot .bag-save{margin:-6px 0 0;font-size:12px}
   .dr-foot .btn{min-height:46px;padding-top:0;padding-bottom:0}
   .dr-foot .pay-note{margin:-2px 0 0;font-size:11px}
   .dr-foot .bag-more{min-height:40px;font-size:10px;letter-spacing:.14em}
@@ -3339,7 +3342,8 @@ function renderCart(){
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
   const r = $('.bl-row', body); if (r && rowX) r.scrollLeft = rowX;
   const t0 = subtotal(cart), tog = t0 !== null ? togetherOff(cart) : 0, t = t0 !== null ? r2(t0 - tog) : null;   // less the Customers bought together saving
-  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div>${bagWaHTML()}${tog > 0 ? `<div class="sub-row tg-row"><span>Together extra off (${TG_TXT})</span><span class="gold">−${money(tog, '₹')}</span></div>` : ''}<div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>
+  const was = t !== null && cartCur(cart) === '₹' ? cart.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0) : 0, saved = r2(was - t);   // same "You save" as checkout
+  foot.innerHTML = `<div class="sub-row" style="font-size:10px"><span>Delivery</span><span class="gold" style="letter-spacing:.2em">Free · across India</span></div>${bagWaHTML()}${tog > 0 ? `<div class="sub-row tg-row"><span>Together extra off (${TG_TXT})</span><span class="gold">−${money(tog, '₹')}</span></div>` : ''}<div class="sub-row"><span>Subtotal<small class="sub-free"> · Free delivery</small></span>${t !== null ? `<span class="price">${money(t, cartCur(cart))}</span>` : `<span class="small" style="letter-spacing:0;text-transform:none">Confirmed with your order</span>`}</div>${saved >= 1 ? `<p class="bag-save">You save ${money(saved, '₹')} on this order</p>` : ''}
     ${t !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod) ? `<button class="btn block" id="goCheckout">${LOCK_SVG}Checkout</button><p class="pay-note">UPI · Cards · Netbanking · Wallets${S.checkout.cod ? ' · Cash on delivery' : ''}</p>` : `<button class="btn block" id="doCheckout">${S.checkout.mode === 'whatsapp' ? 'Checkout via WhatsApp' : 'Checkout'}</button>`}
     <a class="btn line block bag-more" href="#/fragrances" data-close>Continue shopping</a>`;
   const dc = $('#doCheckout'); if (dc) dc.onclick = () => checkout(cart);
