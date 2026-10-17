@@ -303,11 +303,6 @@ function order_summary(array $F): array {
   $s = shop_db()->prepare("SELECT method, COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders$where$x GROUP BY method"); $s->execute($args);
   $out = ['cod' => [0, 0], 'online' => [0, 0], 'states' => []];
   foreach ($s as $r) $out[$r['method']] = [(int)$r['n'], (int)$r['t']];
-  /* orders in Trash still count in the number of orders (not the money), when only dates or a method are picked */
-  if ($F['q'] === '' && $F['status'] === '' && ($F['state'] ?? '') === '' && ($F['coupon'] ?? '') === '') {
-    $day = fn($k, $t) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)($F[$k] ?? '')) ? $F[$k] . $t : '';
-    foreach (['cod', 'online'] as $mt) if (($F['method'] ?? '') === '' || $F['method'] === $mt) $out[$mt][0] += count(trash_sales($day('from', ' 00:00:00'), $day('to', ' 23:59:59'), $mt));
-  }
   [$where, $args] = order_where(['state' => ''] + $F);
   $s = shop_db()->prepare("SELECT state, COUNT(*) n FROM orders$where$x AND state <> '' GROUP BY state ORDER BY n DESC, state"); $s->execute($args);
   foreach ($s as $r) $out['states'][$r['state']] = (int)$r['n'];
