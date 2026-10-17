@@ -176,7 +176,7 @@ em{font-style:italic}
 /* ---------- announcement + nav ---------- */
 .announce{position:relative;z-index:41;background:#000;border-bottom:1px solid var(--line);text-align:center;font-size:10.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--champagne);padding:10px 16px}
 .announce b{color:var(--gold);font-weight:400}
-header.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;transition:background .5s,border-color .5s,backdrop-filter .5s;border-bottom:1px solid transparent}
+header.nav{position:sticky;top:0;z-index:40;transition:background .5s,border-color .5s,backdrop-filter .5s;border-bottom:1px solid transparent}
 header.nav.solid,body:not(.home) header.nav{background:rgba(var(--bg-rgb),.86);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-color:var(--line)}
 .nav-in{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:30px;padding:18px var(--pad);max-width:1600px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:12px}
@@ -1268,8 +1268,8 @@ h3{font-size:clamp(19px,1.5vw,23px);letter-spacing:.08em;line-height:1.25}
   .hc-kick{font-size:11px;letter-spacing:.14em}
 }
 /* announcement bar + mode switch stay pinned while scrolling */
-.announce{position:sticky;top:env(safe-area-inset-top,0px);z-index:42}
-header.nav{top:calc(env(safe-area-inset-top,0px) + var(--ann-h,40px))}
+.announce{position:sticky;top:0;z-index:42}   /* top:0, not the safe-area inset: Instagram's in-app browser reports the phone status bar as an inset below its own toolbar, so page content showed above the bar */
+header.nav{top:var(--ann-h,40px)}
 html{scroll-padding-top:calc(var(--ann-h,40px) + 80px)}
 /* mobile: one thin line, messages rotate */
 .ann-rot{display:none}
