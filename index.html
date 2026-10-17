@@ -3724,7 +3724,8 @@ function bindProduct(p){
   $$('#sizes button').forEach(b => b.onclick = () => {
     size = +b.dataset.s; if (isSet) { picks = picks.slice(0, size); updPicks(); } $$('#sizes button').forEach(x => x.classList.toggle('on', x === b));
     $('#sizeName').textContent = optLabel(p, size); $('#pprice').innerHTML = priceHTML(p, size, 'pprice');
-    setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
+    const k0 = $('#stageImg').getAttribute('src'); setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
+    if (k0 !== $('#stageImg').getAttribute('src') && matchMedia('(max-width:960px)').matches) { const r = $('#stage').getBoundingClientRect(), nb = $('#nav').getBoundingClientRect().bottom; if (r.bottom < nb + r.height * .4) scrollTo({top: scrollY + r.top - nb - 12, behavior: 'smooth'}); }   // phone: the photo is above the sizes, out of sight; bring the new size's photo into view
     renderMbuy(); renderFbt(p, size); const ps = $('#psold'); if (ps) ps.innerHTML = soldHTML(p.id, size); bestSet($('.gallery > [data-best]'), p.id, size); fitPdp();
   });
   const stage = $('#stage');
