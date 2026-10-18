@@ -14,20 +14,26 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 http_response_code(204);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+/* what the last calls here were: "time why" for each reason (counted, bot, owner, bad, error), at most once a minute each, shown on Admin → Analytics
+   so a day of zeros can be told apart from visits that reach the server but are not saved */
+function track_seen(string $why, string $msg = ''): void {
+  try { $k = "track_$why"; $old = (int)shop_setting($k); if ($msg !== '' || time() - $old > 60) shop_set($k, time() . ($msg !== '' ? ' ' . mb_substr($msg, 0, 300) : '')); } catch (Throwable $e) {}
+}
+register_shutdown_function(function () { $e = error_get_last(); if ($e && in_array($e['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR], true)) track_seen('error', $e['message']); });
 $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
-if ($ua === '' || preg_match('/bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|embedly|python|curl|wget|httpclient|phantom|selenium/i', $ua)) exit;
-if (fomaxo_is_admin_visitor()) exit;
+if ($ua === '' || preg_match('/bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|embedly|python|curl|wget|httpclient|phantom|selenium/i', $ua)) { track_seen('bot'); exit; }
+if (fomaxo_is_admin_visitor()) { track_seen('owner'); exit; }
 
 $raw = (string)file_get_contents('php://input', false, null, 0, 8192);
-$in = json_decode($raw, true); if (!is_array($in)) exit;
+$in = json_decode($raw, true); if (!is_array($in)) { track_seen('bad'); exit; }
 $t = (string)($in['t'] ?? '');
 $id = fn($k) => preg_match('/^[a-z0-9]{8,16}$/', (string)($in[$k] ?? '')) ? (string)$in[$k] : '';
 $vid = $id('v'); $sid = $id('s');
-if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping', 'invite'], true)) exit;
+if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping', 'invite'], true)) { track_seen('bad'); exit; }
 
 try {
   $db = shop_db(); $now = time();
-  shop_upsert('online', ['vid'], ['vid' => $vid, 'last' => $now]);
+  shop_upsert('online', ['vid'], ['vid' => $vid, 'last' => $now]); track_seen('counted');
   $db->prepare('UPDATE visits SET last = ?, pages = pages + ? WHERE sid = ?')->execute([$now, $t === 'view' ? 1 : 0, $sid]);
   if (random_int(1, 200) === 1) {   // keep the tables small
     $db->prepare('DELETE FROM online WHERE last < ?')->execute([$now - 3600]);
@@ -103,4 +109,4 @@ try {
         'phone' => (string)$inv['phone'], 'step' => 'invite', 'bag' => json_encode(['friend' => mb_substr($friend, 0, 40), 'order' => (string)$o['no']], JSON_UNESCAPED_UNICODE), 'total' => 0, 'ordered' => 0, 'email' => '', 'state' => '', 'address' => '']);
     }
   } catch (Throwable $e) { error_log('FOMAXO invite: ' . $e->getMessage()); }
-} catch (Throwable $e) { error_log('FOMAXO track: ' . $e->getMessage()); }
+} catch (Throwable $e) { error_log('FOMAXO track: ' . $e->getMessage()); track_seen('error', $e->getMessage()); }
