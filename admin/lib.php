@@ -923,6 +923,23 @@ function conversion_stats(string $from, string $to, array $CAT): array {
   return ['since' => $since, 'products' => $pr, 'steps' => $steps, 'empty' => $empty, 'unpaid' => ['n' => (int)$unpaid['n'], 'total' => (int)$unpaid['t']],
     'campaigns' => array_values($camp), 'home' => $home, 'depth' => $depth];
 }
+/* "last 5 minutes · last visit 10:52" in the On the site now box, so a day of zeros can be told apart from counting that stopped */
+function last_visit_note(): string {
+  try { $t = (int)shop_db()->query('SELECT MAX(last) FROM visits WHERE started > 0')->fetchColumn(); } catch (Throwable $e) { $t = 0; }
+  return 'last 5 minutes' . ($t ? ' · last visit ' . date(date('Y-m-d', $t) === date('Y-m-d') ? 'H:i' : 'j M, H:i', $t) : '');
+}
+/* one line under the Analytics boxes: when the website last reached api/track.php, and what happened (saved, your own visit, a bot, unreadable, an error) */
+function track_health_note(): string {
+  $parts = []; $err = '';
+  foreach (['counted' => 'last visit saved', 'owner' => 'your own visit skipped', 'bot' => 'bot skipped', 'bad' => 'unreadable note skipped', 'error' => 'error'] as $k => $label) {
+    $v = (string)shop_setting("track_$k"); if ($v === '') continue;
+    [$t, $msg] = array_pad(explode(' ', $v, 2), 2, ''); $t = (int)$t; if (!$t) continue;
+    $when = date(date('Y-m-d', $t) === date('Y-m-d') ? 'H:i' : 'j M, H:i', $t);
+    if ($k === 'error') { if (time() - $t < 7 * 86400) $err = ' <b style="color:var(--red)">Counting error ' . h($when) . ': ' . h($msg) . '</b>'; continue; }
+    $parts[] = h($label) . ' ' . h($when);
+  }
+  return $parts || $err ? '<p class="muted small">Visit counting: ' . ($parts ? implode(' · ', $parts) : 'no visit has reached the counter since this check was added') . '.' . $err . '</p>' : '';
+}
 /* top countries, and visitors by Indian state, for the dates picked at the top (distinct visitors, from api/track.php's lookup) */
 function geo_stats(string $from, string $to): array {
   $a = [strtotime($from), strtotime("$to +1 day")];

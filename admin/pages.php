@@ -789,13 +789,13 @@ if ($tab === 'analytics' && !$cv) {
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
   $body .= '<div class="kpis n8 strip" style="--n:8">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
-    . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
+    . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>' . h(last_visit_note()) . '</small></div>'
     . '<div class="kpi"><span>Gift page</span><b>' . number_format($A['gift']['visitors']) . '</b><small>' . number_format($A['gift']['views']) . ' views</small></div>'
     . '<div class="kpi"><span>Conversion rate</span><b>' . ($A['conversion'] === null ? '—' : round($A['conversion'], 1) . '%') . '</b><small>visits that bought</small></div>'
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
     . '<div class="kpi"><span>Checkout abandonment</span><b>' . $pct($A['checkout_ab']) . '</b><small>at checkout, did not buy</small></div>'
     . '<div class="kpi"><span>Purchases</span><b>' . $A['purchases'] . '</b><small>orders</small></div>'
-    . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['paid_orders'] ? rupees(intdiv($A['revenue'], $A['paid_orders'])) . ' per order' : '&nbsp;') . '</small></div></div>';
+    . '<div class="kpi"><span>Revenue</span><b>' . rupees($A['revenue']) . '</b><small>' . ($A['paid_orders'] ? rupees(intdiv($A['revenue'], $A['paid_orders'])) . ' per order' : '&nbsp;') . '</small></div></div>' . track_health_note();
   $body .= $sw('#anPanes', ['funnel' => 'Funnel', 'sources' => 'Sources', 'countries' => 'Countries', 'states' => 'States', 'products' => 'Products', 'left' => 'Left at checkout']) . '<div class="an panes" id="anPanes">';
   /* funnel */
   $body .= '<div class="box p-funnel on" data-pane="funnel"><div class="bh"><h3>From visit to purchase</h3></div><div class="bb"><div class="fun">';
