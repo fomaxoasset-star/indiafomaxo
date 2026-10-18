@@ -51,6 +51,7 @@ AddType font/woff2 .woff2
   # product list for free Google Shopping listings (Merchant Center), and the Returns page at its own address
   RewriteRule ^google-shopping\.xml$ api/seo.php?p=feed [L]
   RewriteRule ^returns/?$ api/seo.php?p=returns [L,QSA]
+  RewriteRule ^faq/?$ api/seo.php?p=faq [L,QSA]
 </IfModule>
 
 # The link preview picture changes with the reader (see above), so caches keep one copy per reader, for an hour.

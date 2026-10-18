@@ -685,6 +685,7 @@ html[data-mode="light"] .sort-by select option{background:#fff;color:#1a140c}
 .prose{display:flex;flex-direction:column;gap:20px;color:var(--muted);font-size:16px;line-height:1.9}
 .ret{max-width:760px;display:flex;flex-direction:column;gap:28px}.ret-i h3{margin:0 0 8px;color:var(--ivory);font-size:22px}.ret-i p{margin:0;color:var(--muted);font-size:16px;line-height:1.8}
 .ret-c{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}   /* Returns page (#/returns) */
+.acc.faq summary{text-transform:none;letter-spacing:.01em;font-size:15.5px;gap:18px;line-height:1.45}   /* FAQ page (#/faq) */
 .prose h2{color:var(--ivory)}
 @media(max-width:900px){.split{grid-template-columns:minmax(0,1fr)}}
 .form{display:grid;gap:14px}
@@ -2524,7 +2525,7 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
       </div>
       <div><h5>Shop</h5><div id="footShop"></div></div>
       <div><h5>Discover</h5><a href="#/collections/fragrance">Fragrance Collection</a><a href="#/collections/mini">Mini Collection</a><a href="#/collections/personal-care">Personal Care Collection</a><a href="#/collections/name">Personalized Gifting</a><a href="#/collections/gifting">Bespoke Gifting</a><a href="#/combo">Combos</a></div>
-      <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/returns">Returns</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
+      <div><h5>FOMAXO</h5><a href="#/about">About FOMAXO</a><a href="#/personal-care">Personal Care</a><a href="#/contact">Contact</a><a href="#/returns">Returns</a><a href="#/faq">FAQ</a><a href="#/partnership">Franchise</a><a id="footIg" href="#" target="_blank" rel="noopener">Instagram</a></div>
     </div>
     <div class="fbase"><span>© 2026 FOMAXO™. All rights reserved.</span><span>Inspire greatness</span></div>
     <p class="fstat" id="fstat">We count visits anonymously on our own server to improve the shop. No advertising trackers.</p>
@@ -3458,6 +3459,26 @@ function returnsPage(){
     <div class="ret-i"><h3>How to return</h3><p>Message us on WhatsApp or email us with your order number and we will arrange the pickup.</p>
       <div class="ret-c"><a class="btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">Chat on WhatsApp</a><a class="btn line" href="mailto:${esc(S.checkout.email)}">Email us</a></div></div>
   </div></div></section>`;
+}
+/* FAQ: plain answers to the questions people ask Google about perfume in India (also fomaxo.in/faq → api/seo.php?p=faq,
+   which reads this list for the page's FAQPage data, so keep it strict JSON: double quotes, no trailing comma, no HTML) */
+const FAQ_LIST = [
+  ["Which is India’s no. 1 perfume brand?", "There is no official no. 1 perfume brand in India. Rankings change with the list and with what each person likes. If you want a luxury perfume, FOMAXO is a fragrance house founded in Dubai and now in India, with Eau de Parfum fragrances such as Gold, Old Money, Royal Candy, Matcha Coco and Passion Sin, free delivery across India and its own stores in Kerala."],
+  ["What is FOMAXO?", "FOMAXO is a luxury perfume and personal care brand founded in Dubai. In India it sells Eau de Parfum fragrances, 10ml minis, car perfumes, personal care and gift sets at fomaxo.in and in its stores in Kerala. Its UAE website is fomaxo.com."],
+  ["Is FOMAXO an Indian brand?", "FOMAXO was founded in Dubai, in the UAE, and now sells across India through fomaxo.in and its stores in Kerala."],
+  ["What are the best luxury perfume brands in India?", "The best perfume is the one whose scent suits you, so it helps to try a few. FOMAXO is a Dubai-born luxury brand made for this: its 10ml minis let you try a scent before you buy a full bottle, and every order in India ships free."],
+  ["Who is the best perfume seller in India?", "Buy from the brand itself or from its own stores, so you know the bottle is genuine. Buy FOMAXO directly at fomaxo.in or in a FOMAXO store, with free delivery across India and 7-day returns on unopened products."],
+  ["Where can I buy FOMAXO perfume in India?", "Order online at fomaxo.in with free delivery across India, or visit a FOMAXO store in Kerala. The store locations are on the Contact page at fomaxo.in."],
+  ["Which city in India is famous for perfumes?", "Kannauj in Uttar Pradesh is known as the perfume capital of India, famous for its traditional attars. In Kerala, you can find FOMAXO luxury perfumes in FOMAXO’s own stores."],
+  ["Are FOMAXO perfumes long-lasting?", "FOMAXO fragrances are Eau de Parfum, a higher perfume concentration made to last through the day. How long any perfume lasts also depends on your skin and the weather, so spray on pulse points for the best result."],
+  ["Are FOMAXO perfumes for men or women?", "Both. Several FOMAXO perfumes, such as Old Money, are unisex, and each product page says who the scent is made for."],
+  ["Which FOMAXO perfume makes a good gift?", "FOMAXO gift sets and combos pair 10ml perfumes with a lip balm or a car fragrance, or choose a full bottle such as Gold or Old Money. FOMAXO perfumes come in ready-to-gift luxury packaging and ship free across India."],
+  ["Does FOMAXO deliver across India?", "Yes. Delivery is free on every order across India. You can pay online by card or UPI, or choose cash on delivery where it is offered at checkout."],
+  ["What is FOMAXO’s return policy?", "You can return any unopened FOMAXO product within 7 days of delivery. Damaged or wrong items are replaced or refunded in full, with free pickup anywhere in India."]
+];
+function faqPage(){
+  return pageHead('FAQ', 'Questions &amp; <em class="metal">answers</em>', 'Straight answers about FOMAXO perfumes, delivery and returns in India.') + `
+  <section class="sec" style="padding-top:40px"><div class="wrap"><div class="acc faq rv-up" style="max-width:900px">${FAQ_LIST.map(([q, a], i) => `<details ${!i?'open':''}><summary>${esc(q)}</summary><div class="body"><p>${esc(a)}</p></div></details>`).join('')}</div></div></section>`;
 }
 const pageHead = (crumb, title, lead='') => `<div class="phead"><div class="wrap"><div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${crumb}</div><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
 const finalCTA = () => `<section class="final"><div class="wrap">${emblem('fin-em rv-up')}<span class="eyebrow rv-up">Inspire greatness</span><h2 class="rv-up d1">Define your<br><span class="metal">signature luxury</span></h2><div class="ctas rv-up d2"><a class="btn" href="#/fragrances">Shop FOMAXO</a><a class="btn line" href="#/collections">Explore the collections</a></div></div></section>`;
@@ -5321,6 +5342,7 @@ function route(){
     case 'combo': html = comboPage(); after = bindGift; break;
     case 'about': html = about(); break;
     case 'returns': html = returnsPage(); document.title = 'Returns & refunds — FOMAXO'; break;
+    case 'faq': html = faqPage(); document.title = 'FAQ: FOMAXO perfumes in India'; break;
     case 'contact': html = contact(q); after = bindContact; break;
     case 'partnership': html = partnership(); after = bindPartner; break;
     case 'review': html = reviewOrderPage(); after = () => bindReviewOrder(q.get('t') || ''); break;
