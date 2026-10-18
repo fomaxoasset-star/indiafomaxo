@@ -6,10 +6,11 @@ declare(strict_types=1);
                         the site root, and a tiny script at the top turns the address into /#/product/<id> before the shop
                         starts, so it opens the product page exactly as before.
    GET /product/<id>  → moves (301) to that product's /fomaxo-<name> address.
-   GET /sitemap.xml   → the home page, the Returns page and every product on sale.
+   GET /sitemap.xml   → the home page, the Returns and FAQ pages and every product on sale.
    GET /google-shopping.xml → the product list for free Google Shopping listings (Merchant Center → Products → Add from a file → link):
                         one line per size, with the same prices, "was" prices, stock and photos as the shop.
    GET /returns       → index.html with the Returns page's title and text (Merchant Center's return policy link), opening #/returns.
+   GET /faq           → index.html with the FAQ page's title, text and FAQPage data (questions from FAQ_LIST in index.html), opening #/faq.
    Both come here through the rewrite rules in the root .htaccess. Names, prices, photos, hidden products and stock follow
    the admin page, as on the site. */
 require __DIR__ . '/store-lib.php';
@@ -103,6 +104,7 @@ if ($page === 'sitemap') {
   echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
   echo '  <url><loc>' . SITE . "/</loc><lastmod>$mod</lastmod></url>\n";
   echo '  <url><loc>' . SITE . "/returns</loc><lastmod>$mod</lastmod></url>\n";
+  echo '  <url><loc>' . SITE . "/faq</loc><lastmod>$mod</lastmod></url>\n";
   $all = seo_products(); $slugs = seo_urls($all);
   foreach ($all as $id => $p) {
     echo '  <url><loc>' . SITE . '/fomaxo-' . h($slugs[$id]) . "</loc><lastmod>$mod</lastmod>";
@@ -165,6 +167,27 @@ if ($page === 'returns') {   // the Returns page at its own address; keep the wo
   foreach (['/<title>.*?<\/title>/s' => '<title>' . h($title) . '</title>', '/<meta name="description" content="[^"]*">/' => '<meta name="description" content="' . h($desc) . '">'] as $re => $to)
     $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
   $text = '<noscript><div style="max-width:720px;margin:40px auto;padding:0 16px"><h1>FOMAXO Returns &amp; refunds</h1>' . implode('', array_map(fn($i) => '<h2>' . h($i[0]) . '</h2><p>' . h($i[1]) . '</p>', $items)) . '</div></noscript>';
+  $html = preg_replace('/<body([^>]*)>/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $text), $html, 1);
+  echo preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1);
+  exit;
+}
+
+if ($page === 'faq') {   // the FAQ page at its own address, with FAQPage data for Google; the questions come from FAQ_LIST in index.html
+  $html = (string)@file_get_contents(dirname(__DIR__) . '/index.html');
+  if ($html === '') { http_response_code(503); exit; }
+  header('Content-Type: text/html; charset=utf-8');
+  header('Cache-Control: no-cache');
+  $items = preg_match('/const FAQ_LIST = (\[.*?\n\]);/s', $html, $m) ? (json_decode($m[1], true) ?: []) : [];
+  $title = 'FAQ: FOMAXO perfumes in India'; $desc = 'Answers about FOMAXO, the luxury perfume brand founded in Dubai: where to buy in India, stores in Kerala, long-lasting Eau de Parfum, gifts, free delivery and returns.';
+  $ld = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'url' => SITE . '/faq',
+    'mainEntity' => array_map(fn($i) => ['@type' => 'Question', 'name' => $i[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $i[1]]], $items)];
+  $go = '<base href="/"><script>history.replaceState(null,"","/#/faq")</script>';
+  $head = '<link rel="canonical" href="' . SITE . '/faq"><meta property="og:url" content="' . SITE . '/faq">'
+        . '<script type="application/ld+json">' . json_encode($ld, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+  $html = preg_replace('/<!--seo-->.*?<!--\/seo-->/s', '<!--seo-->' . str_replace(['\\', '$'], ['\\\\', '\\$'], $head) . '<!--/seo-->', $html, 1);
+  foreach (['/<title>.*?<\/title>/s' => '<title>' . h($title) . '</title>', '/<meta name="description" content="[^"]*">/' => '<meta name="description" content="' . h($desc) . '">'] as $re => $to)
+    $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
+  $text = '<noscript><div style="max-width:720px;margin:40px auto;padding:0 16px"><h1>FOMAXO questions &amp; answers</h1>' . implode('', array_map(fn($i) => '<h2>' . h($i[0]) . '</h2><p>' . h($i[1]) . '</p>', $items)) . '</div></noscript>';
   $html = preg_replace('/<body([^>]*)>/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $text), $html, 1);
   echo preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1);
   exit;
