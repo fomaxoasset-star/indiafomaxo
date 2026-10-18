@@ -923,6 +923,11 @@ function conversion_stats(string $from, string $to, array $CAT): array {
   return ['since' => $since, 'products' => $pr, 'steps' => $steps, 'empty' => $empty, 'unpaid' => ['n' => (int)$unpaid['n'], 'total' => (int)$unpaid['t']],
     'campaigns' => array_values($camp), 'home' => $home, 'depth' => $depth];
 }
+/* "last 5 minutes · last visit 10:52" in the On the site now box, so a day of zeros can be told apart from counting that stopped */
+function last_visit_note(): string {
+  try { $t = (int)shop_db()->query('SELECT MAX(last) FROM visits WHERE started > 0')->fetchColumn(); } catch (Throwable $e) { $t = 0; }
+  return 'last 5 minutes' . ($t ? ' · last visit ' . date(date('Y-m-d', $t) === date('Y-m-d') ? 'H:i' : 'j M, H:i', $t) : '');
+}
 /* top countries, and visitors by Indian state, for the dates picked at the top (distinct visitors, from api/track.php's lookup) */
 function geo_stats(string $from, string $to): array {
   $a = [strtotime($from), strtotime("$to +1 day")];
