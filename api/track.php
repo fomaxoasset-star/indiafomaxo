@@ -14,7 +14,7 @@ header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 http_response_code(204);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
-/* what the last calls here were: "time why" for each reason (counted, bot, owner, bad, error), at most once a minute each, shown on Admin → Analytics
+/* what the last calls here were: "time why" for each reason (bot, owner, bad, error), at most once a minute each, shown on Admin → Analytics
    so a day of zeros can be told apart from visits that reach the server but are not saved */
 function track_seen(string $why, string $msg = ''): void {
   try { $k = "track_$why"; $old = (int)shop_setting($k); if ($msg !== '' || time() - $old > 60) shop_set($k, time() . ($msg !== '' ? ' ' . mb_substr($msg, 0, 300) : '')); } catch (Throwable $e) {}
@@ -33,7 +33,7 @@ if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay'
 
 try {
   $db = shop_db(); $now = time();
-  shop_upsert('online', ['vid'], ['vid' => $vid, 'last' => $now]); track_seen('counted');
+  shop_upsert('online', ['vid'], ['vid' => $vid, 'last' => $now]);
   $db->prepare('UPDATE visits SET last = ?, pages = pages + ? WHERE sid = ?')->execute([$now, $t === 'view' ? 1 : 0, $sid]);
   if (random_int(1, 200) === 1) {   // keep the tables small
     $db->prepare('DELETE FROM online WHERE last < ?')->execute([$now - 3600]);
