@@ -789,7 +789,7 @@ if ($tab === 'analytics' && !$cv) {
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
   $body .= '<div class="kpis n8 strip" style="--n:8">'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . number_format($A['visits']) . ' visits</small></div>'
-    . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>' . h(last_visit_note()) . '</small></div>'
+    . '<div class="kpi good"><span>On the site now</span><b>' . $A['now'] . '</b><small>last 5 minutes</small></div>'
     . '<div class="kpi"><span>Gift page</span><b>' . number_format($A['gift']['visitors']) . '</b><small>' . number_format($A['gift']['views']) . ' views</small></div>'
     . '<div class="kpi"><span>Conversion rate</span><b>' . ($A['conversion'] === null ? '—' : round($A['conversion'], 1) . '%') . '</b><small>visits that bought</small></div>'
     . '<div class="kpi"><span>Cart abandonment</span><b>' . $pct($A['cart_ab']) . '</b><small>added, did not buy</small></div>'
