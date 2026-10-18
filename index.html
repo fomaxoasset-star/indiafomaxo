@@ -1691,6 +1691,10 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .pc-type{font-family:var(--hfont);font-weight:500;font-size:clamp(16px,1.2vw,19px);line-height:1.3;letter-spacing:.02em;color:var(--gold);text-wrap:balance}
 .pcard h3 a:hover .pc-name{color:var(--ivory)}
 .price-rate{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.pd-smell{margin:-4px 0 0;font-size:13px;letter-spacing:.08em;color:var(--ivory)}.pd-smell span{color:var(--gold);text-transform:uppercase;font-size:11px;letter-spacing:.18em;margin-right:8px}
+.pd-quote{margin:0;padding:12px 16px;border-left:2px solid var(--gold);background:rgba(201,162,92,.07);font-size:14px;line-height:1.55;color:var(--ivory)}.pd-quote[hidden]{display:none}.pd-quote .stars{display:flex;margin-bottom:6px;color:var(--gold)}.pd-quote small{display:block;margin-top:6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+@media (min-width:961px){.pd-quote{padding:8px 14px;font-size:13px;line-height:1.45}.pd-quote .stars{margin-bottom:2px}.pd-quote small{margin-top:3px;font-size:10px}}
+.pd-try{align-self:flex-start;background:none;border:0;padding:0;font:inherit;font-size:13.5px;letter-spacing:.04em;color:var(--ivory);cursor:pointer;text-align:start}.pd-try b{color:var(--gold);font-weight:600;text-decoration:underline;text-underline-offset:4px}.pd-try[hidden]{display:none}
 .pd-sold{display:flex;align-items:center;gap:8px;margin:0;font-size:12.5px;letter-spacing:.06em;font-weight:700;font-style:normal}.pd-sold:empty{display:none}.pd-sold svg{width:15px;height:15px;color:var(--gold);flex:none}   /* people bought this week: real orders only */
 .p-rate{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
 .p-rate-stars{color:var(--gold);font-size:22px;letter-spacing:.1em;line-height:1}
@@ -3665,10 +3669,13 @@ function product(id, q){
         <div style="display:flex;flex-direction:column;gap:14px">
           <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a>` : esc(CAT_NAME[catOf(p)])}</span>
           <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
+          ${smellHTML(p)}
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
           <p class="pd-sold" id="psold">${soldHTML(p.id, size)}</p>
           <p class="lead" style="max-width:none">${esc(p.short)}</p>
-          <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>${offerLine(p, 'box')}
+          <div class="price-rate"><div id="pprice">${priceHTML(p, size, 'pprice')}</div><div class="stk-row" id="pstock">${stockTag(p, size, true)}</div></div>
+          <blockquote class="pd-quote" id="pquote" hidden></blockquote>
+          <button type="button" class="pd-try" id="pdTry"${tryHTML(p, size) ? '' : ' hidden'}>${tryHTML(p, size)}</button>${offerLine(p, 'box')}
           <div class="pdel-row"><p class="pdel">${ICON.truck}<span><b>FREE delivery</b> ${delWindow()}</span></p><div class="stk-row pstk-del">${stockTag(p, size, true)}</div></div>
           ${assureHTML()}
         </div>
@@ -3725,9 +3732,11 @@ function bindProduct(p){
   qty.onchange = () => { if ((parseInt(qty.value) || 1) > MAX_PER_ITEM && maxQ(p, size) >= MAX_PER_ITEM) massPopup(p.id, size); qty.value = Math.min(getQ(), maxQ(p, size) || 1); qcap(); };
   const setImg = k => { $('#stageImg').src = IMG(k); $$('.thumbs button').forEach(b => b.classList.toggle('on', b.dataset.g === k)); };
   $$('.thumbs button').forEach(b => b.onclick = () => setImg(b.dataset.g));
+  const tr0 = $('#pdTry'); if (tr0) tr0.onclick = () => { const b = $('#sizes button[data-s="10"]'); if (b) b.click(); };
   $$('#sizes button').forEach(b => b.onclick = () => {
     size = +b.dataset.s; if (isSet) { picks = picks.slice(0, size); updPicks(); } $$('#sizes button').forEach(x => x.classList.toggle('on', x === b));
     $('#sizeName').textContent = optLabel(p, size); $('#pprice').innerHTML = priceHTML(p, size, 'pprice');
+    const tr = $('#pdTry'); if (tr) { tr.innerHTML = tryHTML(p, size); tr.hidden = !tr.innerHTML; }
     const k0 = $('#stageImg').getAttribute('src'); setImg(imgFor(p, size)); if (!isOut(p)) sizeState();
     if (k0 !== $('#stageImg').getAttribute('src') && matchMedia('(max-width:960px)').matches) { const r = $('#stage').getBoundingClientRect(), nb = $('#nav').getBoundingClientRect().bottom; if (r.bottom < nb + r.height * .4) scrollTo({top: scrollY + r.top - nb - 12, behavior: 'smooth'}); }   // phone: the photo is above the sizes, out of sight; bring the new size's photo into view
     renderMbuy(); renderFbt(p, size); const ps = $('#psold'); if (ps) ps.innerHTML = soldHTML(p.id, size); bestSet($('.gallery > [data-best]'), p.id, size); fitPdp();
@@ -4820,6 +4829,18 @@ function rvViewer(ph, at){
   addEventListener('keydown', onKey); addEventListener('hashchange', rvxClose);
   requestAnimationFrame(() => { el.classList.add('on'); $('.rvx-x', el).focus({preventScroll: true}); });
 }
+/* product page: "Smells like" one note from the top, heart and base, so a first-time visitor knows the scent in one line */
+const smellHTML = p => { const n = p.notes; if (!n || n.key) return ''; const w = [n.top, n.heart, n.base].map(x => String(x || '').split('·')[0].trim()).filter(Boolean); return w.length ? `<p class="pd-smell"><span>Smells like</span>${w.map(esc).join(' · ')}</p>` : ''; };
+/* the 10ml as a cheap first try (only when the product has a 10ml with a price and another size is picked) */
+const tryHTML = (p, size) => p.kind !== 'set' && !isOut(p) && p.sizes.includes(10) && hasPrice(p.prices[10]) && !sizeOut(p, 10) && size !== 10 ? `New to FOMAXO? <b>Try the 10ml first · ${money(p.prices[10])}</b>` : '';
+/* best real review under the price: 5 stars with words, verified first, then most helpful, then newest */
+function quoteFill(list){
+  const q = $('#pquote'); if (!q) return;
+  const r = (list || []).filter(x => +x.rating === 5 && String(x.text || '').trim().length >= 15).sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || (b.helpful || 0) - (a.helpful || 0) || String(b.date).localeCompare(String(a.date)))[0];
+  if (!r) { q.hidden = true; fitPdp(); return; }
+  const t = rvTidy(r.text).trim(), cut = t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, '') + '…' : t;
+  q.innerHTML = `${rvStars(5)}“${esc(cut)}”<small>${esc(rvCap(r.name))}${r.verified ? ' · Verified Purchaser' : ''}</small>`; q.hidden = false; fitPdp();   // the quote arrives after the page is drawn: fit the laptop buy side again
+}
 function bindReviews(p){
   const list = $('#rvList'), box = $('#rvFormBox'), sort = $('#rvSort');
   const gal = $('#rvGal'); let ph = [];
@@ -4831,7 +4852,7 @@ function bindReviews(p){
       $('#rvSum').innerHTML = rvSummaryHTML(d.rating, d.count, d.distribution);
       const pr = $('#pRate'); if (pr) pr.innerHTML = pRateHTML(d.rating, d.count);
       $('#rvCount').textContent = d.count ? `${d.count} review${d.count > 1 ? 's' : ''}` : 'Reviews';
-      all = d.reviews || []; page = 0;
+      all = d.reviews || []; page = 0; quoteFill(all);
       ph = rvPhotoList(all); gal.hidden = !ph.length; gal.innerHTML = ph.length ? rvGalHTML(ph) : '';
       if (d.count) show(); else { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; }
     } catch(e) { if (list.isConnected) { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; } }
