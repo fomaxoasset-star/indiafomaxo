@@ -4830,7 +4830,8 @@ function rvViewer(ph, at){
   requestAnimationFrame(() => { el.classList.add('on'); $('.rvx-x', el).focus({preventScroll: true}); });
 }
 /* product page: "Smells like" one note from the top, heart and base, so a first-time visitor knows the scent in one line */
-const smellHTML = p => { const n = p.notes; if (!n || n.key) return ''; const w = [n.top, n.heart, n.base].map(x => String(x || '').split('·')[0].trim()).filter(Boolean); return w.length ? `<p class="pd-smell"><span>Smells like</span>${w.map(esc).join(' · ')}</p>` : ''; };
+const SMELL_PICK = {gold: ['Bergamot', 'Agarwood', 'Musk']};   // AJAY's choice of notes for a product's Smells like line (instead of the first top/heart/base note)
+const smellHTML = p => { const n = p.notes; if (!n || n.key) return ''; const w = SMELL_PICK[p.id] || [n.top, n.heart, n.base].map(x => String(x || '').split('·')[0].trim()).filter(Boolean); return w.length ? `<p class="pd-smell"><span>Smells like</span>${w.map(esc).join(' · ')}</p>` : ''; };
 /* the 10ml as a cheap first try (only when the product has a 10ml with a price and another size is picked) */
 const tryHTML = (p, size) => p.kind !== 'set' && !isOut(p) && p.sizes.includes(10) && hasPrice(p.prices[10]) && !sizeOut(p, 10) && size !== 10 ? `New to FOMAXO? <b>Try the 10ml first · ${money(p.prices[10])}</b>` : '';
 /* best real review under the price: 5 stars with words, verified first, then most helpful, then newest */
