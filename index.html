@@ -1643,6 +1643,22 @@ a.pc-add{display:flex;align-items:center;justify-content:center}
   .hero-cine .hc-slide .hc-bg{object-fit:contain;object-position:50% 50%!important}
   .hero-cine .hc-veil{display:none}
 }
+/* laptop: the banners carry their own words right down to the bottom edge, so the 01–07 list, Now showing, price and Buy Now
+   sit in a band right under the banner instead of on top of it, and the banner is shown at its own full 2400×1357 shape (nothing trimmed).
+   It starts under the menu, so the menu never sits on a banner's own heading either */
+@media(min-width:761px){
+  .hero-cine{grid-template-rows:auto auto auto;padding-top:80px}
+  .hero-cine .hc-slides::after{display:none}
+  .hero-cine .hc-slides{height:auto;aspect-ratio:2400/1357}
+  .hero-cine .hc-bar{grid-row:2;align-self:start;padding-top:20px;padding-bottom:22px;background:#050505;border-bottom:1px solid rgba(215,170,105,.18)}
+  .hero-cine .hc-copy{grid-row:3}
+  /* the 01–07 list gets the whole width on its own line, so every name shows in full and none runs into the next; Now showing and the buy buttons go under it */
+  .hero-cine .hc-bar{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nav nav" "now buy";row-gap:18px;align-items:center}
+  .hero-cine .hc-nav{grid-area:nav;overflow:visible;justify-content:space-between;gap:clamp(10px,1.4vw,24px)}
+  .hero-cine .hc-nav button{flex:1 1 0;min-width:0}
+  .hero-cine .hc-now{grid-area:now;display:grid;justify-self:start;text-align:left;border-right:0;padding-right:0}
+  .hero-cine .hc-buy{grid-area:buy}
+}
 /* size boxes above Add to cart */
 .pc-buy{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 .pcard .stk-row:empty{display:block}.pcard .ev0{display:none!important}   /* evenCards(): an empty part keeps its row's height, or goes when the whole row lacks it */
