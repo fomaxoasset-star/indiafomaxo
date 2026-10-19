@@ -840,7 +840,7 @@ function analytics(string $from, string $to, array $CAT): array {
   $out['sources'] = [];
   foreach ($q('SELECT source, COUNT(DISTINCT vid) v, COUNT(DISTINCT sid) n FROM events WHERE type = \'view\' AND ts >= ? AND ts <= ? GROUP BY source ORDER BY v DESC, n DESC', $a) as $r) $out['sources'][$r['source']] = ['visitors' => (int)$r['v'], 'visits' => (int)$r['n'], 'bought' => 0];
   foreach ($q('SELECT source, COUNT(DISTINCT sid) n FROM events WHERE type = \'buy\' AND ts >= ? AND ts <= ? GROUP BY source', $a) as $r) if (isset($out['sources'][$r['source']])) $out['sources'][$r['source']]['bought'] = (int)$r['n'];
-  [$out['purchases'], $out['revenue'], $out['paid_orders']] = sales_between(...$a);
+  [, $out['revenue'], $out['purchases']] = sales_between(...$a); $out['paid_orders'] = $out['purchases'];   // orders in Trash are left out of Analytics (AJAY, 2026-10-19)
   $f = $out['funnel'];
   $out['conversion'] = $f['view'] ? $f['buy'] / $f['view'] * 100 : null;
   $out['cart_ab'] = $f['add'] ? max(0, 1 - $f['buy'] / $f['add']) * 100 : null;
