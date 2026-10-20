@@ -90,7 +90,7 @@ function receipt_page(array $o): string {
     . '<div class="py"><span>Payment</span><b>' . ($d['cod'] ? 'Cash on delivery' : 'Card / UPI') . '</b><i class="st st-' . $d['pay'] . '">' . $st . '</i></div></div>'
     . '<div class="sm">' . $sum . '</div></section>'
     . '<footer class="ft"><p class="ty">Thank you for your purchase</p><p class="si">fomaxo.in · India</p></footer>'
-    . '</main><div class="wmk" aria-hidden="true"><svg viewBox="0 0 2507 2506"><use href="#emblem"/></svg><svg viewBox="0 0 3196 481"><use href="#wordmark"/></svg></div>'
+    . '</main><div class="wmk" aria-hidden="true"><svg viewBox="0 0 2507 2506"><use href="#emblem"/></svg></div>'
     . '<script>(function(){var s=document.querySelector(".sheet"),r=document.documentElement;addEventListener("beforeprint",function(){r.classList.add("pm");var mm=s.offsetWidth/186,n=Math.max(1,Math.ceil((s.offsetHeight+2*mm)/(271*mm)));r.classList.remove("pm");s.style.setProperty("--pages",n);r.classList.toggle("p1",n<2)})})();'
     . 'if(/[?&]print=1/.test(location.search))addEventListener("load",function(){(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(print,200)})})</script>'
     . '<svg width="0" height="0" style="position:absolute" aria-hidden="true">' . RECEIPT_SYMBOLS . '</svg></body></html>';
@@ -100,8 +100,7 @@ function receipt_page(array $o): string {
 function receipt_wm_svg(): string {
   preg_match_all('/<path[^>]*\/>/', RECEIPT_SYMBOLS, $m);
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1860 2710"><g opacity=".05">'
-    . '<g transform="translate(660 870) scale(.2155)">' . str_replace('currentColor', '#0b0b0b', $m[0][0] ?? '') . '</g>'
-    . '<g transform="translate(400 1530) scale(.3255)">' . str_replace('currentColor', '#0b0b0b', $m[0][1] ?? '') . '</g></g></svg>';
+    . '<g transform="translate(554 979) scale(.3)">' . str_replace('currentColor', '#0b0b0b', $m[0][0] ?? '') . '</g></g></svg>';
 }
 
 function receipt_css(): string { return <<<'CSS'
@@ -120,7 +119,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:400 14px/1.45 Jost,syst
 .sheet::before{top:4px}.sheet::after{bottom:4px}
 /* the FOMAXO logo as a faint watermark in the middle (on every page of the PDF) */
 .wmk{position:fixed;left:50%;top:50%;width:min(460px,72vw);transform:translate(-50%,-50%);color:var(--ink);opacity:.045;pointer-events:none;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6%}
-.wmk svg{display:block;width:62%;height:auto}.wmk svg+svg{width:100%;aspect-ratio:3196/481}
+.wmk svg{display:block;width:70%;height:auto}.wmk svg+svg{width:100%;aspect-ratio:3196/481}
 @media (prefers-color-scheme:dark){.wmk{opacity:.06}}
 .hd{text-align:center;color:var(--ink)}
 .hd .em{width:52px;height:52px;display:block;margin:0 auto 10px;color:var(--ink)}
