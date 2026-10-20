@@ -127,6 +127,25 @@ function markSent(btn, day) {
     });
   });
 
+  /* Orders: a button on a row (Paid, Delivered, Cancel, ✕) reloads the page; come back to the same row, not the top */
+  (function () {
+    var K = 'fxOrdPos', list = document.querySelector('.olist');
+    if (!list) return;
+    var box = function () { for (var e = list; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 2 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
+    var rowOf = function (id) { var x = list.querySelector('.xbtn[value="' + id + '"]'); return x && x.closest('.order'); };
+    document.addEventListener('submit', function (e) {
+      var f = e.target, r = e.submitter && e.submitter.closest('.order'), x = r && r.querySelector('.xbtn');
+      if (e.defaultPrevented || (f.id !== 'qa' && f.id !== 'trf') || !x) return;
+      try { sessionStorage.setItem(K, JSON.stringify({ t: Date.now(), id: x.value, y: r.getBoundingClientRect().top })); } catch (er) {}
+    });
+    var p; try { p = JSON.parse(sessionStorage.getItem(K) || 'null'); sessionStorage.removeItem(K); } catch (er) {}
+    if (!p || Date.now() - p.t > 60000) return;
+    var row = rowOf(p.id); if (!row) return;
+    var go = function () { var d = row.getBoundingClientRect().top - p.y, b = box(); if (b) b.scrollTop += d; else window.scrollBy(0, d); };
+    go(); addEventListener('load', go); if (document.fonts) document.fonts.ready.then(go);
+    row.classList.add('ojust');
+  })();
+
   /* Orders: a one-tap button on an order's row submits it without opening or closing the order */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('summary button[form]');
