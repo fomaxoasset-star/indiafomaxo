@@ -170,6 +170,15 @@ function fomaxo_tidy_photos(array $live): void {
   }
   shop_set('photos_tidy', shop_now());
 }
+/* Once: a new photo takes an old one's place in the photo list saved on the admin page (AJAY, 20/10/2026: new Old Money 50ml photo).
+   Only where the old photo is still in the list; a list that does not have it stays as it is. */
+function fomaxo_swap_photo(array $live, string $id, string $old, string $new): void {
+  $d = $live[$id] ?? null; if (!$d || !empty($d['added']) || empty($d['edit']['images'])) return;
+  $imgs = array_values((array)$d['edit']['images']); $i = array_search($old, $imgs, true);
+  if ($i === false) return;
+  $imgs[$i] = $new; $d['edit']['images'] = array_values(array_unique($imgs));
+  shop_save_product($id, false, !empty($d['hidden']), array_diff_key($d, array_flip(['added', 'hidden', 'sort'])), (int)($d['sort'] ?? 0));
+}
 /* the biggest real % saving among products on the website with an old price (only those in $only, when given), and that product's name: what the offer popup shows */
 function fomaxo_best_pct(array $only = []): array {
   $best = [0, ''];
@@ -226,6 +235,7 @@ function fomaxo_catalog(): array {
     $live = shop_products();
     if (shop_setting('products_seeded') === null) { fomaxo_seed_products($live); $live = shop_products(); }
     if (shop_setting('photos_tidy') === null) { fomaxo_tidy_photos($live); $live = shop_products(); }
+    if (shop_setting('oldmoney_50_v3') === null) { fomaxo_swap_photo($live, 'oldmoney', 'oldmoney-50-main', 'oldmoney-50-v3'); shop_set('oldmoney_50_v3', shop_now()); $live = shop_products(); }
   } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); $live = []; }
   foreach ($live as $id => $d) {
     if ($d['added']) {
