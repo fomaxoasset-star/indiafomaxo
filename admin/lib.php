@@ -620,6 +620,23 @@ function wa_btn_ph(string $phone, string $who, string $head, string $cls = 'btn 
   $ph = coupon_phone($phone); $sd = wa_sent_day('ph:' . $ph);
   return wa_btn($ph, $who, $head, "\n\nThank you,\nFOMAXO", 'ph:' . $ph, $sd !== '' ? 'Sent ' . $sd : 'WhatsApp', $cls . ($sd !== '' ? (str_contains($cls, 'rqwa') ? ' done' : ' line') : ''));
 }
+/* an order's Receipt box (api/receipt-lib.php): Courier and Tracking no (shown on the receipt only when typed), then View, Download PDF,
+   WhatsApp (the private link, mark rc:<order no>) and Email. Nothing goes to the customer by itself: only when they ask. */
+function receipt_card(array $o, string $csrfField, string $back): string {
+  $no = (string)$o['no'];
+  if ($no === '' || $o['status'] === 'awaiting') return '';
+  $url = receipt_url($no); $em = trim((string)$o['email']);
+  $sd = wa_sent_day('rc:' . $no); $ed = wa_sent_day('rm:' . $no);
+  $head = wa_hello((string)$o['name'], $no) . "\n\nHere is your receipt:\n" . $url;
+  return '<div class="rcpt"><h4>Receipt</h4><form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="receipt"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
+    . '<label>Courier<input name="courier" value="' . h($o['courier'] ?? '') . '" maxlength="60" list="couriers" placeholder="Delhivery, Blue Dart…" autocomplete="off"></label>'
+    . '<label>Tracking no<input name="tracking" value="' . h($o['tracking'] ?? '') . '" maxlength="80" placeholder="If you have it" autocomplete="off"></label>'
+    . '<p class="muted small">Shown on the receipt only when filled in.</p>'
+    . '<div class="qbtns"><button class="btn line sm">Save</button><a class="btn line sm" href="' . h($url) . '" target="_blank" rel="noopener">View receipt</a><a class="btn line sm" href="' . h($url . '&print=1') . '" target="_blank" rel="noopener">Download PDF</a>'
+    . wa_btn((string)$o['phone'], (string)$o['name'], $head, "\n\nThank you,\nFOMAXO", 'rc:' . $no, $sd !== '' ? 'Sent ' . $sd : 'Send on WhatsApp', 'btn sm wag' . ($sd !== '' ? ' line' : ''), true)
+    . ($em !== '' ? '<button class="btn line sm" name="email" value="1" data-confirm="Email the receipt to ' . h($em) . '?">' . ($ed !== '' ? 'Emailed ' . $ed : 'Email') . '</button>' : '<button class="btn line sm" type="button" disabled title="No email on this order">Email</button>')
+    . '</div><p class="muted small">Send only when the customer asks.</p></form></div>';
+}
 /* the usual opening: Hi First, This is FOMAXO (about your order NO) */
 function wa_hello(string $name, string $no = ''): string {
   $f = first_name($name);

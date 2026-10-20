@@ -186,7 +186,8 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   }
   $body .= '</form>';
 } elseif ($tab === 'orders') {
-  require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';   // orders due a review request get a green WhatsApp Review button
+  require_once dirname(__DIR__) . '/api/whatsapp-lib.php'; require_once dirname(__DIR__) . '/api/review-req-lib.php';
+  require_once dirname(__DIR__) . '/api/receipt-lib.php'; receipt_cols();   // each order's Receipt box (courier, tracking no, send)   // orders due a review request get a green WhatsApp Review button
   $rqAsk = []; foreach (rq_due() as $x) if (!$x['sent'] && !$x['stopped']) $rqAsk[$x['no']] = $x;
   /* every order's green WhatsApp button: the review request message with the order's Verified Purchaser link, whatever the day (FOMAXO can change
      the words in WhatsApp before sending); tapping marks the order Sent dd/mm. An order without a review link opens a plain chat. */
@@ -272,10 +273,11 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
       . '<div><h4>Payment</h4><p>' . h(pay_label($o)) . ($o['payment_id'] ? '<br><small class="muted">' . h($o['payment_id']) . '</small>' : '') . ($o['paid_at'] ? '<br><small class="muted">Paid ' . h(date('d M Y, H:i', strtotime($o['paid_at']))) . '</small>' : '') . '</p>'
       . '<form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="status"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
       . '<label>Status <small class="muted">(saves when you pick)</small>' . str_replace('<select name="status">', '<select name="status" data-autosave data-no="' . h($o['no']) . '">', $sel('status', order_status_options($o), $o['status'])) . '</label>'
-      . '<label>Your note<input name="admin_note" value="' . h($o['admin_note']) . '" maxlength="500" placeholder="Courier, tracking number…"></label>'
+      . '<label>Your note<input name="admin_note" value="' . h($o['admin_note']) . '" maxlength="500" placeholder="Only you see this"></label>'
       . '<div class="qbtns"><button class="btn line">Save</button></div></form>'
-      . '<p class="muted small">Cancelling or refunding puts the items back in stock.</p></div></div></details>';
+      . '<p class="muted small">Cancelling or refunding puts the items back in stock.</p></div>' . receipt_card($o, $csrfField, $back) . '</div></details>';
   }
+  $body .= '<datalist id="couriers"><option value="Delhivery"><option value="Blue Dart"><option value="DTDC"><option value="India Post"><option value="Xpressbees"><option value="Ekart"><option value="Shiprocket"></datalist>';
   if ($total > ADMIN_PER_PAGE) {
     $body .= '<div class="pager">';
     for ($i = 1; $i <= (int)ceil($total / ADMIN_PER_PAGE); $i++) $body .= '<a' . ($i === $page ? ' class="on"' : '') . ' href="' . h(self_url($q + ['page' => $i])) . '">' . $i . '</a>';
