@@ -242,7 +242,12 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $back = h(json_encode($q + ['page' => $page]));
   $body .= '<form id="qa" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="quick"><input type="hidden" name="back" value="' . $back . '"></form>';
   $body .= '<form id="trf" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="trash"><input type="hidden" name="back" value="' . $back . '"></form>';
+  $body .= '<form id="obk" method="post" hidden>' . $csrfField . '<input type="hidden" name="action" value="bulk"><input type="hidden" name="back" value="' . $back . '"></form>';
   $body .= '<div class="box fill" data-csrf="' . h($CSRF) . '"><div class="bh obh"><span class="muted small">' . $total . ' order' . ($total === 1 ? '' : 's') . '<span class="ohint">. Tap a button to update an order, or tap the order to see it.</span></span>'
+    . '<span class="obulk">' . ($orders ? '<label class="oall"><input type="checkbox" data-oall> Select all</label><span class="obsel" hidden><b data-on>0</b> ticked'
+    . '<button class="btn xs line" form="obk" name="act" value="paid" data-ask="Mark {n} ticked orders as paid? Only unpaid cash orders change.">Paid</button>'
+    . '<button class="btn xs" form="obk" name="act" value="deliver" data-ask="Mark {n} ticked orders as delivered?">Delivered</button>'
+    . '<button class="btn xs line danger" form="obk" name="act" value="close" data-ask="Close {n} ticked orders? They leave Sales, the boxes and every count, and are kept in Trash.">Close</button></span>' : '') . '</span>'
     . '<span class="ohb">' . sound_btn() . (($trN = shop_trash_count()) ? '<a class="btn xs line trbtn" href="' . h(self_url(['tab' => 'orders', 'trash' => 1])) . '">Trash (' . $trN . ')</a>' : '') . '<a class="btn xs rqbtn" href="' . h(self_url(['tab' => 'orders', 'ask' => 1])) . '">Review requests (' . count($rqAsk) . ')</a></span></div><div class="bb np olist has-rq">';
   if (!$orders) $body .= '<p class="empty">No orders' . (array_filter($F) ? ' for this filter' : ' yet') . '.</p>';
   $seenO = (string)shop_setting('seen_orders');   // orders placed since Orders was last opened get a red NEW tag (it goes on the next visit)
@@ -250,6 +255,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $btns = order_buttons($o);
     $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary><span class="ox">'
+      . '<input type="checkbox" class="otk" form="obk" name="ids[]" value="' . (int)$o['id'] . '" aria-label="Tick ' . h($o['no']) . '">'
       . '<button class="xbtn" form="trf" name="id" value="' . (int)$o['id'] . '" data-confirm="Close ' . h($o['no']) . '? It leaves Sales, the boxes and every count, and is kept in Trash." title="Close this order (kept in Trash)" aria-label="Close ' . h($o['no']) . '">✕</button>' . $orderThumb($o) . '</span>'
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . ($seenO !== '' && $o['created'] > $seenO ? ' <span class="onew">NEW</span>' : '') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'
       . '<span class="cu"><b>' . h($o['name']) . '</b><small>' . h($o['phone']) . ((int)($o['wa_optin'] ?? 0) ? ' <span class="wa-in" title="Ticked at checkout: send me order updates and offers on WhatsApp">✓ WhatsApp</span>' : '') . '</small>' . order_coupon_tag($o) . '</span>'

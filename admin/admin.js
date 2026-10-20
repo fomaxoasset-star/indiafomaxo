@@ -127,6 +127,24 @@ function markSent(btn, day) {
     });
   });
 
+  /* Orders: Select all and the ticks light "N ticked" with Paid, Delivered and Close for the ticked orders.
+     A tick sits inside the order's summary, so its click is handled here to tick it without opening the order. */
+  (function () {
+    var all = document.querySelector('[data-oall]'); if (!all) return;
+    var bar = document.querySelector('.obsel'), n = bar.querySelector('[data-on]'), bx = [].slice.call(document.querySelectorAll('.otk'));
+    var up = function () {
+      var k = bx.filter(function (x) { return x.checked; }).length;
+      n.textContent = k; bar.hidden = !k; bar.closest('.obh').classList.toggle('oon', k > 0);
+      all.checked = k > 0 && k === bx.length; all.indeterminate = k > 0 && k < bx.length;
+      bx.forEach(function (x) { x.closest('.order').classList.toggle('otick', x.checked); });
+    };
+    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked; }); up(); });
+    bx.forEach(function (x) { x.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); setTimeout(function () { x.checked = !x.checked; up(); }, 0); }); });
+    up();
+    bar.querySelectorAll('button[data-ask]').forEach(function (b) { b.dataset.confirm = b.dataset.ask; });
+    document.getElementById('obk').addEventListener('submit', function (e) { var b = e.submitter; if (b && b.dataset.ask) b.dataset.confirm = b.dataset.ask.replace('{n}', n.textContent); }, true);
+  })();
+
   /* Orders: a button on a row (Paid, Delivered, Cancel, ✕) reloads the page; come back to the same row, not the top */
   (function () {
     var K = 'fxOrdPos', list = document.querySelector('.olist');

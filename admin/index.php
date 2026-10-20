@@ -319,6 +319,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $no = shop_order_trash((int)($_POST['id'] ?? 0));
     go($back, $no !== '' ? "$no is closed and kept in Trash. Put it back from there any time." : '!That order was not found, so nothing was closed.');
   }
+  /* Orders: Select all / ticked orders, then Paid, Delivered or Close for all of them at once (orders that cannot take that step stay as they are) */
+  if ($a === 'bulk') {
+    $act = (string)($_POST['act'] ?? ''); $ids = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['ids'] ?? [])))));
+    if (!in_array($act, ['paid', 'deliver', 'close'], true) || !$ids) go($back, '!Please tick the orders first.');
+    $ok = 0;
+    foreach ($ids as $id) if ($act === 'close' ? shop_order_trash($id) !== '' : !str_starts_with(shop_order_action($id, $act), '!')) $ok++;
+    $left = count($ids) - $ok;
+    go($back, $ok ? $ok . ' order' . ($ok > 1 ? 's are' : ' is') . ' now ' . ['paid' => 'paid', 'deliver' => 'delivered', 'close' => 'closed and kept in Trash'][$act] . '.' . ($left ? ' ' . $left . ' could not take this step, so ' . ($left > 1 ? 'they were' : 'it was') . ' left as ' . ($left > 1 ? 'they were' : 'it was') . '.' : '')
+      : '!None of the ticked orders could take this step, so nothing was changed.');
+  }
   if ($a === 'untrash') {
     $nos = isset($_POST['one']) ? [(string)$_POST['one']] : array_values(array_filter(array_map('strval', (array)($_POST['nos'] ?? [])), 'strlen'));   // a row's own Put back, or the ticked ones
     $ok = count(array_filter($nos, 'shop_order_restore'));
