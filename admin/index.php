@@ -310,6 +310,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $s = shop_db()->prepare('SELECT * FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
     go($back, $o ? ($o['no'] ?: 'The order') . ' is ' . (in_array($o['status'], ['new', 'paid'], true) ? 'Pending · ' . (shop_is_paid($o) ? 'Paid' : 'Unpaid') : FOMAXO_STATUSES[$o['status']] ?? $o['status']) . (in_array($o['status'], ['cancelled', 'refunded'], true) ? '. Its items are back in stock.' : '. Saved.') : 'Order updated.');
   }
+  if ($a === 'receipt') {   // an order's Receipt box: save the courier and tracking no; Email also sends the receipt (HTML, with its private link)
+    require_once dirname(__DIR__) . '/api/receipt-lib.php'; receipt_cols();
+    $oid = (int)($_POST['id'] ?? 0); $one = fn($k, $n) => mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST[$k] ?? ''))), 0, $n);
+    shop_db()->prepare('UPDATE orders SET courier = ?, tracking = ?, updated = ? WHERE id = ?')->execute([$one('courier', 60), $one('tracking', 80), shop_now(), $oid]);
+    $s = shop_db()->prepare('SELECT * FROM orders WHERE id = ?'); $s->execute([$oid]); $o = $s->fetch();
+    if (!$o || !$o['no']) go($back, '!That order was not found.');
+    if (empty($_POST['email'])) go($back, 'Receipt details saved for ' . $o['no'] . '.');
+    $to = trim((string)$o['email']);
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) go($back, '!' . $o['no'] . ' has no email address. Send the receipt on WhatsApp instead.');
+    $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
+    $ok = fomaxo_mail($to, '=?UTF-8?B?' . base64_encode('Your FOMAXO receipt ' . $o['no']) . '?=', receipt_email($o),
+      "From: FOMAXO <orders@$host>\r\nReply-To: " . fomaxo_store_email() . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8");
+    if (!$ok) go($back, '!The receipt email could not be sent. Please send it on WhatsApp instead.');
+    day_mark('wa_sent', 'rm:' . $o['no']);
+    go($back, 'Receipt emailed to ' . $to . '.');
+  }
   if ($a === 'quick') {   // one-tap order buttons: back to the same filtered list
     [$act, $oid] = array_pad(explode(':', (string)($_POST['q'] ?? ''), 2), 2, '0');
     go($back, shop_order_action((int)$oid, $act));
@@ -435,6 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($mk === 'rq' && preg_match('/^FMX-IN-\d+$/', $mv)) { require_once dirname(__DIR__) . '/api/review-req-lib.php'; rq_mark($mv); }
     if ($mk === 'ph' && preg_match('/^[6-9]\d{9}$/', $mv)) day_mark('wa_sent', 'ph:' . $mv);
     if ($mk === 'cp' && ($mv = coupon_clean($mv)) !== '') day_mark('coupon_wa', $mv);
+    if ($mk === 'rc' && preg_match('/^FMX-IN-\d+$/', $mv)) day_mark('wa_sent', 'rc:' . $mv);   // a receipt sent (Receipt box)
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
   }
   if ($a === 'coupon_on') {
