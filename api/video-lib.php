@@ -22,13 +22,13 @@ function video_pub(string $f): bool {
   $from = video_dir() . "/$f"; if (!is_file($from)) return false;
   if (!is_dir(video_pub_dir()) && !@mkdir(video_pub_dir(), 0755, true)) return false;
   $tmp = $to . '.' . bin2hex(random_bytes(4));
-  if (!@link($from, $tmp) && !@copy($from, $tmp)) return false;
+  try { if (!(function_exists('link') && @link($from, $tmp)) && !@copy($from, $tmp)) return false; } catch (Throwable $e) { @unlink($tmp); return false; }   // link() is switched off on Hostinger: copy instead
   @chmod($tmp, 0644); if (!@rename($tmp, $to)) { @unlink($tmp); return false; }
   return true;
 }
 function video_pub_drop(string $f): void { if (preg_match(VIDEO_FILE, $f)) @unlink(video_pub_dir() . "/$f"); }
 /* the address of a video: its public copy (made here the first time), else api/live.php?vid=… */
-function video_url(string $f): string { return video_pub($f) ? "media/v/$f" : "api/live.php?vid=$f"; }
+function video_url(string $f): string { try { $ok = video_pub($f); } catch (Throwable $e) { $ok = false; } return $ok ? "media/v/$f" : "api/live.php?vid=$f"; }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website; shown on the home page and as Review videos on their product pages (wh: h = home page only, p = product pages only, none = both) */
 function shop_videos_live(): array {
   if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off

@@ -20,7 +20,8 @@ if (isset($_GET['img'])) {
 if (isset($_GET['vid'])) {
   $f = (string)$_GET['vid'];
   if (!preg_match(VIDEO_FILE, $f) || !is_file($path = video_dir() . "/$f")) { http_response_code(404); exit; }
-  if (video_pub($f)) {   // the web server sends its public copy from now on, so no PHP process is held while it downloads
+  try { $pub = video_pub($f); } catch (Throwable $e) { $pub = false; }
+  if ($pub) {   // the web server sends its public copy from now on, so no PHP process is held while it downloads
     header('Cache-Control: public, max-age=2592000'); header('Location: /media/v/' . $f, true, 302); exit;
   }
   send_video($path);
