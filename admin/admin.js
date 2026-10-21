@@ -180,7 +180,7 @@ function markSent(btn, day) {
     var sub = HTMLFormElement.prototype.submit; HTMLFormElement.prototype.submit = function () { keep(this, document.activeElement); return sub.apply(this, arguments); };
     var p; try { p = JSON.parse(sessionStorage.getItem(K) || 'null'); sessionStorage.removeItem(K); } catch (er) {}
     if (!p || Date.now() - p.t > 60000 || p.u !== pg(location.search)) return;
-    var row = p.v ? document.querySelector('[data-vid="' + CSS.escape(p.v) + '"]') : document.querySelectorAll(p.s)[p.i];
+    var all = document.querySelectorAll(p.s), row = (p.v && document.querySelector('[data-vid="' + CSS.escape(p.v) + '"]')) || all[p.i] || all[all.length - 1];   // a deleted row: the one that took its place
     window.scrollTo(0, p.w); if (!row) return;
     var b0 = box(row); if (b0) b0.scrollTop = p.b;
     var hold = true, let_go = function () { hold = false; }; ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (t) { addEventListener(t, let_go, { once: true, passive: true }); });
