@@ -284,15 +284,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($a === 'vid_prods') {   // the products a video sells: remove one, add one, or none (a Shop Now button)
       $ps = video_products($vids[$at], $CAT); $rm = (string)($_POST['rm'] ?? ''); $add = (string)($_POST['add'] ?? '');
       if ($rm === '-words') unset($vids[$at]['words']); elseif ($rm !== '') $ps = array_values(array_diff($ps, [$rm]));
-      if ($add === '' && $rm === '' && $words !== '') {   // typed in the + Add box: a product's exact name adds it, any other words = no product, those words with a Shop Now button
+      if ($add === '' && $rm === '' && $words !== '') {   // typed in the + Add box: a product's exact name adds it, any other words show on the video next to its products (no product: with a Shop Now button)
         $hit = array_search(mb_strtolower(preg_replace('/ \(hidden\)$/', '', $words)), array_map(fn($q) => mb_strtolower($q['name']), $CAT), true);
-        if ($hit !== false) $add = (string)$hit; else { $ps = []; $vids[$at]['words'] = $words; }
+        if ($hit !== false) $add = (string)$hit; else $vids[$at]['words'] = $words;
       }
-      if ($add === '-') { $ps = []; unset($vids[$at]['words']); }
-      if (isset($CAT[$add]) && !in_array($add, $ps, true)) { $ps[] = $add; unset($vids[$at]['words']); }
+      if ($add === '-') $ps = [];
+      if (isset($CAT[$add]) && !in_array($add, $ps, true)) $ps[] = $add;
       $vids[$at]['product'] = $ps[0] ?? ''; $vids[$at]['also'] = array_slice($ps, 1); if (!$vids[$at]['also']) unset($vids[$at]['also']);
       $nm = array_map(fn($id) => $CAT[$id]['name'], $ps);
-      $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . '.' : (($vids[$at]['words'] ?? '') !== '' ? 'Saved. The video shows “' . $vids[$at]['words'] . '” with a Shop Now button.' : 'Saved. The video has no product: it shows a Shop Now button.');
+      $wd = (string)($vids[$at]['words'] ?? '');
+      $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . ($wd !== '' ? ' and shows “' . $wd . '”' : '') . '.' : ($wd !== '' ? 'Saved. The video shows “' . $wd . '” with a Shop Now button.' : 'Saved. The video has no product: it shows a Shop Now button.');
     }
     elseif ($a === 'vid_product' && isset($CAT[$prod])) { $vids[$at]['product'] = $prod; $msg = 'Saved. The video now sells ' . $CAT[$prod]['name'] . '.'; }
     elseif ($a === 'vid_up' || $a === 'vid_down') { $to = $at + ($a === 'vid_up' ? -1 : 1); if (isset($vids[$to])) [$vids[$at], $vids[$to]] = [$vids[$to], $vids[$at]]; $msg = 'Order saved.'; }
