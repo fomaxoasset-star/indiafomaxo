@@ -288,12 +288,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hit = array_search(mb_strtolower(preg_replace('/ \(hidden\)$/', '', $words)), array_map(fn($q) => mb_strtolower($q['name']), $CAT), true);
         if ($hit !== false) $add = (string)$hit; else $vids[$at]['words'] = $words;
       }
-      if ($add === '-') $ps = [];
+      if ($add === '-') { if ($ps) $vids[$at]['shop'] = 1; } elseif ($rm === '-shop') unset($vids[$at]['shop']);   // with products: a Shop Now button next to them (no product: the Shop Now button by itself)
       if (isset($CAT[$add]) && !in_array($add, $ps, true)) $ps[] = $add;
       $vids[$at]['product'] = $ps[0] ?? ''; $vids[$at]['also'] = array_slice($ps, 1); if (!$vids[$at]['also']) unset($vids[$at]['also']);
+      if (!$ps) unset($vids[$at]['shop']);
       $nm = array_map(fn($id) => $CAT[$id]['name'], $ps);
       $wd = (string)($vids[$at]['words'] ?? '');
-      $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . ($wd !== '' ? ' and shows “' . $wd . '”' : '') . '.' : ($wd !== '' ? 'Saved. The video shows “' . $wd . '” with a Shop Now button.' : 'Saved. The video has no product: it shows a Shop Now button.');
+      $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . ($wd !== '' ? ' and shows “' . $wd . '”' : '') . (!empty($vids[$at]['shop']) ? ', with a Shop Now button' : '') . '.' : ($wd !== '' ? 'Saved. The video shows “' . $wd . '” with a Shop Now button.' : 'Saved. The video has no product: it shows a Shop Now button.');
     }
     elseif ($a === 'vid_product' && isset($CAT[$prod])) { $vids[$at]['product'] = $prod; $msg = 'Saved. The video now sells ' . $CAT[$prod]['name'] . '.'; }
     elseif ($a === 'vid_first' || $a === 'vid_last') { $m = $vids[$at]; array_splice($vids, $at, 1); if ($a === 'vid_first') array_unshift($vids, $m); else $vids[] = $m; $msg = 'Order saved.'; }   // straight to the top or the bottom of the list
