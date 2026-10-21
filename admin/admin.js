@@ -854,6 +854,13 @@ document.addEventListener('input', function (e) {
 })();
 
 
+/* Shop videos → Your videos: the "+ Add product" box of each video saves as soon as a product is picked, or on Enter / leaving the box with any words typed (a Shop Now button) */
+document.addEventListener('change', function (e) { var f = e.target; if (f.matches && f.matches('.vplus [data-ffind]') && f.value.trim()) setTimeout(function () { f.form.submit(); }, 0); });   // after the picker has filled the hidden product
+document.addEventListener('keydown', function (e) {
+  var f = e.target; if (e.key !== 'Enter' || e.defaultPrevented || !f.matches || !f.matches('.vplus [data-ffind]')) return;
+  e.preventDefault(); if (f.value.trim()) f.form.submit();   // never the browser's own Enter: it would press the first product chip and remove it
+});
+
 /* Review requests: All · Reviewed · Partly · Not reviewed · To ask filter the list at once */
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-rqf]'); if (!b) return;
