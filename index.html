@@ -5652,13 +5652,12 @@ if (ADS.on) { const a = ADS.ids, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Googl
   $('#fstat').textContent = `We count visits anonymously on our own server to improve the shop, and ${[ads, cl].filter(Boolean).join('. We also ')}.`; }
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;
 addEventListener('hashchange', route);
-/* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, after 20 seconds or half a page;
+/* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, as soon as the site opens;
    the offer popups wait for a later visit. The name + number go to Admin → Left at checkout like the bag box (same 10% coupon, sent from there on WhatsApp) */
 const welDue = () => { try { return !(localStorage.getItem('fx_wel') || localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return false; } };
 if (welDue()) {
   let welT = 0;
-  const half = () => { const h = document.documentElement.scrollHeight - innerHeight; if (h > 400 && scrollY / h >= .5) go(); };
-  const go = () => { clearTimeout(welT); removeEventListener('scroll', half);
+  const go = () => { clearTimeout(welT);
     if (/^#\/(checkout|thank-you|review)/.test(location.hash) || document.querySelector('.ofp,#cart.open,.drawer.open')) { welT = setTimeout(go, 20000); return; }
     try { if (!welDue()) return; localStorage.setItem('fx_wel', '1'); sessionStorage.setItem('fx_offer', '1'); } catch(e) { return; }
     const back = document.activeElement, pop = document.createElement('div'); pop.className = 'ofp ofp-wel';
@@ -5679,7 +5678,7 @@ if (welDue()) {
       TRK.lead('details', {name: nm, phone: d}, cart); renderCart();
       e.target.outerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; $('.ofp-no', pop).textContent = 'Continue shopping'; };
   };
-  welT = setTimeout(go, 20000); addEventListener('scroll', half, {passive: true});
+  welT = setTimeout(go, 300);   // opens as the site opens (AJAY, 2026-10-22)
 }
 /* the popups set on Admin → Offer. Only one per visit, never on the checkout or thank-you page, about 2.5 seconds after arrival:
    the New product popup first (once per visitor for that product), else the sale popup (once per visit).
