@@ -248,7 +248,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $img = save_images(($prod ?: 'fomaxo') . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
       }
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + (preg_match('/^[a-f0-9]{32}$/', (string)($_POST['fp'] ?? '')) ? ['fp' => (string)$_POST['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (($_POST['shape'] ?? '') === '169' ? ['wide' => true] : []));
-      shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
+      shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
+      go($vb, 'Video added' . ($toCom ? ' here and on fomaxo.com' : '') . '. It shows on the home page now.' . (!empty($_POST['to_com']) && !$toCom ? ' It could not be sent to fomaxo.com: please upload it there too.' : ''));
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
       $ids = array_values(array_unique(array_filter(explode(',', (string)($_POST['ids'] ?? '')))));

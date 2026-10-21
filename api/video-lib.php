@@ -29,6 +29,15 @@ function video_pub(string $f): bool {
 function video_pub_drop(string $f): void { if (preg_match(VIDEO_FILE, $f)) @unlink(video_pub_dir() . "/$f"); }
 /* the address of a video: its public copy (made here the first time), else api/live.php?vid=… */
 function video_url(string $f): string { try { $ok = video_pub($f); } catch (Throwable $e) { $ok = false; } return $ok ? "media/v/$f" : "api/live.php?vid=$f"; }
+/* the other way round: a video uploaded here with "Also add to fomaxo.com" ticked goes to fomaxo.com's fomaxo-media/video-inbox
+   (same Hostinger account), where fomaxo.com adds it (media-lib.php fx_video_inbox). '' when that folder can't be reached (then no tick) */
+function video_com_inbox(): string { $p = getenv('FOMAXO_COM_MEDIA') ?: dirname(__DIR__, 3) . '/fomaxo.com/fomaxo-media'; return is_dir($p) && is_writable($p) ? "$p/video-inbox" : ''; }
+function video_to_com(string $path, array $v): bool {
+  $in = video_com_inbox(); $name = basename($path); if ($in === '' || (!is_dir($in) && !@mkdir($in, 0755, true))) return false;
+  $tmp = "$in/$name." . bin2hex(random_bytes(4)) . '.part';
+  if (!@copy($path, $tmp) || !@rename($tmp, "$in/$name")) { @unlink($tmp); return false; }
+  return (bool)@file_put_contents("$in/$name.json", json_encode(['file' => $name] + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp'])), JSON_UNESCAPED_SLASHES), LOCK_EX);
+}
 /* a video uploaded on fomaxo.com with "Also add to fomaxo.in" ticked: fomaxo.com puts the file and a small note (product, words,
    shape) in fomaxo-private/video-inbox. It is added to the top of our list here, the first time the shop or the admin opens after.
    A product fomaxo.in does not sell is left out (the video then gets a Shop Now button). One at a time (a lock), nothing to do = one folder read */

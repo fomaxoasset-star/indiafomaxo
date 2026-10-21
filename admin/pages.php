@@ -681,6 +681,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<label>Cover photo (optional)<input type="file" name="cover" accept="image/*"></label>'
     . '<div class="vshape" role="radiogroup" aria-label="Video shape"><span>Shape</span><label><input type="radio" name="shape" value="916" checked><i></i>9:16 upright</label><label><input type="radio" name="shape" value="169"><i></i>16:9 wide</label></div>'
     . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Upload</button></div>'
+    . (video_com_inbox() !== '' ? '<label class="vtoin" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;font-size:13.5px;cursor:pointer"><input type="checkbox" name="to_com" value="1" checked style="width:18px;height:18px;accent-color:var(--gold,#c9a35b)">Also add to fomaxo.com</label>' : '')
     . '<p class="muted small">9:16 or 16:9, picked from the video by itself, 10 to 30 seconds. Big videos shrink by themselves. No cover = product photo.</p>'
     . '<div class="vsh muted small" hidden><span></span></div></div></form><script src="/admin/vshrink.js?v=' . asset_v('vshrink.js') . '"></script></div>'
     . '<div class="box on vlist' . ($allOn ? '' : ' alloff') . '" data-pane="list"><div class="bh"><h3>Your videos <small class="muted">' . $n . '</small> <b class="tgok vok" aria-live="polite"></b></h3>'
