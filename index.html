@@ -4663,7 +4663,9 @@ function rvSummaryHTML(rating, count, dist){
 
 /* site-wide summary: cached so cards render instantly, refreshed from the server on load */
 function applyRvSummary(map){ Object.values(P).forEach(p => { const m = map[p.id]; p.rating = m ? m.rating : 0; p.reviews = m ? m.reviews : 0; }); }
-function loadRvSummary(){ try { applyRvSummary(JSON.parse(localStorage.getItem('fomaxo_rv') || '{}')); } catch(e) { applyRvSummary({}); } }
+function loadRvSummary(){
+  if (LIVE.ratings) { applyRvSummary(LIVE.ratings); try { localStorage.setItem('fomaxo_rv', JSON.stringify(LIVE.ratings)); } catch(e) {} return; }   /* api/live.php brought them: stars show on the first drawing, no second request */
+  try { applyRvSummary(JSON.parse(localStorage.getItem('fomaxo_rv') || '{}')); } catch(e) { applyRvSummary({}); } }
 async function refreshRvSummary(){
   try {
     const d = await rvGet('action=summary'), map = d.products || {}, js = JSON.stringify(map);
@@ -5855,7 +5857,7 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
   };
   sync();
 })();
-loadRvSummary(); renderCart(); route(); bindCommon(); refreshRvSummary();
+loadRvSummary(); renderCart(); route(); bindCommon(); if (!LIVE.ratings) refreshRvSummary();
 })();
 </script>
 

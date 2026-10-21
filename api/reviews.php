@@ -79,6 +79,8 @@ function displayName(string $n): string {
   return count($parts) > 1 ? $first . ' ' . mb_strtoupper(mb_substr(end($parts), 0, 1)) . '.' : $first;
 }
 
+/* api/live.php sends the star ratings too and keeps its answer a minute: a new or changed review makes it work them out afresh */
+function liveDrop(): void { global $PRIV; @unlink("$PRIV/live-cache.js"); }
 function publicReview(array $r): array {
   return ['id' => (int)$r['id'], 'product' => $r['product'], 'rating' => (int)$r['rating'], 'text' => $r['body'],
     'name' => $r['anonymous'] ? 'Anonymous' : $r['name'], 'verified' => (bool)$r['verified'],
@@ -243,6 +245,7 @@ try {
       $status = !empty($CFG['moderate']) ? 'pending' : 'live';
       db()->prepare('INSERT INTO reviews(product, rating, body, name, anonymous, verified, order_id, photos, status, ip, created, city, country, mobile, issue) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
         ->execute([$product, $rating, $text, $rawName, $anon ? 1 : 0, $verified, $orderId, json_encode($photos), $status, $ip, time(), $city, $country, $mobile, $issue]);
+      liveDrop();
       out(['ok' => true, 'pending' => $status === 'pending']);
     }
 
@@ -296,6 +299,7 @@ try {
       } elseif (in_array($st, ['live', 'hidden'], true)) {
         db()->prepare('UPDATE reviews SET status = ? WHERE id = ?')->execute([$st, $id]);
       } else fail('Unknown status.');
+      liveDrop();
       out(['ok' => true]);
     }
 
