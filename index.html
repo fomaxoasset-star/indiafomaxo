@@ -1,6 +1,6 @@
 <!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}/* ================= SHOP VIDEOS (Admin → Products → Videos) ================= */
 .vid-sec[hidden]{display:none}.again-home + .vid-sec{padding-top:clamp(36px,5vw,64px)}
-.vrow{--n:8;--g:14px;--w:calc((100% - (var(--n) - 1) * var(--g)) / var(--n));display:flex;gap:var(--g);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px;overscroll-behavior-x:contain}
+.vrow{--n:9;--g:14px;--w:calc((100% - (var(--n) - 1) * var(--g)) / var(--n));display:flex;gap:var(--g);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px;overscroll-behavior-x:contain}
 .vrow::-webkit-scrollbar{display:none}
 .vt{position:relative;flex:0 0 var(--w);aspect-ratio:9/16;overflow:hidden;background:#000;border:1px solid var(--line);scroll-snap-align:start;padding:0;text-align:left;color:#f2ebdd;cursor:pointer}
 .vt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .9s var(--ease)}
@@ -30,7 +30,7 @@
 .vt.np{background:#000 url(/assets/img/logo.webp) center 40%/46% auto no-repeat}   /* no product and no cover photo: the FOMAXO logo until the video plays */
 .vt.np video{background:transparent}
 .vr-nav{display:flex;gap:6px;align-self:flex-end}.vr-nav button{border:1px solid var(--line-2);background:none;color:var(--gold);line-height:1;display:grid;place-items:center;cursor:pointer;padding:0}.vr-nav button:hover{border-color:var(--gold)}.vr-nav[hidden]{display:none}.vr-nav button{width:40px;height:40px;font-size:20px}
-@media(min-width:601px) and (max-width:1599px){.vrow{--n:7}}@media(min-width:601px) and (max-width:1279px){.vrow{--n:6}}@media(min-width:601px) and (max-width:999px){.vrow{--n:4}}   /* only whole videos in the row (never one cut in half): 8 across on a big laptop, 7 / 6 / 4 on smaller screens, 2 on a phone; the arrows turn a page */
+@media(min-width:601px) and (max-width:1599px){.vrow{--n:8}}@media(min-width:601px) and (max-width:1279px){.vrow{--n:6}}@media(min-width:601px) and (max-width:999px){.vrow{--n:4}}   /* only whole videos in the row (never one cut in half): 9 across on a big laptop, 8 / 6 / 4 on smaller screens, 2 on a phone; the arrows turn a page */
 @media(max-width:600px){.vr-nav{display:none}}
 
 .rl-s.emb .rl-stage{display:flex;flex-direction:column;background:#000}
