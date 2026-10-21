@@ -32,11 +32,13 @@ function video_url(string $f): string { try { $ok = video_pub($f); } catch (Thro
 /* the other way round: a video uploaded here with "Also add to fomaxo.com" ticked goes to fomaxo.com's fomaxo-media/video-inbox
    (same Hostinger account), where fomaxo.com adds it (media-lib.php fx_video_inbox). '' when that folder can't be reached (then no tick) */
 function video_com_inbox(): string { $p = getenv('FOMAXO_COM_MEDIA') ?: dirname(__DIR__, 3) . '/fomaxo.com/fomaxo-media'; return is_dir($p) && is_writable($p) ? "$p/video-inbox" : ''; }
+/* a video on our server that can still go to fomaxo.com: not from fomaxo.com, not sent yet */
+function video_to_com_ok(array $v): bool { return empty($v['embed']) && empty($v['from']) && empty($v['sent_com']) && preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) && is_file(video_dir() . '/' . $v['file']); }
 function video_to_com(string $path, array $v): bool {
   $in = video_com_inbox(); $name = basename($path); if ($in === '' || (!is_dir($in) && !@mkdir($in, 0755, true))) return false;
   $tmp = "$in/$name." . bin2hex(random_bytes(4)) . '.part';
   if (!@copy($path, $tmp) || !@rename($tmp, "$in/$name")) { @unlink($tmp); return false; }
-  return (bool)@file_put_contents("$in/$name.json", json_encode(['file' => $name] + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp'])), JSON_UNESCAPED_SLASHES), LOCK_EX);
+  return (bool)@file_put_contents("$in/$name.json", json_encode(['file' => $name] + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 /* a video uploaded on fomaxo.com with "Also add to fomaxo.in" ticked: fomaxo.com puts the file and a small note (product, words,
    shape) in fomaxo-private/video-inbox. It is added to the top of our list here, the first time the shop or the admin opens after.
@@ -52,7 +54,7 @@ function video_inbox(): void {
       if (!@rename("$in/$f", video_dir() . "/$f")) continue;
       @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $f, 'cover' => '', 'product' => isset($cat[$prod]) ? $prod : '', 'on' => true, 'from' => 'fomaxo.com']
-        + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []));
+        + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []) + (in_array($m['where'] ?? '', ['home', 'product'], true) ? ['where' => $m['where']] : []) + (($nm = mb_substr(trim((string)($m['person'] ?? '')), 0, 30)) !== '' ? ['person' => $nm] : []));
       $added++;
     }
     if ($added) shop_videos_save($vids);
