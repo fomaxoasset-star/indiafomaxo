@@ -50,7 +50,7 @@ function seo_products(): array {
 }
 function seo_img(string $k): string {
   if ($k === '') return '';
-  if (str_starts_with($k, 'up/')) return SITE . '/api/live.php?img=' . rawurlencode(substr($k, 3));
+  if (str_starts_with($k, 'up/')) return SITE . '/media/p/' . rawurlencode(substr($k, 3));
   return preg_match('/^[\w.-]+$/', $k) ? SITE . "/assets/img/$k.webp" : '';
 }
 /* the live star rating from api/reviews.php's store, or null when there are no reviews yet */

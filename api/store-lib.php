@@ -8,6 +8,7 @@ if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_co
 
 date_default_timezone_set('Asia/Kolkata');
 require_once __DIR__ . '/shop-db.php';
+require_once __DIR__ . '/pub-lib.php';   // media/p, media/r: public copies of uploaded pictures
 
 $PRIV = getenv('FOMAXO_PRIVATE') ?: dirname(__DIR__, 2) . '/fomaxo-private';
 if (!is_dir($PRIV) && !@mkdir($PRIV, 0750, true)) $PRIV = __DIR__ . '/data';   // fallback: api/data is closed to the web by its .htaccess
@@ -244,7 +245,7 @@ function fomaxo_catalog(): array {
       $cat['products'][$id] = ['name' => (string)($d['name'] ?? $id) . ($kind === 'care' ? ' ' . explode(' — ', (string)($d['type'] ?? ''))[0] : ''),
         'kind' => $kind, 'vol' => (string)($d['vol'] ?? ''), 'tier' => (string)($d['tier'] ?? ''), 'cat' => (string)($d['cat'] ?? $d['site']['cat'] ?? ''), 'prices' => array_map('floatval', (array)($d['prices'] ?? [])),
         'was' => array_map('floatval', (array)($d['compareAt'] ?? [])), 'soldOut' => false,
-        'img' => str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : '', 'added' => true];
+        'img' => str_starts_with($img, 'up/') ? 'media/p/' . substr($img, 3) : '', 'added' => true];
     } elseif (!isset($cat['products'][$id])) continue;
     elseif (isset($d['edit'])) {   // details edited on the admin page: name, sizes, prices and photos replace those in index.html
       $e = $d['edit']; $p = &$cat['products'][$id]; $kind = $p['kind'];
@@ -252,7 +253,7 @@ function fomaxo_catalog(): array {
       if (isset($e['vol'])) $p['vol'] = (string)$e['vol'];
       $p['prices'] = array_map('floatval', (array)($d['prices'] ?? $p['prices'])); $p['was'] = array_map('floatval', (array)($d['compareAt'] ?? []));
       $img = (string)($e['images'][0] ?? $e['image'] ?? '');
-      if ($img !== '') $p['img'] = str_starts_with($img, 'up/') ? 'api/live.php?img=' . substr($img, 3) : "assets/img/$img.webp";
+      if ($img !== '') $p['img'] = str_starts_with($img, 'up/') ? 'media/p/' . substr($img, 3) : "assets/img/$img.webp";
       unset($p);
     }
     else foreach (['prices' => 'prices', 'compareAt' => 'was'] as $from => $to)

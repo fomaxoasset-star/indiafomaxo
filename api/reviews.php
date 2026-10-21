@@ -9,6 +9,7 @@
    Without an admin key the owner page is disabled; reviews still work. */
 
 declare(strict_types=1);
+require_once __DIR__ . '/pub-lib.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -82,7 +83,7 @@ function publicReview(array $r): array {
   return ['id' => (int)$r['id'], 'product' => $r['product'], 'rating' => (int)$r['rating'], 'text' => $r['body'],
     'name' => $r['anonymous'] ? 'Anonymous' : $r['name'], 'verified' => (bool)$r['verified'],
     'city' => $r['anonymous'] ? '' : ($r['city'] ?? ''), 'country' => $r['anonymous'] ? '' : ($r['country'] ?? ''),   // anonymous: no place, no flag
-    'photos' => array_map(fn($p) => 'api/reviews.php?action=photo&f=' . rawurlencode($p), json_decode($r['photos'], true) ?: []),
+    'photos' => array_map(fn($p) => 'media/r/' . rawurlencode($p), json_decode($r['photos'], true) ?: []),   // the web server's own copy (api/pub-lib.php)
     'helpful' => (int)$r['helpful'], 'date' => gmdate('Y-m-d', (int)$r['created']), 'reply' => $r['reply'] ?? ''];
 }
 
@@ -259,6 +260,7 @@ try {
       $f = (string)($_GET['f'] ?? '');
       if (!preg_match('/^[a-f0-9]{24}\.jpg$/', $f) || !is_file("$PRIV/photos/$f")) { http_response_code(404); exit; }
       header('Content-Type: image/jpeg'); header('Cache-Control: public, max-age=31536000, immutable');
+      fomaxo_pub("$PRIV/photos/$f", 'media/r', $f);   // the web server sends media/r/<file> from now on (api/pub-lib.php)
       header_remove('X-Content-Type-Options'); readfile("$PRIV/photos/$f"); exit;
     }
 
@@ -289,7 +291,7 @@ try {
       requireAdmin(); $in = input(); $id = (int)($in['id'] ?? 0); $st = (string)($in['status'] ?? '');
       if ($st === 'delete') {
         $s = db()->prepare('SELECT photos FROM reviews WHERE id = ?'); $s->execute([$id]);
-        foreach (json_decode((string)$s->fetchColumn(), true) ?: [] as $p) @unlink("$PRIV/photos/" . basename($p));
+        foreach (json_decode((string)$s->fetchColumn(), true) ?: [] as $p) { @unlink("$PRIV/photos/" . basename($p)); fomaxo_pub_drop('media/r', basename($p)); }
         db()->prepare('DELETE FROM reviews WHERE id = ?')->execute([$id]); db()->prepare('DELETE FROM votes WHERE review_id = ?')->execute([$id]);
       } elseif (in_array($st, ['live', 'hidden'], true)) {
         db()->prepare('UPDATE reviews SET status = ? WHERE id = ?')->execute([$st, $id]);

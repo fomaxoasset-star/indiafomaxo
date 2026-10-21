@@ -48,6 +48,12 @@ AddType font/woff2 .woff2
   RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Instagram|meta-externalagent|Facebot) [NC]
   RewriteRule ^assets/img/link-preview\.jpg$ assets/img/link-preview-square.jpg [L]
   RewriteRule ^product/([a-z0-9-]{1,48})/?$ api/seo.php?p=product&id=$1 [L,QSA]
+  # Pictures uploaded on the admin page (media/p) and review photos (media/r): the web server sends its own copy; a picture with no copy
+  # yet goes to PHP once, which makes it (api/pub-lib.php). Before, every such picture held a PHP process while it downloaded.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^media/p/([a-z0-9-]{1,48}-[a-f0-9]{8}\.(webp|jpg))$ api/live.php?img=$1 [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^media/r/([a-f0-9]{24}\.jpg)$ api/reviews.php?action=photo&f=$1 [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^fomaxo-([a-z0-9-]{1,80})/?$ api/seo.php?p=name&id=$1 [L,QSA]

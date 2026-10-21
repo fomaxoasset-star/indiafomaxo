@@ -26,7 +26,7 @@ const EXPENSE_CATEGORIES = ['Stock purchase', 'Packaging', 'Delivery & courier',
 $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
 session_name('fomaxo_admin');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/admin', 'secure' => $https, 'httponly' => true, 'samesite' => 'Strict']);
-session_start(isset($_GET['vchunk']) ? ['read_and_close' => true] : []);   // a video piece only reads the sign-in, so pieces go up side by side
+session_start(isset($_GET['vchunk']) || ($_GET['do'] ?? '') === 'new_orders' ? ['read_and_close' => true] : []);   // a video piece, and the new-order check every 30 s, only read the sign-in, so they never make a page you open wait for them
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(16));
 $CSRF = $_SESSION['csrf'];
 $csrfField = '<input type="hidden" name="csrf" value="' . h($CSRF) . '">';
@@ -171,6 +171,7 @@ $LIVE = shop_products();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!$_POST && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 && isset($_GET['videos'])) go(['tab' => 'products', 'videos' => 1], '!The video is too big. Please use one under ' . round(upload_max() / 1048576) . ' MB.');
   if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], '!Your session expired. Please try again.');
+  fomaxo_live_drop();   // a save here shows on the website at its next page load, not up to a minute later (api/live.php)
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
   $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
 
@@ -270,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($at !== false && empty($vids[$at]['embed']) && (($vids[$at]['cover'] ?? '') === '' || !empty($_POST['pick'])) && ($_FILES['cover']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && $_FILES['cover']['size'] <= 3 * 1048576) {
         $_FILES['photos'] = array_map(fn($x) => [$x], $_FILES['cover']);
         $img = save_images(((video_products($vids[$at])[0] ?? '') ?: 'fomaxo') . '-cover');
-        if (is_array($img) && $img) { if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($vids[$at]['cover'] ?? ''), $om)) @unlink("$PRIV/product-images/$om[1]");   // "Pick cover" replaces the old one
+        if (is_array($img) && $img) { if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($vids[$at]['cover'] ?? ''), $om)) { @unlink("$PRIV/product-images/$om[1]"); fomaxo_pub_drop('media/p', $om[1]); }   // "Pick cover" replaces the old one
           $vids[$at]['cover'] = 'up/' . $img[0]; shop_videos_save($vids); $src = img_url($vids[$at]['cover']); }
       }
       exit(json_encode(['ok' => $src !== '' ? 1 : 0, 'src' => $src]));
@@ -295,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
       if ((string)$v['file'] !== '') { @unlink(video_dir() . '/' . basename((string)$v['file'])); video_pub_drop(basename((string)$v['file'])); }
       if ((string)($v['prev'] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v['prev'])); video_pub_drop(basename((string)$v['prev'])); }
-      if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) @unlink("$PRIV/product-images/$m[1]");
+      if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
       $msg = 'Video deleted.';
     } else go($vb, '!Please try again.');
     shop_videos_save($vids); go($vb, $msg);
@@ -415,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($LIVE[$id]['added'])) {
       shop_db()->prepare('DELETE FROM products WHERE id = ?')->execute([$id]);
       shop_db()->prepare('DELETE FROM stock WHERE product = ?')->execute([$id]);
-      foreach (glob("$PRIV/product-images/$id-*") ?: [] as $f) @unlink($f);
+      foreach (glob("$PRIV/product-images/$id-*") ?: [] as $f) { @unlink($f); fomaxo_pub_drop('media/p', basename($f)); }
       go(['tab' => 'products'], 'Product removed.');
     }
     go(['tab' => 'products']);
@@ -690,6 +691,7 @@ if ($do === 'expenses_excel') {
 /* ---------------- pages ---------------- */
 $tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stocks', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offers', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
+session_write_close();   // nothing below changes the sign-in, so let go of it now: another admin tab, or the new-order check, need not wait while this page is built
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';
 $thumbOf = fn(string $id, string $cls = 'th') => thumb($CAT[$id] ?? null, $cls);
