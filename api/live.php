@@ -72,7 +72,7 @@ if ($js === '') try {
 }
 /* the browser checks again on every page load (no-cache) but gets "not changed" with no data when nothing changed, e.g. on a reload */
 $tag = substr(md5($js), 0, 16);
-header('Cache-Control: no-cache'); header('ETag: "' . $tag . '"');
+header('Cache-Control: private, no-cache'); header('X-LiteSpeed-Cache-Control: no-cache'); header('ETag: "' . $tag . '"');   // private: only the visitor's own browser may keep it, never Hostinger's CDN
 if (str_contains((string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''), $tag)) { http_response_code(304); exit; }
 echo $js;
 

@@ -258,8 +258,14 @@ function shop_stock(): array {
   foreach (shop_db()->query('SELECT product, opt, qty FROM stock') as $r) $out[$r['product']][$r['opt']] = (int)$r['qty'];
   return $out;
 }
-/* api/live.php keeps its answer for a minute (fomaxo-private/live-cache.js); this makes the next page load work it out afresh */
-function fomaxo_live_drop(): void { global $PRIV; if ($PRIV) @unlink("$PRIV/live-cache.js"); }
+/* api/live.php keeps its answer for a minute (fomaxo-private/live-cache.js); this makes the next page load work it out afresh.
+   It drops the copy now and once more when this request ends: a page load that comes in while the save is still being written
+   (a big video, an order's transaction) could otherwise keep the old answer for a minute. */
+function fomaxo_live_drop(): void {
+  global $PRIV; static $later = false; if (!$PRIV) return;
+  @unlink("$PRIV/live-cache.js");
+  if (!$later) { $later = true; $f = "$PRIV/live-cache.js"; register_shutdown_function(function () use ($f) { @unlink($f); }); }
+}
 function shop_set_stock(string $id, string $opt, ?int $qty): void {
   fomaxo_live_drop();
   if ($qty === null) shop_db()->prepare('DELETE FROM stock WHERE product = ? AND opt = ?')->execute([$id, $opt]);
