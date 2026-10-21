@@ -619,6 +619,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
 } elseif ($tab === 'products' && isset($_GET['videos'])) {
   /* Products → Videos: short upright videos on the home page. Tapping one on the website opens it full screen with its product's Add To Cart / Buy Now */
   /* Automatic Instagram reels are fetched by api/live.php after a shopper's page has its answer (at most once an hour), never while this page loads */
+  try { video_inbox(); } catch (Throwable $e) {}   // videos sent from fomaxo.com show here straight away
   $vids = shop_videos(); $n = count($vids); $max = upload_max(); $allOn = shop_setting('videos_off') !== '1';
   /* Product in the video: one box to type a name in, or pick from its own dropdown (the coupon free product picker, admin.js [data-ffind]) */
   $vpick = fn(string $aria) => '<span class="fpick vpick"><input type="text" name="product_text" maxlength="60" data-ffind data-free required placeholder="Type anything, or pick a product" aria-label="' . $aria . '" autocomplete="off">'

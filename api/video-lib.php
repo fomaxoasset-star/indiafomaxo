@@ -29,8 +29,29 @@ function video_pub(string $f): bool {
 function video_pub_drop(string $f): void { if (preg_match(VIDEO_FILE, $f)) @unlink(video_pub_dir() . "/$f"); }
 /* the address of a video: its public copy (made here the first time), else api/live.php?vid=… */
 function video_url(string $f): string { try { $ok = video_pub($f); } catch (Throwable $e) { $ok = false; } return $ok ? "media/v/$f" : "api/live.php?vid=$f"; }
+/* a video uploaded on fomaxo.com with "Also add to fomaxo.in" ticked: fomaxo.com puts the file and a small note (product, words,
+   shape) in fomaxo-private/video-inbox. It is added to the top of our list here, the first time the shop or the admin opens after.
+   A product fomaxo.in does not sell is left out (the video then gets a Shop Now button). One at a time (a lock), nothing to do = one folder read */
+function video_inbox(): void {
+  global $PRIV; $in = "$PRIV/video-inbox"; $notes = glob("$in/*.json") ?: []; if (!$notes) return;
+  $lk = @fopen("$in/.lock", 'c'); if (!$lk || !flock($lk, LOCK_EX | LOCK_NB)) return;
+  try {
+    $vids = json_decode((string)shop_setting('videos'), true) ?: []; $cat = fomaxo_catalog()['products']; $added = 0;
+    foreach ($notes as $j) {
+      $m = json_decode((string)@file_get_contents($j), true); $f = basename((string)($m['file'] ?? ''));
+      if (!is_array($m) || !preg_match(VIDEO_FILE, $f) || !is_file("$in/$f")) { if (@filemtime($j) < time() - 3600) @unlink($j); continue; }   // the file is still being copied: next time
+      if (!@rename("$in/$f", video_dir() . "/$f")) continue;
+      @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
+      array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $f, 'cover' => '', 'product' => isset($cat[$prod]) ? $prod : '', 'on' => true, 'from' => 'fomaxo.com']
+        + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []));
+      $added++;
+    }
+    if ($added) shop_videos_save($vids);
+  } catch (Throwable $e) {} finally { flock($lk, LOCK_UN); fclose($lk); }
+}
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website; shown on the home page and as Review videos on their product pages (wh: h = home page only, p = product pages only, none = both) */
 function shop_videos_live(): array {
+  try { video_inbox(); } catch (Throwable $e) {}
   if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off
   $cat = fomaxo_catalog()['products']; $out = [];
   foreach (shop_videos() as $v) { if (empty($v['on']) || !empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
