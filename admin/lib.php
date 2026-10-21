@@ -10,7 +10,7 @@ function money(int $p): string { return $p < 0 ? '−' . rupees(-$p) : rupees($p
 function opt_label(array $p, string $opt): string { return $p['kind'] === 'care' ? ($p['vol'] ?: 'Standard') : ($p['kind'] === 'car' ? ($p['vol'] ?: 'Car perfume') : ($p['kind'] === 'set' ? "Set of $opt" : "{$opt}ml")); }
 function kind_label(string $k): string { return ['' => 'Fragrance', 'car' => 'Car fragrance', 'care' => 'Personal care', 'set' => 'Gift set'][$k] ?? $k; }
 function pay_label(array $o): string { return $o['method'] === 'cod' ? 'Cash on delivery' : 'Card / UPI (Razorpay)' . ($o['test'] ? ' · TEST' : ''); }
-function img_url(string $k): string { return str_starts_with($k, 'up/') ? '/api/live.php?img=' . rawurlencode(substr($k, 3)) : '/assets/img/' . rawurlencode($k) . '.webp'; }
+function img_url(string $k): string { return str_starts_with($k, 'up/') ? '/media/p/' . rawurlencode(substr($k, 3)) : '/assets/img/' . rawurlencode($k) . '.webp'; }
 /* a product's main photo, as an <img> */
 function thumb(?array $p, string $cls = 'th'): string {
   $src = $p && !empty($p['img']) ? '/' . $p['img'] : '';
@@ -770,7 +770,7 @@ function review_set(int $id, string $status): void {
 function review_delete(int $id): void {
   global $PRIV; if (!($db = reviews_db())) return;
   $s = $db->prepare('SELECT photos FROM reviews WHERE id = ?'); $s->execute([$id]);
-  foreach (json_decode((string)$s->fetchColumn(), true) ?: [] as $p) @unlink("$PRIV/photos/" . basename($p));
+  foreach (json_decode((string)$s->fetchColumn(), true) ?: [] as $p) { @unlink("$PRIV/photos/" . basename($p)); fomaxo_pub_drop('media/r', basename($p)); }
   $db->prepare('DELETE FROM reviews WHERE id = ?')->execute([$id]); $db->prepare('DELETE FROM votes WHERE review_id = ?')->execute([$id]);
 }
 /* tap-to-add emoji under the review reply box, in this order */

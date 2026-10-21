@@ -258,13 +258,17 @@ function shop_stock(): array {
   foreach (shop_db()->query('SELECT product, opt, qty FROM stock') as $r) $out[$r['product']][$r['opt']] = (int)$r['qty'];
   return $out;
 }
+/* api/live.php keeps its answer for a minute (fomaxo-private/live-cache.js); this makes the next page load work it out afresh */
+function fomaxo_live_drop(): void { global $PRIV; if ($PRIV) @unlink("$PRIV/live-cache.js"); }
 function shop_set_stock(string $id, string $opt, ?int $qty): void {
+  fomaxo_live_drop();
   if ($qty === null) shop_db()->prepare('DELETE FROM stock WHERE product = ? AND opt = ?')->execute([$id, $opt]);
   else shop_upsert('stock', ['product', 'opt'], ['product' => $id, 'opt' => $opt, 'qty' => max(0, min(99999, $qty))]);
 }
 /* Takes the items of an order off the stock. $strict: refuse (return the message) when there isn't enough;
    otherwise (payment already taken) go down to 0. Call inside shop_tx(). */
 function shop_take_stock(PDO $db, array $items, bool $strict): string {
+  fomaxo_live_drop();   // "Only N left" and sold-out sizes on the website
   foreach (shop_group_items($items) as [$id, $opt, $qty, $name]) {
     $s = $db->prepare('SELECT qty FROM stock WHERE product = ? AND opt = ?' . (shop_is_mysql() ? ' FOR UPDATE' : '')); $s->execute([$id, $opt]);
     $have = $s->fetchColumn();
@@ -276,6 +280,7 @@ function shop_take_stock(PDO $db, array $items, bool $strict): string {
   return '';
 }
 function shop_return_stock(PDO $db, array $items): void {
+  fomaxo_live_drop();
   foreach (shop_group_items($items) as [$id, $opt, $qty]) $db->prepare('UPDATE stock SET qty = qty + ? WHERE product = ? AND opt = ?')->execute([$qty, $id, $opt]);
 }
 function shop_group_items(array $items): array {

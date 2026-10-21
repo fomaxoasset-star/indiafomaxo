@@ -2867,7 +2867,7 @@ const S = window.STORE;
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const app = $('#app');
-const IMG = k => /^up\//.test(k) ? 'api/live.php?img=' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=11`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
+const IMG = k => /^up\//.test(k) ? 'media/p/' + encodeURIComponent(k.slice(3)) : `assets/img/${k}.webp?v=11`; /* up/… = photo uploaded on the admin page. Bump v when images are replaced so caches refetch */
 /* product photos that also have a 600px wide copy (<name>-s.webp, about half the data), with the full photo's width: shop cards, video covers and
    small pictures use the copy whenever it is sharp enough for the screen (most phones and laptops). A new photo without a copy simply uses the full one */
 const SMALL = {'dollar-1': 688, 'gold-1': 688, 'king-1': 688, 'matchacoco-10-1': 688, 'matchacoco-50-main': 688, 'oldmoney-10-1': 688, 'oldmoney-50-main': 1100, 'oldmoney-50-v3': 880, 'passionsin-1': 688, 'passionsin-10-1': 688, 'royalcandy-10-1': 688, 'royalcandy-50-main': 688};
