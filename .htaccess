@@ -33,6 +33,14 @@ AddType font/woff2 .woff2
   ExpiresByType text/html "access plus 0 seconds"
 </IfModule>
 
+# Photos, fonts and videos never change at the same address (photos and fonts carry ?v=N, uploads get a new name), so the browser need not
+# check them again even on a reload: Safari otherwise asks the server about every picture each time the page is reloaded.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(webp|jpe?g|png|svg|woff2|mp4|webm|mov)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
 # The page itself is always checked again, so a new version shows straight after a deploy.
 <IfModule mod_headers.c>
   <FilesMatch "\.html$">
