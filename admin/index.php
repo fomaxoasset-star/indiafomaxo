@@ -296,6 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . ($wd !== '' ? ' and shows “' . $wd . '”' : '') . '.' : ($wd !== '' ? 'Saved. The video shows “' . $wd . '” with a Shop Now button.' : 'Saved. The video has no product: it shows a Shop Now button.');
     }
     elseif ($a === 'vid_product' && isset($CAT[$prod])) { $vids[$at]['product'] = $prod; $msg = 'Saved. The video now sells ' . $CAT[$prod]['name'] . '.'; }
+    elseif ($a === 'vid_first' || $a === 'vid_last') { $m = $vids[$at]; array_splice($vids, $at, 1); if ($a === 'vid_first') array_unshift($vids, $m); else $vids[] = $m; $msg = 'Order saved.'; }   // straight to the top or the bottom of the list
     elseif ($a === 'vid_up' || $a === 'vid_down') { $to = $at + ($a === 'vid_up' ? -1 : 1); if (isset($vids[$to])) [$vids[$at], $vids[$to]] = [$vids[$to], $vids[$at]]; $msg = 'Order saved.'; }
     elseif ($a === 'vid_del') {
       $v = $vids[$at]; array_splice($vids, $at, 1);
