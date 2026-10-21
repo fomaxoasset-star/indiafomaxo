@@ -261,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($at !== false && empty($vids[$at]['embed']) && preg_match('~^([a-z0-9-]+-[a-f0-9]{8})\.(mp4|mov|webm)$~', (string)($vids[$at]['file'] ?? ''), $m) && $f && ($f['error'] ?? 1) === UPLOAD_ERR_OK && $f['size'] > 0 && $f['size'] <= 3 * 1048576
         && is_uploaded_file($f['tmp_name']) && function_exists('finfo_open') && finfo_file(finfo_open(FILEINFO_MIME_TYPE), $f['tmp_name']) === 'video/mp4') {
         $old = basename((string)($vids[$at]['prev'] ?? '')); $pv = $m[1] . ($old !== '' ? '-' . bin2hex(random_bytes(4)) : '') . '-p.mp4'; $to = video_dir() . "/$pv";   // made again: a new name, so phones and the CDN don't keep showing the old one
-        if ($ok = move_uploaded_file($f['tmp_name'], $to)) { @chmod($to, 0644); if ($old !== '' && $old !== $pv && preg_match(VIDEO_FILE, $old)) @unlink(video_dir() . "/$old"); $vids[$at]['prev'] = $pv; shop_videos_save($vids); }
+        if ($ok = move_uploaded_file($f['tmp_name'], $to)) { @chmod($to, 0644); if ($old !== '' && $old !== $pv && preg_match(VIDEO_FILE, $old)) { @unlink(video_dir() . "/$old"); video_pub_drop($old); } $vids[$at]['prev'] = $pv; shop_videos_save($vids); }
       }
       exit(json_encode(['ok' => $ok ? 1 : 0]));
     }
@@ -293,8 +293,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($a === 'vid_del') {
       $v = $vids[$at]; array_splice($vids, $at, 1);
       if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
-      if ((string)$v['file'] !== '') @unlink(video_dir() . '/' . basename((string)$v['file']));
-      if ((string)($v['prev'] ?? '') !== '') @unlink(video_dir() . '/' . basename((string)$v['prev']));
+      if ((string)$v['file'] !== '') { @unlink(video_dir() . '/' . basename((string)$v['file'])); video_pub_drop(basename((string)$v['file'])); }
+      if ((string)($v['prev'] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v['prev'])); video_pub_drop(basename((string)$v['prev'])); }
       if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) @unlink("$PRIV/product-images/$m[1]");
       $msg = 'Video deleted.';
     } else go($vb, '!Please try again.');

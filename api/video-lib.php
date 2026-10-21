@@ -12,6 +12,23 @@ const VIDEO_FILE = '/^[a-z0-9-]{1,48}-[a-f0-9]{8}(-p)?\.(mp4|mov|webm)$/';   // 
 function shop_videos(): array { return array_values(array_filter(json_decode((string)shop_setting('videos'), true) ?: [], fn($v) => is_array($v) && !empty($v['id']) && (preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) || preg_match(IG_CODE, (string)($v['embed'] ?? ''))))); }
 function shop_videos_save(array $v): void { shop_set('videos', json_encode(array_values($v), JSON_UNESCAPED_SLASHES)); }
 function video_dir(): string { global $PRIV; $d = "$PRIV/videos"; if (!is_dir($d)) @mkdir($d, 0750, true); return $d; }
+/* a public copy of each video in media/v (a hard link, so no extra space), sent by the web server itself like a photo.
+   Sending them through PHP kept one PHP process busy per video for as long as it downloaded; with 12 videos on the admin
+   Videos page and Review videos on product pages, that filled every PHP process and the whole admin and shop froze (21/10/2026). */
+function video_pub_dir(): string { return dirname(__DIR__) . '/media/v'; }
+function video_pub(string $f): bool {
+  if (!preg_match(VIDEO_FILE, $f)) return false;
+  $to = video_pub_dir() . "/$f"; if (is_file($to)) return true;
+  $from = video_dir() . "/$f"; if (!is_file($from)) return false;
+  if (!is_dir(video_pub_dir()) && !@mkdir(video_pub_dir(), 0755, true)) return false;
+  $tmp = $to . '.' . bin2hex(random_bytes(4));
+  if (!@link($from, $tmp) && !@copy($from, $tmp)) return false;
+  @chmod($tmp, 0644); if (!@rename($tmp, $to)) { @unlink($tmp); return false; }
+  return true;
+}
+function video_pub_drop(string $f): void { if (preg_match(VIDEO_FILE, $f)) @unlink(video_pub_dir() . "/$f"); }
+/* the address of a video: its public copy (made here the first time), else api/live.php?vid=… */
+function video_url(string $f): string { return video_pub($f) ? "media/v/$f" : "api/live.php?vid=$f"; }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website; shown on the home page and as Review videos on their product pages (wh: h = home page only, p = product pages only, none = both) */
 function shop_videos_live(): array {
   if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off
@@ -19,7 +36,7 @@ function shop_videos_live(): array {
   foreach (shop_videos() as $v) { if (empty($v['on']) || !empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
     $all = video_products($v); $ps = array_values(array_filter($all, fn($id) => isset($cat[$id]) && empty($cat[$id]['hidden'])));   // one product, several, or none (a Shop Now button)
     if (($all || (string)($v['product'] ?? '') !== '') && !$ps) continue;   // every product in it is hidden or deleted
-    $out[] = ['v' => 'api/live.php?vid=' . $v['file']] + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => 'api/live.php?vid=' . $v['prev']] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) && filesize(video_dir() . '/' . $v['file']) <= 1.5 * 1048576 ? ['pv' => 'api/live.php?vid=' . $v['file']] : [])) + (!$ps && ($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []); }
+    $out[] = ['v' => video_url((string)$v['file'])] + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_url((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) && filesize(video_dir() . '/' . $v['file']) <= 1.5 * 1048576 ? ['pv' => video_url((string)$v['file'])] : [])) + (!$ps && ($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []); }
   return $out;
 }
 /* the products a video sells, first one first ('product' plus 'also'); only those in $cat when it is given */
