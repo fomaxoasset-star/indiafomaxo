@@ -164,6 +164,31 @@ function markSent(btn, day) {
     row.classList.add('ojust');
   })();
 
+  /* every other page: a change on a row (Save, a tick, a ring dot, a menu, ↑ ↓, ✕) reloads the page; come back to the same row at the same place, not the top.
+     Same way as Orders above (which keeps its own). Menus that save on change call form.submit(), which has no submit event, so that is covered too. */
+  (function () {
+    var K = 'fxRowPos', RS = '[data-vid],tr,.vrow,li,.box';
+    var pg = function (u) { var q = []; new URLSearchParams(u).forEach(function (v, k) { q.push(k + '=' + v); }); return q.sort().join('&'); };
+    var box = function (e) { for (; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 2 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
+    var sel = function (r) { return r.tagName.toLowerCase() + (r.classList[0] ? '.' + CSS.escape(r.classList[0]) : ''); };
+    var keep = function (f, by) {
+      if (!f || (f.method || '').toLowerCase() !== 'post' || /^(qa|trf|obk)$/.test(f.id) || f.closest('.olist')) return;
+      var r = (by && by.closest(RS)) || f.closest(RS) || f, b = box(r);
+      try { sessionStorage.setItem(K, JSON.stringify({ t: Date.now(), u: pg(location.search), w: window.scrollY, v: r.getAttribute('data-vid') || '', s: sel(r), i: [].indexOf.call(document.querySelectorAll(sel(r)), r), y: r.getBoundingClientRect().top, b: b ? b.scrollTop : 0 })); } catch (er) {}
+    };
+    document.addEventListener('submit', function (e) { if (!e.defaultPrevented) keep(e.target, e.submitter); });
+    var sub = HTMLFormElement.prototype.submit; HTMLFormElement.prototype.submit = function () { keep(this, document.activeElement); return sub.apply(this, arguments); };
+    var p; try { p = JSON.parse(sessionStorage.getItem(K) || 'null'); sessionStorage.removeItem(K); } catch (er) {}
+    if (!p || Date.now() - p.t > 60000 || p.u !== pg(location.search)) return;
+    var row = p.v ? document.querySelector('[data-vid="' + CSS.escape(p.v) + '"]') : document.querySelectorAll(p.s)[p.i];
+    window.scrollTo(0, p.w); if (!row) return;
+    var b0 = box(row); if (b0) b0.scrollTop = p.b;
+    var hold = true, let_go = function () { hold = false; }; ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (t) { addEventListener(t, let_go, { once: true, passive: true }); });
+    var go = function () { if (!hold) return; var d = row.getBoundingClientRect().top - p.y, b = box(row); if (b) b.scrollTop += d; else window.scrollBy(0, d); };
+    go(); addEventListener('load', go); if (document.fonts) document.fonts.ready.then(go); [700, 1500, 2500].forEach(function (t) { setTimeout(go, t); });   // buttons added a moment later (Pick cover, Make preview) make the rows above taller
+    row.classList.add('rjust');
+  })();
+
   /* Orders: a one-tap button on an order's row submits it without opening or closing the order */
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('summary button[form]');
