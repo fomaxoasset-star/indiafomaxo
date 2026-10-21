@@ -173,8 +173,10 @@ function markSent(btn, day) {
     var sel = function (r) { return r.tagName.toLowerCase() + (r.classList[0] ? '.' + CSS.escape(r.classList[0]) : ''); };
     var keep = function (f, by) {
       if (!f || (f.method || '').toLowerCase() !== 'post' || /^(qa|trf|obk)$/.test(f.id) || f.closest('.olist')) return;
-      var r = (by && by.closest(RS)) || f.closest(RS) || f, b = box(r);
-      try { sessionStorage.setItem(K, JSON.stringify({ t: Date.now(), u: pg(location.search), w: window.scrollY, v: r.getAttribute('data-vid') || '', s: sel(r), i: [].indexOf.call(document.querySelectorAll(sel(r)), r), y: r.getBoundingClientRect().top, b: b ? b.scrollTop : 0 })); } catch (er) {}
+      var r = (by && by.closest(RS)) || f.closest(RS) || f, b = box(r), a = f.querySelector('[name=action]');
+      var stay = !!a && /^vid_(first|last)$/.test(a.value);   // ⇈ / ⇊: the video moves away, the screen stays where it was
+      if (stay && a.value === 'vid_first') { var rs = document.querySelectorAll(sel(r)), nx = rs[[].indexOf.call(rs, r) + 1]; if (nx) r = nx; }   // ⇈: the row under it keeps its number and its place
+      try { sessionStorage.setItem(K, JSON.stringify({ t: Date.now(), u: pg(location.search), w: window.scrollY, v: stay ? '' : r.getAttribute('data-vid') || '', s: sel(r), i: [].indexOf.call(document.querySelectorAll(sel(r)), r), y: r.getBoundingClientRect().top, b: b ? b.scrollTop : 0 })); } catch (er) {}
     };
     document.addEventListener('submit', function (e) { if (!e.defaultPrevented) keep(e.target, e.submitter); });
     var sub = HTMLFormElement.prototype.submit; HTMLFormElement.prototype.submit = function () { keep(this, document.activeElement); return sub.apply(this, arguments); };
