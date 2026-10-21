@@ -193,6 +193,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $r = ig_connect($tok);
       go($vb, is_array($r) ? 'Instagram connected' . ($r['user'] !== '' ? ' as @' . $r['user'] : '') . '. Pick a reel below.' : '!Instagram did not accept the token: ' . $r);
     }
+    if ($a === 'vid_to_com_all') {   // videos uploaded before the tick: send every one not sent yet to fomaxo.com
+      $ok = 0; $bad = 0; foreach ($vids as $k => $v) if (video_to_com_ok($v)) { if (video_to_com(video_dir() . '/' . $v['file'], $v)) { $vids[$k]['sent_com'] = true; $ok++; } else $bad++; }
+      if ($ok) shop_videos_save($vids);
+      go($vb, $ok ? $ok . ' video' . ($ok > 1 ? 's' : '') . ' sent to fomaxo.com. They show there within a minute.' . ($bad ? " $bad could not be sent." : '') : '!Nothing could be sent to fomaxo.com. Please try again.');
+    }
     if ($a === 'vid_all') { $on = !empty($_POST['on']); shop_set('videos_off', $on ? '0' : '1'); go($vb, $on ? 'Videos are on the website again.' : 'Videos are off. The video row is hidden on the website.'); }
     if ($a === 'vid_ig_off') { ig_save(null); go($vb, 'Instagram disconnected. Videos already added stay on the website.'); }
     if ($a === 'vid_ig_auto') { $on = !empty($_POST['on']); shop_set('ig_auto', $on ? '1' : '0'); if ($on) ig_sync(true);
@@ -248,7 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $img = save_images(($prod ?: 'fomaxo') . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
       }
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + (preg_match('/^[a-f0-9]{32}$/', (string)($_POST['fp'] ?? '')) ? ['fp' => (string)$_POST['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (($_POST['shape'] ?? '') === '169' ? ['wide' => true] : []));
-      shop_videos_save($vids); go($vb, 'Video added. It shows on the home page now.');
+      shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
+      if ($toCom) { $vids[0]['sent_com'] = true; shop_videos_save($vids); }
+      go($vb, 'Video added' . ($toCom ? ' here and on fomaxo.com' : '') . '. It shows on the home page now.' . (!empty($_POST['to_com']) && !$toCom ? ' It could not be sent to fomaxo.com: please upload it there too.' : ''));
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
       $ids = array_values(array_unique(array_filter(explode(',', (string)($_POST['ids'] ?? '')))));
@@ -297,6 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $msg = $nm ? 'Saved. The video sells ' . (count($nm) > 1 ? implode(', ', array_slice($nm, 0, -1)) . ' and ' . end($nm) : $nm[0]) . ($wd !== '' ? ' and shows “' . $wd . '”' : '') . (!empty($vids[$at]['shop']) ? ', with a Shop Now button' : '') . '.' : ($wd !== '' ? 'Saved. The video shows “' . $wd . '” with a Shop Now button.' : 'Saved. The video has no product: it shows a Shop Now button.');
     }
     elseif ($a === 'vid_product' && isset($CAT[$prod])) { $vids[$at]['product'] = $prod; $msg = 'Saved. The video now sells ' . $CAT[$prod]['name'] . '.'; }
+    elseif ($a === 'vid_to_com') { if (!video_to_com_ok($vids[$at]) || !video_to_com(video_dir() . '/' . $vids[$at]['file'], $vids[$at])) go($vb, '!It could not be sent to fomaxo.com. Please try again.'); $vids[$at]['sent_com'] = true; $msg = 'Sent to fomaxo.com. It shows there within a minute.'; }   // a video uploaded before the tick
     elseif ($a === 'vid_first' || $a === 'vid_last') { $m = $vids[$at]; array_splice($vids, $at, 1); if ($a === 'vid_first') array_unshift($vids, $m); else $vids[] = $m; $msg = 'Order saved.'; }   // straight to the top or the bottom of the list
     elseif ($a === 'vid_up' || $a === 'vid_down') { $to = $at + ($a === 'vid_up' ? -1 : 1); if (isset($vids[$to])) [$vids[$at], $vids[$to]] = [$vids[$to], $vids[$at]]; $msg = 'Order saved.'; }
     elseif ($a === 'vid_del') {
