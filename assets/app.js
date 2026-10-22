@@ -1694,7 +1694,17 @@
       case 'more': moreModal(); break;
       case 'more2': couponDiscountModal(); break;
       case 'r-show': showReceipt(currentReceipt, false); break;
-      case 'qty': changeQty(id, parseInt(el.getAttribute('data-d'), 10)); break;
+      case 'qty': {
+        var qd = parseInt(el.getAttribute('data-d'), 10), ql = S.cart.filter(function (c) { return c.product_id === id; })[0];
+        if (qd < 0 && ql && ql.qty === 1) {
+          var qp = productById(id) || {}, qa = $('.added-pop'); if (qa) qa.remove();
+          openModal('Remove from the bag?', '<p style="margin:0 0 14px"><b>' + esc(shortName(qp.name || '') + ' ' + (qp.variant || '')) + '</b> will be taken off this sale.</p>' +
+            '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="qty-remove" data-id="' + id + '">Remove</button></div>');
+          break;
+        }
+        changeQty(id, qd); break;
+      }
+      case 'qty-remove': closeModal(); changeQty(id, -1); break;
       case 'cart-clear': {
         var n = 0; S.cart.forEach(function (c) { n += c.qty; });
         var ap = $('.added-pop'); if (ap) ap.remove();
