@@ -2115,7 +2115,7 @@ html.cb-lock,html.cb-lock body{overflow:hidden}
 .co-form select{appearance:none;-webkit-appearance:none;padding-right:40px;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat}
 .co-form textarea{min-height:96px}
 .co-form .row3{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:14px}
-.co-form label.bad input,.co-form label.bad select,.co-form label.bad .co-tel{border-color:#d0493e}
+.co-form label.bad input,.co-form label.bad select,.co-form label.bad .co-tel .co-cc{border-color:#d0493e}
 .co-fe{font-style:normal;font-size:13px;letter-spacing:0;text-transform:none;color:#d0493e}
 html[data-mode="light"] .co-fe{color:#a8322a}
 .co-req{margin:-4px 0 4px}
@@ -2131,12 +2131,14 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-locked .co-btn{opacity:.5}
 .co-pay.co-open .co-opt{animation:coOpen .5s var(--ease)}
 @keyframes coOpen{from{transform:translateY(6px);opacity:.4}to{transform:none;opacity:1}}
-.co-tel{display:flex;align-items:stretch;border:1px solid var(--line-2);background:var(--panel);transition:border-color .3s}
-.co-tel:focus-within{border-color:var(--gold-hi)}
-.co-tel em{display:flex;align-items:center;padding:0 0 0 16px;font-style:normal;font-size:15px;letter-spacing:0;color:var(--muted)}
-.co-form .co-tel input{border:0;padding-left:10px}
-.co-cc{position:relative;display:flex;flex:none;border-right:1px solid var(--line-2)}.co-cc em{color:var(--gold-hi)!important;padding-right:12px!important}.co-cc em:after{content:"";width:0;height:0;margin-left:6px;border:4px solid transparent;border-top:5px solid currentColor;border-bottom:0;opacity:.7}
-.co-form .co-cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;font-size:16px}   /* the country code box: the code shows, tapping it opens every country */
+.co-tel{display:flex;align-items:stretch;gap:10px}   /* like fomaxo.com: a flag and +91 ▾ in its own box, then the number box */
+.co-form .co-tel input{flex:1}
+.co-tel .co-cc{position:relative;display:flex;flex:none;border:1px solid var(--line-2);background:var(--panel);transition:border-color .3s}
+.co-tel .co-cc:focus-within{border-color:var(--gold-hi)}
+.co-tel .co-cc em{display:flex;align-items:center;gap:8px;padding:0 14px;font-style:normal;font-size:15px;letter-spacing:0;color:var(--ivory);white-space:nowrap}
+.co-tel .co-cc em:after{content:"";width:6px;height:6px;margin:-4px 0 0 2px;border:solid var(--gold);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+.co-flag{font-style:normal;font-size:18px;line-height:1}
+.co-form .co-cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;font-size:16px}   /* the country code box: the flag and code show, tapping it opens every country */
 .wa-tel{display:flex;gap:8px;width:100%;min-width:0}
 .wa-tel input{flex:1 1 0!important;width:auto!important;min-width:0}
 .wa-cc{align-items:center;justify-content:center;min-width:76px;padding:0 12px;border:1px solid var(--line-2);background:var(--panel)}
@@ -2261,7 +2263,8 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co-form label small{font-size:10.5px}
   .co-form input,.co-form select,.co-form textarea{padding:9px 13px;font-size:14px;line-height:1.4}
   .co-form textarea{min-height:39px;height:39px;resize:vertical}
-  .co-tel em{font-size:14px;padding-left:13px}
+  .co-tel .co-cc em{font-size:14px;padding:0 12px;gap:6px}
+  .co-tel{gap:8px}
   .co-step{gap:14px;padding-bottom:8px;margin-bottom:0}
   .co-step:not(:first-child){margin-top:2px}
   .co-step span{width:30px;height:30px;font-size:15px}
@@ -5089,6 +5092,7 @@ const CO_CC = (() => { const top = 'IN91 AE971 US1 GB44 CA1 AU61 SA966 QA974 KW9
   let dn; try { dn = new Intl.DisplayNames(['en'], {type: 'region'}); } catch(e) {}
   const row = x => ({iso: x.slice(0, 2), code: x.slice(2), name: (dn && dn.of(x.slice(0, 2))) || x.slice(0, 2)});
   return [...top.map(row), ...rest.map(row).sort((a, b) => a.name.localeCompare(b.name))]; })();
+const coFlag = iso => String.fromCodePoint(...[...iso].map(c => 127397 + c.charCodeAt(0)));   // the country's flag (regional letters), e.g. 🇮🇳
 const coCc = iso => CO_CC.find(c => c.iso === iso) || CO_CC[0];
 /* a saved or pasted number (+971501234567, 00971…) → [country, the number without its code]; one the box already shows wins a shared code (+1) */
 const coCcSplit = (v, iso) => { const d = String(v || '').replace(/\D/g, '').replace(/^00/, ''); if (!/^\s*(\+|00)/.test(String(v || ''))) return null;
@@ -5144,7 +5148,7 @@ function checkoutPage(q){
     <p class="co-fine co-req">Every field is needed unless it says optional. Payment opens once they are all filled in.</p>
     <label>Full name<input name="name" value="${v('name')}" autocomplete="name" required maxlength="80"></label>
     <div class="row2">
-      <label><span>Mobile <small class="co-cc-tip">(outside India? tap +91 to change)</small></span><span class="co-tel"><span class="co-cc" title="Change country code"><em id="coCcShow">+${cc.code}</em><select name="cc" aria-label="Country code" autocomplete="tel-country-code">${CO_CC.map(c => `<option value="${c.iso}"${c === cc ? ' selected' : ''}>${esc(c.name)} +${c.code}</option>`).join('')}</select></span><input name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="${cc.iso === 'IN' ? '98765 43210' : 'Mobile number'}" value="${cc.iso === 'IN' ? (phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : '') : phone}" required maxlength="${cc.iso === 'IN' ? 12 : 16}"></span></label>
+      <label><span>Mobile <small class="co-cc-tip">(outside India? tap +91 to change)</small></span><span class="co-tel"><span class="co-cc" title="Change country code"><em id="coCcShow"><i class="co-flag" aria-hidden="true">${coFlag(cc.iso)}</i>+${cc.code}</em><select name="cc" aria-label="Country code" autocomplete="tel-country-code">${CO_CC.map(c => `<option value="${c.iso}"${c === cc ? ' selected' : ''}>${coFlag(c.iso)} ${esc(c.name)} +${c.code}</option>`).join('')}</select></span><input name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="${cc.iso === 'IN' ? '98765 43210' : 'Mobile number'}" value="${cc.iso === 'IN' ? (phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : '') : phone}" required maxlength="${cc.iso === 'IN' ? 12 : 16}"></span></label>
       <label><span>Email${coPhone() ? ' <small>(optional)</small>' : ''}</span><input name="email" type="email" value="${v('email')}" autocomplete="email"${coPhone() ? '' : ' required'} maxlength="120"></label>
     </div>
     <label>Flat / house no, building<input name="house" value="${v('house')}" autocomplete="address-line1" required maxlength="80"></label>
@@ -5240,7 +5244,7 @@ function bindCheckout(q){
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   /* any other country: digits only, up to 15 with the code; a number typed or pasted with +code (or 00code) moves its code into the country box */
-  const ccNow = () => coCc(E.cc.value), ccSet = c => { E.cc.value = c.iso; $('#coCcShow').textContent = '+' + c.code; const ind = c.iso === 'IN';
+  const ccNow = () => coCc(E.cc.value), ccSet = c => { E.cc.value = c.iso; $('#coCcShow').innerHTML = `<i class="co-flag" aria-hidden="true">${coFlag(c.iso)}</i>+${c.code}`; const ind = c.iso === 'IN';
     E.phone.placeholder = ind ? '98765 43210' : 'Mobile number'; E.phone.maxLength = ind ? 12 : 16; };
   E.phone.oninput = () => { const sp = coCcSplit(E.phone.value, E.cc.value); if (sp) { ccSet(sp[0]); E.phone.value = sp[1]; }
     else if (/^\s*(\+|00)/.test(E.phone.value)) { E.phone.value = '+' + E.phone.value.replace(/\D/g, '').replace(/^00/, '').slice(0, 3); return; }   // still typing the +code
