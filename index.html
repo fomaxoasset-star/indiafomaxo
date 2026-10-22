@@ -2466,6 +2466,13 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 .wel-form{display:flex;flex-direction:column;gap:8px;margin-top:18px}
 .wel-form input{width:100%;box-sizing:border-box;padding:11px 12px;text-align:center;border:1px solid var(--line-2);border-radius:4px;background:var(--black);color:var(--ivory);font:inherit;font-size:16px}
 .wel-form .btn{min-height:44px;background:#25D366;border-color:#25D366;color:#fff}
+.ofp-wa{margin:14px 0 4px;padding:12px;border:1px solid var(--gold)}
+.ofp-wa-t{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 6px;margin:0 0 10px;font-size:13px;line-height:1.35;color:var(--ivory)}
+.ofp-wa-t b{color:var(--gold);font-weight:600}
+.ofp-wa .wel-form{flex-direction:row;flex-wrap:wrap;margin-top:0}
+.ofp-wa .wel-form input{flex:1 1 100%;min-width:0;width:auto}
+.ofp-wa .wel-form .btn{flex:1 1 100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:auto;min-height:44px;margin:0;padding:0 16px}
+.ofp-wa .wel-form .btn svg{width:16px;height:16px}.ofp-wa .wel-ok{margin:0}
 .wel-ok{margin-top:18px;font-size:14px;line-height:1.5;color:#5fc48c}
 html[data-mode="light"] .wel-ok{color:#1e7a47}
 </style>
@@ -5652,13 +5659,12 @@ if (ADS.on) { const a = ADS.ids, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Googl
   $('#fstat').textContent = `We count visits anonymously on our own server to improve the shop, and ${[ads, cl].filter(Boolean).join('. We also ')}.`; }
 $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.email}</a><span>${S.contact.phones[0].number}</span>`;
 addEventListener('hashchange', route);
-/* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, after 20 seconds or half a page;
+/* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, as soon as the site opens (or the offer popup with its WhatsApp box when that is on, AJAY 2026-10-22);
    the offer popups wait for a later visit. The name + number go to Admin → Left at checkout like the bag box (same 10% coupon, sent from there on WhatsApp) */
 const welDue = () => { try { return !(localStorage.getItem('fx_wel') || localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return false; } };
-if (welDue()) {
+if (welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new visitors get that popup (and its WhatsApp box) instead
   let welT = 0;
-  const half = () => { const h = document.documentElement.scrollHeight - innerHeight; if (h > 400 && scrollY / h >= .5) go(); };
-  const go = () => { clearTimeout(welT); removeEventListener('scroll', half);
+  const go = () => { clearTimeout(welT);
     if (/^#\/(checkout|thank-you|review)/.test(location.hash) || document.querySelector('.ofp,#cart.open,.drawer.open')) { welT = setTimeout(go, 20000); return; }
     try { if (!welDue()) return; localStorage.setItem('fx_wel', '1'); sessionStorage.setItem('fx_offer', '1'); } catch(e) { return; }
     const back = document.activeElement, pop = document.createElement('div'); pop.className = 'ofp ofp-wel';
@@ -5679,7 +5685,7 @@ if (welDue()) {
       TRK.lead('details', {name: nm, phone: d}, cart); renderCart();
       e.target.outerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; $('.ofp-no', pop).textContent = 'Continue shopping'; };
   };
-  welT = setTimeout(go, 20000); addEventListener('scroll', half, {passive: true});
+  welT = setTimeout(go, 300);   // opens as the site opens (AJAY, 2026-10-22)
 }
 /* the popups set on Admin → Offer. Only one per visit, never on the checkout or thank-you page, about 2.5 seconds after arrival:
    the New product popup first (once per visitor for that product), else the sale popup (once per visit).
@@ -5702,8 +5708,18 @@ if (OFFER || NEWP) {
         return `<a class="ofp-item" href="#/product/${encodeURIComponent(id)}${p.sizes.length > 1 ? '?size=' + z : ''}"><img src="${IMG(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, z))}" alt="" loading="lazy"><b>${esc(p.title || p.name)}</b>${priceHTML(p, z)}</a>`; }).join('')}</div>` : ''}
       ${OFFER.end ? `<div class="ofp-cd" data-ofbox aria-label="Time left">${cdBoxes()}</div>` : ''}
       <p class="ofp-hurry">HURRY UP!!!</p>
-      <a class="btn block ofp-go" href="#/fragrances">${esc(OFFER.btn)}</a>
+      ${waHTML()}<a class="btn block ofp-go" href="#/fragrances">${esc(OFFER.btn)}</a>
       <button class="ofp-no" type="button">No thanks</button>`;
+  /* someone who never bought and gave no number: Name + WhatsApp for the 10% coupon, to Admin → Left at checkout like the welcome box (AJAY, 2026-10-22) */
+  const waKnown = () => { try { return !!(localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return true; } };
+  const waHTML = () => waKnown() ? '' : `<div class="ofp-wa"><p class="ofp-wa-t"><b>New here? GET 10% OFF</b><span>· Coupon on WhatsApp</span></p><form class="wel-form" id="ofpWa" novalidate><input id="ofpWaName" class="ofp-wa-nm" type="text" autocomplete="name" maxlength="60" placeholder="Name" aria-label="Your name"><input id="ofpWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WhatsApp Number" aria-label="Your WhatsApp number"><button class="btn" type="submit">${WA_SVG()}<span>Send</span></button></form></div>`;
+  const waWire = () => { const f = pop && $('#ofpWa', pop); if (!f) return;
+    f.onsubmit = e => { e.preventDefault(); const nm = $('#ofpWaName', pop).value.trim(); let d = $('#ofpWaIn', pop).value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+      if (!nm) { toast('Please enter your name'); return; }
+      if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
+      try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
+      TRK.lead('details', {name: nm, phone: d}, cart); renderCart();
+      f.closest('.ofp-wa').innerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; }; };
   const newpHTML = () => { const isNew = !!NEWP.id;
     return `<p class="ofp-k" id="ofpK">${esc(NEWP.label || (NEWP.kind === 'new' ? 'Just arrived' : 'Coming soon'))}</p>
       ${NEWP.img ? `<img class="ofp-img" src="${esc(NEWP.img)}" alt="FOMAXO ${esc(NEWP.name)}">` : ''}
@@ -5712,8 +5728,8 @@ if (OFFER || NEWP) {
       <a class="btn block ofp-go" href="${isNew ? '#/product/' + encodeURIComponent(NEWP.id) : '#/fragrances'}">${isNew ? 'Shop now' : 'Explore FOMAXO'}</a>
       <button class="ofp-no" type="button">Close</button>`; };
   const openPop = () => {
-    if (pop || visitUsed() || onCheckout() || welDue()) return;
-    const which = newpDue() ? 'new' : OFFER && OFFER.popup ? 'sale' : '';
+    const fresh = welDue(); if (pop || visitUsed() || onCheckout() || (fresh && !(OFFER && OFFER.popup))) return;
+    const which = newpDue() && !fresh ? 'new' : OFFER && OFFER.popup ? 'sale' : '';
     if (!which) return;
     due = false; put(sessionStorage, 'fx_offer', '1'); if (which === 'new') put(localStorage, 'fx_newp', NEWP.key);
     back = document.activeElement;
@@ -5726,10 +5742,10 @@ if (OFFER || NEWP) {
     pop.innerHTML = `<div class="ofp-box"${sz} role="dialog" aria-modal="true" aria-labelledby="ofpK" tabindex="-1">
       <button class="ofp-x" type="button" aria-label="Close">×</button>${which === 'new' ? newpHTML() : saleHTML()}</div>`;
     pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('.ofp-x,.ofp-no,.ofp-go,.ofp-item')) closePop(); });
-    document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey);
+    document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey); waWire();
     requestAnimationFrame(() => { if (pop) { pop.classList.add('on'); $('.ofp-box', pop).focus({preventScroll: true}); } });
   };
-  if (!visitUsed() && (newpDue() || (OFFER && OFFER.popup))) setTimeout(() => { due = true; openPop(); }, 2500);
+  if (!visitUsed() && (newpDue() || (OFFER && OFFER.popup))) setTimeout(() => { due = true; openPop(); }, 300);   // as soon as the site opens (AJAY, 2026-10-22)
   /* arriving on checkout first: the popup waits until they move to another page */
   addEventListener('hashchange', () => { if (onCheckout()) closePop(); else if (due) setTimeout(openPop, 600); });
   if (OFFER && OFFER.end) {
