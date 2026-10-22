@@ -37,4 +37,4 @@ if (!$sale) {
 }
 
 $theme = in_array($_GET['theme'] ?? '', ['light', 'dark'], true) ? $_GET['theme'] : '';
-echo receipt_page($sale, false, $theme, !empty($_GET['embed']));
+echo receipt_page($sale, $theme, !empty($_GET['embed']));

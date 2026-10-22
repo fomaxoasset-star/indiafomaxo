@@ -529,7 +529,7 @@ switch ($action) {
             fail('Sale not found.', 404);
         }
         $method = (string) ($b['method'] ?? '');
-        if (!in_array($method, ['razorpay', 'cash', 'upi', 'card'], true)) {
+        if (!in_array($method, ['razorpay', 'cash', 'upi'], true)) {
             fail('Choose how the customer pays.');
         }
         if (refresh_gateway_sale($sale, $u['id']) === 'paid' || $sale['status'] === 'paid') {

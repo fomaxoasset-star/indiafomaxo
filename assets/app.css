@@ -1,5 +1,4 @@
 /* FOMAXO Store System - staff app. Black and gold, no italics. */
-@font-face { font-family: "FOMAXO REAL"; src: url("fomaxo-real.woff2") format("woff2"), url("fomaxo-real.ttf") format("truetype"); font-display: swap; }
 
 :root {
   --bg: #0a0a0b; --bg-2: #111113; --panel: #161619; --panel-2: #1d1d21; --line: #2a2a2f; --line-2: #36363c;
@@ -123,7 +122,6 @@ h1, h2, h3 { font-weight: 500; margin: 0; }
 .tile:hover { border-color: rgba(201,162,75,.55); }
 .tile:active { transform: scale(.98); }
 .tile .t-name { font-weight: 700; line-height: 1.25; }
-.tile .t-var { font-size: 13px; color: var(--muted); }
 .tile .t-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 6px; flex-wrap: wrap; }
 .tile .price { color: var(--gold-2); font-weight: 700; font-size: 16px; }
 .tile.is-out { opacity: .55; }
@@ -136,27 +134,10 @@ h1, h2, h3 { font-weight: 500; margin: 0; }
 .cart-head h2 { font-family: var(--head); font-size: 17px; letter-spacing: .08em; }
 .cart-lines { flex: 1; overflow: auto; padding: 6px 16px; min-height: 80px; }
 .line { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.line .l-name { font-weight: 600; }
-.line .l-sub { font-size: 13px; color: var(--muted); }
-.line .l-total { text-align: right; font-weight: 700; }
 .qty { display: inline-flex; align-items: center; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
 .qty button { width: 34px; height: 32px; border: 0; background: var(--panel-2); font-size: 18px; }
 .qty span { min-width: 34px; text-align: center; font-weight: 700; }
-.line .l-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .link-btn { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 4px; text-decoration: underline; text-underline-offset: 3px; }
-.cart-extra { padding: 10px 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
-.extra-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; text-align: left; }
-.extra-btn .val { color: var(--gold-2); font-weight: 600; font-size: 13px; }
-.cart-totals { padding: 10px 16px 0; }
-.cart-totals .t-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); padding: 2px 0; }
-.cart-totals .t-grand { color: var(--text); font-size: 24px; font-weight: 800; padding: 8px 0 4px; }
-.pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px 16px; }
-.pay-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 11px 12px; min-height: 62px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel); text-align: left; }
-.pay-btn b { font-size: 15px; }
-.pay-btn small { color: var(--muted); font-size: 12px; }
-.pay-btn.primary { background: linear-gradient(180deg, var(--btn-a), var(--btn-b)); color: #141108; border-color: transparent; }
-.pay-btn.primary small { color: rgba(20,17,8,.7); }
-.pay-btn:disabled { opacity: .4; cursor: not-allowed; }
 .cart-fab { display: none; }
 
 /* ---------- Stock ---------- */
@@ -370,9 +351,6 @@ html, body { overflow-x: hidden; -webkit-text-size-adjust: 100%; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .tile { padding: 12px; min-height: 120px; }
   .tile .t-foot { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .pay-grid { gap: 6px; }
-  .pay-btn { padding: 10px; min-height: 58px; }
-  .pay-btn small { font-size: 11px; }
   .quick { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bulk-row .input { width: 74px; }
 }
@@ -439,7 +417,6 @@ input[readonly].input { opacity: .6; }
 .qty.big span { min-width: 38px; font-size: 18px; }
 .cart-foot { padding: 12px 16px 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 .cart-foot .t-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
-.more-link { background: none; border: 1px dashed var(--line-2); border-radius: 10px; padding: 10px 12px; color: var(--muted); font-size: 14px; text-align: left; }
 .pay-big { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 66px; padding: 0 22px; border: 0; border-radius: 16px; background: linear-gradient(180deg, var(--btn-a), var(--btn-b)); color: #141108; font-size: 22px; font-weight: 900; letter-spacing: .06em; box-shadow: 0 8px 22px rgba(201,162,75,.25); }
 .pay-big b { font-size: 24px; }
 .pay-big:disabled { opacity: .35; box-shadow: none; }
@@ -454,7 +431,6 @@ input[readonly].input { opacity: .6; }
 .pchoice.slim { min-height: 64px; padding: 10px 14px; }
 .pchoice.slim .pi { font-size: 30px; }
 .pchoice.slim b { font-size: 17px; }
-.other-card { display: block; margin: 14px auto 0; }
 .cash-q { font-weight: 800; font-size: 17px; margin-bottom: 8px; }
 .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .note-btn { min-height: 62px; border-radius: 14px; border: 2px solid var(--line-2); background: var(--panel-2); font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
@@ -644,9 +620,6 @@ html, body { overscroll-behavior-y: none; }
 }
 
 /* ---------- Sell: Grid / List and Sort ---------- */
-.sell-tools { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; }
-.view-seg { flex: none; }
-.view-seg button { padding: 8px 14px; min-height: 40px; white-space: nowrap; }
 .sort-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left; }
 .sort-btn #sort-lbl { overflow: hidden; text-overflow: ellipsis; }
 .vi { font-size: 16px; line-height: 1; }
@@ -669,8 +642,6 @@ html, body { overscroll-behavior-y: none; }
 .catalog-tools .search { flex: 1 1 0; min-width: 0; }
 .catalog-tools .chips { flex: 1 1 100%; }
 .catalog-tools .chips:empty { display: none; }
-.catalog-tools .view-seg { flex: none; padding: 3px; }
-.catalog-tools .view-seg button { width: 40px; min-height: 36px; padding: 0; display: grid; place-items: center; }
 .catalog-tools .sort-btn { flex: none; width: auto; min-height: 44px; padding: 0 12px; gap: 6px; justify-content: center; }
 .catalog-tools .sort-btn.on { border-color: rgba(201,162,75,.6); color: var(--gold-2); background: var(--gold-dim); }
 .catalog-tools .vi { font-size: 18px; }

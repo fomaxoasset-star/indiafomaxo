@@ -1,5 +1,4 @@
 /* Pages outside the app: setup, customer receipt, practice payment. Black and gold, no italics. */
-@font-face { font-family: "FOMAXO REAL"; src: url("fomaxo-real.woff2") format("woff2"), url("fomaxo-real.ttf") format("truetype"); font-display: swap; }
 :root { color-scheme: dark; --bg: #0b0b0c; --panel: #151517; --line: #2a2a2e; --gold: #c9a24b; --gold-2: #e6c77a; --text: #f3efe6; --muted: #9a958b; --ok: #3fae6a; --bad: #d9534f; --wait: #d9a441; }
 * { box-sizing: border-box; font-style: normal !important; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 24px 16px; }

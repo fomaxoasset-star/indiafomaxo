@@ -21,6 +21,22 @@ RewriteRule ^(lib|data)(/|$) - [F,L]
 </FilesMatch>
 </IfModule>
 
+# Smaller downloads: compress text files (app code about 4x smaller over the network)
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript text/javascript application/json application/manifest+json image/svg+xml
+</IfModule>
+
+# App files carry a version (?v=in..), so phones can keep them; a new version has a new address.
+RewriteCond %{QUERY_STRING} (^|&)v=
+RewriteRule \.(css|js)$ - [E=FX_VERSIONED:1]
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000, immutable" env=FX_VERSIONED
+    Header set Cache-Control "public, max-age=31536000, immutable" env=REDIRECT_FX_VERSIONED
+<FilesMatch "\.(woff2)$">
+    Header set Cache-Control "public, max-age=31536000"
+</FilesMatch>
+</IfModule>
+
 AddType application/manifest+json .webmanifest
 AddType font/woff2 .woff2
 

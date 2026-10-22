@@ -1,9 +1,10 @@
 /* FOMAXO India Store System - offline support. Keeps the app itself on the device so it opens without internet.
    Data requests (api.php) always go to the server; the app handles offline sales itself. */
-var VERSION = 'fomaxo-pos-in-v34';
+var VERSION = 'fomaxo-pos-in-v35';
 var PHOTOS = 'fomaxo-pos-in-photos';  // kept across app updates
+var V = '?v=' + VERSION.replace('fomaxo-pos-in-v', 'in');  // the same version index.html asks for
 var SHELL = [
-  './', 'index.html', 'assets/app.css', 'assets/app.js', 'assets/qrcode.js',
+  './', 'index.html', 'assets/app.css' + V, 'assets/app.js' + V, 'assets/qrcode.js' + V,
   'manifest.webmanifest', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png', 'assets/favicon-32.png'
 ];
 
@@ -37,16 +38,34 @@ self.addEventListener('fetch', function (e) {
   if (/\.php$/.test(path) || path.indexOf('/data/') >= 0) return;
 
   if (req.mode === 'navigate') {
-    // Newest app when online, saved copy when offline.
-    e.respondWith(fetch(req, { cache: 'no-cache' }).then(function (res) {
+    // Newest app when online; the saved copy if the network is offline or slower than 3 seconds.
+    var saved = caches.match('index.html');
+    var net = fetch(req, { cache: 'no-cache' }).then(function (res) {
       var copy = res.clone();
       caches.open(VERSION).then(function (c) { c.put('index.html', copy); });
       return res;
-    }).catch(function () { return caches.match('index.html'); }));
+    });
+    e.respondWith(new Promise(function (resolve) {
+      var done = false;
+      function use(r) { if (!done && r) { done = true; resolve(r); } }
+      net.then(use, function () { saved.then(function (r) { use(r || Response.error()); }); });
+      setTimeout(function () { saved.then(use); }, 3000);
+    }));
     return;
   }
 
-  // App files: always try the newest copy first (so updates show at once), saved copy when offline.
+  // App files have a version in their address (?v=in..): the saved copy is always right, so use it at once.
+  if (url.search.indexOf('v=') >= 0) {
+    e.respondWith(caches.match(req).then(function (hit) {
+      return hit || fetch(req).then(function (res) {
+        if (res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(req, copy); }); }
+        return res;
+      });
+    }));
+    return;
+  }
+
+  // Other files (icons, manifest): newest copy first, saved copy when offline.
   e.respondWith(fetch(req, { cache: 'no-cache' }).then(function (res) {
     if (res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(req, copy); }); }
     return res;
