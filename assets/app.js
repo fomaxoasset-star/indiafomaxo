@@ -1369,6 +1369,7 @@
       api('team', { query: teamQuery() }).then(function (d) {
         if (!el()) return;
         var team = d.team, best = 0, sum = 0, cnt = 0, online = 0;
+        S._team = team; S._teamBest = 0; team.forEach(function (m) { if (!m.removed) S._teamBest = Math.max(S._teamBest, m.total); });
         S._removed = team.filter(function (m) { return m.removed && !m.deleted; }).map(function (m) { var ri = m.removed_info || {}; return { id: m.id, name: m.name, username: ri.u || '', removed_at: ri.at || null }; });
         team.forEach(function (m) { if (!m.removed) best = Math.max(best, m.total); sum += m.total; cnt += m.sales; if (m.online) online++; });
         el().innerHTML = '<div class="kpis">' +
@@ -1379,17 +1380,7 @@
           '<button class="kpi kpi-btn" data-act="staff-box"><div class="k-label">Staff</div><div class="k-val">' + team.filter(function (m) { return !m.removed && m.active; }).length +
             ' <span class="small muted">active</span>' + (S._removed.length ? ' <span class="small muted">· ' + S._removed.length + ' removed ›</span>' : '') + '</div></button></div>' +
           '<div class="people">' + team.filter(function (m) { return !m.removed; }).map(function (m) {
-            var avg = m.sales ? Math.round(m.total / m.sales) : 0, pm = m.methods || {};
-            return '<button class="person' + (m.active ? '' : ' off') + '" data-act="t-person" data-id="' + m.id + '">' +
-              '<div class="row"><span class="avatar lg">' + esc(initials(m.name)) + '</span><div class="grow"><b>' + esc(m.name) + '</b>' +
-              '<div class="small muted">' + (m.role === 'manager' ? 'Manager' : 'Staff') + (m.store_name ? ' · ' + esc(m.store_name) : multiStore() ? ' · any store' : '') + (m.active ? '' : ' · switched off') + '</div></div>' +
-              '<span class="dot-status ' + (m.online ? 'on' : '') + '">' + (m.online ? 'Active now' : esc(ago(m.last_seen))) + '</span></div>' +
-              '<div class="p-total num">' + inr(m.total) + '</div><div class="bar" style="margin:6px 0 10px"><i style="width:' + (best ? Math.max(2, m.total / best * 100) : 0) + '%"></i></div>' +
-              '<div class="p-stats"><span><b>' + m.sales + '</b> sales</span><span><b class="num">' + money(avg) + '</b> avg</span><span><b>' + m.items + '</b> items</span>' +
-              '<span' + (m.discount ? ' class="warn"' : '') + '><b class="num">' + money(m.discount) + '</b> discounts</span>' +
-              '<span' + (m.voids ? ' class="bad"' : '') + '><b>' + m.voids + '</b> voided</span></div>' +
-              (m.total ? '<div class="small muted" style="margin-top:8px">' + Object.keys(pm).map(function (k) { return (METHOD[k] || k) + ' ' + money(pm[k]); }).join(' · ') + '</div>' : '') +
-              (m.last_sale ? '<div class="small muted">Last sale ' + esc(ago(m.last_sale)) + '</div>' : '') + '</button>';
+            return perfCard(m, best);
           }).join('') + '</div><p class="small muted">Tap a person to see everything they did.</p>';
       }).catch(fail);
     } else if (S.teamTab === 'activity') {
@@ -1465,6 +1456,20 @@
         .then(function (d) { S.stores = d.stores; LS.set('fx_stores', S.stores); closeModal(); toast('Store saved.'); updateStoreBtn(); refreshProducts(); loadTeam(); })
         .catch(function (er) { b.disabled = false; modalErr(er.message); });
     });
+  }
+  // One person's numbers on Team → Performance (also shown for removed staff from the Staff box).
+  function perfCard(m, best) {
+    var avg = m.sales ? Math.round(m.total / m.sales) : 0, pm = m.methods || {};
+    return '<button class="person' + (m.active ? '' : ' off') + '" data-act="t-person" data-id="' + m.id + '">' +
+      '<div class="row"><span class="avatar lg">' + esc(initials(m.name)) + '</span><div class="grow"><b>' + esc(m.name) + '</b>' +
+      '<div class="small muted">' + (m.role === 'manager' ? 'Manager' : 'Staff') + (m.store_name ? ' · ' + esc(m.store_name) : multiStore() ? ' · any store' : '') + (m.active ? '' : ' · switched off') + '</div></div>' +
+      '<span class="dot-status ' + (m.online ? 'on' : '') + '">' + (m.online ? 'Active now' : esc(ago(m.last_seen))) + '</span></div>' +
+      '<div class="p-total num">' + inr(m.total) + '</div><div class="bar" style="margin:6px 0 10px"><i style="width:' + (best ? Math.max(2, m.total / best * 100) : 0) + '%"></i></div>' +
+      '<div class="p-stats"><span><b>' + m.sales + '</b> sales</span><span><b class="num">' + money(avg) + '</b> avg</span><span><b>' + m.items + '</b> items</span>' +
+      '<span' + (m.discount ? ' class="warn"' : '') + '><b class="num">' + money(m.discount) + '</b> discounts</span>' +
+      '<span' + (m.voids ? ' class="bad"' : '') + '><b>' + m.voids + '</b> voided</span></div>' +
+      (m.total ? '<div class="small muted" style="margin-top:8px">' + Object.keys(pm).map(function (k) { return (METHOD[k] || k) + ' ' + money(pm[k]); }).join(' · ') + '</div>' : '') +
+      (m.last_sale ? '<div class="small muted">Last sale ' + esc(ago(m.last_sale)) + '</div>' : '') + '</button>';
   }
   // Team → Stores → a store: who works there, add someone, or take someone off this store.
   function storeStaff(x) {
@@ -1705,7 +1710,7 @@
         S.team.preset = el.getAttribute('data-p'); S.team.from = tr.from; S.team.to = tr.to;
         renderStaff(); break;
       }
-      case 't-person': S.team.user = String(id); S.teamTab = 'activity'; renderStaff(); break;
+      case 't-person': closeModal(); S.team.user = String(id); S.teamTab = 'activity'; renderStaff(); break;
       case 'u-remove': {
         var ru = (S._users || []).filter(function (x) { return x.id === id; })[0]; if (!ru) break;
         openModal('Remove ' + ru.name + '?', '<div class="err m-err hidden"></div><p style="margin:0 0 14px"><b>' + esc(ru.username.toUpperCase()) + '</b> will no longer be able to log in. They move to <b>Removed staff</b> (hidden from Performance), where you can reactivate them later. Their past sales stay in Sales and Reports under their name.</p>' +
@@ -1715,12 +1720,20 @@
       case 'staff-box':
         openModal('Staff', (S._removed.length ? '<p class="small muted" style="margin:0 0 8px">Removed staff cannot log in and are left out of Performance. Their past sales stay in Sales and Reports.</p>' +
           S._removed.map(function (u) {
-            return '<div class="list-row"><div class="grow"><b>' + esc(u.name) + '</b> <span class="badge off">Staff removed</span><div class="small muted">' + esc(u.username.toUpperCase()) + (u.removed_at ? ' · removed ' + niceDate(u.removed_at) : '') + '</div></div>' +
+            return '<div class="list-row"><button class="grow link-btn" style="text-align:left;color:var(--text);text-decoration:none" data-act="rm-perf" data-id="' + u.id + '"><b>' + esc(u.name) + '</b> <span class="badge off">Staff removed</span><div class="small muted">' + esc(u.username.toUpperCase()) + (u.removed_at ? ' · removed ' + niceDate(u.removed_at) : '') + ' · <u>see performance</u></div></button>' +
               '<div class="row" style="gap:6px;flex:none"><button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button>' +
               '<button class="btn sm danger" data-act="u-forever" data-id="' + u.id + '">Remove forever</button></div></div>';
           }).join('') : '<p class="muted" style="margin:0 0 8px">No removed staff.</p>') +
           '<div class="modal-foot"><button class="btn" data-act="staff-logins">Staff logins</button><button class="btn gold" data-act="modal-close">Done</button></div>');
         break;
+      case 'rm-perf': {
+        var pm2 = (S._team || []).filter(function (x) { return x.id === id; })[0];
+        if (!pm2) { toast('Open Team → Performance to see their numbers.'); break; }
+        openModal(pm2.name + ' · Staff removed', '<p class="small muted" style="margin:0 0 10px">Performance for the dates chosen on Team → Performance.</p>' +
+          '<div class="people">' + perfCard(pm2, Math.max(S._teamBest || 0, pm2.total)) + '</div>' +
+          '<div class="modal-foot"><button class="btn" data-act="staff-box">‹ Back</button><button class="btn gold" data-act="u-restore" data-id="' + pm2.id + '">Reactivate</button></div>');
+        break;
+      }
       case 'staff-logins': closeModal(); S.teamTab = 'staff'; renderStaff(); break;
       case 'u-forever': {
         var fu = (S._removed || []).filter(function (x) { return x.id === id; })[0]; if (!fu) break;
