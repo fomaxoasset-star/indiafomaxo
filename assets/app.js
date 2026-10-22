@@ -1559,7 +1559,7 @@
         '<label class="field"><span>Key Id</span><input class="input" name="razorpay_key_id" autocomplete="off" spellcheck="false" placeholder="rzp_live_…"></label>' +
         '<label class="field"><span>Key Secret</span><input class="input" name="razorpay_key_secret" type="password" autocomplete="new-password" spellcheck="false" placeholder="' + (d.razorpay_key_saved ? 'Leave empty to keep the keys above' : 'From Razorpay → Account & Settings → API Keys') + '"></label>' +
         '<label class="field"><span>Razorpay QR at the till</span><select class="input" name="razorpay_mode">' +
-        [['demo', 'Practice — no Razorpay account used'], ['live', 'On — real UPI QR codes (test keys: no real money)']].map(function (o) {
+        [['demo', 'Practice — no Razorpay, no money'], ['test', 'Test — Razorpay test keys, no real money'], ['live', 'LIVE — real money (live keys)']].map(function (o) {
           return '<option value="' + o[0] + '"' + (d.razorpay_mode === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('') + '</select></label>' +
         (d.razorpay_key_from === 'app' ? '<label class="check"><input type="checkbox" name="remove_razorpay_keys"> Remove the saved keys' + ' (the shop’s keys are used again)</label>' : '') +

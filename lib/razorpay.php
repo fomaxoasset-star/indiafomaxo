@@ -9,7 +9,8 @@
 
 function rzp_mode()
 {
-    return cfg('razorpay_mode', 'demo') === 'live' ? 'live' : 'demo';
+    // Saved as demo (practice), test or live; test and live both use Razorpay, the keys decide whether money is real.
+    return in_array(cfg('razorpay_mode', 'demo'), ['live', 'test'], true) ? 'live' : 'demo';
 }
 
 /** The keys: saved in the app (Settings), else config file, else the fomaxo.in shop's own razorpay-config.php (same hosting account). */

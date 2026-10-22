@@ -880,7 +880,7 @@ switch ($action) {
         require_manager();
         $keys = rzp_keys();
         json_out([
-            'razorpay_mode' => rzp_mode(),
+            'razorpay_mode' => rzp_mode() === 'demo' ? 'demo' : (rzp_test_keys() ? 'test' : 'live'),
             'razorpay_key_saved' => (bool) $keys,
             'razorpay_key_from' => $keys ? $keys['from'] : '',
             'razorpay_key_id' => $keys ? $keys['id'] : '',
@@ -911,6 +911,21 @@ switch ($action) {
         $changes = [];
         $kid = preg_replace('/\s+/', '', (string) ($b['razorpay_key_id'] ?? ''));
         $ksec = preg_replace('/\s+/', '', (string) ($b['razorpay_key_secret'] ?? ''));
+        // Check the Practice / Test / Live choice against the keys it will use before anything is saved.
+        $m = in_array($b['razorpay_mode'] ?? '', ['live', 'test'], true) ? $b['razorpay_mode'] : 'demo';
+        if (isset($b['razorpay_mode']) && $m !== 'demo') {
+            $cur = rzp_keys();
+            $useKid = $kid !== '' ? $kid : ($cur && !($cur['from'] === 'app' && !empty($b['remove_razorpay_keys'])) ? $cur['id'] : '');
+            if ($useKid === '') {
+                fail('Add your Razorpay keys first, then switch Razorpay on.');
+            }
+            if ($m === 'live' && strpos($useKid, 'rzp_live_') !== 0) {
+                fail('Live needs live keys. In Razorpay switch to Live Mode → Account & Settings → API Keys, and enter the Key Id (starts with rzp_live_) and Key Secret here.');
+            }
+            if ($m === 'test' && strpos($useKid, 'rzp_test_') !== 0) {
+                fail('These are live keys, so payments would be real. Choose LIVE, or enter test keys (rzp_test_…).');
+            }
+        }
         if ($kid !== '' || $ksec !== '') {
             if (!preg_match('/^rzp_(test|live)_[A-Za-z0-9]{8,40}$/', $kid) || strlen($ksec) < 10 || strlen($ksec) > 100) {
                 fail('Paste both the Key Id (starts with rzp_live_ or rzp_test_) and the Key Secret from Razorpay → Account & Settings → API Keys.');
@@ -925,13 +940,8 @@ switch ($action) {
             $changes[] = 'Razorpay keys removed';
         }
         if (isset($b['razorpay_mode'])) {
-            $m = $b['razorpay_mode'] === 'live' ? 'live' : 'demo';
-            app_settings(true);
-            if ($m === 'live' && !rzp_keys()) {
-                fail('Add your Razorpay keys first, then switch Razorpay on.');
-            }
             meta_set('set_razorpay_mode', $m);
-            $changes[] = 'Razorpay: ' . ($m === 'live' ? 'on' : 'practice');
+            $changes[] = 'Razorpay: ' . ['live' => 'LIVE (real money)', 'test' => 'test (no real money)', 'demo' => 'practice'][$m];
         }
         if (array_key_exists('store_upi', $b)) {
             $vpa = strtolower(preg_replace('/\s+/', '', (string) $b['store_upi']));
