@@ -832,6 +832,10 @@ switch ($action) {
             fail('Type DELETE to confirm.');
         }
         $r = sales_reset($me, !empty($b['restock']));
+        $h = history_reset($me, !empty($b['activity']), !empty($b['moves']), !empty($b['customers']));
+        if ($h) {
+            log_activity($me, 'reset', 'Started fresh: also cleared ' . implode(', ', array_keys(array_filter(['activity log' => !empty($b['activity']), 'stock history' => !empty($b['moves']), 'customers' => !empty($b['customers'])]))) . '. Backup: ' . $h);
+        }
         json_out(['ok' => true, 'deleted' => $r['deleted'], 'backup' => $r['backup']]);
 
     case 'settings_save':

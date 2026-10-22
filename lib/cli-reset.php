@@ -54,29 +54,12 @@ $before = counts();
 try {
     // Sales first (its own backup), then the rest of the old records with a second backup.
     $r = sales_reset($me, false);
-    $backup = [
-        'made_at' => now(),
-        'stock_moves' => q('SELECT * FROM stock_moves')->fetchAll(),
-        'activity' => q('SELECT * FROM activity')->fetchAll(),
-        'customers' => q('SELECT * FROM customers')->fetchAll(),
-    ];
-    $file = dirname(__DIR__, 2) . '/fomaxo-pos-in-history-backup-' . date('Ymd-His') . '.json';
-    if (@file_put_contents($file, json_encode($backup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX) === false) {
-        echo "Sales cleared ({$r['deleted']}), but the history backup could not be saved, so history and customers were kept.\n";
-        exit(1);
-    }
-    @chmod($file, 0600);
-    $pdo = db();
-    $pdo->beginTransaction();
-    q('DELETE FROM stock_moves');
-    q('DELETE FROM activity');
-    q('DELETE FROM customers');
-    $pdo->commit();
+    $file = history_reset($me, true, true, true);
 } catch (ApiError $e) {
     echo 'Stopped: ' . $e->getMessage() . "\n";
     exit(1);
 }
 meta_set($key, now());
-log_activity($me, 'reset', 'Started fresh: all old sales, activity, stock history and customers cleared. Backups: ' . $r['backup'] . ', ' . basename($file));
+log_activity($me, 'reset', 'Started fresh: all old sales, activity, stock history and customers cleared. Backups: ' . $r['backup'] . ', ' . $file);
 
-echo json_encode(['before' => $before, 'deleted_sales' => $r['deleted'], 'backups' => [$r['backup'], basename($file)], 'after' => counts()], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), "\n";
+echo json_encode(['before' => $before, 'deleted_sales' => $r['deleted'], 'backups' => [$r['backup'], $file], 'after' => counts()], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), "\n";

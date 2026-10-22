@@ -478,3 +478,44 @@ function sales_reset($me, $restock)
     log_activity($me, 'reset', 'Started fresh: deleted ' . $count . ' sale' . ($count === 1 ? '' : 's') . ($restock ? ', sold items back in stock' : '') . '. Backup: ' . basename($file));
     return ['deleted' => $count, 'backup' => basename($file)];
 }
+
+/** Start fresh, the rest: clears the activity log, stock history and/or customers after a JSON backup. Returns the backup name. */
+function history_reset($me, $activity, $moves, $customers)
+{
+    if (!$activity && !$moves && !$customers) {
+        return null;
+    }
+    $backup = ['made_at' => now(), 'by' => $me['name']];
+    if ($moves) {
+        $backup['stock_moves'] = q('SELECT * FROM stock_moves')->fetchAll();
+    }
+    if ($activity) {
+        $backup['activity'] = q('SELECT * FROM activity')->fetchAll();
+    }
+    if ($customers) {
+        $backup['customers'] = q('SELECT * FROM customers')->fetchAll();
+    }
+    $file = dirname(__DIR__, 2) . '/fomaxo-pos-in-history-backup-' . date('Ymd-His') . '.json';
+    if (@file_put_contents($file, json_encode($backup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX) === false) {
+        fail('Sales were cleared, but the backup of the rest could not be saved, so it was kept.', 500);
+    }
+    @chmod($file, 0600);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($moves) {
+            q('DELETE FROM stock_moves');
+        }
+        if ($activity) {
+            q('DELETE FROM activity');
+        }
+        if ($customers) {
+            q('DELETE FROM customers');
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    return basename($file);
+}

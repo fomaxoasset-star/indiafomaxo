@@ -1768,13 +1768,18 @@
       case 'reset-open':
         openModal('Delete all sales?', '<div class="err m-err hidden"></div>' +
           '<p style="margin:0 0 10px">Every sale in the store app is deleted and receipt numbers start again at <b>10000</b>. This cannot be undone in the app (a backup file is kept on the server).</p>' +
-          '<label class="check"><input type="checkbox" id="rs-restock" checked> Put the items those sales took back into stock</label>' +
+          '<label class="check"><input type="checkbox" id="rs-restock"> Put the items those sales took back into stock (leave unticked to keep stock counts as they are)</label>' +
+          '<p class="small muted" style="margin:10px 0 4px">Also clear:</p>' +
+          '<label class="check"><input type="checkbox" id="rs-activity" checked> Activity log</label>' +
+          '<label class="check"><input type="checkbox" id="rs-moves" checked> Stock history</label>' +
+          '<label class="check"><input type="checkbox" id="rs-customers" checked> Customers (store customers only; fomaxo.in customers are not touched)</label>' +
           '<label class="field" style="margin-top:10px"><span>Type <b>DELETE</b> to confirm</span><input class="input cap" id="rs-confirm" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"></label>' +
           '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep sales</button><button class="btn danger" data-act="reset-yes">Delete all sales</button></div>');
         break;
       case 'reset-yes':
         el.disabled = true;
-        api('sales_reset', { body: { confirm: $('#rs-confirm').value, restock: $('#rs-restock').checked ? 1 : 0 } }).then(function (d) {
+        api('sales_reset', { body: { confirm: $('#rs-confirm').value, restock: $('#rs-restock').checked ? 1 : 0,
+          activity: $('#rs-activity').checked ? 1 : 0, moves: $('#rs-moves').checked ? 1 : 0, customers: $('#rs-customers').checked ? 1 : 0 } }).then(function (d) {
           closeModal(); toast('Done: ' + d.deleted + ' sale' + (d.deleted === 1 ? '' : 's') + ' deleted. Receipts start again at 10000.');
           refreshProducts(); if (S.view !== 'sell') renderView();
         }).catch(function (er) { el.disabled = false; modalErr(er.message); });
