@@ -1369,7 +1369,7 @@
       api('team', { query: teamQuery() }).then(function (d) {
         if (!el()) return;
         var team = d.team, best = 0, sum = 0, cnt = 0, online = 0;
-        S._removed = team.filter(function (m) { return m.removed; }).map(function (m) { var ri = m.removed_info || {}; return { id: m.id, name: m.name, username: ri.u || '', removed_at: ri.at || null }; });
+        S._removed = team.filter(function (m) { return m.removed && !m.deleted; }).map(function (m) { var ri = m.removed_info || {}; return { id: m.id, name: m.name, username: ri.u || '', removed_at: ri.at || null }; });
         team.forEach(function (m) { if (!m.removed) best = Math.max(best, m.total); sum += m.total; cnt += m.sales; if (m.online) online++; });
         el().innerHTML = '<div class="kpis">' +
           '<div class="kpi gold"><div class="k-label">Team sales</div><div class="k-val num">' + inr(sum) + '</div></div>' +
@@ -1430,7 +1430,7 @@
             '<p class="small muted" style="margin:-4px 0 8px">Not shown in Performance and cannot log in. Their past sales stay in Sales and Reports.</p>' +
             '<div class="table-wrap"><table class="tbl"><tbody>' + d.removed.map(function (u) {
               return '<tr><td><b>' + esc(u.name) + '</b> <span class="badge off">Staff removed</span><div class="small muted">' + esc(u.username.toUpperCase()) + (u.removed_at ? ' · removed ' + niceDate(u.removed_at) : '') + '</div></td>' +
-                '<td class="r"><button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button></td></tr>';
+                '<td class="r"><button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button> <button class="btn sm danger" data-act="u-forever" data-id="' + u.id + '">Remove forever</button></td></tr>';
             }).join('') + '</tbody></table></div>' : '');
         S._removed = d.removed || [];
       }).catch(fail);
@@ -1716,11 +1716,24 @@
         openModal('Staff', (S._removed.length ? '<p class="small muted" style="margin:0 0 8px">Removed staff cannot log in and are left out of Performance. Their past sales stay in Sales and Reports.</p>' +
           S._removed.map(function (u) {
             return '<div class="list-row"><div class="grow"><b>' + esc(u.name) + '</b> <span class="badge off">Staff removed</span><div class="small muted">' + esc(u.username.toUpperCase()) + (u.removed_at ? ' · removed ' + niceDate(u.removed_at) : '') + '</div></div>' +
-              '<button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button></div>';
+              '<div class="row" style="gap:6px;flex:none"><button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button>' +
+              '<button class="btn sm danger" data-act="u-forever" data-id="' + u.id + '">Remove forever</button></div></div>';
           }).join('') : '<p class="muted" style="margin:0 0 8px">No removed staff.</p>') +
           '<div class="modal-foot"><button class="btn" data-act="staff-logins">Staff logins</button><button class="btn gold" data-act="modal-close">Done</button></div>');
         break;
       case 'staff-logins': closeModal(); S.teamTab = 'staff'; renderStaff(); break;
+      case 'u-forever': {
+        var fu = (S._removed || []).filter(function (x) { return x.id === id; })[0]; if (!fu) break;
+        openModal('Remove ' + fu.name + ' forever?', '<div class="err m-err hidden"></div>' +
+          '<p style="margin:0 0 14px">Their login is deleted for good and <b>cannot be reactivated</b>. Their name stays on their old sales in Sales and Reports.</p>' +
+          '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="u-forever-yes" data-id="' + fu.id + '">Remove forever</button></div>');
+        break;
+      }
+      case 'u-forever-yes':
+        el.disabled = true;
+        api('user_delete', { body: { id: id } }).then(function () { closeModal(); toast('Removed forever.'); S._users = null; loadTeam(); })
+          .catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
       case 'u-restore': {
         var rr = (S._removed || []).filter(function (x) { return x.id === id; })[0]; if (!rr) break;
         openModal('Reactivate ' + rr.name + '?', '<div class="err m-err hidden"></div>' +

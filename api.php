@@ -631,18 +631,33 @@ switch ($action) {
         unset($r);
         // Removed staff: shown apart, with the username they had, so they can be reactivated.
         $removed = [];
-        foreach (q("SELECT id, name, role, store_id FROM users WHERE username LIKE '~%' ORDER BY name")->fetchAll() as $r) {
+        foreach (q("SELECT id, name, role, store_id FROM users WHERE username LIKE '~removed~%' ORDER BY name")->fetchAll() as $r) {
             $m = json_decode((string) meta_get('removed_user_' . $r['id'], ''), true) ?: [];
             $removed[] = ['id' => (int) $r['id'], 'name' => $r['name'], 'role' => $r['role'], 'store_id' => $r['store_id'] === null ? null : (int) $r['store_id'],
                 'username' => (string) ($m['u'] ?? ''), 'removed_at' => $m['at'] ?? null];
         }
         json_out(['users' => $rows, 'removed' => $removed]);
 
+    // Remove forever: a removed login is closed for good (cannot be reactivated). The name stays on their old sales.
+    case 'user_delete':
+        need_post();
+        $me = require_manager();
+        $id = (int) ($b['id'] ?? 0);
+        $x = q1("SELECT * FROM users WHERE id = ? AND username LIKE '~removed~%'", [$id]);
+        if (!$x) {
+            fail('Remove the staff member first, then remove forever.', 404);
+        }
+        q('UPDATE users SET username = ?, pass_hash = ?, active = 0 WHERE id = ?', ['~deleted~' . $id, password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT), $id]);
+        q('DELETE FROM meta WHERE k = ?', ['removed_user_' . $id]);
+        q('DELETE FROM tokens WHERE user_id = ?', [$id]);
+        log_activity($me, 'staff', 'Removed forever: ' . $x['name']);
+        json_out(['ok' => true]);
+
     case 'user_restore':
         need_post();
         $me = require_manager();
         $id = (int) ($b['id'] ?? 0);
-        $x = q1("SELECT * FROM users WHERE id = ? AND username LIKE '~%'", [$id]);
+        $x = q1("SELECT * FROM users WHERE id = ? AND username LIKE '~removed~%'", [$id]);
         if (!$x) {
             fail('That staff member is not in the removed list.', 404);
         }
@@ -953,7 +968,7 @@ switch ($action) {
             $pd = $paid[$id] ?? null;
             $out[] = [
                 'id' => $id, 'name' => $x['name'], 'username' => $x['username'], 'role' => $x['role'],
-                'removed' => strpos($x['username'], '~') === 0, 'removed_info' => strpos($x['username'], '~') === 0 ? (json_decode((string) meta_get('removed_user_' . $id, ''), true) ?: null) : null,
+                'removed' => strpos($x['username'], '~') === 0, 'deleted' => strpos($x['username'], '~deleted~') === 0, 'removed_info' => strpos($x['username'], '~') === 0 ? (json_decode((string) meta_get('removed_user_' . $id, ''), true) ?: null) : null,
                 'active' => (int) $x['active'], 'store_name' => $x['store_name'],
                 'last_seen' => $x['last_seen'],
                 'online' => $x['last_seen'] && strtotime($x['last_seen']) > time() - 300,
