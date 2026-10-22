@@ -862,12 +862,16 @@
       if (vpa && typeof qrcode === 'function') {
         var upiUrl = 'upi://pay?pa=' + encodeURIComponent(vpa) + '&pn=' + encodeURIComponent(S.settings.store_name || 'FOMAXO') +
           '&am=' + (t.total / 100).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent((S.settings.store_name || 'FOMAXO') + ' store');
-        try { var uq = qrcode(0, 'M'); uq.addData(upiUrl); uq.make(); qrSvg = '<div class="qr-box">' + uq.createSvgTag({ cellSize: 6, margin: 2, scalable: true }) + '</div>'; } catch (e) { qrSvg = ''; }
+        try {
+          var uq = qrcode(0, 'M'); uq.addData(upiUrl); uq.make();
+          qrSvg = '<div class="upi-name">' + esc(S.settings.store_name || 'FOMAXO') + '</div><div class="qr-box">' + uq.createSvgTag({ cellSize: 6, margin: 2, scalable: true }) + '</div>' +
+            '<div class="upi-id">UPI ID: ' + esc(vpa) + '</div>';
+        } catch (e) { qrSvg = ''; }
       }
       openModal('UPI · Paytm', '<div class="err m-err hidden"></div>' + amount + qrSvg +
         '<ol class="steps big">' + (qrSvg ? '<li><span>Customer scans this QR with <b>PhonePe</b>, <b>Google Pay</b>, <b>Paytm</b> or any UPI app. The amount is filled in.</span></li>'
           : '<li><span>Customer scans the store\u2019s UPI QR and pays <b class="num">' + money(t.total) + '</b> <button class="btn sm" data-act="copy-amount" data-v="' + (t.total / 100).toFixed(2) + '">Copy</button></span></li>') +
-        '<li><span>Check the money arrived in the store\u2019s UPI app, then press <b>Payment received</b>.</span></li></ol>' +
+        '<li><span>Check the money arrived in the store\u2019s Paytm app, then press <b>Payment received</b>.</span></li></ol>' +
         '<div class="seg upi-apps" style="margin:4px 0 12px">' + ['PhonePe', 'Google Pay', 'Paytm', 'Other UPI'].map(function (a, i) {
           return '<button type="button" data-act="upi-app" data-v="' + a + '" class="' + (i === 0 ? 'active' : '') + '">' + a + '</button>'; }).join('') + '</div>' +
         '<details class="ref"><summary>Add UPI reference (optional)</summary><input class="input" id="pay-ref" maxlength="40" placeholder="UTR / transaction ID"></details>' +

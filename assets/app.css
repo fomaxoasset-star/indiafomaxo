@@ -695,3 +695,6 @@ html, body { overscroll-behavior-y: none; }
 .phone-row .input:not(.cc) { flex: 1; min-width: 0; }
 button.kpi.kpi-btn { text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; }
 button.kpi.kpi-btn:hover { border-color: var(--gold); }
+
+.upi-name { text-align: center; font-family: "FOMAXO REAL", var(--head); font-size: 28px; letter-spacing: .12em; margin: 4px 0 8px; }
+.upi-id { text-align: center; font-size: 13px; color: var(--muted); margin: -4px 0 10px; }
