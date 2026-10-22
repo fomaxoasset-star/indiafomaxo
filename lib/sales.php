@@ -422,3 +422,59 @@ function load_sale($where, $param)
     }
     return $s;
 }
+
+/**
+ * Start fresh: every store sale is deleted (after a JSON backup next to public_html) and receipt numbers
+ * start again at 10000. With $restock the stock those sales took goes back. Products, stock counts,
+ * customers, staff, stores and settings stay. Nothing on fomaxo.in is touched. Used by Settings and cli-sales-reset.php.
+ */
+function sales_reset($me, $restock)
+{
+    if (q1("SELECT id FROM sales WHERE status = 'pending' AND created_at > ? LIMIT 1", [date('Y-m-d H:i:s', time() - 900)])) {
+        fail('A Razorpay payment is waiting right now. Finish or cancel it first, then try again.');
+    }
+    // Older unpaid Razorpay QR codes were left behind: close them so nobody can pay a deleted sale.
+    foreach (q("SELECT gateway_id FROM sales WHERE status = 'pending' AND gateway_id IS NOT NULL AND gateway_id <> ''")->fetchAll() as $p) {
+        rzp_close($p['gateway_id']);
+    }
+    $backup = [
+        'made_at' => now(), 'by' => $me['name'],
+        'sales' => q('SELECT * FROM sales')->fetchAll(),
+        'sale_items' => q('SELECT * FROM sale_items')->fetchAll(),
+        'stock_moves' => q('SELECT * FROM stock_moves WHERE sale_id IS NOT NULL')->fetchAll(),
+        'activity' => q("SELECT * FROM activity WHERE action IN ('sale', 'void', 'razorpay', 'cancel')")->fetchAll(),
+        'receipt_seq' => q('SELECT * FROM receipt_seq')->fetchAll(),
+    ];
+    $file = dirname(__DIR__, 2) . '/fomaxo-pos-in-sales-backup-' . date('Ymd-His') . '.json';
+    if (@file_put_contents($file, json_encode($backup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX) === false) {
+        fail('Could not save the backup, so nothing was deleted.', 500);
+    }
+    @chmod($file, 0600);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($restock) {
+            // Undo what the sales (and their voids) did to stock, without new history lines.
+            $net = q('SELECT product_id, store_id, SUM(qty_change) AS n FROM stock_moves WHERE sale_id IS NOT NULL GROUP BY product_id, store_id')->fetchAll();
+            foreach ($net as $r) {
+                $n = -(int) $r['n'];
+                if ($n !== 0) {
+                    q('UPDATE product_stock SET stock = stock + ? WHERE product_id = ? AND store_id = ?', [$n, $r['product_id'], $r['store_id']]);
+                    q('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?', [$n, now(), $r['product_id']]);
+                }
+            }
+        }
+        q('DELETE FROM stock_moves WHERE sale_id IS NOT NULL');
+        q('DELETE FROM sale_items');
+        $count = (int) q1('SELECT COUNT(*) AS n FROM sales')['n'];
+        q('DELETE FROM sales');
+        q("DELETE FROM activity WHERE action IN ('sale', 'void', 'razorpay', 'cancel')");
+        q('DELETE FROM receipt_seq');
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    log_activity($me, 'reset', 'Started fresh: deleted ' . $count . ' sale' . ($count === 1 ? '' : 's') . ($restock ? ', sold items back in stock' : '') . '. Backup: ' . basename($file));
+    return ['deleted' => $count, 'backup' => basename($file)];
+}
