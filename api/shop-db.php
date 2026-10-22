@@ -496,8 +496,13 @@ function coupon_free_name(array $c): string {
 }
 /* how the coupon mixes with the website offer (multi-buy), set with the two ring dots on Admin → Coupons */
 function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Use both' : 'Bigger offer'; }
-/* the last 10 digits of a mobile number ('' when it has fewer), so +91 98765 43210, 098765 43210 and 9876543210 all match */
-function coupon_phone(string $phone): string { $d = preg_replace('/\D/', '', $phone) ?? ''; return strlen($d) >= 10 ? substr($d, -10) : ''; }
+/* one mobile number as one key: an Indian mobile is its last 10 digits ('' when it has fewer), so +91 98765 43210, 098765 43210 and 9876543210 all match;
+   a number from another country (typed at checkout with its country code, saved as +971501234567) keeps the + and every digit, so it never looks Indian */
+function coupon_phone(string $phone): string {
+  $d = preg_replace('/\D/', '', $phone) ?? '';
+  if (str_starts_with(ltrim($phone), '+') && !str_starts_with($d, '91')) return strlen($d) >= 8 && strlen($d) <= 15 ? "+$d" : '';
+  return strlen($d) >= 10 ? substr($d, -10) : '';
+}
 /* ---- shared by every WhatsApp button and customer code (Refill reminders, Review requests, Reviews, Left at checkout, goodwill coupons) ---- */
 /* a WhatsApp chat with an Indian mobile and a ready message (WhatsApp shows *text* as bold; no emoji, wa.me shows them as "?") */
 /* the first word of a name, for "Hi Priya," */

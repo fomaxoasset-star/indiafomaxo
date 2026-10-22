@@ -659,7 +659,7 @@ function members(int $min, int $spend, string $q = '', string $from = '', string
     [$key, $digits] = customer_key($o);
     if ($key === '') continue;
     $m = &$M[$key];
-    $m ??= ['key' => $key, 'phone' => strlen($digits) === 10 ? $digits : '', 'orders' => []];
+    $m ??= ['key' => $key, 'phone' => $digits, 'orders' => []];
     $m['name'] = $o['name']; $m['email'] = $o['email'] ?: ($m['email'] ?? ''); $m['address'] = $o['address']; $m['state'] = $o['state'];
     $m['orders'][] = $o; unset($m);
   }
@@ -680,8 +680,8 @@ function members(int $min, int $spend, string $q = '', string $from = '', string
 }
 /* one customer = one mobile number (last 10 digits), or one email when there is no mobile */
 function customer_key(array $o): array {
-  $digits = substr(preg_replace('/\D/', '', (string)$o['phone']), -10);
-  return [strlen($digits) === 10 ? "m:$digits" : (trim((string)$o['email']) !== '' ? 'e:' . strtolower(trim((string)$o['email'])) : ''), strlen($digits) === 10 ? $digits : ''];
+  $digits = coupon_phone((string)$o['phone']);   // or +971501234567 for a number from another country
+  return [$digits !== '' ? "m:$digits" : (trim((string)$o['email']) !== '' ? 'e:' . strtolower(trim((string)$o['email'])) : ''), $digits];
 }
 /* everything about one customer: every order (cancelled ones counted apart; unpaid card tries are not orders), their reviews and their visits to the shop */
 function customer(string $key): ?array {
@@ -748,7 +748,7 @@ function reviews_list(array $f = [], ?array $rows = null): array {
   $q = mb_strtolower(trim((string)($f['q'] ?? ''))); $qd = preg_replace('/\D/', '', $q);
   $out = [];
   foreach ($rows as $r) {
-    $r['phone'] = substr(preg_replace('/\D/', '', (string)$r['phone']), -10) ?: (string)($r['mobile'] ?? '');   // the order's mobile, else the one typed in the review form
+    $r['phone'] = coupon_phone((string)$r['phone']) ?: (string)($r['mobile'] ?? '');   // the order's mobile, else the one typed in the review form
     if (isset($f['tokens']) && !in_array($r['token'], $f['tokens'], true) && !($f['phone'] !== '' && $r['phone'] === $f['phone'])) continue;
     if (isset($f['verified']) && (int)$r['verified'] !== (int)$f['verified']) continue;
     if (isset($f['product']) && $r['product'] !== $f['product']) continue;
@@ -789,7 +789,9 @@ function review_reply(int $id, string $text): void {
 function top_reviewers_min(): int { return max(1, min(99, (int)(shop_setting('top_reviewers') ?? '2'))); }
 function stars(float $r): string { $f = (int)round($r); return '<span class="stars" aria-label="' . round($r, 1) . ' out of 5">' . str_repeat('★', $f) . '<i>' . str_repeat('★', 5 - $f) . '</i></span>'; }
 
-function phone_fmt(string $digits): string { return $digits === '' ? '' : '+91 ' . substr($digits, 0, 5) . ' ' . substr($digits, 5); }
+function phone_fmt(string $digits): string { return $digits === '' || $digits[0] === '+' ? $digits : '+91 ' . substr($digits, 0, 5) . ' ' . substr($digits, 5); }   // +971501234567: a number from another country, as typed
+/* the tel: link of a mobile key from coupon_phone */
+function phone_tel(string $digits): string { return 'tel:' . ($digits !== '' && $digits[0] === '+' ? $digits : '+91' . $digits); }
 
 /* ---------------- reports (profit & loss) ---------------- */
 function pay_fee_pct(): float { return max(0, min(10, (float)(shop_setting('pay_fee') ?? '2'))); }
@@ -907,7 +909,7 @@ function conversion_stats(string $from, string $to, array $CAT): array {
     'pay' => $n('pay'), 'card' => $n('card'), 'buy' => $n('buy')];
   /* boxes left empty by people who typed details and did not order (then or later) */
   $paidPhones = [];
-  foreach ($db->query("SELECT phone, created FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0") as $o) $paidPhones[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o['created'];
+  foreach ($db->query("SELECT phone, created FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0") as $o) $paidPhones[coupon_phone((string)$o['phone'])][] = $o['created'];
   $empty = ['people' => 0, 'name' => 0, 'phone' => 0, 'state' => 0, 'address' => 0, 'email' => 0];
   foreach ($q('SELECT name, phone, state, address, email, ordered, created FROM leads WHERE updated >= ? AND updated <= ?', $a) as $l) {
     if ((int)$l['ordered']) continue;
@@ -981,7 +983,7 @@ function checkout_leads(?string $from = null, ?string $to = null): array {
   else $leads = $db->query('SELECT * FROM leads WHERE removed = 0 AND ordered <> 2 ORDER BY updated DESC')->fetchAll();
   if (!$leads) return [];
   $orders = [];
-  foreach ($db->query("SELECT no, phone, created FROM orders WHERE " . IS_ORDER . " AND test = 0 ORDER BY created") as $o) $orders[substr(preg_replace('/\D/', '', (string)$o['phone']), -10)][] = $o;
+  foreach ($db->query("SELECT no, phone, created FROM orders WHERE " . IS_ORDER . " AND test = 0 ORDER BY created") as $o) $orders[coupon_phone((string)$o['phone'])][] = $o;
   foreach ($leads as &$l) {
     $l['later'] = '';
     foreach ($orders[$l['phone']] ?? [] as $o) if ($o['created'] >= substr($l['created'], 0, 16)) { $l['later'] = (string)$o['no']; break; }

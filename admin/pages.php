@@ -479,7 +479,7 @@ if ($tab === 'members' && $ckey !== '' && ($C = customer($ckey))) {
     . ($C['phone'] !== '' && $cStop === '' ? '<form method="post" class="wastop">' . $csrfField . '<input type="hidden" name="action" value="wa_stop"><input type="hidden" name="phone" value="' . h($C['phone']) . '"><button class="btn line xs" data-confirm="Stop WhatsApp offers and automatic messages for ' . h($C['name']) . '?">Stop</button></form>' : '');
   /* details */
   $body .= '<div class="box on" data-pane="details"><div class="bh"><h3>Details</h3></div><div class="bb"><dl class="dl">'
-    . '<dt>Mobile</dt><dd>' . ($C['phone'] ? '<a href="tel:+91' . h($C['phone']) . '">' . h(phone_fmt($C['phone'])) . '</a> ' . $wa('btn xs wag') : '—') . '</dd>'
+    . '<dt>Mobile</dt><dd>' . ($C['phone'] ? '<a href="' . h(phone_tel($C['phone'])) . '">' . h(phone_fmt($C['phone'])) . '</a> ' . $wa('btn xs wag') : '—') . '</dd>'
     . '<dt>WhatsApp offers</dt><dd>' . $waRow . '</dd>'
     . '<dt>Email</dt><dd>' . ($C['email'] ? '<a href="mailto:' . h($C['email']) . '">' . h($C['email']) . '</a>' : '—') . '</dd>'
     . '<dt>Address</dt><dd>' . h($C['address']) . '</dd><dt>State</dt><dd>' . h($C['state'] ?: '—') . '</dd>'
