@@ -19,7 +19,7 @@ function store_code($store)
     return $c !== '' ? substr($c, 0, 6) : 'S' . (int) ($store['id'] ?? 0);
 }
 
-/** The next receipt number for a store, in order from 10000. Call inside the sale's transaction. */
+/** The next receipt number for a store, in order from 10000. Given only when the money is received (mark_paid), inside its transaction. */
 function next_receipt_no($storeId)
 {
     $storeId = (int) $storeId;
@@ -245,7 +245,7 @@ function create_sale($user, $b, $method)
         $token = bin2hex(random_bytes(16));
     }
 
-    // The store's counter row exists before the transaction, so two first sales at once cannot clash.
+    // The store's counter row exists before any transaction, so two first sales at once cannot clash.
     q((is_mysql() ? 'INSERT IGNORE' : 'INSERT OR IGNORE') . ' INTO receipt_seq (store_id, last) VALUES (?, 9999)', [(int) $storeId]);
 
     $pdo = db();
@@ -258,7 +258,7 @@ function create_sale($user, $b, $method)
         }
         $saleId = insert('sales', [
             'uuid' => $uuid,
-            'receipt_no' => next_receipt_no($storeId),
+            'receipt_no' => 'NOT PAID', // the number comes when the money is received (mark_paid)
             'receipt_token' => $token,
             'user_id' => $user['id'],
             'store_id' => $storeId,
@@ -310,13 +310,40 @@ function create_sale($user, $b, $method)
     return $saleId;
 }
 
-/** Marks a pending sale paid and takes the items out of stock. Safe to call twice. */
+/**
+ * Marks a pending sale paid, gives it the store's next receipt number and takes the items out of stock.
+ * Safe to call twice. A Razorpay QR that is cancelled never gets here, so it uses no number.
+ */
 function mark_paid($saleId, $userId, $paidAt = null)
+{
+    $pdo = db();
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $done = mark_paid_tx($saleId, $userId, $paidAt);
+        if ($own) {
+            $pdo->commit();
+        }
+        return $done;
+    } catch (Throwable $e) {
+        if ($own) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+function mark_paid_tx($saleId, $userId, $paidAt)
 {
     $st = q("UPDATE sales SET status = 'paid', paid_at = ? WHERE id = ? AND status = 'pending'", [$paidAt ?: now(), $saleId]);
     if ($st->rowCount() !== 1) {
         return false;
     }
+    $storeId = (int) q1('SELECT store_id FROM sales WHERE id = ?', [$saleId])['store_id'];
+    q((is_mysql() ? 'INSERT IGNORE' : 'INSERT OR IGNORE') . ' INTO receipt_seq (store_id, last) VALUES (?, 9999)', [$storeId]);
+    q('UPDATE sales SET receipt_no = ? WHERE id = ?', [next_receipt_no($storeId), $saleId]);
     $sale = q1('SELECT store_id, receipt_no, total, method, offline, user_id FROM sales WHERE id = ?', [$saleId]);
     $storeId = (int) $sale['store_id'];
     $mname = ['cash' => 'Cash', 'upi' => 'UPI', 'card' => 'Card machine', 'razorpay' => 'Razorpay QR'][$sale['method']] ?? $sale['method'];

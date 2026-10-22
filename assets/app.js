@@ -939,16 +939,18 @@
     doneScreen(sale);
   }
 
-  var payPoll = null;
+  var payPoll = null, zPaid = null;
   function stopPoll() { if (payPoll) { clearInterval(payPoll); payPoll = null; } }
   function rzpFlow() {
     var t = cartTotals();
     if (t.total < 100) { toast('Razorpay needs at least ₹1. Take cash for this sale.', true); return; }
-    var payload = buildPayload('razorpay', {});
-    var cust = S.customer;
+    rzpShow(api('rzp_start', { body: buildPayload('razorpay', {}), timeout: 30000 }), S.customer, afterSale);
+  }
+  // Shows the Razorpay QR for a new sale, or again for a sale that was waiting or cancelled (Sales → Take payment again).
+  function rzpShow(start, cust, onPaid) {
     openModal('UPI payment', '<div class="status-line"><span class="spinner"></span> Creating payment…</div>', { sticky: true, onClose: stopPoll });
-    api('rzp_start', { body: payload, timeout: 30000 }).then(function (d) {
-      if (d.sale.status === 'paid') { closeModal(); afterSale(d.sale); return; }
+    start.then(function (d) {
+      if (d.sale.status === 'paid') { closeModal(); onPaid(d.sale); return; }
       var qrHtml = '';
       if (d.qr) { var qr = qrcode(0, 'M'); qr.addData(d.qr); qr.make(); qrHtml = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); }
       else if (d.qr_image) qrHtml = '<img src="' + esc(d.qr_image) + '" alt="UPI QR code" style="width:100%;height:auto">';
@@ -965,16 +967,17 @@
         (d.kind === 'upi' ? '' : '<div class="modal-foot">' + (wa ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(wa) + '">Send link on WhatsApp</a>' : '') +
         '<a class="btn" target="_blank" rel="noopener" href="' + esc(d.pay_url) + '">Open on this device</a></div>') +
         '<div class="modal-foot"><button class="btn danger block" data-act="z-cancel" data-id="' + d.sale.id + '">Cancel payment</button></div>');
+      zPaid = onPaid;
       var busy = false;
       payPoll = setInterval(function () {
         if (busy) return; busy = true;
         api('rzp_check', { query: '&id=' + d.sale.id }).then(function (r) {
           busy = false;
-          if (r.status === 'paid') { stopPoll(); closeModal(); afterSale(r.sale); }
+          if (r.status === 'paid') { stopPoll(); closeModal(); onPaid(r.sale); }
           else if (r.status === 'failed' || r.status === 'cancelled') {
             stopPoll();
-            setModalBody('<div class="err" style="margin-bottom:12px">The payment was ' + r.status + '. No money was taken.</div>' +
-              '<div class="modal-foot"><button class="btn" data-act="modal-close">Close</button><button class="btn gold" data-act="pay" data-m="razorpay">Try again</button></div>');
+            setModalBody('<div class="err" style="margin-bottom:12px">The payment was ' + r.status + '. No money was taken and no receipt number was used.</div>' +
+              '<div class="modal-foot"><button class="btn" data-act="modal-close">Close</button><button class="btn gold" data-act="repay-open" data-id="' + d.sale.id + '">Take payment again</button></div>');
           }
         }, function () { busy = false; var s = $('#z-status'); if (s) s.innerHTML = '<span class="spinner"></span> Checking… (connection slow)'; });
       }, 3000);
@@ -1034,12 +1037,28 @@
       '<button class="pchoice slim" data-act="r-show"><span class="pi">🧾</span><b>Show receipt</b><small>QR, PDF, email</small></button>' +
       '</div><button class="btn gold big block next-btn" data-act="modal-close">Next customer →</button>', { noClose: true });
   }
+  function canRepay(s) { return !s.queued && ['pending', 'cancelled', 'failed'].indexOf(s.status) >= 0; }
+  function repayOpen(id) {
+    openModal('Take payment again', '<p class="small muted" style="margin-top:0">Same items and total. The sale gets its receipt number once the money is received.</p>' +
+      '<div class="err m-err hidden"></div>' +
+      '<div class="done-actions">' +
+      (S.settings.razorpay ? '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="razorpay"><span class="pi">▦</span><b>Razorpay QR</b><small>New QR code</small></button>' : '') +
+      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="cash"><span class="pi">₹</span><b>Cash</b><small>Received in full</small></button>' +
+      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="upi"><span class="pi">📱</span><b>UPI</b><small>To the store</small></button>' +
+      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="card"><span class="pi">💳</span><b>Card</b><small>Card machine</small></button>' +
+      '</div><div class="modal-foot"><button class="btn" data-act="modal-close">Close</button></div>');
+  }
+  function repaid(sale) {
+    refreshProducts();
+    if (S.view === 'sales') renderSales();
+    doneScreen(sale);
+  }
   function showReceipt(s, fresh) {
     currentReceipt = s;
     var statusNote = '';
     if (s.queued) statusNote = '<div class="note" style="margin-bottom:12px">Saved on this device (offline). It uploads automatically when internet is back. The WhatsApp link works after upload.</div>';
     else if (s.status === 'void') statusNote = '<div class="err" style="margin-bottom:12px">This sale was voided. ' + esc(s.note || '') + '</div>';
-    else if (s.status !== 'paid') statusNote = '<div class="err" style="margin-bottom:12px">Status: ' + esc(s.status) + ' — not paid.</div>';
+    else if (s.status !== 'paid') statusNote = '<div class="err" style="margin-bottom:12px">' + (s.status === 'pending' ? 'Waiting for payment' : 'Payment ' + esc(s.status)) + ' — not paid, so no receipt number yet. It gets the next number once paid.</div>';
     var paid = s.status === 'paid';
     var styled = !s.queued && s.receipt_token && S.online;
     var src = styled ? 'receipt.php?t=' + encodeURIComponent(s.receipt_token) + '&embed=1&theme=' + (isDark() ? 'dark' : 'light') : '';
@@ -1051,6 +1070,7 @@
         '<button class="btn" data-act="r-wa">WhatsApp</button><button class="btn" data-act="r-copy">Copy link</button>' +
         '<button class="btn" data-act="r-email">Email</button>' : '') +
       (!fresh && paid && isManager() && !s.queued ? '<button class="btn danger" data-act="r-void">Void sale</button>' : '') +
+      (canRepay(s) ? '<button class="btn gold big wide" data-act="repay-open" data-id="' + s.id + '">Take payment again</button>' : '') +
       (fresh ? '<button class="btn gold big wide" data-act="modal-close">New sale</button>' : '') +
       '</div>', { wide: true });
     var fr = $('#rframe');
@@ -1935,8 +1955,8 @@
       case 'z-cancel':
         el.disabled = true; stopPoll();
         api('rzp_cancel', { body: { id: id } }).then(function (r) {
-          if (r.status === 'paid') { closeModal(); afterSale(r.sale); toast('The customer had already paid — sale completed.'); }
-          else { closeModal(); toast('Payment cancelled. The QR code no longer takes money.'); }
+          if (r.status === 'paid') { closeModal(); (zPaid || afterSale)(r.sale); toast('The customer had already paid — sale completed.'); }
+          else { closeModal(); toast('Payment cancelled. The QR code no longer takes money. You can take payment again from Sales.'); if (S.view === 'sales') renderSales(); }
         }).catch(function (er) { el.disabled = false; modalErr(er.message); });
         break;
       // receipt
@@ -1982,6 +2002,16 @@
         break;
       }
       // sales
+      case 'repay-open': stopPoll(); repayOpen(id); break;
+      case 'repay': {
+        var rm = el.getAttribute('data-m');
+        if (rm === 'razorpay') { rzpShow(api('sale_repay', { body: { id: id, method: 'razorpay' }, timeout: 30000 }), null, repaid); break; }
+        if (!confirm('Mark this sale paid by ' + METHOD[rm] + '? It gets the next receipt number.')) break;
+        el.disabled = true;
+        api('sale_repay', { body: { id: id, method: rm } }).then(function (d) { closeModal(); repaid(d.sale); })
+          .catch(function (er) { el.disabled = false; modalErr(er.offline ? 'Needs internet.' : er.message); });
+        break;
+      }
       case 's-open':
         api('sale_get', { query: '&id=' + id }).then(function (d) { showReceipt(d.sale, false); }).catch(function (er) { toast(er.message, true); });
         break;

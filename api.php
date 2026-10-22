@@ -475,8 +475,8 @@ switch ($action) {
         try {
             $z = rzp_create(
                 (int) $sale['total'],
-                $sale['receipt_no'],
-                cfg('store_name', 'FOMAXO') . ' ' . $sale['receipt_no'],
+                'POS-' . $id, // no receipt number yet: it comes when the money is received
+                cfg('store_name', 'FOMAXO') . ' sale ' . $id,
                 cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token']
             );
         } catch (Throwable $e) {
@@ -513,6 +513,73 @@ switch ($action) {
         q("UPDATE sales SET status = 'cancelled' WHERE id = ? AND status = 'pending'", [$sale['id']]);
         log_activity($u, 'cancel', 'Cancelled Razorpay payment', $sale['receipt_no'], (int) $sale['store_id']);
         json_out(['status' => 'cancelled']);
+
+    case 'sale_repay':
+        // Take payment again for a sale that is waiting, cancelled or failed: a new Razorpay QR, or cash / UPI / card.
+        // It keeps the same items and total, and gets its receipt number only once paid.
+        need_post();
+        $u = require_user();
+        $sale = q1('SELECT * FROM sales WHERE id = ?', [(int) ($b['id'] ?? 0)]);
+        if (!$sale || ($u['role'] !== 'manager' && (int) $sale['user_id'] !== (int) $u['id'])) {
+            fail('Sale not found.', 404);
+        }
+        $method = (string) ($b['method'] ?? '');
+        if (!in_array($method, ['razorpay', 'cash', 'upi', 'card'], true)) {
+            fail('Choose how the customer pays.');
+        }
+        if (refresh_gateway_sale($sale, $u['id']) === 'paid' || $sale['status'] === 'paid') {
+            json_out(['sale' => load_sale('id', $sale['id']), 'already' => true]);
+        }
+        if (!in_array($sale['status'], ['pending', 'cancelled', 'failed'], true)) {
+            fail('This sale cannot take payment (it is ' . $sale['status'] . ').');
+        }
+        foreach (q('SELECT product_id, name, variant, SUM(qty) AS qty FROM sale_items WHERE sale_id = ? AND product_id IS NOT NULL GROUP BY product_id, name, variant', [$sale['id']])->fetchAll() as $it) {
+            if (store_stock((int) $it['product_id'], (int) $sale['store_id']) < (int) $it['qty']) {
+                fail(trim($it['name'] . ' ' . $it['variant']) . ' is out of stock now, so this sale cannot be completed. Make a new sale instead.');
+            }
+        }
+        if ($sale['gateway_id']) {
+            rzp_close($sale['gateway_id']); // the old QR stops taking money
+        }
+        if ($method === 'razorpay') {
+            if (!rzp_enabled()) {
+                fail('Razorpay is not set up yet. A manager can add the keys under menu → Settings.');
+            }
+            if ((int) $sale['total'] < 100) {
+                fail('Razorpay needs at least ₹1. Take cash for this sale.');
+            }
+            q("UPDATE sales SET status = 'pending', method = 'razorpay', gateway_id = NULL, cash_given = NULL, change_due = NULL WHERE id = ?", [$sale['id']]);
+            try {
+                $z = rzp_create((int) $sale['total'], 'POS-' . $sale['id'], cfg('store_name', 'FOMAXO') . ' sale ' . $sale['id'], cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token']);
+            } catch (Throwable $e) {
+                q("UPDATE sales SET status = 'failed' WHERE id = ?", [$sale['id']]);
+                throw $e;
+            }
+            q('UPDATE sales SET gateway_id = ? WHERE id = ?', [$z['id'], $sale['id']]);
+            log_activity($u, 'razorpay', 'Showed Razorpay UPI QR again for a sale that was ' . $sale['status'], 'NOT PAID', (int) $sale['store_id']);
+            json_out(['sale' => load_sale('id', $sale['id']), 'qr' => $z['qr'], 'qr_image' => $z['image'] ?? '', 'pay_url' => $z['link'], 'kind' => $z['kind']]);
+        }
+        $cashGiven = $method === 'cash' ? (int) $sale['total'] : null;
+        if ($method === 'cash' && isset($b['cash_given']) && $b['cash_given'] !== '') {
+            $cashGiven = to_fils($b['cash_given']);
+            if ($cashGiven < (int) $sale['total']) {
+                fail('Cash received is less than the total.');
+            }
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            q("UPDATE sales SET status = 'pending', method = ?, gateway_id = NULL, cash_given = ?, change_due = ?, payment_ref = ? WHERE id = ?", [
+                $method, $cashGiven, $cashGiven === null ? null : $cashGiven - (int) $sale['total'],
+                mb_substr(trim((string) ($b['payment_ref'] ?? '')), 0, 64), $sale['id'],
+            ]);
+            mark_paid((int) $sale['id'], $u['id']);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        json_out(['sale' => load_sale('id', $sale['id'])]);
 
     // ---------------- Sales history ----------------
     case 'sales':
