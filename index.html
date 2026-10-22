@@ -3325,6 +3325,16 @@ document.addEventListener('click', e => {
     const added = cart.reduce((a, l) => a + l.qty, 0) - before; if (added) toast(`${added} item${added > 1 ? 's' : ''} from your last order added to your bag`, true); return; }
   const b = e.target.closest('[data-again]'); if (!b) return; const l = lastOrder()[+b.dataset.again]; if (!l) return;
   addToCart(...againLine(l)); });
+/* a valid WhatsApp number typed in the welcome box, offer popup or bag box goes to Left at checkout as soon as they leave the box,
+   also when they close the popup or the bag without pressing Send (AJAY saw typed numbers in Clarity that never arrived, 2026-10-22) */
+let waKept = '';
+function waKeep(ph, nm){
+  if (!ph) return;
+  const keep = () => { let d = ph.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+    const n = nm ? nm.value.trim() : '', k = d + '|' + n;
+    if (/^[6-9]\d{9}$/.test(d) && k !== waKept) { waKept = k; TRK.lead('coupon', {name: n, phone: d}, cart); } };
+  [ph, nm].forEach(el => { if (el) { el.addEventListener('change', keep); el.addEventListener('blur', keep); } });
+}
 /* bag: a new customer can type their own WhatsApp number to get a 10% off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden once we already have their number. */
 function bagWaHTML(){
   let known = ''; try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; known = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
@@ -3333,6 +3343,7 @@ function bagWaHTML(){
 }
 function bagWaWire(){
   const f = $('#bagWa'); if (!f) return;
+  waKeep($('#bagWaIn'));
   f.onsubmit = e => { e.preventDefault(); let d = $('#bagWaIn').value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
     if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
     try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
@@ -5679,6 +5690,7 @@ if (welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new vis
     pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('.ofp-x,.ofp-no')) close(); });
     document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey);
     requestAnimationFrame(() => { pop.classList.add('on'); $('.ofp-box', pop).focus({preventScroll: true}); });
+    waKeep($('#welWaIn', pop), $('#welName', pop));
     $('#welWa', pop).onsubmit = e => { e.preventDefault(); const nm = $('#welName', pop).value.trim(); let d = $('#welWaIn', pop).value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
       if (!nm) { toast('Please enter your name'); return; }
       if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
@@ -5715,6 +5727,7 @@ if (OFFER || NEWP) {
   const waKnown = () => { try { return !!(localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return true; } };
   const waHTML = () => waKnown() ? '' : `<div class="ofp-wa"><p class="ofp-wa-t"><b>New here? GET 10% OFF</b><span>· Coupon on WhatsApp</span></p><form class="wel-form" id="ofpWa" novalidate><input id="ofpWaName" class="ofp-wa-nm" type="text" autocomplete="name" maxlength="60" placeholder="Name" aria-label="Your name"><input id="ofpWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WhatsApp Number" aria-label="Your WhatsApp number"><button class="btn" type="submit">${WA_SVG()}<span>Send</span></button></form></div>`;
   const waWire = () => { const f = pop && $('#ofpWa', pop); if (!f) return;
+    waKeep($('#ofpWaIn', pop), $('#ofpWaName', pop));
     f.onsubmit = e => { e.preventDefault(); const nm = $('#ofpWaName', pop).value.trim(); let d = $('#ofpWaIn', pop).value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
       if (!nm) { toast('Please enter your name'); return; }
       if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
