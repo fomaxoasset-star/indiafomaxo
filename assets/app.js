@@ -1421,7 +1421,14 @@
             return '<tr><td><b>' + esc(u.name) + '</b>' + (u.active ? '' : ' <span class="badge off">Switched off</span>') + '</td><td class="muted">' + esc(u.username.toUpperCase()) + '</td><td>' + (u.role === 'manager' ? '<span class="tier-tag">Manager</span>' : 'Staff') + '</td>' +
               (multiStore() ? '<td class="hide-sm">' + (st ? esc(st.name) : '<span class="muted">Any store</span>') + '</td>' : '') +
               '<td class="r"><button class="btn sm" data-act="u-edit" data-id="' + u.id + '">Edit</button></td></tr>';
-          }).join('') + '</tbody></table></div>';
+          }).join('') + '</tbody></table></div>' +
+          (d.removed && d.removed.length ? '<h3 class="set-h" style="margin-top:22px">Removed staff</h3>' +
+            '<p class="small muted" style="margin:-4px 0 8px">Not shown in Performance and cannot log in. Their past sales stay in Sales and Reports.</p>' +
+            '<div class="table-wrap"><table class="tbl"><tbody>' + d.removed.map(function (u) {
+              return '<tr><td><b>' + esc(u.name) + '</b> <span class="badge off">Staff removed</span><div class="small muted">' + esc(u.username.toUpperCase()) + (u.removed_at ? ' · removed ' + niceDate(u.removed_at) : '') + '</div></td>' +
+                '<td class="r"><button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button></td></tr>';
+            }).join('') + '</tbody></table></div>' : '');
+        S._removed = d.removed || [];
       }).catch(fail);
     } else {
       api('stores').then(function (d) {
@@ -1697,10 +1704,23 @@
       case 't-person': S.team.user = String(id); S.teamTab = 'activity'; renderStaff(); break;
       case 'u-remove': {
         var ru = (S._users || []).filter(function (x) { return x.id === id; })[0]; if (!ru) break;
-        openModal('Remove ' + ru.name + '?', '<div class="err m-err hidden"></div><p style="margin:0 0 14px"><b>' + esc(ru.username.toUpperCase()) + '</b> will no longer be able to log in, and they disappear from this list. Their past sales stay in Sales and Reports under their name.</p>' +
+        openModal('Remove ' + ru.name + '?', '<div class="err m-err hidden"></div><p style="margin:0 0 14px"><b>' + esc(ru.username.toUpperCase()) + '</b> will no longer be able to log in. They move to <b>Removed staff</b> (hidden from Performance), where you can reactivate them later. Their past sales stay in Sales and Reports under their name.</p>' +
           '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="u-remove-yes" data-id="' + ru.id + '">Remove staff</button></div>');
         break;
       }
+      case 'u-restore': {
+        var rr = (S._removed || []).filter(function (x) { return x.id === id; })[0]; if (!rr) break;
+        openModal('Reactivate ' + rr.name + '?', '<div class="err m-err hidden"></div>' +
+          '<p style="margin:0 0 12px">' + esc(rr.name) + ' can log in again with their old password, and shows in Performance again.</p>' +
+          '<label class="field"><span>Username</span><input class="input" id="rr-user" name="username" autocapitalize="characters" autocorrect="off" spellcheck="false" value="' + esc(rr.username.toUpperCase()) + '"></label>' +
+          '<div class="modal-foot"><button class="btn" data-act="modal-close">Cancel</button><button class="btn gold" data-act="u-restore-yes" data-id="' + rr.id + '">Reactivate</button></div>');
+        break;
+      }
+      case 'u-restore-yes':
+        el.disabled = true;
+        api('user_restore', { body: { id: id, username: $('#rr-user').value } }).then(function () { closeModal(); toast('Reactivated.'); S._users = null; loadTeam(); })
+          .catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
       case 'u-remove-yes':
         el.disabled = true;
         api('user_remove', { body: { id: id } }).then(function () { closeModal(); toast('Staff removed.'); S._users = null; loadTeam(); })

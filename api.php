@@ -628,7 +628,35 @@ switch ($action) {
             $r['store_id'] = $r['store_id'] === null ? null : (int) $r['store_id'];
             $r['active'] = (int) $r['active'];
         }
-        json_out(['users' => $rows]);
+        unset($r);
+        // Removed staff: shown apart, with the username they had, so they can be reactivated.
+        $removed = [];
+        foreach (q("SELECT id, name, role, store_id FROM users WHERE username LIKE '~%' ORDER BY name")->fetchAll() as $r) {
+            $m = json_decode((string) meta_get('removed_user_' . $r['id'], ''), true) ?: [];
+            $removed[] = ['id' => (int) $r['id'], 'name' => $r['name'], 'role' => $r['role'], 'store_id' => $r['store_id'] === null ? null : (int) $r['store_id'],
+                'username' => (string) ($m['u'] ?? ''), 'removed_at' => $m['at'] ?? null];
+        }
+        json_out(['users' => $rows, 'removed' => $removed]);
+
+    case 'user_restore':
+        need_post();
+        $me = require_manager();
+        $id = (int) ($b['id'] ?? 0);
+        $x = q1("SELECT * FROM users WHERE id = ? AND username LIKE '~%'", [$id]);
+        if (!$x) {
+            fail('That staff member is not in the removed list.', 404);
+        }
+        $username = strtolower(trim((string) ($b['username'] ?? '')));
+        if (!preg_match('/^[a-z0-9._-]{3,50}$/', $username)) {
+            fail('Enter a username (3+ letters/numbers, no spaces).');
+        }
+        if ($taken = q1('SELECT name FROM users WHERE username = ? AND id <> ?', [$username, $id])) {
+            fail('The username ' . strtoupper($username) . ' is now used by ' . $taken['name'] . '. Choose another one.');
+        }
+        q('UPDATE users SET username = ?, active = 1 WHERE id = ?', [$username, $id]);
+        q('DELETE FROM meta WHERE k = ?', ['removed_user_' . $id]);
+        log_activity($me, 'staff', 'Reactivated staff account: ' . $x['name'] . ' (' . strtoupper($username) . ')');
+        json_out(['ok' => true]);
 
     case 'user_save':
         need_post();
@@ -719,6 +747,7 @@ switch ($action) {
             fail('You cannot remove your own login.');
         }
         // Their sales and history stay with their name; the login is closed and the username can be used again.
+        meta_set('removed_user_' . $id, json_encode(['u' => $x['username'], 'at' => now()]));
         q('UPDATE users SET active = 0, username = ? WHERE id = ?', ['~removed~' . $id, $id]);
         q('DELETE FROM tokens WHERE user_id = ?', [$id]);
         log_activity($me, 'staff', 'Removed staff account: ' . $x['name'] . ' (' . strtoupper($x['username']) . ')');
@@ -896,7 +925,7 @@ switch ($action) {
         $sf = (!empty($_GET['store']) && $_GET['store'] !== 'all') ? ' AND s.store_id = ' . (int) $_GET['store'] : '';
         $users = q('SELECT u.id, u.name, u.username, u.role, u.active, u.store_id, st.name AS store_name,
                            (SELECT MAX(last_used) FROM tokens t WHERE t.user_id = u.id) AS last_seen
-                    FROM users u LEFT JOIN stores st ON st.id = u.store_id ORDER BY u.active DESC, u.name')->fetchAll();
+                    FROM users u LEFT JOIN stores st ON st.id = u.store_id WHERE u.username NOT LIKE \'~%\' ORDER BY u.active DESC, u.name')->fetchAll(); // removed staff are left out
         $paid = [];
         foreach (q("SELECT s.user_id, COUNT(*) AS sales, SUM(s.total) AS total, SUM(s.discount) AS discount,
                            MAX(s.created_at) AS last_sale
