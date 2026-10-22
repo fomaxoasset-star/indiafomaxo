@@ -1,4 +1,5 @@
 /* FOMAXO India admin: phone switches between boxes, dd/mm/yyyy date boxes, the Sales / Visitors bar charts on the dashboard and the Reports line graph. */
+try{localStorage.setItem('fomaxo_notrack','1')}catch(e){}   /* this browser is the owner's: the shop hides its "New here?" WhatsApp boxes here */
 /* posts one admin action without reloading the page (csrf from the nearest [data-csrf] box) and gives back the server's JSON answer */
 function postAction(el, fields) {
   var box = el.closest('[data-csrf]') || document.querySelector('[data-csrf]'), fd = new FormData();
