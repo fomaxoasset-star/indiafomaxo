@@ -688,9 +688,9 @@
     openModal('How is the customer paying?', '<div class="amount-big"><div class="lbl">Total</div><div class="val num">' + inr(t.total) + '</div></div>' +
       '<div class="pay-choices">' +
       '<button class="pchoice cash" data-act="pay" data-m="cash"><span class="pi">💵</span><b>Cash</b><small>Notes and coins</small></button>' +
-      '<button class="pchoice" data-act="pay" data-m="razorpay"' + (qrOk ? '' : ' disabled') + '><span class="pi">📱</span><b>UPI QR · Razorpay</b><small>' + (!st.razorpay ? 'Not set up yet' : S.online ? 'PhonePe, Google Pay, Paytm — confirms by itself' : 'Needs internet') + '</small></button>' +
-      '<button class="pchoice" data-act="pay" data-m="upi"><span class="pi">🏦</span><b>UPI to store</b><small>' + (st.store_upi ? 'PhonePe, Google Pay, Paytm to ' + esc(st.store_upi) : 'Customer pays the store\u2019s UPI QR') + '</small></button>' +
-      '</div><button class="link-btn other-card" data-act="pay" data-m="card">Card machine</button>');
+      '<button class="pchoice" data-act="pay" data-m="rzp-card"' + (qrOk ? '' : ' disabled') + '><span class="pi">💳</span><b>Card · Razorpay</b><small>' + (!st.razorpay ? 'Not set up yet' : S.online ? 'Customer scans the QR and pays by card — confirms by itself' : 'Needs internet') + '</small></button>' +
+      '<button class="pchoice" data-act="pay" data-m="upi"><span class="pi">📱</span><b>UPI · Paytm</b><small>' + (st.store_upi ? 'To the store\u2019s Paytm ' + esc(st.store_upi) : 'Customer scans the store\u2019s Paytm QR') + '</small></button>' +
+      '</div>');
   }
   function couponDiscountModal() {
     openModal('Coupon or discount', '<div class="more-choices">' +
@@ -864,7 +864,7 @@
           '&am=' + (t.total / 100).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent((S.settings.store_name || 'FOMAXO') + ' store');
         try { var uq = qrcode(0, 'M'); uq.addData(upiUrl); uq.make(); qrSvg = '<div class="qr-box">' + uq.createSvgTag({ cellSize: 6, margin: 2, scalable: true }) + '</div>'; } catch (e) { qrSvg = ''; }
       }
-      openModal('UPI to the store', '<div class="err m-err hidden"></div>' + amount + qrSvg +
+      openModal('UPI · Paytm', '<div class="err m-err hidden"></div>' + amount + qrSvg +
         '<ol class="steps big">' + (qrSvg ? '<li><span>Customer scans this QR with <b>PhonePe</b>, <b>Google Pay</b>, <b>Paytm</b> or any UPI app. The amount is filled in.</span></li>'
           : '<li><span>Customer scans the store\u2019s UPI QR and pays <b class="num">' + money(t.total) + '</b> <button class="btn sm" data-act="copy-amount" data-v="' + (t.total / 100).toFixed(2) + '">Copy</button></span></li>') +
         '<li><span>Check the money arrived in the store\u2019s UPI app, then press <b>Payment received</b>.</span></li></ol>' +
@@ -877,8 +877,8 @@
         '<p class="muted">Charge this amount on the card terminal. When it prints <b>approved</b>, press Payment received.</p>' +
         '<label class="field"><span>Approval code (optional)</span><input class="input" id="pay-ref" maxlength="64"></label>' +
         '<div class="modal-foot"><button class="btn ghost" data-act="modal-close">Back</button><button class="btn gold big" data-act="confirm-pay" data-m="card">Payment received</button></div>', { sticky: true });
-    } else if (method === 'razorpay') {
-      rzpFlow();
+    } else if (method === 'razorpay' || method === 'rzp-card') {
+      rzpFlow(method === 'rzp-card' ? 'card' : 'upi');
     }
   }
   function updateChange() {
@@ -956,14 +956,15 @@
     return r && r.value !== 'Other' ? r.value : '';
   }
   function stopPoll() { if (payPoll) { clearInterval(payPoll); payPoll = null; } }
-  function rzpFlow() {
+  function rzpFlow(as) {
     var t = cartTotals();
     if (t.total < 100) { toast('Razorpay needs at least ₹1. Take cash for this sale.', true); return; }
-    rzpShow(api('rzp_start', { body: buildPayload('razorpay', {}), timeout: 30000 }), S.customer, afterSale);
+    var body = buildPayload('razorpay', {}); body.as = as;
+    rzpShow(api('rzp_start', { body: body, timeout: 30000 }), S.customer, afterSale, as);
   }
   // Shows the Razorpay QR for a new sale, or again for a sale that was waiting or cancelled (Sales → Take payment again).
-  function rzpShow(start, cust, onPaid) {
-    openModal('UPI payment', '<div class="status-line"><span class="spinner"></span> Creating payment…</div>', { sticky: true, onClose: stopPoll });
+  function rzpShow(start, cust, onPaid, as) {
+    openModal(as === 'card' ? 'Card payment · Razorpay' : 'UPI payment', '<div class="status-line"><span class="spinner"></span> Creating payment…</div>', { sticky: true, onClose: stopPoll });
     start.then(function (d) {
       if (d.sale.status === 'paid') { closeModal(); onPaid(d.sale); return; }
       var qrHtml = '';
@@ -976,7 +977,7 @@
         (mode !== 'live' ? '<div class="note" style="margin-bottom:12px;text-align:center">' + (mode === 'demo' ? 'PRACTICE MODE — no real money' : 'RAZORPAY TEST MODE — no real money') + '</div>' : '') +
         '<div class="amount-big"><div class="lbl">Customer pays</div><div class="val num">' + inr(d.sale.total) + '</div></div>' +
         '<div class="qr-box">' + qrHtml + '</div>' +
-        '<p class="small muted" style="text-align:center;margin:0 0 6px">' + (d.kind === 'link' ? 'Customer scans with their phone camera and pays by UPI, card or netbanking.' : 'Customer scans with PhonePe, Google Pay, Paytm or any UPI app. The sale completes by itself.') + '</p>' +
+        '<p class="small muted" style="text-align:center;margin:0 0 6px">' + (as === 'card' ? 'Customer scans with their phone camera and pays by card. Or tap Open on this device and type the card in here. The sale completes by itself.' : d.kind === 'link' ? 'Customer scans with their phone camera and pays by UPI, card or netbanking.' : 'Customer scans with PhonePe, Google Pay, Paytm or any UPI app. The sale completes by itself.') + '</p>' +
         '<div class="status-line" id="z-status"><span class="spinner"></span> Waiting for payment…</div>' +
         '<div class="err m-err hidden"></div>' +
         (d.kind === 'upi' ? '' : '<div class="modal-foot">' + (wa ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(wa) + '">Send link on WhatsApp</a>' : '') +
@@ -1009,7 +1010,7 @@
   }
 
   // ---------------------------------------------------------------- RECEIPT
-  var METHOD = { cash: 'Cash', upi: 'UPI', card: 'Card', razorpay: 'Razorpay UPI' };
+  var METHOD = { cash: 'Cash', upi: 'UPI', card: 'Card', razorpay: 'Razorpay' };
   function paperHtml(s) {
     var st = S.settings;
     return '<div class="paper">' +
@@ -1063,10 +1064,9 @@
     openModal('Take payment again', '<p class="small muted" style="margin-top:0">Same items and total. The sale gets its receipt number once the money is received.</p>' +
       '<div class="err m-err hidden"></div>' +
       '<div class="done-actions">' +
-      (S.settings.razorpay ? '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="razorpay"><span class="pi">▦</span><b>Razorpay QR</b><small>New QR code</small></button>' : '') +
-      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="cash"><span class="pi">₹</span><b>Cash</b><small>Received in full</small></button>' +
-      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="upi"><span class="pi">📱</span><b>UPI</b><small>To the store</small></button>' +
-      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="card"><span class="pi">💳</span><b>Card</b><small>Card machine</small></button>' +
+      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="cash"><span class="pi">💵</span><b>Cash</b><small>Received in full</small></button>' +
+      (S.settings.razorpay ? '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="rzp-card"><span class="pi">💳</span><b>Card · Razorpay</b><small>New QR code</small></button>' : '') +
+      '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="upi"><span class="pi">📱</span><b>UPI · Paytm</b><small>Money arrived in Paytm</small></button>' +
       '</div><div class="modal-foot"><button class="btn" data-act="modal-close">Close</button></div>');
   }
   function repaid(sale) {
@@ -1586,9 +1586,9 @@
           return '<option value="' + o[0] + '"' + (d.razorpay_mode === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('') + '</select></label>' +
         (d.razorpay_key_from === 'app' ? '<label class="check"><input type="checkbox" name="remove_razorpay_keys"> Remove the saved keys' + ' (the shop’s keys are used again)</label>' : '') +
-        '<h3 class="set-h">UPI to the store</h3>' +
-        '<label class="field"><span>Store UPI ID (PhonePe, Google Pay or Paytm business)</span><input class="input" name="store_upi" autocapitalize="none" spellcheck="false" value="' + esc(d.store_upi) + '" placeholder="e.g. fomaxo@ybl"></label>' +
-        '<p class="small muted" style="margin:-4px 0 14px">With a UPI ID, <b>UPI to store</b> shows a QR with the exact amount filled in. Staff confirm when the money arrives. No Razorpay fees.</p>' +
+        '<h3 class="set-h">UPI · Paytm</h3>' +
+        '<label class="field"><span>Store\u2019s Paytm UPI ID</span><input class="input" name="store_upi" autocapitalize="none" spellcheck="false" value="' + esc(d.store_upi) + '" placeholder="e.g. fomaxo@paytm"></label>' +
+        '<p class="small muted" style="margin:-4px 0 14px">With a UPI ID, <b>UPI · Paytm</b> shows a QR with the exact amount filled in. Staff confirm when the money arrives. No Razorpay fees.</p>' +
         '<h3 class="set-h">Coupons</h3>' +
         '<label class="check"><input type="checkbox" name="web_coupons" ' + (d.web_coupons ? 'checked' : '') + '> Also accept fomaxo.in coupon codes in the store</label>' +
         '<p class="small muted" style="margin:-6px 0 14px">Your store codes (menu → Coupons) always work. Tick this to also accept the website’s codes.</p>' +
@@ -2036,8 +2036,8 @@
       case 's-cancel': zPaid = repaid; openModal('Cancel this sale', cancelReasonHtml(id, 's-open')); break;
       case 'repay': {
         var rm = el.getAttribute('data-m');
-        if (rm === 'razorpay') { rzpShow(api('sale_repay', { body: { id: id, method: 'razorpay' }, timeout: 30000 }), null, repaid); break; }
-        if (!confirm('Mark this sale paid by ' + METHOD[rm] + '? It gets the next receipt number.')) break;
+        if (rm === 'razorpay' || rm === 'rzp-card') { rzpShow(api('sale_repay', { body: { id: id, method: 'razorpay', as: rm === 'rzp-card' ? 'card' : 'upi' }, timeout: 30000 }), null, repaid, rm === 'rzp-card' ? 'card' : 'upi'); break; }
+        if (!confirm('Mark this sale paid by ' + (rm === 'upi' ? 'UPI (Paytm)' : METHOD[rm]) + '? It gets the next receipt number.')) break;
         el.disabled = true;
         api('sale_repay', { body: { id: id, method: rm } }).then(function (d) { closeModal(); repaid(d.sale); })
           .catch(function (er) { el.disabled = false; modalErr(er.offline ? 'Needs internet.' : er.message); });

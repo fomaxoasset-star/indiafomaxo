@@ -92,7 +92,7 @@ function rzp_call($method, $path, $payload = null)
  * Starts a payment. Returns ['id' => ..., 'qr' => text for the QR code, 'link' => page to open or share, 'kind' => 'upi'|'link'].
  * The id is 'qr_…' (UPI QR), 'plink_…' (payment link) or 'demo_…'.
  */
-function rzp_create($totalPaise, $receiptNo, $description, $callbackUrl)
+function rzp_create($totalPaise, $receiptNo, $description, $callbackUrl, $as = 'upi')
 {
     if (rzp_mode() === 'demo') {
         $id = 'demo_' . bin2hex(random_bytes(8));
@@ -101,7 +101,7 @@ function rzp_create($totalPaise, $receiptNo, $description, $callbackUrl)
         return ['id' => $id, 'qr' => $url, 'link' => $url, 'kind' => 'demo'];
     }
     $closeBy = time() + 30 * 60;
-    if (cfg('razorpay_qr', 'upi') === 'upi' && meta_get('rzp_no_qr') !== '1') {
+    if ($as !== 'card' && cfg('razorpay_qr', 'upi') === 'upi' && meta_get('rzp_no_qr') !== '1') {
         try {
             $qr = rzp_call('POST', '/payments/qr_codes', [
                 'type' => 'upi_qr',
@@ -126,7 +126,8 @@ function rzp_create($totalPaise, $receiptNo, $description, $callbackUrl)
             meta_set('rzp_no_qr', '1');
         }
     }
-    $pl = rzp_call('POST', '/payment_links', [
+    // Card: a payment link that offers card only. The customer opens it from the QR on their phone, or staff open it on the till.
+    $link = [
         'amount' => $totalPaise,
         'currency' => 'INR',
         'accept_partial' => false,
@@ -138,11 +139,23 @@ function rzp_create($totalPaise, $receiptNo, $description, $callbackUrl)
         'callback_url' => $callbackUrl,
         'callback_method' => 'get',
         'notes' => ['receipt' => $receiptNo, 'source' => 'FOMAXO store'],
-    ]);
+    ];
+    $pl = null;
+    if ($as === 'card') {
+        try {
+            $pl = rzp_call('POST', '/payment_links', $link + ['options' => ['checkout' => ['method' => ['card' => '1', 'upi' => '0', 'netbanking' => '0', 'wallet' => '0', 'emi' => '0', 'paylater' => '0']]]]);
+        } catch (ApiError $e) {
+            if (!in_array((int) ($e->rzpCode ?? 0), [400, 422], true)) {
+                throw $e;
+            }
+            error_log('FOMAXO POS: Razorpay refused a card-only link, using a normal link: ' . $e->getMessage());
+        }
+    }
+    $pl = $pl ?: rzp_call('POST', '/payment_links', $link);
     if (empty($pl['id']) || empty($pl['short_url'])) {
         throw new ApiError('Razorpay did not return a payment link.', 502);
     }
-    return ['id' => $pl['id'], 'qr' => $pl['short_url'], 'link' => $pl['short_url'], 'kind' => 'link'];
+    return ['id' => $pl['id'], 'qr' => $pl['short_url'], 'link' => $pl['short_url'], 'kind' => $as === 'card' ? 'card' : 'link'];
 }
 
 /** The UPI app a customer paid with, from their UPI ID (e.g. name@ybl is PhonePe). */

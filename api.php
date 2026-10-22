@@ -467,7 +467,7 @@ switch ($action) {
             fail('Razorpay is not set up yet. A manager can add the keys under menu → Settings.');
         }
         $id = create_sale($u, $b, 'razorpay');
-        log_activity($u, 'razorpay', 'Showed Razorpay UPI QR', q1('SELECT receipt_no FROM sales WHERE id = ?', [$id])['receipt_no'], resolve_store($u, $b['store_id'] ?? 0));
+        log_activity($u, 'razorpay', ($b['as'] ?? '') === 'card' ? 'Showed Razorpay card payment' : 'Showed Razorpay UPI QR', q1('SELECT receipt_no FROM sales WHERE id = ?', [$id])['receipt_no'], resolve_store($u, $b['store_id'] ?? 0));
         $sale = q1('SELECT * FROM sales WHERE id = ?', [$id]);
         if ($sale['status'] !== 'pending') {
             json_out(['sale' => load_sale('id', $id)]);
@@ -477,7 +477,8 @@ switch ($action) {
                 (int) $sale['total'],
                 'POS-' . $id, // no receipt number yet: it comes when the money is received
                 cfg('store_name', 'FOMAXO') . ' sale ' . $id,
-                cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token']
+                cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token'],
+                ($b['as'] ?? '') === 'card' ? 'card' : 'upi'
             );
         } catch (Throwable $e) {
             q("UPDATE sales SET status = 'failed' WHERE id = ?", [$id]);
@@ -554,7 +555,7 @@ switch ($action) {
             }
             q("UPDATE sales SET status = 'pending', method = 'razorpay', gateway_id = NULL, cash_given = NULL, change_due = NULL, note = ? WHERE id = ?", [$keepNote, $sale['id']]);
             try {
-                $z = rzp_create((int) $sale['total'], 'POS-' . $sale['id'], cfg('store_name', 'FOMAXO') . ' sale ' . $sale['id'], cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token']);
+                $z = rzp_create((int) $sale['total'], 'POS-' . $sale['id'], cfg('store_name', 'FOMAXO') . ' sale ' . $sale['id'], cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token'], ($b['as'] ?? '') === 'card' ? 'card' : 'upi');
             } catch (Throwable $e) {
                 q("UPDATE sales SET status = 'failed' WHERE id = ?", [$sale['id']]);
                 throw $e;
