@@ -777,3 +777,14 @@ details.order:not([open]){content-visibility:auto;contain-intrinsic-size:auto 58
 /* an order's Receipt box (courier, tracking no, View / Download PDF / WhatsApp / Email): 4th column, two by two on a small laptop */
 .rcpt .qbtns{gap:6px}.rcpt .stform{margin-top:4px}
 @media (min-width:821px) and (max-width:1180px){.od{grid-template-columns:1fr 1fr}}
+/* fit pass 2026-10-22: small laptops and tablets 821-1100px: an order's buttons (Paid, Mark delivered, Cancel, WhatsApp) were cut off at the right; they go on their own line under the order, right side */
+@media (min-width:821px) and (max-width:1100px){.order summary,.olist.has-rq .order summary{grid-template-columns:88px 118px minmax(0,1fr) 96px 160px}
+  .order summary .acts{grid-column:1/-1;justify-self:end;width:min(100%,380px)}.olist.has-rq .order summary .acts{width:min(100%,488px)}}
+/* Coupons → Goodwill coupon in the half-width list on a laptop up to 1279px: the amount box was squeezed to nothing; the end date and the button go on a second line */
+@media (min-width:821px) and (max-width:1279px){.sry-f{grid-template-columns:minmax(0,1fr) 120px 110px}.sry-f .fpick{grid-column:1/-1}.sry-end{grid-column:1/3}}
+/* Products search on a phone: its own full line, so "Find a product" is not cut by the Videos and Add buttons */
+@media (max-width:480px){.pfind{flex:1 1 100%}.pfind input[type=search]{max-width:none!important;width:100%}}
+/* the narrowest phones (320px): dates fit whole (dd/mm/yyyy); slimmer inner space, the text stays 16px so iPhones do not zoom in */
+@media (max-width:340px){body .dbar .dbox input[data-date],body .dbox input[data-date]{padding-left:6px;padding-right:24px;letter-spacing:-.05em;font-variant-numeric:normal}}
+/* Settings → Database steps: the long database name breaks inside its narrow box (small laptops) instead of running past it */
+.steps b{overflow-wrap:anywhere}
