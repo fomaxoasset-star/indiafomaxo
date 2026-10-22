@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $j = json_decode($raw, true);
   foreach ((array)($j['entry'] ?? []) as $e) foreach ((array)($e['changes'] ?? []) as $ch) foreach ((array)($ch['value']['messages'] ?? []) as $m) {
     $t = (string)($m['text']['body'] ?? $m['button']['text'] ?? $m['interactive']['button_reply']['title'] ?? '');
-    if (wa_is_stop($t)) wa_stop((string)($m['from'] ?? ''), 'reply');
+    if (wa_is_stop($t)) wa_stop('+' . preg_replace('/\D/', '', (string)($m['from'] ?? '')), 'reply');   // from: the full number with its country code (919876543210, 971501234567)
   }
   echo 'ok'; exit;
 }

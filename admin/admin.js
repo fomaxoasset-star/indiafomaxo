@@ -691,13 +691,14 @@ function waBox(id, sel, o) {
   }
   /* every fomaxo.in link in the message gets the customer's personal code (?w=, data-wt), so their number fills in at checkout and they show in Left at checkout */
   function withW(t) { var w = btn.dataset.wt; return !w ? t : t.replace(/https:\/\/(?:www\.)?fomaxo\.in(\/[^\s?#*]*)?(\?[^\s#*]*)?(#[^\s*]*)?/g, function (u, p, q, h) { return 'https://fomaxo.in' + (p || '/') + (q ? q + '&' : '?') + 'w=' + w + (h || ''); }); }
-  function wa(t) { return 'https://wa.me/' + (btn.dataset.phone ? (btn.dataset.phone[0] === '+' ? btn.dataset.phone.slice(1) : '91' + btn.dataset.phone) : '') + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
+  function to() { var p = btn.dataset.phone || ''; return !p ? '' : p[0] === '+' ? p.slice(1) : '91' + p; }   // country code first: 919876543210, or 971501234567 for +971501234567
+  function wa(t) { return 'https://wa.me/' + to() + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
   /* On a phone the WhatsApp app opens straight away (whatsapp://, on Android an intent that falls back to wa.me when there's no app), in this tab;
      a new tab opened from a script after the server answers only loads the wa.me website. If the app doesn't open, the box shows both links to tap. */
   var PHONE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform)),
     ANDROID = /Android/i.test(navigator.userAgent), go = q('.ltwa-go');
   function app(t) {
-    var a = 'send?' + (btn.dataset.phone ? 'phone=91' + btn.dataset.phone + '&' : '') + 'text=' + encodeURIComponent(t);
+    var a = 'send?' + (to() ? 'phone=' + to() + '&' : '') + 'text=' + encodeURIComponent(t);
     return ANDROID ? 'intent://' + a + '#Intent;scheme=whatsapp;S.browser_fallback_url=' + encodeURIComponent(wa(t)) + ';end' : 'whatsapp://' + a;
   }
   function openApp(t) {

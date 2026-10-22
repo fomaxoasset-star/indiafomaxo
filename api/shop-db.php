@@ -77,6 +77,10 @@ function shop_db(): PDO {
     $add("coupons ADD wa_to VARCHAR(10) NOT NULL DEFAULT ''");
     shop_set('schema', '13');
   }
+  if (shop_setting('schema') === '13') {   // coupons for a mobile from another country: phone and wa_to hold +971501234567 (up to 16)
+    if ($SHOP_DB->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') $SHOP_DB->exec("ALTER TABLE coupons MODIFY phone VARCHAR(16) NOT NULL DEFAULT '', MODIFY wa_to VARCHAR(16) NOT NULL DEFAULT ''");
+    shop_set('schema', '14');
+  }
   if (shop_setting('order_counter') === null) { shop_set('order_counter', (string)(FOMAXO_FIRST_ORDER - 1)); shop_import_json_orders(); }
   if (shop_setting('fresh_start') === null) shop_fresh_start();
   if ($sig !== '' && shop_setting('order_counter') !== null && shop_setting('fresh_start') !== null) shop_set('schema_sig', $sig);
@@ -137,7 +141,7 @@ function shop_schema(PDO $db): void {
        per_cust 1 = each mobile number can use the code once. */
     "CREATE TABLE IF NOT EXISTS coupons(code VARCHAR(24) NOT NULL PRIMARY KEY, kind VARCHAR(4) NOT NULL, value INT NOT NULL, min_order INT NOT NULL DEFAULT 0,
       ends VARCHAR(16) NOT NULL DEFAULT '', max_uses INT NOT NULL DEFAULT 0, active INT NOT NULL DEFAULT 1, created VARCHAR(19) NOT NULL,
-      starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(10) NOT NULL DEFAULT '',
+      starts VARCHAR(16) NOT NULL DEFAULT '', stack INT NOT NULL DEFAULT 0, phone VARCHAR(16) NOT NULL DEFAULT '',
       free_id VARCHAR(48) NOT NULL DEFAULT '', free_opt VARCHAR(16) NOT NULL DEFAULT '', per_cust INT NOT NULL DEFAULT 0, wa_to VARCHAR(10) NOT NULL DEFAULT '')$tail",
     /* Trash on admin Orders: an order closed with its ✕ is moved here whole (row = the orders row as JSON), so it leaves every list, count and report;
        Put back inserts it again as it was. The other columns are for the Trash page. */
@@ -503,6 +507,10 @@ function coupon_phone(string $phone): string {
   if (str_starts_with(ltrim($phone), '+') && !str_starts_with($d, '91')) return strlen($d) >= 8 && strlen($d) <= 15 ? "+$d" : '';
   return strlen($d) >= 10 ? substr($d, -10) : '';
 }
+/* a key from coupon_phone that WhatsApp can reach: an Indian mobile (6–9, 10 digits) or a full number from another country (+971501234567) */
+function wa_key_ok(string $k): bool { return (bool)preg_match('/^([6-9]\d{9}|\+[1-9]\d{7,14})$/', $k); }
+/* that key as WhatsApp wants it, country code first and no +: 919876543210, 971501234567 */
+function wa_key_digits(string $k): string { return $k !== '' && $k[0] === '+' ? substr($k, 1) : "91$k"; }
 /* ---- shared by every WhatsApp button and customer code (Refill reminders, Review requests, Reviews, Left at checkout, goodwill coupons) ---- */
 /* a WhatsApp chat with an Indian mobile and a ready message (WhatsApp shows *text* as bold; no emoji, wa.me shows them as "?") */
 /* the first word of a name, for "Hi Priya," */

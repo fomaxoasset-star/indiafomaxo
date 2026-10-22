@@ -396,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0); $ph = '';
     foreach (reviews_list() as $r) if ((int)$r['id'] === $id) $ph = (string)$r['phone'];
     header('Content-Type: application/json');
-    if (!preg_match('/^[6-9]\d{9}$/', $ph)) { echo json_encode(['error' => 'This review has no mobile number.']); exit; }
+    if (!wa_key_ok($ph)) { echo json_encode(['error' => 'This review has no mobile number.']); exit; }
     $code = box_code('GOODWILL-', $ph);
     day_mark('review_wa', (string)$id);
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
@@ -468,7 +468,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $code = box_code('THANKS-', (string)($_POST['phone'] ?? ''));
     [$mk, $mv] = explode(':', (string)($_POST['mark'] ?? ''), 2) + ['', ''];
     if ($mk === 'rq' && preg_match('/^FMX-IN-\d+$/', $mv)) { require_once dirname(__DIR__) . '/api/review-req-lib.php'; rq_mark($mv); }
-    if ($mk === 'ph' && preg_match('/^[6-9]\d{9}$/', $mv)) day_mark('wa_sent', 'ph:' . $mv);
+    if ($mk === 'ph' && wa_key_ok($mv)) day_mark('wa_sent', 'ph:' . $mv);
     if ($mk === 'cp' && ($mv = coupon_clean($mv)) !== '') day_mark('coupon_wa', $mv);
     if ($mk === 'rc' && preg_match('/^FMX-IN-\d+$/', $mv)) day_mark('wa_sent', 'rc:' . $mv);   // a receipt sent (Receipt box)
     echo json_encode(['ok' => true, 'code' => $code, 'day' => date('d/m')]); exit;
