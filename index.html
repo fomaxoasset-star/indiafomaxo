@@ -3318,6 +3318,10 @@ function bagLikeHTML(){
 }
 /* the last order placed on this device, for "Order again" in the bag and on the home page */
 const LAST_KEY = 'fomaxo_last';
+/* "New here?" WhatsApp boxes (bag, offer popup, welcome box) stay hidden for anyone this device already knows (AJAY, 2026-10-22):
+   number given, checkout details saved, ordered here, opened one of our WhatsApp links (?w=), or signed in to admin on this device */
+const waKnownHere = () => { try { return !!(localStorage.getItem('fomaxo_bagwa') || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || localStorage.getItem(LAST_KEY) || localStorage.getItem('fomaxo_who') || localStorage.getItem('fomaxo_notrack') === '1'); } catch(e) { return true; } };
+const waBoughtHere = () => { try { return !!(localStorage.getItem(LAST_KEY) || localStorage.getItem('fomaxo_notrack') === '1'); } catch(e) { return true; } };
 function lastOrder(){
   try { return (JSON.parse(localStorage.getItem(LAST_KEY) || '{}').lines || []).filter(l => P[l.id] && P[l.id].sizes.map(String).includes(String(l.opt)) && !isOut(P[l.id]) && !sizeOut(P[l.id], l.opt) && hasPrice(P[l.id].prices[l.opt])); } catch(e) { return []; }
 }
@@ -3346,10 +3350,11 @@ function waKeep(ph, nm){
     if (d && k !== waKept) { waKept = k; TRK.lead('coupon', {name: n, phone: d}, cart); } };
   [ph, nm].forEach(el => { if (el) { el.addEventListener('change', keep); el.addEventListener('blur', keep); } });
 }
-/* bag: a new customer can type their own WhatsApp number to get a 10% off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden once we already have their number. */
+/* bag: a new customer can type their own WhatsApp number to get a 10% off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden for anyone this device already knows (waKnownHere). */
 function bagWaHTML(){
-  let known = ''; try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; known = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
-  if (known) return '';
+  if (waBoughtHere()) return '';   // ordered since: no coupon line at all
+  try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; } catch(e) {}
+  if (waKnownHere()) return '';
   return `<form class="bag-wa" id="bagWa" novalidate><label for="bagWaIn">New here? 10% off orders · Coupon on WhatsApp</label><div class="bag-wa-row"><span class="wa-tel">${waCcHTML()}<input id="bagWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="Your WhatsApp number" aria-label="Your WhatsApp number"></span><button class="btn sm" type="submit">Send</button></div></form>`;
 }
 function bagWaWire(){
@@ -5721,7 +5726,7 @@ $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.emai
 addEventListener('hashchange', route);
 /* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, as soon as the site opens (or the offer popup with its WhatsApp box when that is on, AJAY 2026-10-22);
    the offer popups wait for a later visit. The name + number go to Admin → Left at checkout like the bag box (same 10% coupon, sent from there on WhatsApp) */
-const welDue = () => { try { return !(localStorage.getItem('fx_wel') || localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return false; } };
+const welDue = () => { try { return !(localStorage.getItem('fx_wel') || waKnownHere()); } catch(e) { return false; } };
 if (welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new visitors get that popup (and its WhatsApp box) instead
   let welT = 0;
   const go = () => { clearTimeout(welT);
@@ -5772,7 +5777,7 @@ if (OFFER || NEWP) {
       ${waHTML()}<a class="btn block ofp-go" href="#/fragrances">${esc(OFFER.btn)}</a>
       <button class="ofp-no" type="button">No thanks</button>`;
   /* someone who never bought and gave no number: Name + WhatsApp for the 10% coupon, to Admin → Left at checkout like the welcome box (AJAY, 2026-10-22) */
-  const waKnown = () => { try { return !!(localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return true; } };
+  const waKnown = waKnownHere;
   const waHTML = () => waKnown() ? '' : `<div class="ofp-wa"><p class="ofp-wa-t"><b>New here? GET 10% OFF</b><span>· Coupon on WhatsApp</span></p><form class="wel-form" id="ofpWa" novalidate><input id="ofpWaName" class="ofp-wa-nm" type="text" autocomplete="name" maxlength="60" placeholder="Name" aria-label="Your name"><span class="wa-tel">${waCcHTML()}<input id="ofpWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WhatsApp Number" aria-label="Your WhatsApp number"></span><button class="btn" type="submit">${WA_SVG()}<span>Send</span></button></form></div>`;
   const waWire = () => { const f = pop && $('#ofpWa', pop); if (!f) return;
     waKeep($('#ofpWaIn', pop), $('#ofpWaName', pop));
