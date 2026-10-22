@@ -1696,6 +1696,14 @@
       case 'r-show': showReceipt(currentReceipt, false); break;
       case 'qty': changeQty(id, parseInt(el.getAttribute('data-d'), 10)); break;
       case 'cart-clear': {
+        var n = 0; S.cart.forEach(function (c) { n += c.qty; });
+        var ap = $('.added-pop'); if (ap) ap.remove();
+        openModal('Empty the bag?', '<p style="margin:0 0 14px">' + (n === 1 ? 'The 1 item' : 'All ' + n + ' items') + (S.customer ? ', the customer' : '') + (S.coupon || S.discount ? ', the coupon and discount' : '') + ' will be taken off this sale.</p>' +
+          '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="cart-clear-yes">Empty bag</button></div>');
+        break;
+      }
+      case 'cart-clear-yes': {
+        closeModal();
         var cb = bagSnapshot();
         S.cart = []; S.discount = null; S.customer = null; S.coupon = null; renderTiles(); renderCart();
         bagPop('Bag emptied', cb, 6000); break;
