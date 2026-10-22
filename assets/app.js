@@ -872,7 +872,7 @@
       openModal('UPI · Paytm', '<div class="err m-err hidden"></div>' + amount + qrSvg +
         '<ol class="steps big">' + (qrSvg ? '<li><span>Customer scans and pays.</span></li>'
           : '<li><span>Customer pays <b class="num">' + money(t.total) + '</b> to the store\u2019s Paytm QR. <button class="btn sm" data-act="copy-amount" data-v="' + (t.total / 100).toFixed(2) + '">Copy</button></span></li>') +
-        '<li><span>Money in Paytm? Press <b>Payment received</b>.</span></li></ol>' +
+        '<li><span>Money in Paytm. Press <b>Payment received</b>.</span></li></ol>' +
         '<details class="ref"><summary>Add UPI reference (optional)</summary><input class="input" id="pay-ref" maxlength="40" placeholder="UTR / transaction ID"></details>' +
         '<div class="modal-foot"><button class="btn ghost" data-act="pay-open">Back</button><button class="btn gold big" data-act="confirm-pay" data-m="upi">✓ Payment received</button></div>', { sticky: true });
     } else if (method === 'card') {
