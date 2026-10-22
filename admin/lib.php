@@ -1022,6 +1022,8 @@ function lead_wa_parts(array $l): array {
   if (($l['step'] ?? '') === 'invite') return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . 'Thank you for inviting your friend to FOMAXO. They just placed an order.',   // the coupon paragraph goes between
     $n2 . "Type the code at checkout on our website:\nhttps://fomaxo.in/" . $n2 . 'FOMAXO'];
   $bag = lead_bag_code($l);
+  if (($l['step'] ?? '') === 'coupon') return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . 'Welcome to FOMAXO, and thank you for joining us on WhatsApp.',   // gave their WhatsApp in the welcome box, offer popup or bag box: the coupon paragraph goes between
+    $n2 . "Shop here:\nhttps://fomaxo.in/?utm_source=whatsapp&utm_campaign=welcome-coupon" . ($bag !== '' ? '#/checkout?bag=' . $bag : '') . $n2 . 'Free delivery across India in 1–3 days.' . $n2 . 'FOMAXO'];
   if (in_array($l['step'] ?? '', ['visit', 'buyer'], true)) return ['Hi' . ($first !== '' ? ' ' . $first : '') . ',' . $n2 . ($l['step'] === 'buyer' ? 'Thank you for coming back to FOMAXO.' : 'Thank you for visiting FOMAXO.'),   // opened our WhatsApp link or a past buyer back, never reached checkout
     $n2 . "You can order here anytime:\nhttps://fomaxo.in/" . $n2 . 'Free delivery across India in 1–3 days.' . $n2 . 'If you have any questions about the scents or sizes, just reply here.' . $n2 . 'FOMAXO'];
   $items = implode("\n", array_map(fn($b) => (int)$b['qty'] . ' × ' . trim(str_replace([' · Standard', ' · '], ['', ' '], trim((string)$b['name']))), json_decode((string)$l['bag'], true) ?: []));

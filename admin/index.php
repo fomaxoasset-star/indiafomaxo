@@ -695,7 +695,7 @@ if ($do === 'leads_excel') {
   $okDay = fn(string $d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $d);
   $dd = $okDay($F['from']) && $okDay($F['to']) ? [min($F['from'], $F['to']), max($F['from'], $F['to'])] : [];   // the dates picked on Analytics
   $rows = array_map(fn($l) => [substr($l['updated'], 0, 16), $l['name'], $l['phone'] ? phone_fmt($l['phone']) : '', $l['email'], $l['state'], $l['address'], lead_items($l), round($l['total'] / 100, 2),
-    ['payment' => 'Payment page', 'visit' => 'Opened WhatsApp link', 'buyer' => 'Past buyer visiting', 'invite' => 'Invited a friend who ordered'][$l['step']] ?? 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later']), $l['tries']], checkout_leads(...$dd));
+    ['payment' => 'Payment page', 'visit' => 'Opened WhatsApp link', 'buyer' => 'Past buyer visiting', 'invite' => 'Invited a friend who ordered', 'coupon' => 'Wants WhatsApp coupon'][$l['step']] ?? 'Details', $l['later'] === '' ? 'No' : ($l['later'] === 'yes' ? 'Yes' : $l['later']), $l['tries']], checkout_leads(...$dd));
   send_sheet('FOMAXO-left-at-checkout-' . ($dd ? implode('-to-', $dd) : date('Y-m-d')), ['Date', 'Name', 'Mobile', 'Email', 'State', 'Address', 'Products', 'Bag value (₹)', 'Left at', 'Ordered later', 'Tries'], $rows, 'Left at checkout');
 }
 if ($do === 'expenses_excel') {
