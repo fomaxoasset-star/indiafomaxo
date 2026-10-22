@@ -693,3 +693,5 @@ html, body { overscroll-behavior-y: none; }
 .phone-row { display: flex; gap: 8px; }
 .phone-row .cc { width: 132px; flex: none; padding-right: 4px; text-overflow: ellipsis; }
 .phone-row .input:not(.cc) { flex: 1; min-width: 0; }
+button.kpi.kpi-btn { text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; }
+button.kpi.kpi-btn:hover { border-color: var(--gold); }

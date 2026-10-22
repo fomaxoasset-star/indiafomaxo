@@ -925,7 +925,7 @@ switch ($action) {
         $sf = (!empty($_GET['store']) && $_GET['store'] !== 'all') ? ' AND s.store_id = ' . (int) $_GET['store'] : '';
         $users = q('SELECT u.id, u.name, u.username, u.role, u.active, u.store_id, st.name AS store_name,
                            (SELECT MAX(last_used) FROM tokens t WHERE t.user_id = u.id) AS last_seen
-                    FROM users u LEFT JOIN stores st ON st.id = u.store_id WHERE u.username NOT LIKE \'~%\' ORDER BY u.active DESC, u.name')->fetchAll(); // removed staff are left out
+                    FROM users u LEFT JOIN stores st ON st.id = u.store_id ORDER BY u.active DESC, u.name')->fetchAll();
         $paid = [];
         foreach (q("SELECT s.user_id, COUNT(*) AS sales, SUM(s.total) AS total, SUM(s.discount) AS discount,
                            MAX(s.created_at) AS last_sale
@@ -953,6 +953,7 @@ switch ($action) {
             $pd = $paid[$id] ?? null;
             $out[] = [
                 'id' => $id, 'name' => $x['name'], 'username' => $x['username'], 'role' => $x['role'],
+                'removed' => strpos($x['username'], '~') === 0, 'removed_info' => strpos($x['username'], '~') === 0 ? (json_decode((string) meta_get('removed_user_' . $id, ''), true) ?: null) : null,
                 'active' => (int) $x['active'], 'store_name' => $x['store_name'],
                 'last_seen' => $x['last_seen'],
                 'online' => $x['last_seen'] && strtotime($x['last_seen']) > time() - 300,

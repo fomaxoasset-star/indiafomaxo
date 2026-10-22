@@ -1369,12 +1369,16 @@
       api('team', { query: teamQuery() }).then(function (d) {
         if (!el()) return;
         var team = d.team, best = 0, sum = 0, cnt = 0, online = 0;
-        team.forEach(function (m) { best = Math.max(best, m.total); sum += m.total; cnt += m.sales; if (m.online) online++; });
+        S._removed = team.filter(function (m) { return m.removed; }).map(function (m) { var ri = m.removed_info || {}; return { id: m.id, name: m.name, username: ri.u || '', removed_at: ri.at || null }; });
+        team.forEach(function (m) { if (!m.removed) best = Math.max(best, m.total); sum += m.total; cnt += m.sales; if (m.online) online++; });
         el().innerHTML = '<div class="kpis">' +
           '<div class="kpi gold"><div class="k-label">Team sales</div><div class="k-val num">' + inr(sum) + '</div></div>' +
           '<div class="kpi"><div class="k-label">Number of sales</div><div class="k-val">' + cnt + '</div></div>' +
-          '<div class="kpi"><div class="k-label">Using the app now</div><div class="k-val">' + online + ' <span class="small muted">of ' + team.filter(function (m) { return m.active; }).length + '</span></div></div></div>' +
-          '<div class="people">' + team.map(function (m) {
+          '<div class="kpi"><div class="k-label">Using the app now</div><div class="k-val">' + online + ' <span class="small muted">of ' + team.filter(function (m) { return m.active; }).length + '</span></div></div>' +
+          // Staff box: how many can log in, and the removed staff (tap to see them and reactivate).
+          '<button class="kpi kpi-btn" data-act="staff-box"><div class="k-label">Staff</div><div class="k-val">' + team.filter(function (m) { return !m.removed && m.active; }).length +
+            ' <span class="small muted">active</span>' + (S._removed.length ? ' <span class="small muted">· ' + S._removed.length + ' removed ›</span>' : '') + '</div></button></div>' +
+          '<div class="people">' + team.filter(function (m) { return !m.removed; }).map(function (m) {
             var avg = m.sales ? Math.round(m.total / m.sales) : 0, pm = m.methods || {};
             return '<button class="person' + (m.active ? '' : ' off') + '" data-act="t-person" data-id="' + m.id + '">' +
               '<div class="row"><span class="avatar lg">' + esc(initials(m.name)) + '</span><div class="grow"><b>' + esc(m.name) + '</b>' +
@@ -1708,6 +1712,15 @@
           '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="u-remove-yes" data-id="' + ru.id + '">Remove staff</button></div>');
         break;
       }
+      case 'staff-box':
+        openModal('Staff', (S._removed.length ? '<p class="small muted" style="margin:0 0 8px">Removed staff cannot log in and are left out of Performance. Their past sales stay in Sales and Reports.</p>' +
+          S._removed.map(function (u) {
+            return '<div class="list-row"><div class="grow"><b>' + esc(u.name) + '</b> <span class="badge off">Staff removed</span><div class="small muted">' + esc(u.username.toUpperCase()) + (u.removed_at ? ' · removed ' + niceDate(u.removed_at) : '') + '</div></div>' +
+              '<button class="btn sm gold" data-act="u-restore" data-id="' + u.id + '">Reactivate</button></div>';
+          }).join('') : '<p class="muted" style="margin:0 0 8px">No removed staff.</p>') +
+          '<div class="modal-foot"><button class="btn" data-act="staff-logins">Staff logins</button><button class="btn gold" data-act="modal-close">Done</button></div>');
+        break;
+      case 'staff-logins': closeModal(); S.teamTab = 'staff'; renderStaff(); break;
       case 'u-restore': {
         var rr = (S._removed || []).filter(function (x) { return x.id === id; })[0]; if (!rr) break;
         openModal('Reactivate ' + rr.name + '?', '<div class="err m-err hidden"></div>' +
