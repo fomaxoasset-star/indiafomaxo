@@ -105,6 +105,8 @@
     if (storeLocked()) return S.user.store_id;
     var act = activeStores();
     for (var i = 0; i < act.length; i++) if (act[i].id === S.store) return S.store;
+    // A manager tied to a store starts there until they pick another one on this device.
+    for (var j = 0; j < act.length; j++) if (S.user && act[j].id === S.user.store_id) return S.user.store_id;
     return act.length ? act[0].id : null;
   }
   function storeById(id) { for (var i = 0; i < S.stores.length; i++) if (S.stores[i].id === id) return S.stores[i]; return null; }
@@ -1483,8 +1485,9 @@
       '<label class="field"><span>Username (for login)</span><input class="input" name="username" required autocapitalize="characters" autocorrect="off" spellcheck="false" value="' + esc(String(u.username || '').toUpperCase()) + '"></label>' +
       '<label class="field"><span>' + (isNew ? 'Password (8+ characters)' : 'New password (leave empty to keep)') + '</span><input class="input" name="password" type="text" autocomplete="new-password" ' + (isNew ? 'required minlength="8"' : '') + '></label>' +
       '<label class="field"><span>Role</span><select class="input" name="role"><option value="staff"' + (u.role === 'staff' ? ' selected' : '') + '>Staff</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>Manager</option></select></label>' +
-      (multiStore() ? '<label class="field"><span>Works at</span><select class="input" name="store_id"><option value="">Any store (chooses on the device)</option>' +
-        S.stores.map(function (x) { return '<option value="' + x.id + '"' + (u.store_id === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></label>' : '') +
+      '<label class="field"><span>Store</span><select class="input" name="store_id"><option value="">All stores (picks the store on the device)</option>' +
+        S.stores.filter(function (x) { return x.active || u.store_id === x.id; }).map(function (x) { return '<option value="' + x.id + '"' + (u.store_id === x.id ? ' selected' : '') + '>' + esc(x.name) + (x.code ? ' · ' + esc(x.code) : '') + '</option>'; }).join('') + '</select></label>' +
+      '<p class="small muted" style="margin:-6px 0 12px">Staff only sell and see stock for their store. Managers start in their store and can still switch to the others.</p>' +
       '<label class="check"><input type="checkbox" name="active" ' + (u.active ? 'checked' : '') + '> Can log in</label>' +
       '<div class="modal-foot">' + (!isNew && u.id !== S.user.id ? '<button class="btn danger" type="button" data-act="u-remove" data-id="' + u.id + '">Remove staff</button>' : '') +
       '<button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>');
