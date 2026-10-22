@@ -147,11 +147,6 @@ function uuid4()
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($b), 4));
 }
 
-function receipt_no_from_uuid($uuid)
-{
-    return 'FMXIN-' . strtoupper(substr(str_replace('-', '', $uuid), 0, 8));
-}
-
 function h($s)
 {
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');

@@ -5,8 +5,27 @@ function stores_list($activeOnly = false)
 {
     $rows = q('SELECT * FROM stores' . ($activeOnly ? ' WHERE active = 1' : '') . ' ORDER BY id')->fetchAll();
     return array_map(function ($r) {
-        return ['id' => (int) $r['id'], 'name' => $r['name'], 'address' => $r['address'], 'phone' => $r['phone'], 'active' => (int) $r['active']];
+        return ['id' => (int) $r['id'], 'name' => $r['name'], 'code' => store_code($r), 'address' => $r['address'], 'phone' => $r['phone'], 'active' => (int) $r['active']];
     }, $rows);
+}
+
+/** The store's short code in receipt numbers: the one set on Team → Stores, else the first 3 letters of its name. */
+function store_code($store)
+{
+    $c = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($store['code'] ?? '')));
+    if ($c === '') {
+        $c = substr(strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($store['name'] ?? ''))), 0, 3);
+    }
+    return $c !== '' ? substr($c, 0, 6) : 'S' . (int) ($store['id'] ?? 0);
+}
+
+/** The next receipt number for a store, in order from 10000. Call inside the sale's transaction. */
+function next_receipt_no($storeId)
+{
+    $storeId = (int) $storeId;
+    q('UPDATE receipt_seq SET last = last + 1 WHERE store_id = ?', [$storeId]); // locks the counter until the sale is saved
+    $n = (int) q1('SELECT last FROM receipt_seq WHERE store_id = ?', [$storeId])['last'];
+    return 'FMXIN-' . store_code(q1('SELECT * FROM stores WHERE id = ?', [$storeId]) ?: ['id' => $storeId]) . '-' . $n;
 }
 
 /** Which store a request works on. Staff tied to a store always use their own store. */
@@ -226,6 +245,9 @@ function create_sale($user, $b, $method)
         $token = bin2hex(random_bytes(16));
     }
 
+    // The store's counter row exists before the transaction, so two first sales at once cannot clash.
+    q((is_mysql() ? 'INSERT IGNORE' : 'INSERT OR IGNORE') . ' INTO receipt_seq (store_id, last) VALUES (?, 9999)', [(int) $storeId]);
+
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -236,7 +258,7 @@ function create_sale($user, $b, $method)
         }
         $saleId = insert('sales', [
             'uuid' => $uuid,
-            'receipt_no' => receipt_no_from_uuid($uuid),
+            'receipt_no' => next_receipt_no($storeId),
             'receipt_token' => $token,
             'user_id' => $user['id'],
             'store_id' => $storeId,
