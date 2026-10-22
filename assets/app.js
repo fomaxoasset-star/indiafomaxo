@@ -1442,7 +1442,9 @@
       '<label class="field"><span>Address (printed on receipts)</span><input class="input" name="address" value="' + esc(x.address) + '"></label>' +
       '<label class="field"><span>Phone (printed on receipts)</span><input class="input" name="phone" value="' + esc(x.phone) + '"></label>' +
       '<label class="check"><input type="checkbox" name="active" ' + (x.active ? 'checked' : '') + '> Open (can sell and hold stock)</label>' +
-      '<div class="modal-foot"><button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>');
+      '<div class="modal-foot"><button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>' +
+      (isNew ? '' : '<h3 class="set-h" style="margin-top:22px">Staff at this store</h3><div id="st-staff"><div class="status-line"><span class="spinner"></span> Loading…</div></div>'));
+    if (!isNew) storeStaff(x);
     $('#st-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, b = $('[type=submit]', f); b.disabled = true;
@@ -1451,8 +1453,31 @@
         .catch(function (er) { b.disabled = false; modalErr(er.message); });
     });
   }
-  function userModal(u) {
-    var isNew = !u; u = u || { name: '', username: '', role: 'staff', active: 1 };
+  // Team → Stores → a store: who works there, add someone, or take someone off this store.
+  function storeStaff(x) {
+    api('users').then(function (d) {
+      S._users = d.users;
+      var box = $('#st-staff'); if (!box) return;
+      var here = d.users.filter(function (u) { return u.store_id === x.id; });
+      var others = d.users.filter(function (u) { return u.store_id !== x.id && u.active; });
+      box.innerHTML = (here.length ? here.map(function (u) {
+        return '<div class="list-row"><div class="grow"><b>' + esc(u.name) + '</b> <span class="small muted">' + esc(u.username.toUpperCase()) + ' · ' + (u.role === 'manager' ? 'Manager' : 'Staff') + (u.active ? '' : ' · switched off') + '</span></div>' +
+          '<button class="btn sm" type="button" data-act="u-edit" data-id="' + u.id + '" data-back="' + x.id + '">Edit</button>' +
+          '<button class="btn sm" type="button" data-act="ss-remove" data-id="' + u.id + '" data-store="' + x.id + '">Move / remove</button></div>';
+      }).join('') : '<p class="small muted" style="margin:0 0 10px">Nobody is tied to this store yet. Staff set to <b>All stores</b> can still pick it on their device.</p>') +
+        (others.length ? '<div class="phone-row" style="margin-top:12px"><select class="input" id="ss-pick"><option value="">Add existing staff to this store…</option>' + others.map(function (u) {
+          var at = u.store_id ? storeById(u.store_id) : null;
+          return '<option value="' + u.id + '">' + esc(u.name) + ' (' + (at ? 'now at ' + esc(at.name) : 'all stores') + ')</option>';
+        }).join('') + '</select><button class="btn gold" type="button" data-act="ss-add" data-store="' + x.id + '">Add</button></div>' : '') +
+        '<button class="btn block" type="button" style="margin-top:10px" data-act="ss-new" data-store="' + x.id + '">+ New staff for this store</button>';
+    }).catch(function (er) { var box = $('#st-staff'); if (box) box.innerHTML = '<p class="err">' + esc(er.message) + '</p>'; });
+  }
+  function userStore(body, store) {
+    return api('user_store', { body: body }).then(function () { toast('Saved.'); S._users = null; storeModal(store); if (S.view === 'staff') loadTeam(); })
+      .catch(function (er) { modalErr(er.message); });
+  }
+  function userModal(u, presetStore, backStore) {
+    var isNew = !u; u = u || { name: '', username: '', role: 'staff', active: 1, store_id: presetStore || null };
     openModal(isNew ? 'Add staff' : 'Edit ' + u.name, '<div class="err m-err hidden"></div><form id="u-form">' +
       '<label class="field"><span>Full name</span><input class="input" name="name" required value="' + esc(u.name) + '" autofocus></label>' +
       '<label class="field"><span>Username (for login)</span><input class="input" name="username" required autocapitalize="characters" autocorrect="off" spellcheck="false" value="' + esc(String(u.username || '').toUpperCase()) + '"></label>' +
@@ -1467,7 +1492,7 @@
       e.preventDefault();
       var f = e.target, b = $('[type=submit]', f); b.disabled = true;
       api('user_save', { body: { id: isNew ? 0 : u.id, name: f.name.value, username: f.username.value, password: f.password.value, role: f.role.value, store_id: f.store_id ? f.store_id.value : '', active: f.active.checked ? 1 : 0 } })
-        .then(function () { closeModal(); toast('Saved.'); S._users = null; loadTeam(); })
+        .then(function () { closeModal(); toast('Saved.'); S._users = null; loadTeam(); if (backStore) storeModal(backStore); })
         .catch(function (er) { b.disabled = false; modalErr(er.message); });
     });
   }
@@ -1692,6 +1717,26 @@
           refreshProducts(); if (S.view !== 'sell') renderView();
         }).catch(function (er) { el.disabled = false; modalErr(er.message); });
         break;
+      case 'ss-add': {
+        var pick = parseInt($('#ss-pick').value, 10); if (!pick) { modalErr('Choose who to add.'); break; }
+        userStore({ id: pick, store_id: parseInt(el.getAttribute('data-store'), 10) }, storeById(parseInt(el.getAttribute('data-store'), 10)));
+        break;
+      }
+      case 'ss-new': userModal(null, parseInt(el.getAttribute('data-store'), 10), storeById(parseInt(el.getAttribute('data-store'), 10))); break;
+      case 'ss-remove': {
+        var su = (S._users || []).filter(function (x) { return x.id === id; })[0], from = storeById(parseInt(el.getAttribute('data-store'), 10));
+        if (!su || !from) break;
+        openModal('Take ' + su.name + ' off ' + from.name + '?', '<div class="err m-err hidden"></div><p style="margin:0 0 12px">Where does ' + esc(su.name) + ' work now?</p>' +
+          S.stores.filter(function (s2) { return s2.id !== from.id && s2.active; }).map(function (s2) {
+            return '<button class="btn block" style="margin-bottom:8px" data-act="ss-move" data-id="' + su.id + '" data-to="' + s2.id + '" data-from="' + from.id + '">Move to ' + esc(s2.name) + '</button>';
+          }).join('') +
+          '<button class="btn block" style="margin-bottom:8px" data-act="ss-move" data-id="' + su.id + '" data-to="0" data-from="' + from.id + '">All stores (picks the store on the device)</button>' +
+          (su.id !== S.user.id ? '<button class="btn block danger" data-act="ss-off" data-id="' + su.id + '" data-from="' + from.id + '">Nowhere: switch off their login</button>' : '') +
+          '<p class="small muted" style="margin:10px 0 0">To delete the login completely, use Team → Staff logins → Edit → Remove staff.</p>');
+        break;
+      }
+      case 'ss-move': userStore({ id: id, store_id: parseInt(el.getAttribute('data-to'), 10) }, storeById(parseInt(el.getAttribute('data-from'), 10))); break;
+      case 'ss-off': userStore({ id: id, switch_off: 1 }, storeById(parseInt(el.getAttribute('data-from'), 10))); break;
       case 'st-new': storeModal(null); break;
       case 'st-edit': storeModal(storeById(id)); break;
       case 'theme-toggle': setTheme(isDark() ? 'light' : 'dark'); break;
@@ -1891,7 +1936,7 @@
       }
       // staff
       case 'u-new': userModal(null); break;
-      case 'u-edit': userModal((S._users || []).filter(function (u) { return u.id === id; })[0]); break;
+      case 'u-edit': userModal((S._users || []).filter(function (u) { return u.id === id; })[0], null, el.getAttribute('data-back') ? storeById(parseInt(el.getAttribute('data-back'), 10)) : null); break;
     }
   });
   document.addEventListener('keydown', function (e) {

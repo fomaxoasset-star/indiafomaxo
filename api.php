@@ -680,6 +680,33 @@ switch ($action) {
         log_activity($me, 'staff', ($b['id'] ?? 0 ? 'Updated' : 'Added') . ' staff account: ' . $name . ' (' . $role . ($active ? '' : ', switched off') . ')' . ($pass !== '' && ($b['id'] ?? 0) ? ', new password' : ''));
         json_out(['ok' => true, 'id' => $id]);
 
+    // Move a staff member to a store (store_id 0 = all stores, chosen on the device), or switch their login off.
+    case 'user_store':
+        need_post();
+        $me = require_manager();
+        $id = (int) ($b['id'] ?? 0);
+        $x = q1("SELECT * FROM users WHERE id = ? AND username NOT LIKE '~%'", [$id]);
+        if (!$x) {
+            fail('That staff account is not there any more.', 404);
+        }
+        if (!empty($b['switch_off'])) {
+            if ($id === (int) $me['id']) {
+                fail('You cannot switch off your own login.');
+            }
+            q('UPDATE users SET active = 0 WHERE id = ?', [$id]);
+            q('DELETE FROM tokens WHERE user_id = ?', [$id]);
+            log_activity($me, 'staff', 'Switched off login: ' . $x['name']);
+            json_out(['ok' => true]);
+        }
+        $sid = (int) ($b['store_id'] ?? 0);
+        $st = $sid ? q1('SELECT * FROM stores WHERE id = ?', [$sid]) : null;
+        if ($sid && !$st) {
+            fail('Store not found.', 404);
+        }
+        q('UPDATE users SET store_id = ? WHERE id = ?', [$st ? $sid : null, $id]);
+        log_activity($me, 'staff', $x['name'] . ' now works at ' . ($st ? $st['name'] : 'all stores'), '', $st ? $sid : null);
+        json_out(['ok' => true]);
+
     case 'user_remove':
         need_post();
         $me = require_manager();
