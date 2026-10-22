@@ -688,8 +688,8 @@
     openModal('How is the customer paying?', '<div class="amount-big"><div class="lbl">Total</div><div class="val num">' + inr(t.total) + '</div></div>' +
       '<div class="pay-choices">' +
       '<button class="pchoice cash" data-act="pay" data-m="cash"><span class="pi">💵</span><b>Cash</b><small>Notes and coins</small></button>' +
-      '<button class="pchoice" data-act="pay" data-m="rzp-card"' + (qrOk ? '' : ' disabled') + '><span class="pi">💳</span><b>Card · Razorpay</b><small>' + (!st.razorpay ? 'Not set up yet' : S.online ? 'Customer scans the QR and pays by card — confirms by itself' : 'Needs internet') + '</small></button>' +
       '<button class="pchoice" data-act="pay" data-m="upi"><span class="pi">📱</span><b>UPI · Paytm</b><small>' + (st.store_upi ? 'To the store\u2019s Paytm ' + esc(st.store_upi) : 'Customer scans the store\u2019s Paytm QR') + '</small></button>' +
+      '<button class="pchoice" data-act="pay" data-m="rzp-card"' + (qrOk ? '' : ' disabled') + '><span class="pi">💳</span><b>Card · Razorpay</b><small>' + (!st.razorpay ? 'Not set up yet' : S.online ? 'Customer scans the QR and pays by card — confirms by itself' : 'Needs internet') + '</small></button>' +
       '</div>');
   }
   function couponDiscountModal() {
@@ -1068,8 +1068,8 @@
       '<div class="err m-err hidden"></div>' +
       '<div class="done-actions">' +
       '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="cash"><span class="pi">💵</span><b>Cash</b><small>Received in full</small></button>' +
-      (S.settings.razorpay ? '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="rzp-card"><span class="pi">💳</span><b>Card · Razorpay</b><small>New QR code</small></button>' : '') +
       '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="upi"><span class="pi">📱</span><b>UPI · Paytm</b><small>Money arrived in Paytm</small></button>' +
+      (S.settings.razorpay ? '<button class="pchoice slim" data-act="repay" data-id="' + id + '" data-m="rzp-card"><span class="pi">💳</span><b>Card · Razorpay</b><small>New QR code</small></button>' : '') +
       '</div><div class="modal-foot"><button class="btn" data-act="modal-close">Close</button></div>');
   }
   function repaid(sale) {
