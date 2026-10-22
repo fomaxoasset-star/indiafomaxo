@@ -2137,6 +2137,12 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-form .co-tel input{border:0;padding-left:10px}
 .co-cc{position:relative;display:flex;flex:none}.co-cc em:after{content:"";width:0;height:0;margin-left:6px;border:4px solid transparent;border-top:5px solid currentColor;border-bottom:0;opacity:.7}
 .co-form .co-cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;font-size:16px}   /* the country code box: the code shows, tapping it opens every country */
+.wa-tel{display:flex;gap:8px;width:100%;min-width:0}
+.wa-tel input{flex:1 1 0!important;width:auto!important;min-width:0}
+.wa-cc{align-items:center;justify-content:center;min-width:76px;padding:0 12px;border:1px solid var(--line-2);background:var(--panel)}
+.wa-cc em{display:flex;align-items:center;font-style:normal;font-size:15px;letter-spacing:0;color:var(--ivory);white-space:nowrap}
+.wa-cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;font-size:16px}
+html[dir=rtl] .wa-tel{direction:ltr}
 .co-fine{font-size:13.5px;line-height:1.7;color:var(--muted)}
 /* the WhatsApp opt-in tick under "We remember these details": unticked unless the shopper ticked it on an earlier order on this device */
 .co-form label.co-wa{display:flex;flex-direction:row;align-items:center;gap:10px;margin-top:-8px;font-size:13px;letter-spacing:0;text-transform:none;line-height:1.4;color:var(--ivory);opacity:1;cursor:pointer}
@@ -3332,22 +3338,22 @@ document.addEventListener('click', e => {
 let waKept = '';
 function waKeep(ph, nm){
   if (!ph) return;
-  const keep = () => { let d = ph.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+  const keep = () => { const d = waPhone(ph);
     const n = nm ? nm.value.trim() : '', k = d + '|' + n;
-    if (/^[6-9]\d{9}$/.test(d) && k !== waKept) { waKept = k; TRK.lead('coupon', {name: n, phone: d}, cart); } };
+    if (d && k !== waKept) { waKept = k; TRK.lead('coupon', {name: n, phone: d}, cart); } };
   [ph, nm].forEach(el => { if (el) { el.addEventListener('change', keep); el.addEventListener('blur', keep); } });
 }
 /* bag: a new customer can type their own WhatsApp number to get a 10% off coupon; they show in admin Left at checkout, where the WhatsApp button sends it. Hidden once we already have their number. */
 function bagWaHTML(){
   let known = ''; try { if (localStorage.getItem('fomaxo_bagwa')) return '<p class="bag-wa-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; known = String(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || ''); } catch(e) {}
   if (known) return '';
-  return `<form class="bag-wa" id="bagWa" novalidate><label for="bagWaIn">New here? 10% off orders · Coupon on WhatsApp</label><div class="bag-wa-row"><input id="bagWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="Your WhatsApp number" aria-label="Your WhatsApp number"><button class="btn sm" type="submit">Send</button></div></form>`;
+  return `<form class="bag-wa" id="bagWa" novalidate><label for="bagWaIn">New here? 10% off orders · Coupon on WhatsApp</label><div class="bag-wa-row"><span class="wa-tel">${waCcHTML()}<input id="bagWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="Your WhatsApp number" aria-label="Your WhatsApp number"></span><button class="btn sm" type="submit">Send</button></div></form>`;
 }
 function bagWaWire(){
   const f = $('#bagWa'); if (!f) return;
   waKeep($('#bagWaIn'));
-  f.onsubmit = e => { e.preventDefault(); let d = $('#bagWaIn').value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
-    if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
+  f.onsubmit = e => { e.preventDefault(); const d = waPhone($('#bagWaIn'));
+    if (!d) { toast('Please enter a valid WhatsApp number'); return; }
     try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
     TRK.lead('coupon', {phone: d}, cart); renderCart(); };
 }
@@ -5087,6 +5093,20 @@ const coCc = iso => CO_CC.find(c => c.iso === iso) || CO_CC[0];
 /* a saved or pasted number (+971501234567, 00971…) → [country, the number without its code]; one the box already shows wins a shared code (+1) */
 const coCcSplit = (v, iso) => { const d = String(v || '').replace(/\D/g, '').replace(/^00/, ''); if (!/^\s*(\+|00)/.test(String(v || ''))) return null;
   for (let n = 3; n >= 1; n--) { const k = d.slice(0, n), hit = CO_CC.filter(c => c.code === k); if (hit.length) return [hit.find(c => c.iso === iso) || hit[0], d.slice(n)]; } return null; };
+/* the same country code box in front of the WhatsApp boxes (welcome box, offer popup, bag box): India first, numbers from any country (AJAY, 2026-10-22) */
+let WA_CC = 'IN'; try { WA_CC = localStorage.getItem('fomaxo_cc') || 'IN'; } catch(e) {}
+const waCcHTML = () => { const c = coCc(WA_CC); return `<span class="co-cc wa-cc"><em>+${c.code}</em><select aria-label="Country code">${CO_CC.map(x => `<option value="${x.iso}"${x === c ? ' selected' : ''}>${esc(x.name)} +${x.code}</option>`).join('')}</select></span>`; };
+/* the number in a WhatsApp box: 10 digits for India, +971501234567 for another country (as checkout saves it), '' when it is not a full number */
+function waPhone(inp){
+  const sel = inp.parentNode.querySelector('.wa-cc select'), sp = coCcSplit(inp.value), c = sp ? sp[0] : coCc(sel ? sel.value : 'IN');
+  let d = sp ? sp[1] : inp.value.replace(/\D/g, '');
+  if (c.iso !== 'IN') { d = d.replace(/^0+/, ''); return d.length >= 5 && /^[1-9]\d{7,14}$/.test(c.code + d) ? '+' + c.code + d : ''; }
+  if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+  return /^[6-9]\d{9}$/.test(d) ? d : '';
+}
+document.addEventListener('change', e => { const s = e.target.closest('.wa-cc select'); if (!s) return;
+  const c = coCc(s.value); s.previousElementSibling.textContent = '+' + c.code; WA_CC = c.iso; try { localStorage.setItem('fomaxo_cc', c.iso); } catch(x) {}
+  const inp = s.closest('.wa-tel').querySelector('input'); if (inp && inp.value) inp.dispatchEvent(new Event('change')); });
 function checkoutPage(q){
   document.title = 'Checkout — FOMAXO';
   const lines = coLines(q), t = subtotal(lines);
@@ -5707,7 +5727,7 @@ if (welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new vis
     pop.innerHTML = `<div class="ofp-box" role="dialog" aria-modal="true" aria-labelledby="welK" tabindex="-1"><button class="ofp-x" type="button" aria-label="Close">×</button>
       <p class="ofp-k" id="welK">New here?</p><p class="ofp-pct"><span class="metal">Get 10% off</span></p><p class="ofp-on">YOUR FIRST ORDER</p>
       <p class="ofp-on">Get your coupon on WhatsApp</p>
-      <form class="wel-form" id="welWa" novalidate><input id="welName" type="text" autocomplete="name" maxlength="60" placeholder="NAME" aria-label="Your name"><input id="welWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WHATSAPP" aria-label="Your WhatsApp number"><button class="btn block" type="submit">Send</button></form>
+      <form class="wel-form" id="welWa" novalidate><input id="welName" type="text" autocomplete="name" maxlength="60" placeholder="NAME" aria-label="Your name"><span class="wa-tel">${waCcHTML()}<input id="welWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WHATSAPP" aria-label="Your WhatsApp number"></span><button class="btn block" type="submit">Send</button></form>
       <button class="ofp-no" type="button">No thanks</button></div>`;
     const onKey = e => { if (e.key === 'Escape') close(); };
     const close = () => { pop.classList.remove('on'); document.body.classList.remove('lock'); removeEventListener('keydown', onKey); setTimeout(() => pop.remove(), 350); if (back && back.focus) back.focus({preventScroll: true}); };
@@ -5715,9 +5735,9 @@ if (welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new vis
     document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey);
     requestAnimationFrame(() => { pop.classList.add('on'); $('.ofp-box', pop).focus({preventScroll: true}); });
     waKeep($('#welWaIn', pop), $('#welName', pop));
-    $('#welWa', pop).onsubmit = e => { e.preventDefault(); const nm = $('#welName', pop).value.trim(); let d = $('#welWaIn', pop).value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+    $('#welWa', pop).onsubmit = e => { e.preventDefault(); const nm = $('#welName', pop).value.trim(); const d = waPhone($('#welWaIn', pop));
       if (!nm) { toast('Please enter your name'); return; }
-      if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
+      if (!d) { toast('Please enter a valid WhatsApp number'); return; }
       try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
       TRK.lead('coupon', {name: nm, phone: d}, cart); renderCart();
       e.target.outerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; $('.ofp-no', pop).textContent = 'Continue shopping'; };
@@ -5749,12 +5769,12 @@ if (OFFER || NEWP) {
       <button class="ofp-no" type="button">No thanks</button>`;
   /* someone who never bought and gave no number: Name + WhatsApp for the 10% coupon, to Admin → Left at checkout like the welcome box (AJAY, 2026-10-22) */
   const waKnown = () => { try { return !!(localStorage.getItem('fomaxo_bagwa') || localStorage.getItem(LAST_KEY) || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone); } catch(e) { return true; } };
-  const waHTML = () => waKnown() ? '' : `<div class="ofp-wa"><p class="ofp-wa-t"><b>New here? GET 10% OFF</b><span>· Coupon on WhatsApp</span></p><form class="wel-form" id="ofpWa" novalidate><input id="ofpWaName" class="ofp-wa-nm" type="text" autocomplete="name" maxlength="60" placeholder="Name" aria-label="Your name"><input id="ofpWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WhatsApp Number" aria-label="Your WhatsApp number"><button class="btn" type="submit">${WA_SVG()}<span>Send</span></button></form></div>`;
+  const waHTML = () => waKnown() ? '' : `<div class="ofp-wa"><p class="ofp-wa-t"><b>New here? GET 10% OFF</b><span>· Coupon on WhatsApp</span></p><form class="wel-form" id="ofpWa" novalidate><input id="ofpWaName" class="ofp-wa-nm" type="text" autocomplete="name" maxlength="60" placeholder="Name" aria-label="Your name"><span class="wa-tel">${waCcHTML()}<input id="ofpWaIn" type="tel" inputmode="tel" autocomplete="tel" placeholder="WhatsApp Number" aria-label="Your WhatsApp number"></span><button class="btn" type="submit">${WA_SVG()}<span>Send</span></button></form></div>`;
   const waWire = () => { const f = pop && $('#ofpWa', pop); if (!f) return;
     waKeep($('#ofpWaIn', pop), $('#ofpWaName', pop));
-    f.onsubmit = e => { e.preventDefault(); const nm = $('#ofpWaName', pop).value.trim(); let d = $('#ofpWaIn', pop).value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
+    f.onsubmit = e => { e.preventDefault(); const nm = $('#ofpWaName', pop).value.trim(); const d = waPhone($('#ofpWaIn', pop));
       if (!nm) { toast('Please enter your name'); return; }
-      if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
+      if (!d) { toast('Please enter a valid WhatsApp number'); return; }
       try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
       TRK.lead('coupon', {name: nm, phone: d}, cart); renderCart();
       f.closest('.ofp-wa').innerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; }; };
