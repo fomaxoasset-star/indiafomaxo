@@ -13,7 +13,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Manrope,syst
 body.app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 a{color:var(--gold2)}[hidden]{display:none!important}
 header{display:flex;align-items:center;gap:18px;padding:0 20px;height:54px;border-bottom:1px solid var(--line);background:#0a0907;flex:none}
-.brand{color:var(--gold);text-decoration:none;letter-spacing:.24em;font:600 17px Cinzel,serif;white-space:nowrap}.brand span{color:var(--muted);letter-spacing:.14em;font:400 11px Manrope,sans-serif;margin-left:6px;text-transform:uppercase}
+.brand{color:var(--gold);text-decoration:none;letter-spacing:.24em;font:600 17px Cinzel,serif;white-space:nowrap}.brand{display:inline-flex;align-items:center}.brand .wm{height:16px;width:auto;aspect-ratio:3196/481;display:block;flex:none}/* FOMAXO wordmark = website logo (AJAY 22/10/2026) */
+.brand span{color:var(--muted);letter-spacing:.14em;font:400 11px Manrope,sans-serif;margin-left:6px;text-transform:uppercase}
 .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:0 1 auto;min-width:0;height:100%}.tabs::-webkit-scrollbar{display:none}
 .tabs a{display:flex;align-items:center;padding:0 11px;text-decoration:none;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:14px}.tabs a.on{color:var(--gold2);border-color:var(--gold)}
 .hlinks{display:flex;justify-content:flex-end;gap:14px;font-size:13px;white-space:nowrap;margin-left:auto}
@@ -244,7 +245,7 @@ input.tgl:checked{background:var(--gold);border-color:var(--gold)}input.tgl:chec
   .range .seg button{background:none;border:0;border-left:1px solid var(--line);color:var(--muted);padding:6px 10px;font:inherit;flex:1}.range .seg button.on{background:#2a2416;color:var(--gold2)}
   /* number boxes on Analytics: one row you can slide sideways */
   .kpis.strip{display:flex;overflow-x:auto;scrollbar-width:none;gap:6px;padding-bottom:2px}.kpis.strip::-webkit-scrollbar{display:none}.kpis.strip>.kpi{flex:0 0 30%;grid-column:auto}
-  .brand{font-size:15px;letter-spacing:.18em}h2{font-size:17px}
+  .brand{font-size:15px;letter-spacing:.18em}.brand .wm{height:14px}h2{font-size:17px}
   main{padding:10px 12px 12px;gap:10px}
   .kpis{grid-template-columns:repeat(6,1fr);gap:6px}.kpis>*{grid-column:span 2}.kpis.n5>*:nth-child(n+4){grid-column:span 3}.kpis.n4>*{grid-column:span 3}
   .kpi{padding:7px 9px;border-radius:8px}.kpi b{font-size:15px}.kpi span{font-size:9px;letter-spacing:.04em;line-height:1.25}.kpi small{font-size:10px}
