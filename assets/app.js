@@ -1508,7 +1508,10 @@
         '<h3 class="set-h">GST</h3>' +
         '<label class="field"><span>GSTIN (15 characters)</span><input class="input" name="store_gstin" autocapitalize="characters" value="' + esc(d.store_gstin) + '" placeholder="Leave empty while not registered"></label>' +
         '<p class="small muted" style="margin:-4px 0 6px">Empty: no GST on sales or receipts. With a GSTIN: GST 18% (included, shown as CGST + SGST) and receipts become Tax invoices.</p>' +
-        '<div class="modal-foot"><button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>');
+        '<div class="modal-foot"><button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>' +
+        '<h3 class="set-h" style="margin-top:22px">Start fresh</h3>' +
+        '<p class="small muted" style="margin:-4px 0 10px">Deletes every sale made in the store app (test sales too) and starts receipt numbers again at FMXIN-CODE-10000. Products, stock counts, customers, staff and stores stay. fomaxo.in orders are never touched. A backup file is saved on the server first.</p>' +
+        '<button class="btn danger" type="button" data-act="reset-open">Delete all sales and start again…</button>');
       $('#set-form').addEventListener('submit', function (e) {
         e.preventDefault();
         var f = e.target, b = $('[type=submit]', f); b.disabled = true;
@@ -1674,6 +1677,20 @@
         el.disabled = true;
         api('user_remove', { body: { id: id } }).then(function () { closeModal(); toast('Staff removed.'); S._users = null; loadTeam(); })
           .catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
+      case 'reset-open':
+        openModal('Delete all sales?', '<div class="err m-err hidden"></div>' +
+          '<p style="margin:0 0 10px">Every sale in the store app is deleted and receipt numbers start again at <b>10000</b>. This cannot be undone in the app (a backup file is kept on the server).</p>' +
+          '<label class="check"><input type="checkbox" id="rs-restock" checked> Put the items those sales took back into stock</label>' +
+          '<label class="field" style="margin-top:10px"><span>Type <b>DELETE</b> to confirm</span><input class="input cap" id="rs-confirm" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"></label>' +
+          '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep sales</button><button class="btn danger" data-act="reset-yes">Delete all sales</button></div>');
+        break;
+      case 'reset-yes':
+        el.disabled = true;
+        api('sales_reset', { body: { confirm: $('#rs-confirm').value, restock: $('#rs-restock').checked ? 1 : 0 } }).then(function (d) {
+          closeModal(); toast('Done: ' + d.deleted + ' sale' + (d.deleted === 1 ? '' : 's') + ' deleted. Receipts start again at 10000.');
+          refreshProducts(); if (S.view !== 'sell') renderView();
+        }).catch(function (er) { el.disabled = false; modalErr(er.message); });
         break;
       case 'st-new': storeModal(null); break;
       case 'st-edit': storeModal(storeById(id)); break;
