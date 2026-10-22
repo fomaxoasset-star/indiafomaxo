@@ -1071,6 +1071,7 @@
         '<button class="btn" data-act="r-email">Email</button>' : '') +
       (!fresh && paid && isManager() && !s.queued ? '<button class="btn danger" data-act="r-void">Void sale</button>' : '') +
       (canRepay(s) ? '<button class="btn gold big wide" data-act="repay-open" data-id="' + s.id + '">Take payment again</button>' : '') +
+      (!s.queued && s.status === 'pending' ? '<button class="btn danger wide" data-act="s-cancel" data-id="' + s.id + '">Cancel this sale</button>' : '') +
       (fresh ? '<button class="btn gold big wide" data-act="modal-close">New sale</button>' : '') +
       '</div>', { wide: true });
     var fr = $('#rframe');
@@ -2003,6 +2004,16 @@
       }
       // sales
       case 'repay-open': stopPoll(); repayOpen(id); break;
+      case 's-cancel':
+        if (!confirm('Cancel this sale? Its QR code stops taking money and no receipt number is used. You can still take payment again later.')) break;
+        el.disabled = true;
+        api('rzp_cancel', { body: { id: id } }).then(function (r) {
+          closeModal();
+          if (r.status === 'paid') repaid(r.sale), toast('The customer had already paid — sale completed.');
+          else toast('Sale cancelled. No money was taken and no number was used.');
+          if (S.view === 'sales') renderSales();
+        }).catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
       case 'repay': {
         var rm = el.getAttribute('data-m');
         if (rm === 'razorpay') { rzpShow(api('sale_repay', { body: { id: id, method: 'razorpay' }, timeout: 30000 }), null, repaid); break; }

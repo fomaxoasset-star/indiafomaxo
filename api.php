@@ -499,7 +499,7 @@ switch ($action) {
         need_post();
         $u = require_user();
         $sale = q1('SELECT * FROM sales WHERE id = ?', [(int) ($b['id'] ?? 0)]);
-        if (!$sale) {
+        if (!$sale || ($u['role'] !== 'manager' && (int) $sale['user_id'] !== (int) $u['id'])) {
             fail('Sale not found.', 404);
         }
         // Last check, in case the customer paid a second ago.
