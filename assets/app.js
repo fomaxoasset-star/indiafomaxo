@@ -294,6 +294,31 @@
   }
   function closeMenu() { var m = $('.menu'); if (m) m.remove(); }
 
+  // ---------------------------------------------------------------- install on this device
+  // Chrome and Edge (Android, Windows, Mac) offer the install themselves; iPhone and iPad need Share → Add to Home Screen.
+  var installEvt = null;
+  function isInstalled() { return window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
+  function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function installHtml() {
+    if (isInstalled()) return '';
+    if (installEvt) return '<button class="btn block install-btn" data-act="install">⬇ Install app on this device</button>';
+    if (isIOS()) return '<p class="small muted install-tip">To install: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b>.</p>';
+    return '';
+  }
+  function refreshInstall() { $$('.install-slot').forEach(function (el) { el.innerHTML = installHtml(); }); }
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; refreshInstall(); });
+  window.addEventListener('appinstalled', function () { installEvt = null; refreshInstall(); toast('✓ App installed. Open FOMAXO from your home screen or apps.'); });
+  function installApp() {
+    closeMenu();
+    if (!installEvt) {
+      toast(isIOS() ? 'Tap Share, then Add to Home Screen.' : 'Open the browser menu (⋮) and choose Install app.');
+      return;
+    }
+    var ev = installEvt;
+    ev.prompt();
+    ev.userChoice.then(function (r) { if (r && r.outcome === 'accepted') installEvt = null; refreshInstall(); }).catch(function () {});
+  }
+
   // ---------------------------------------------------------------- login
   function renderLogin(msg) {
     closeMenu();
@@ -307,7 +332,7 @@
       '<label class="field"><span>Password</span><input class="input" name="password" type="password" autocomplete="current-password" required></label>' +
       '<button class="btn gold block big" type="submit">Log in</button>' +
       '<p class="small muted" style="margin:12px 0 0;text-align:center">Logging in needs internet. After that, sales keep working offline.</p>' +
-      '</form></div></div>';
+      '</form><div class="install-slot">' + installHtml() + '</div></div></div>';
     $('#login-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, btn = $('button', f), err = $('.m-err', f);
@@ -1374,7 +1399,7 @@
       '<div class="m-label">Appearance</div><div class="seg">' + [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(function (o) {
         return '<button data-act="theme-set" data-t="' + o[0] + '" class="' + (themeChoice() === o[0] ? 'active' : '') + '">' + o[1] + '</button>';
       }).join('') + '</div>' +
-      (isManager() ? '<button data-act="coupons">Coupons</button><button data-act="settings">Settings · payments &amp; GST</button>' : '') + '<button data-act="pw">Change password</button><button data-act="reload">Refresh app</button><button data-act="logout">Log out</button>';
+      (isManager() ? '<button data-act="coupons">Coupons</button><button data-act="settings">Settings · payments &amp; GST</button>' : '') + (installEvt && !isInstalled() ? '<button data-act="install">Install app on this device</button>' : '') + '<button data-act="pw">Change password</button><button data-act="reload">Refresh app</button><button data-act="logout">Log out</button>';
     document.body.appendChild(m);
   }
   function settingsModal() {
@@ -1561,6 +1586,7 @@
       case 'coupons': closeMenu(); couponsModal(); break;
       case 'cpn-new': couponEdit(null); break;
       case 'cpn-edit': couponEdit((S._coupons || []).filter(function (x) { return x.id === id; })[0]); break;
+      case 'install': installApp(); break;
       case 'reload': location.reload(); break;
       case 'logout': logout(false); break;
       case 'logout-force': logout(true); break;
