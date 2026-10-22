@@ -26,8 +26,8 @@ function wa_config_save(array $new): bool {
 /* true when the access token and phone number ID are saved */
 function wa_ready(): bool { $c = wa_config(); return trim((string)($c['access_token'] ?? '')) !== '' && trim((string)($c['phone_number_id'] ?? '')) !== ''; }
 
-/* an Indian mobile as WhatsApp wants it: 98765 43210, +91 98765 43210, 098765 43210 → 919876543210 */
-function wa_number(string $phone): ?string { $d = coupon_phone($phone); return preg_match('/^[6-9]\d{9}$/', $d) ? "91$d" : null; }
+/* a mobile as WhatsApp wants it: 98765 43210, +91 98765 43210, 098765 43210 → 919876543210; one from another country: +971501234567 → 971501234567 */
+function wa_number(string $phone): ?string { $d = coupon_phone($phone); return wa_key_ok($d) ? wa_key_digits($d) : null; }
 
 /* sends an approved template with its body variables in order ({{1}}, {{2}} …); returns [ok, message id or what went wrong] */
 function wa_template(string $to, string $name, string $lang, array $vars, array $c): array {

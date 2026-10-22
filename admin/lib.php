@@ -479,7 +479,7 @@ function save_coupon(): string {
   $uses = trim((string)($_POST['max_uses'] ?? '')); if ($uses !== '' && (!ctype_digit($uses))) return '!Please write the usage limit as a number, or leave it empty.';
   /* WhatsApp mobile (optional): who the coupon is sent to; it does not stop anyone else using the code. Empty when editing keeps the old one */
   $wraw = trim((string)($_POST['wa_to'] ?? '')); $wa = coupon_phone($wraw);
-  if ($wraw !== '' && !preg_match('/^[6-9]\d{9}$/', $wa)) return '!Please type the full 10-digit WhatsApp mobile number, or leave it empty.';
+  if ($wraw !== '' && !wa_key_ok($wa)) return '!Please type the full 10-digit WhatsApp mobile number (another country: + and its code first), or leave it empty.';
   $s = shop_db()->prepare('SELECT created, active, wa_to FROM coupons WHERE code = ?'); $s->execute([$code]); $row = $s->fetch() ?: null; $was = $row ? $row['created'] : false;
   $on = $row ? (int)$row['active'] : 1;   // a new coupon is on; an edited one stays on or off (Turn off / Turn on in the list)
   if ($was !== false && !$editing) return "!$code already exists. Pick another code, or edit $code in the list.";
@@ -500,7 +500,7 @@ function coupon_free_pick(string $field): ?array {
 function make_goodwill_coupon(string $prefix = 'GOODWILL-'): array {   // REFILL-: Refill reminders, COMEBACK-: Left at checkout (their WhatsApp boxes); CART-: older Left at checkout codes
   $phone = coupon_phone((string)($_POST['phone'] ?? '')); $v = trim((string)($_POST['pct'] ?? ''));
   $kind = in_array($_POST['gkind'] ?? '', ['amt', 'free'], true) ? $_POST['gkind'] : 'pct';   // % off (the first goodwill coupons), ₹ off or a free product
-  if (!preg_match('/^[6-9]\d{9}$/', $phone)) return ['', '!Please type the customer’s 10-digit mobile number.'];
+  if (!wa_key_ok($phone)) return ['', '!Please type the customer’s 10-digit mobile number (another country: + and its code first).'];
   $free = ['', ''];
   if ($kind === 'free') {
     $free = coupon_free_pick('gfree'); if (!$free) return ['', '!Please choose the free product.'];
@@ -593,7 +593,7 @@ function coupon_share_text(array $c): string {
    $nocoupon: the message already carries a coupon (Coupons page), so no choice. Shown only with a mobile, unless $nocoupon (WhatsApp then asks who). */
 function wa_btn(string $phone, string $who, string $head, string $tail = "\n\nThank you,\nFOMAXO", string $mark = '', string $label = 'WhatsApp', string $cls = 'btn sm wag', bool $nocoupon = false): string {
   $ph = coupon_phone($phone);
-  if (!preg_match('/^[6-9]\d{9}$/', $ph)) { if (!$nocoupon) return ''; $ph = ''; }
+  if (!wa_key_ok($ph)) { if (!$nocoupon) return ''; $ph = ''; }
   return '<button type="button" class="' . $cls . '" data-wabox data-phone="' . $ph . '"' . wt_attr($ph) . ' data-who="' . h($who) . '" data-head="' . h($head) . '" data-tail="' . h($tail) . '"'
     . ($mark !== '' ? ' data-mark="' . h($mark) . '"' : '') . ($nocoupon ? ' data-nocoupon' : '') . ' title="Send on WhatsApp">' . WA_SVG . '<span>' . h($label) . '</span></button>';
 }
