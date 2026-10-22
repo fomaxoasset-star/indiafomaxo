@@ -305,7 +305,16 @@
     if (isIOS()) return '<p class="small muted install-tip">To install: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b>.</p>';
     return '';
   }
-  function refreshInstall() { $$('.install-slot').forEach(function (el) { el.innerHTML = installHtml(); }); }
+  function refreshInstall() { $$('.install-slot').forEach(function (el) { el.innerHTML = installHtml(); }); updateInstallBar(); }
+  // Inside the app, after login: a banner above the screen until the app is installed (✕ hides it on this device).
+  function updateInstallBar() {
+    var bar = $('#install-bar'); if (!bar) return;
+    var show = !isInstalled() && !LS.get('fx_install_hide', false) && (installEvt || isIOS());
+    bar.classList.toggle('hidden', !show);
+    bar.innerHTML = !show ? '' : '<span class="ib-text"><b>Install the FOMAXO app</b> on this device: it opens full screen from the home screen.</span>' +
+      (installEvt ? '<button class="btn gold" data-act="install">Install</button>' : '<span class="small">Tap <b>Share</b> then <b>Add to Home Screen</b></span>') +
+      '<button class="btn icon-btn ghost" data-act="install-hide" aria-label="Hide">' + ICON.close + '</button>';
+  }
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; refreshInstall(); });
   window.addEventListener('appinstalled', function () { installEvt = null; refreshInstall(); toast('✓ App installed. Open FOMAXO from your home screen or apps.'); });
   function installApp() {
@@ -375,9 +384,9 @@
       '<button class="net" id="net" data-act="net"></button>' +
       '<button class="btn icon-btn ghost theme-btn" id="theme-btn" data-act="theme-toggle"></button>' +
       '<button class="user-btn" data-act="user-menu"><span class="avatar">' + esc(initials(S.user.name)) + '</span><span class="u-name">' + esc(S.user.name) + '</span></button>' +
-      '</header><main class="view" id="view"></main>' +
+      '</header><div class="install-bar hidden" id="install-bar"></div><main class="view" id="view"></main>' +
       '<nav class="bnav" id="bnav">' + navButtons() + '</nav></div>';
-    updateNet(); updateNavCounts(); applyTheme(); updateStoreBtn(); renderView();
+    updateNet(); updateNavCounts(); applyTheme(); updateStoreBtn(); updateInstallBar(); renderView();
   }
   function updateStoreBtn() {
     var b = $('#store-btn'); if (!b) return;
@@ -1587,6 +1596,7 @@
       case 'cpn-new': couponEdit(null); break;
       case 'cpn-edit': couponEdit((S._coupons || []).filter(function (x) { return x.id === id; })[0]); break;
       case 'install': installApp(); break;
+      case 'install-hide': LS.set('fx_install_hide', true); updateInstallBar(); break;
       case 'reload': location.reload(); break;
       case 'logout': logout(false); break;
       case 'logout-force': logout(true); break;
