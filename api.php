@@ -510,8 +510,11 @@ switch ($action) {
         if ($sale['gateway_id']) {
             rzp_close($sale['gateway_id']);
         }
-        q("UPDATE sales SET status = 'cancelled' WHERE id = ? AND status = 'pending'", [$sale['id']]);
-        log_activity($u, 'cancel', 'Cancelled Razorpay payment', $sale['receipt_no'], (int) $sale['store_id']);
+        $reason = trim(mb_substr((string) ($b['reason'] ?? ''), 0, 200));
+        $st = q("UPDATE sales SET status = 'cancelled', note = ? WHERE id = ? AND status = 'pending'", [$reason !== '' ? 'CANCELLED: ' . $reason : $sale['note'], $sale['id']]);
+        if ($st->rowCount() === 1) {
+            log_activity($u, 'cancel', 'Cancelled a sale of ' . inr((int) $sale['total']) . ' before payment' . ($reason !== '' ? ': ' . $reason : ''), 'NOT PAID', (int) $sale['store_id']);
+        }
         json_out(['status' => 'cancelled']);
 
     case 'sale_repay':
@@ -541,6 +544,7 @@ switch ($action) {
         if ($sale['gateway_id']) {
             rzp_close($sale['gateway_id']); // the old QR stops taking money
         }
+        $keepNote = strpos((string) $sale['note'], 'CANCELLED: ') === 0 ? '' : (string) $sale['note']; // the cancel reason no longer applies
         if ($method === 'razorpay') {
             if (!rzp_enabled()) {
                 fail('Razorpay is not set up yet. A manager can add the keys under menu → Settings.');
@@ -548,7 +552,7 @@ switch ($action) {
             if ((int) $sale['total'] < 100) {
                 fail('Razorpay needs at least ₹1. Take cash for this sale.');
             }
-            q("UPDATE sales SET status = 'pending', method = 'razorpay', gateway_id = NULL, cash_given = NULL, change_due = NULL WHERE id = ?", [$sale['id']]);
+            q("UPDATE sales SET status = 'pending', method = 'razorpay', gateway_id = NULL, cash_given = NULL, change_due = NULL, note = ? WHERE id = ?", [$keepNote, $sale['id']]);
             try {
                 $z = rzp_create((int) $sale['total'], 'POS-' . $sale['id'], cfg('store_name', 'FOMAXO') . ' sale ' . $sale['id'], cfg('base_url') . '/receipt.php?t=' . $sale['receipt_token']);
             } catch (Throwable $e) {
@@ -569,9 +573,9 @@ switch ($action) {
         $pdo = db();
         $pdo->beginTransaction();
         try {
-            q("UPDATE sales SET status = 'pending', method = ?, gateway_id = NULL, cash_given = ?, change_due = ?, payment_ref = ? WHERE id = ?", [
+            q("UPDATE sales SET status = 'pending', method = ?, gateway_id = NULL, cash_given = ?, change_due = ?, payment_ref = ?, note = ? WHERE id = ?", [
                 $method, $cashGiven, $cashGiven === null ? null : $cashGiven - (int) $sale['total'],
-                mb_substr(trim((string) ($b['payment_ref'] ?? '')), 0, 64), $sale['id'],
+                mb_substr(trim((string) ($b['payment_ref'] ?? '')), 0, 64), $keepNote, $sale['id'],
             ]);
             mark_paid((int) $sale['id'], $u['id']);
             $pdo->commit();
@@ -595,7 +599,7 @@ switch ($action) {
             $params[] = (int) $_GET['store'];
         }
         $rows = q(
-            "SELECT s.id, s.receipt_no, s.total, s.method, s.status, s.offline, s.created_at, u.name AS staff_name,
+            "SELECT s.id, s.receipt_no, s.total, s.method, s.status, s.offline, s.created_at, s.note, u.name AS staff_name,
                     c.name AS customer_name, c.phone AS customer_phone, st.name AS store_name,
                     (SELECT SUM(qty) FROM sale_items i WHERE i.sale_id = s.id) AS items
              FROM sales s JOIN users u ON u.id = s.user_id LEFT JOIN customers c ON c.id = s.customer_id

@@ -939,7 +939,22 @@
     doneScreen(sale);
   }
 
-  var payPoll = null, zPaid = null;
+  var payPoll = null, zPaid = null, zResume = null;
+  var CANCEL_REASONS = ['Customer changed their mind', 'Payment not going through', 'Customer will pay later', 'Wrong items or price'];
+  // Asks why a waiting sale is cancelled: quick choices, or Other with the reason typed in.
+  function cancelReasonHtml(id, back) {
+    return '<div class="err m-err hidden"></div><p class="muted" style="margin-top:0">Why is this sale cancelled? No money is taken and no receipt number is used.</p>' +
+      CANCEL_REASONS.concat(['Other']).map(function (r, i) {
+        return '<label class="check"><input type="radio" name="c-reason" value="' + esc(r) + '"' + (i === 0 ? ' checked' : '') + '> ' + esc(r) + '</label>';
+      }).join('') +
+      '<input class="input" id="c-other" placeholder="Type the reason" style="margin:4px 0 12px">' +
+      '<div class="modal-foot"><button class="btn" data-act="' + back + '" data-id="' + id + '">Back</button><button class="btn danger" data-act="cancel-save" data-id="' + id + '">Cancel sale</button></div>';
+  }
+  function cancelReason() {
+    var r = document.querySelector('input[name=c-reason]:checked'), o = $('#c-other');
+    if (o && o.value.trim()) return o.value.trim();
+    return r && r.value !== 'Other' ? r.value : '';
+  }
   function stopPoll() { if (payPoll) { clearInterval(payPoll); payPoll = null; } }
   function rzpFlow() {
     var t = cartTotals();
@@ -957,7 +972,7 @@
       var digits = cust && cust.phone ? cust.phone.replace(/\D/g, '') : '';
       var wa = digits && d.pay_url ? 'https://wa.me/' + (digits.length === 10 ? '91' + digits : digits) + '?text=' + encodeURIComponent('FOMAXO payment of ' + inr(d.sale.total) + ': ' + d.pay_url) : null;
       var mode = S.settings.razorpay_mode;
-      setModalBody(
+      var qrBody = (
         (mode !== 'live' ? '<div class="note" style="margin-bottom:12px;text-align:center">' + (mode === 'demo' ? 'PRACTICE MODE — no real money' : 'RAZORPAY TEST MODE — no real money') + '</div>' : '') +
         '<div class="amount-big"><div class="lbl">Customer pays</div><div class="val num">' + inr(d.sale.total) + '</div></div>' +
         '<div class="qr-box">' + qrHtml + '</div>' +
@@ -967,8 +982,13 @@
         (d.kind === 'upi' ? '' : '<div class="modal-foot">' + (wa ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(wa) + '">Send link on WhatsApp</a>' : '') +
         '<a class="btn" target="_blank" rel="noopener" href="' + esc(d.pay_url) + '">Open on this device</a></div>') +
         '<div class="modal-foot"><button class="btn danger block" data-act="z-cancel" data-id="' + d.sale.id + '">Cancel payment</button></div>');
+      setModalBody(qrBody);
       zPaid = onPaid;
+      zResume = function () { setModalBody(qrBody); startPoll(); };
       var busy = false;
+      startPoll();
+      function startPoll() {
+      stopPoll();
       payPoll = setInterval(function () {
         if (busy) return; busy = true;
         api('rzp_check', { query: '&id=' + d.sale.id }).then(function (r) {
@@ -981,6 +1001,7 @@
           }
         }, function () { busy = false; var s = $('#z-status'); if (s) s.innerHTML = '<span class="spinner"></span> Checking… (connection slow)'; });
       }, 3000);
+      }
     }).catch(function (e) {
       setModalBody('<div class="err" style="margin-bottom:12px">' + esc(e.offline ? 'No internet — the Razorpay QR needs a connection. Use Cash or UPI to the store.' : e.message) + '</div>' +
         '<div class="modal-foot"><button class="btn" data-act="modal-close">Close</button></div>');
@@ -1058,7 +1079,8 @@
     var statusNote = '';
     if (s.queued) statusNote = '<div class="note" style="margin-bottom:12px">Saved on this device (offline). It uploads automatically when internet is back. The WhatsApp link works after upload.</div>';
     else if (s.status === 'void') statusNote = '<div class="err" style="margin-bottom:12px">This sale was voided. ' + esc(s.note || '') + '</div>';
-    else if (s.status !== 'paid') statusNote = '<div class="err" style="margin-bottom:12px">' + (s.status === 'pending' ? 'Waiting for payment' : 'Payment ' + esc(s.status)) + ' — not paid, so no receipt number yet. It gets the next number once paid.</div>';
+    else if (s.status !== 'paid') statusNote = '<div class="err" style="margin-bottom:12px">' + (s.status === 'pending' ? 'Waiting for payment' : 'Payment ' + esc(s.status)) + ' — not paid, so no receipt number yet. It gets the next number once paid.' +
+      (s.status === 'cancelled' && /^CANCELLED: /.test(s.note || '') ? '<br><b>Reason:</b> ' + esc(s.note.slice(11)) : '') + '</div>';
     var paid = s.status === 'paid';
     var styled = !s.queued && s.receipt_token && S.online;
     var src = styled ? 'receipt.php?t=' + encodeURIComponent(s.receipt_token) + '&embed=1&theme=' + (isDark() ? 'dark' : 'light') : '';
@@ -1278,7 +1300,7 @@
         '<div class="kpi"><div class="k-label">Paid sales</div><div class="k-val">' + paid.length + '</div></div></div>' +
         (d.sales.length ? '<div class="table-wrap"><table class="tbl tbl-sales"><thead><tr><th>Time</th><th>Receipt</th>' + (isManager() ? '<th class="hide-sm">Staff</th>' : '') + '<th class="hide-sm">Paid by</th><th class="r">Total</th><th class="r">Status</th></tr></thead><tbody>' +
           d.sales.map(function (s) {
-            return '<tr class="click" data-act="s-open" data-id="' + s.id + '"><td class="num">' + niceTime(s.created_at) + '</td><td><b>' + esc(s.receipt_no) + '</b><div class="small muted">' + s.items + ' item' + (s.items === 1 ? '' : 's') + (s.customer_name ? ' · ' + esc(s.customer_name) : '') + (s.offline ? ' · offline' : '') + (multiStore() && s.store_name ? ' · ' + esc(s.store_name) : '') + '</div></td>' +
+            return '<tr class="click" data-act="s-open" data-id="' + s.id + '"><td class="num">' + niceTime(s.created_at) + '</td><td><b>' + esc(s.receipt_no) + '</b><div class="small muted">' + s.items + ' item' + (s.items === 1 ? '' : 's') + (s.customer_name ? ' · ' + esc(s.customer_name) : '') + (s.offline ? ' · offline' : '') + (multiStore() && s.store_name ? ' · ' + esc(s.store_name) : '') + (s.status === 'cancelled' && /^CANCELLED: /.test(s.note || '') ? '<div>' + esc(s.note.slice(11)) + '</div>' : '') + '</div></td>' +
               (isManager() ? '<td class="hide-sm">' + esc(s.staff_name) + '</td>' : '') + '<td class="hide-sm">' + esc(METHOD[s.method] || s.method) + '</td><td class="r num">' + money(s.total) + '</td><td class="r">' + (STATUS_BADGE[s.status] || esc(s.status)) + '</td></tr>';
           }).join('') + '</tbody></table></div>' : '<div class="empty"><div class="big">No sales on this day</div></div>');
     }).catch(function (e) {
@@ -1953,13 +1975,20 @@
         updateChange(); break;
       case 'confirm-pay': confirmPay(el.getAttribute('data-m'), el); break;
       case 'upi-app': $$('.upi-apps button').forEach(function (b) { b.classList.toggle('active', b === el); }); break;
-      case 'z-cancel':
+      case 'z-cancel': stopPoll(); setModalBody(cancelReasonHtml(id, 'z-back')); break;
+      case 'z-back': if (zResume) zResume(); break;
+      case 'cancel-save': {
+        var why = cancelReason();
+        if (!why) { modalErr('Choose a reason, or type it under Other.'); break; }
         el.disabled = true; stopPoll();
-        api('rzp_cancel', { body: { id: id } }).then(function (r) {
-          if (r.status === 'paid') { closeModal(); (zPaid || afterSale)(r.sale); toast('The customer had already paid — sale completed.'); }
-          else { closeModal(); toast('Payment cancelled. The QR code no longer takes money. You can take payment again from Sales.'); if (S.view === 'sales') renderSales(); }
+        api('rzp_cancel', { body: { id: id, reason: why } }).then(function (r) {
+          closeModal();
+          if (r.status === 'paid') { (zPaid || repaid)(r.sale); toast('The customer had already paid — sale completed.'); }
+          else toast('Sale cancelled: ' + why + '. No money was taken and no number was used.');
+          if (S.view === 'sales') renderSales();
         }).catch(function (er) { el.disabled = false; modalErr(er.message); });
         break;
+      }
       // receipt
       case 'r-print': $('#print-area').innerHTML = paperHtml(currentReceipt); window.print(); break;
       case 'r-pdf': { var rf = $('#rframe'); try { rf.contentWindow.focus(); rf.contentWindow.print(); } catch (e) { window.open(currentReceipt.receipt_url, '_blank', 'noopener'); } break; }
@@ -2004,16 +2033,7 @@
       }
       // sales
       case 'repay-open': stopPoll(); repayOpen(id); break;
-      case 's-cancel':
-        if (!confirm('Cancel this sale? Its QR code stops taking money and no receipt number is used. You can still take payment again later.')) break;
-        el.disabled = true;
-        api('rzp_cancel', { body: { id: id } }).then(function (r) {
-          closeModal();
-          if (r.status === 'paid') repaid(r.sale), toast('The customer had already paid — sale completed.');
-          else toast('Sale cancelled. No money was taken and no number was used.');
-          if (S.view === 'sales') renderSales();
-        }).catch(function (er) { el.disabled = false; modalErr(er.message); });
-        break;
+      case 's-cancel': zPaid = repaid; openModal('Cancel this sale', cancelReasonHtml(id, 's-open')); break;
       case 'repay': {
         var rm = el.getAttribute('data-m');
         if (rm === 'razorpay') { rzpShow(api('sale_repay', { body: { id: id, method: 'razorpay' }, timeout: 30000 }), null, repaid); break; }
