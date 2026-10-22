@@ -337,7 +337,7 @@
       '<form id="login-form" autocomplete="on">' +
       (msg ? '<div class="note" style="margin-bottom:12px">' + esc(msg) + '</div>' : '') +
       '<div class="err m-err hidden"></div>' +
-      '<label class="field"><span>Username</span><input class="input" name="username" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username" required autofocus value="' + esc(S.user ? S.user.username : '') + '"></label>' +
+      '<label class="field"><span>Username</span><input class="input" name="username" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="username" required autofocus value="' + esc(S.user ? S.user.username.toUpperCase() : '') + '"></label>' +
       '<label class="field"><span>Password</span><input class="input" name="password" type="password" autocomplete="current-password" required></label>' +
       '<button class="btn gold block big" type="submit">Log in</button>' +
       '<p class="small muted" style="margin:12px 0 0;text-align:center">Logging in needs internet. After that, sales keep working offline.</p>' +
@@ -1416,7 +1416,7 @@
           '<div class="table-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Username</th><th>Role</th>' + (multiStore() ? '<th class="hide-sm">Store</th>' : '') + '<th class="r"></th></tr></thead><tbody>' +
           d.users.map(function (u) {
             var st = u.store_id ? storeById(u.store_id) : null;
-            return '<tr><td><b>' + esc(u.name) + '</b>' + (u.active ? '' : ' <span class="badge off">Switched off</span>') + '</td><td class="muted">' + esc(u.username) + '</td><td>' + (u.role === 'manager' ? '<span class="tier-tag">Manager</span>' : 'Staff') + '</td>' +
+            return '<tr><td><b>' + esc(u.name) + '</b>' + (u.active ? '' : ' <span class="badge off">Switched off</span>') + '</td><td class="muted">' + esc(u.username.toUpperCase()) + '</td><td>' + (u.role === 'manager' ? '<span class="tier-tag">Manager</span>' : 'Staff') + '</td>' +
               (multiStore() ? '<td class="hide-sm">' + (st ? esc(st.name) : '<span class="muted">Any store</span>') + '</td>' : '') +
               '<td class="r"><button class="btn sm" data-act="u-edit" data-id="' + u.id + '">Edit</button></td></tr>';
           }).join('') + '</tbody></table></div>';
@@ -1453,7 +1453,7 @@
     var isNew = !u; u = u || { name: '', username: '', role: 'staff', active: 1 };
     openModal(isNew ? 'Add staff' : 'Edit ' + u.name, '<div class="err m-err hidden"></div><form id="u-form">' +
       '<label class="field"><span>Full name</span><input class="input" name="name" required value="' + esc(u.name) + '" autofocus></label>' +
-      '<label class="field"><span>Username (for login)</span><input class="input" name="username" required autocapitalize="none" autocorrect="off" spellcheck="false" value="' + esc(u.username) + '"></label>' +
+      '<label class="field"><span>Username (for login)</span><input class="input" name="username" required autocapitalize="characters" autocorrect="off" spellcheck="false" value="' + esc(String(u.username || '').toUpperCase()) + '"></label>' +
       '<label class="field"><span>' + (isNew ? 'Password (8+ characters)' : 'New password (leave empty to keep)') + '</span><input class="input" name="password" type="text" autocomplete="new-password" ' + (isNew ? 'required minlength="8"' : '') + '></label>' +
       '<label class="field"><span>Role</span><select class="input" name="role"><option value="staff"' + (u.role === 'staff' ? ' selected' : '') + '>Staff</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>Manager</option></select></label>' +
       (multiStore() ? '<label class="field"><span>Works at</span><select class="input" name="store_id"><option value="">Any store (chooses on the device)</option>' +
@@ -1476,7 +1476,7 @@
     var m = document.createElement('div');
     m.className = 'menu';
     m.style.top = Math.max(r.bottom + 6, 8) + 'px'; m.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
-    m.innerHTML = '<div class="m-head"><b>' + esc(S.user.name) + '</b><div class="small muted">' + (isManager() ? 'Manager' : 'Staff') + ' · ' + esc(S.user.username) + '</div></div>' +
+    m.innerHTML = '<div class="m-head"><b>' + esc(S.user.name) + '</b><div class="small muted">' + (isManager() ? 'Manager' : 'Staff') + ' · ' + esc(S.user.username.toUpperCase()) + '</div></div>' +
       '<div class="m-label">Appearance</div><div class="seg">' + [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(function (o) {
         return '<button data-act="theme-set" data-t="' + o[0] + '" class="' + (themeChoice() === o[0] ? 'active' : '') + '">' + o[1] + '</button>';
       }).join('') + '</div>' +
@@ -1596,11 +1596,11 @@
   }
 
   // ---------------------------------------------------------------- clicks
-  // Usernames are always small letters: undo the keyboard's capital first letter while typing.
+  // Usernames are shown and typed in CAPITALS (logins ignore capitals, so AJAY and ajay are the same login).
   document.addEventListener('input', function (e) {
     var t = e.target;
-    if (t.name !== 'username' || t.value === t.value.toLowerCase()) return;
-    var pos = t.selectionStart; t.value = t.value.toLowerCase(); try { t.setSelectionRange(pos, pos); } catch (er) { /* ignore */ }
+    if (t.name !== 'username' || t.value === t.value.toUpperCase()) return;
+    var pos = t.selectionStart; t.value = t.value.toUpperCase(); try { t.setSelectionRange(pos, pos); } catch (er) { /* ignore */ }
   });
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-act]');
