@@ -839,6 +839,13 @@
     for (var k in extra) p[k] = extra[k];
     return p;
   }
+  // "Pay another way" on each payment screen: switch Cash / UPI / Card without going back.
+  function paySwitch(current, saleId) {
+    var opts = [['cash', '💵 Cash'], ['upi', '📱 UPI'], ['rzp-card', '💳 Card']].filter(function (o) { return o[0] !== current && (o[0] !== 'rzp-card' || (S.settings.razorpay && S.online)); });
+    return '<div class="pay-switch"><span>Pay another way</span>' + opts.map(function (o) {
+      return '<button class="btn sm" data-act="pay-switch" data-m="' + o[0] + '"' + (saleId ? ' data-id="' + saleId + '"' : '') + '>' + o[1] + '</button>';
+    }).join('') + '</div>';
+  }
   function payModal(method) {
     var t = cartTotals();
     var amount = '<div class="amount-big"><div class="lbl">Amount to collect</div><div class="val num">' + inr(t.total) + '</div></div>';
@@ -853,6 +860,7 @@
         notes.map(function (v) { return '<button class="note-btn" data-act="cash-quick" data-v="' + v + '">' + v + '</button>'; }).join('') + '</div>' +
         '<label class="field"><span>Other amount</span><input class="input" id="cash-in" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Type amount"></label>' +
         '<div class="change-box big" id="change-box"><span>Give change</span><span class="num">₹0.00</span></div>' +
+        paySwitch('cash') +
         '<div class="modal-foot"><button class="btn gold big" data-act="confirm-pay" data-m="cash">✓ Done — cash received</button></div>', { sticky: true });
       $('#cash-in').addEventListener('input', function () { $$('.note-btn').forEach(function (b) { b.classList.remove('active'); }); updateChange(); });
     } else if (method === 'upi') {
@@ -874,6 +882,7 @@
           : '<li><span>Customer pays <b class="num">' + money(t.total) + '</b> to the store\u2019s Paytm QR. <button class="btn sm" data-act="copy-amount" data-v="' + (t.total / 100).toFixed(2) + '">Copy</button></span></li>') +
         '<li><span>Money in Paytm. Press <b>Payment received</b>.</span></li></ol>' +
         '<details class="ref"><summary>Add UPI reference (optional)</summary><input class="input" id="pay-ref" maxlength="40" placeholder="UTR / transaction ID"></details>' +
+        paySwitch('upi') +
         '<div class="modal-foot"><button class="btn ghost" data-act="pay-open">Back</button><button class="btn gold big" data-act="confirm-pay" data-m="upi">✓ Payment received</button></div>', { sticky: true });
     } else if (method === 'card') {
       openModal('Card machine', '<div class="err m-err hidden"></div>' + amount +
@@ -985,6 +994,7 @@
         '<div class="err m-err hidden"></div>' +
         (d.kind === 'upi' ? '' : '<div class="modal-foot">' + (wa ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(wa) + '">Send link on WhatsApp</a>' : '') +
         '<a class="btn" target="_blank" rel="noopener" href="' + esc(d.pay_url) + '">Open on this device</a></div>') +
+        paySwitch(as === 'card' ? 'rzp-card' : 'razorpay', d.sale.id) +
         '<div class="modal-foot"><button class="btn danger block" data-act="z-cancel" data-id="' + d.sale.id + '">Cancel payment</button></div>');
       setModalBody(qrBody);
       zPaid = onPaid;
@@ -1968,6 +1978,20 @@
       }
       case 'd-remove': S.discount = null; closeModal(); renderCart(); break;
       case 'pay': if (S.cart.length) payModal(el.getAttribute('data-m')); break;
+      case 'pay-switch': {
+        var to = el.getAttribute('data-m');
+        if (!id) { closeModal(); payModal(to); break; }
+        // A Razorpay QR is open: close it first so the customer cannot pay twice.
+        stopPoll();
+        if (zPaid !== afterSale) { repayOpen(id); break; }   // from Sales: the same sale takes the new method
+        el.disabled = true;
+        api('rzp_cancel', { body: { id: id, reason: 'Customer paid another way' } }).then(function (r) {
+          closeModal();
+          if (r.status === 'paid') { afterSale(r.sale); toast('The customer had already paid — sale completed.'); return; }
+          payModal(to);
+        }).catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
+      }
       case 'copy-amount': {
         var amt = el.getAttribute('data-v');
         (navigator.clipboard ? navigator.clipboard.writeText(amt) : Promise.reject()).then(function () { toast('Amount ' + amt + ' copied.'); }, function () { toast('Amount: ' + amt); });

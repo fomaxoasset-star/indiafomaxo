@@ -699,3 +699,5 @@ button.kpi.kpi-btn:hover { border-color: var(--gold); }
 .upi-name { text-align: center; font-family: "FOMAXO REAL", var(--head); font-size: 28px; letter-spacing: .12em; margin: 4px 0 8px; }
 .upi-id { text-align: center; font-size: 13px; color: var(--muted); margin: -4px 0 10px; }
 .upi-to { text-align: center; font-size: 15px; margin: 0 0 4px; }
+.pay-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 12px; }
+.pay-switch span { width: 100%; text-align: center; font-size: 13px; color: var(--muted); }
