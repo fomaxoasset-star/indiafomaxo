@@ -2135,7 +2135,7 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-tel:focus-within{border-color:var(--gold-hi)}
 .co-tel em{display:flex;align-items:center;padding:0 0 0 16px;font-style:normal;font-size:15px;letter-spacing:0;color:var(--muted)}
 .co-form .co-tel input{border:0;padding-left:10px}
-.co-cc{position:relative;display:flex;flex:none}.co-cc em:after{content:"";width:0;height:0;margin-left:6px;border:4px solid transparent;border-top:5px solid currentColor;border-bottom:0;opacity:.7}
+.co-cc{position:relative;display:flex;flex:none;border-right:1px solid var(--line-2)}.co-cc em{color:var(--gold-hi)!important;padding-right:12px!important}.co-cc em:after{content:"";width:0;height:0;margin-left:6px;border:4px solid transparent;border-top:5px solid currentColor;border-bottom:0;opacity:.7}
 .co-form .co-cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;font-size:16px}   /* the country code box: the code shows, tapping it opens every country */
 .co-fine{font-size:13.5px;line-height:1.7;color:var(--muted)}
 /* the WhatsApp opt-in tick under "We remember these details": unticked unless the shopper ticked it on an earlier order on this device */
@@ -5124,7 +5124,7 @@ function checkoutPage(q){
     <p class="co-fine co-req">Every field is needed unless it says optional. Payment opens once they are all filled in.</p>
     <label>Full name<input name="name" value="${v('name')}" autocomplete="name" required maxlength="80"></label>
     <div class="row2">
-      <label>Mobile<span class="co-tel"><span class="co-cc"><em id="coCcShow">+${cc.code}</em><select name="cc" aria-label="Country code" autocomplete="tel-country-code">${CO_CC.map(c => `<option value="${c.iso}"${c === cc ? ' selected' : ''}>${esc(c.name)} +${c.code}</option>`).join('')}</select></span><input name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="${cc.iso === 'IN' ? '98765 43210' : 'Mobile number'}" value="${cc.iso === 'IN' ? (phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : '') : phone}" required maxlength="${cc.iso === 'IN' ? 12 : 16}"></span></label>
+      <label><span>Mobile <small class="co-cc-tip">(outside India? tap +91 to change)</small></span><span class="co-tel"><span class="co-cc" title="Change country code"><em id="coCcShow">+${cc.code}</em><select name="cc" aria-label="Country code" autocomplete="tel-country-code">${CO_CC.map(c => `<option value="${c.iso}"${c === cc ? ' selected' : ''}>${esc(c.name)} +${c.code}</option>`).join('')}</select></span><input name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="${cc.iso === 'IN' ? '98765 43210' : 'Mobile number'}" value="${cc.iso === 'IN' ? (phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : '') : phone}" required maxlength="${cc.iso === 'IN' ? 12 : 16}"></span></label>
       <label><span>Email${coPhone() ? ' <small>(optional)</small>' : ''}</span><input name="email" type="email" value="${v('email')}" autocomplete="email"${coPhone() ? '' : ' required'} maxlength="120"></label>
     </div>
     <label>Flat / house no, building<input name="house" value="${v('house')}" autocomplete="address-line1" required maxlength="80"></label>
