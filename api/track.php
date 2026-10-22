@@ -78,11 +78,11 @@ try {
     $bag = [];
     foreach (array_slice((array)($l['bag'] ?? []), 0, 20) as $b) if (is_array($b))
       $bag[] = ['id' => $txt($b['id'] ?? '', 48), 'opt' => $txt((string)($b['opt'] ?? ''), 16), 'qty' => max(1, min(99, (int)($b['qty'] ?? 1))), 'name' => $txt($b['name'] ?? '', 90)];
-    $step = in_array($l['step'] ?? '', ['details', 'payment'], true) ? $l['step'] : 'details';
+    $step = in_array($l['step'] ?? '', ['coupon', 'details', 'payment'], true) ? $l['step'] : 'details';   // coupon: a WhatsApp number from the welcome box, offer popup or bag box (wants the coupon)
     $email = filter_var($txt($l['email'] ?? '', 120), FILTER_VALIDATE_EMAIL) ?: '';
     $state = in_array($l['state'] ?? '', FOMAXO_STATES, true) ? $l['state'] : '';
     $s = $db->prepare('SELECT step, created FROM leads WHERE sid = ?'); $s->execute([$sid]); $old = $s->fetch();
-    if ($old && $old['step'] === 'payment') $step = 'payment';   // never step back
+    $rank = ['coupon' => 0, 'details' => 1, 'payment' => 2]; if ($old && ($rank[$old['step']] ?? -1) > $rank[$step]) $step = $old['step'];   // never step back
     shop_upsert('leads', ['sid'], ['sid' => $sid, 'vid' => $vid, 'created' => $old['created'] ?? shop_now(), 'updated' => shop_now(), 'name' => $name,
       'phone' => strlen($phone) === 10 ? $phone : '', 'step' => $step, 'bag' => json_encode($bag, JSON_UNESCAPED_UNICODE), 'total' => max(0, min(100000000, (int)round((float)($l['total'] ?? 0) * 100))), 'ordered' => 0,
       'email' => $email, 'state' => $state, 'address' => $txt($l['address'] ?? '', 300)]);

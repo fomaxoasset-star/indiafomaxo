@@ -3336,7 +3336,7 @@ function bagWaWire(){
   f.onsubmit = e => { e.preventDefault(); let d = $('#bagWaIn').value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, '');
     if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
     try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
-    TRK.lead('details', {phone: d}, cart); renderCart(); };
+    TRK.lead('coupon', {phone: d}, cart); renderCart(); };
 }
 function renderCart(){
   const n = cart.reduce((a, l) => a + l.qty, 0);
@@ -5682,7 +5682,7 @@ if (welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new vis
       if (!nm) { toast('Please enter your name'); return; }
       if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
       try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
-      TRK.lead('details', {name: nm, phone: d}, cart); renderCart();
+      TRK.lead('coupon', {name: nm, phone: d}, cart); renderCart();
       e.target.outerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; $('.ofp-no', pop).textContent = 'Continue shopping'; };
   };
   welT = setTimeout(go, 300);   // opens as the site opens (AJAY, 2026-10-22)
@@ -5718,7 +5718,7 @@ if (OFFER || NEWP) {
       if (!nm) { toast('Please enter your name'); return; }
       if (!/^[6-9]\d{9}$/.test(d)) { toast('Please enter a valid WhatsApp number'); return; }
       try { localStorage.setItem('fomaxo_bagwa', d); } catch(x) {}
-      TRK.lead('details', {name: nm, phone: d}, cart); renderCart();
+      TRK.lead('coupon', {name: nm, phone: d}, cart); renderCart();
       f.closest('.ofp-wa').innerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; }; };
   const newpHTML = () => { const isNew = !!NEWP.id;
     return `<p class="ofp-k" id="ofpK">${esc(NEWP.label || (NEWP.kind === 'new' ? 'Just arrived' : 'Coming soon'))}</p>
