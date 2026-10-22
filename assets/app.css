@@ -701,3 +701,28 @@ button.kpi.kpi-btn:hover { border-color: var(--gold); }
 .upi-to { text-align: center; font-size: 15px; margin: 0 0 4px; }
 .pay-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 12px; }
 .pay-switch span { width: 100%; text-align: center; font-size: 13px; color: var(--muted); }
+/* Payment screens fit one phone screen: amount, QR, steps, switch and buttons without scrolling. */
+.modal:has(.amount-big) { padding-top: 14px; }
+.modal:has(.amount-big) .modal-head { margin-bottom: 8px; }
+.modal:has(.amount-big) .amount-big { padding: 6px 10px; margin-bottom: 8px; }
+.modal:has(.amount-big) .amount-big .val { font-size: 28px; line-height: 1.15; }
+.modal:has(.amount-big) .qr-box { width: 176px; padding: 8px; margin-bottom: 6px; }
+.modal:has(.amount-big) .upi-name { font-size: 20px; margin: 0 0 4px; }
+.modal:has(.amount-big) .upi-to { font-size: 13px; margin: 0; }
+.modal:has(.amount-big) .upi-id { font-size: 12px; margin: 0 0 4px; }
+.modal:has(.amount-big) .steps { margin-bottom: 4px; }
+.modal:has(.amount-big) .steps.big li { font-size: 15px; padding: 3px 0; }
+.modal:has(.amount-big) .steps.big li::before { width: 26px; height: 26px; font-size: 13px; }
+.modal:has(.amount-big) details.ref { font-size: 13px; }
+.modal:has(.amount-big) .status-line { margin: 4px 0 2px; }
+.modal:has(.amount-big) .modal-foot { margin-top: 8px; }
+.modal:has(.amount-big) .modal-foot .btn.big { min-height: 48px; }
+.modal:has(.amount-big) .cash-q { font-size: 15px; margin-bottom: 6px; }
+.modal:has(.amount-big) .note-btn { min-height: 48px; font-size: 19px; }
+.modal:has(.amount-big) .field { margin-bottom: 8px; }
+.modal:has(.amount-big) .change-box.big { padding: 8px 14px; flex-direction: row; align-items: center; font-size: 16px; }
+.modal:has(.amount-big) .change-box.big .num { font-size: 24px; }
+.pay-switch { margin: 6px 0 4px; gap: 6px; }
+.pay-switch span { width: auto; font-size: 13px; margin-right: 2px; }
+.pay-switch .btn.sm { padding: 6px 12px; }
+.pay-choices .pchoice { min-height: 68px; padding: 10px 14px; }

@@ -989,7 +989,7 @@
         (mode !== 'live' ? '<div class="note" style="margin-bottom:12px;text-align:center">' + (mode === 'demo' ? 'PRACTICE MODE — no real money' : 'RAZORPAY TEST MODE — no real money') + '</div>' : '') +
         '<div class="amount-big"><div class="lbl">Customer pays</div><div class="val num">' + inr(d.sale.total) + '</div></div>' +
         '<div class="qr-box">' + qrHtml + '</div>' +
-        '<p class="small muted" style="text-align:center;margin:0 0 6px">' + (as === 'card' ? 'Customer scans with their phone camera and pays by card. Or tap Open on this device and type the card in here. The sale completes by itself.' : d.kind === 'link' ? 'Customer scans with their phone camera and pays by UPI, card or netbanking.' : 'Customer scans with PhonePe, Google Pay, Paytm or any UPI app. The sale completes by itself.') + '</p>' +
+        '<p class="small muted" style="text-align:center;margin:0 0 6px">' + (as === 'card' ? 'Customer scans with the phone camera and pays by card. Confirms by itself.' : d.kind === 'link' ? 'Customer scans with their phone camera and pays by UPI, card or netbanking.' : 'Customer scans with PhonePe, Google Pay, Paytm or any UPI app. The sale completes by itself.') + '</p>' +
         '<div class="status-line" id="z-status"><span class="spinner"></span> Waiting for payment…</div>' +
         '<div class="err m-err hidden"></div>' +
         (d.kind === 'upi' ? '' : '<div class="modal-foot">' + (wa ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(wa) + '">Send link on WhatsApp</a>' : '') +
