@@ -472,10 +472,15 @@ function fomaxo_customer(array $in): array {
         'landmark' => $t('landmark', 80), 'city' => $t('city', 60), 'state' => $t('state', 60), 'pin' => $t('pin', 10), 'note' => $t('note', 300)];
   if (mb_strlen($o['name']) < 2) return ['error' => 'Please enter your full name.'];
   $d = preg_replace('/\D/', '', $o['phone']);
-  if (strlen($d) === 12 && str_starts_with($d, '91')) $d = substr($d, 2);
-  if (strlen($d) === 11 && $d[0] === '0') $d = substr($d, 1);
-  if (!preg_match('/^[6-9]\d{9}$/', $d)) return ['error' => 'Please enter a valid 10-digit Indian mobile number.'];
-  $o['phone'] = '+91 ' . substr($d, 0, 5) . ' ' . substr($d, 5);
+  if (str_starts_with($o['phone'], '+') && !str_starts_with($d, '91')) {   // a mobile from another country: + country code and number, 8 to 15 digits in all, saved as +971501234567
+    if (!preg_match('/^[1-9]\d{7,14}$/', $d)) return ['error' => 'Please enter a valid mobile number with its country code.'];
+    $o['phone'] = "+$d";
+  } else {
+    if (strlen($d) === 12 && str_starts_with($d, '91')) $d = substr($d, 2);
+    if (strlen($d) === 11 && $d[0] === '0') $d = substr($d, 1);
+    if (!preg_match('/^[6-9]\d{9}$/', $d)) return ['error' => 'Please enter a valid 10-digit Indian mobile number.'];
+    $o['phone'] = '+91 ' . substr($d, 0, 5) . ' ' . substr($d, 5);
+  }
   /* email is optional (the phone checkout doesn't ask for it), but when given it must be valid */
   if ($o['email'] !== '' && !filter_var($o['email'], FILTER_VALIDATE_EMAIL)) return ['error' => 'Please enter a valid email address.'];
   if ($o['house'] === '' || mb_strlen($o['street']) < 2 || mb_strlen($o['city']) < 2) return ['error' => 'Please enter your full delivery address.'];
@@ -534,7 +539,7 @@ function fomaxo_review_url(string $token): string {
    by itself and the admin sees them in Left at checkout as soon as they open the link. A changed or made-up code gives '' (nothing filled, nothing kept). */
 function wa_who_key(): string { $k = shop_setting('who_key'); if (!$k) { $k = bin2hex(random_bytes(16)); shop_set('who_key', $k); } return $k; }
 function wa_who_token(string $phone): string {
-  $p = substr(preg_replace('/\D/', '', $phone), -10);
+  $p = coupon_phone($phone);
   return preg_match('/^[6-9]\d{9}$/', $p) ? $p . '-' . substr(hash_hmac('sha256', 'who:' . $p, wa_who_key()), 0, 12) : '';
 }
 function wa_who_phone(string $t): string {

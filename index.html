@@ -2135,6 +2135,8 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-tel:focus-within{border-color:var(--gold-hi)}
 .co-tel em{display:flex;align-items:center;padding:0 0 0 16px;font-style:normal;font-size:15px;letter-spacing:0;color:var(--muted)}
 .co-form .co-tel input{border:0;padding-left:10px}
+.co-cc{position:relative;display:flex;flex:none}.co-cc em:after{content:"";width:0;height:0;margin-left:6px;border:4px solid transparent;border-top:5px solid currentColor;border-bottom:0;opacity:.7}
+.co-form .co-cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;font-size:16px}   /* the country code box: the code shows, tapping it opens every country */
 .co-fine{font-size:13.5px;line-height:1.7;color:var(--muted)}
 /* the WhatsApp opt-in tick under "We remember these details": unticked unless the shopper ticked it on an earlier order on this device */
 .co-form label.co-wa{display:flex;flex-direction:row;align-items:center;gap:10px;margin-top:-8px;font-size:13px;letter-spacing:0;text-transform:none;line-height:1.4;color:var(--ivory);opacity:1;cursor:pointer}
@@ -5074,6 +5076,17 @@ const inr = v => money(v, '₹');
 
 /* on phones, email is optional at checkout and payment opens without it */
 const coPhone = () => matchMedia('(max-width: 820px)').matches;
+/* Mobile at checkout takes a number from any country: the country code box (India +91 first, then where most of our shoppers abroad live, then every country A–Z).
+   India stays a 10-digit mobile as before; any other country is sent and saved as + code and number (+971501234567) */
+const CO_CC = (() => { const top = 'IN91 AE971 US1 GB44 CA1 AU61 SA966 QA974 KW965 OM968 BH973 SG65 MY60 NP977'.split(' '),
+  rest = 'AF93 AL355 DZ213 AD376 AO244 AG1 AR54 AM374 AT43 AZ994 BS1 BD880 BB1 BY375 BE32 BZ501 BJ229 BT975 BO591 BA387 BW267 BR55 BN673 BG359 BF226 BI257 KH855 CM237 CV238 CF236 TD235 CL56 CN86 CO57 KM269 CG242 CD243 CR506 CI225 HR385 CU53 CY357 CZ420 DK45 DJ253 DM1 DO1 EC593 EG20 SV503 GQ240 ER291 EE372 SZ268 ET251 FJ679 FI358 FR33 GA241 GM220 GE995 DE49 GH233 GR30 GD1 GT502 GN224 GW245 GY592 HT509 HN504 HK852 HU36 IS354 ID62 IR98 IQ964 IE353 IL972 IT39 JM1 JP81 JO962 KZ7 KE254 KI686 KG996 LA856 LV371 LB961 LS266 LR231 LY218 LI423 LT370 LU352 MO853 MG261 MW265 MV960 ML223 MT356 MH692 MR222 MU230 MX52 FM691 MD373 MC377 MN976 ME382 MA212 MZ258 MM95 NA264 NR674 NL31 NZ64 NI505 NE227 NG234 KP850 MK389 NO47 PK92 PW680 PS970 PA507 PG675 PY595 PE51 PH63 PL48 PT351 PR1 RO40 RU7 RW250 KN1 LC1 VC1 WS685 SM378 ST239 SN221 RS381 SC248 SL232 SK421 SI386 SB677 SO252 ZA27 KR82 SS211 ES34 LK94 SD249 SR597 SE46 CH41 SY963 TW886 TJ992 TZ255 TH66 TL670 TG228 TO676 TT1 TN216 TR90 TM993 TV688 UG256 UA380 UY598 UZ998 VU678 VE58 VN84 YE967 ZM260 ZW263'.split(' ');
+  let dn; try { dn = new Intl.DisplayNames(['en'], {type: 'region'}); } catch(e) {}
+  const row = x => ({iso: x.slice(0, 2), code: x.slice(2), name: (dn && dn.of(x.slice(0, 2))) || x.slice(0, 2)});
+  return [...top.map(row), ...rest.map(row).sort((a, b) => a.name.localeCompare(b.name))]; })();
+const coCc = iso => CO_CC.find(c => c.iso === iso) || CO_CC[0];
+/* a saved or pasted number (+971501234567, 00971…) → [country, the number without its code]; one the box already shows wins a shared code (+1) */
+const coCcSplit = (v, iso) => { const d = String(v || '').replace(/\D/g, '').replace(/^00/, ''); if (!/^\s*(\+|00)/.test(String(v || ''))) return null;
+  for (let n = 3; n >= 1; n--) { const k = d.slice(0, n), hit = CO_CC.filter(c => c.code === k); if (hit.length) return [hit.find(c => c.iso === iso) || hit[0], d.slice(n)]; } return null; };
 function checkoutPage(q){
   document.title = 'Checkout — FOMAXO';
   const lines = coLines(q), t = subtotal(lines);
@@ -5081,7 +5094,7 @@ function checkoutPage(q){
   if (t === null || cartCur(lines) !== '₹' || !(S.checkout.razorpay || coCod())) return pageHead('Checkout', 'Order on <em class="metal">WhatsApp</em>', 'An item in your bag is priced on request, so we will confirm your order with you on WhatsApp.') + `<section class="sec" style="padding-top:40px"><div class="wrap"><button class="btn" id="coWa">Order via WhatsApp</button></div></section>`;
   const tog = togetherOff(lines), d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codSt = coCodState(cod, t, t - tog, d.name), codOk = codSt === 'ok';
   const offs = cbOffs(lines), was = lines.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
-  const phone = String(d.phone || '').replace(/\D/g, '').slice(-10);
+  const cc0 = coCcSplit(d.phone, d.cc), cc = cc0 && cc0[0].iso !== 'IN' ? cc0[0] : CO_CC[0], phone = cc.iso === 'IN' ? String(d.phone || '').replace(/\D/g, '').slice(-10) : cc0[1];
   return `<section class="co"><div class="wrap co-grid">
   <h1 class="co-title">Checkout</h1>
   <aside class="co-sum fold" id="coSum" aria-label="Order summary">
@@ -5111,7 +5124,7 @@ function checkoutPage(q){
     <p class="co-fine co-req">Every field is needed unless it says optional. Payment opens once they are all filled in.</p>
     <label>Full name<input name="name" value="${v('name')}" autocomplete="name" required maxlength="80"></label>
     <div class="row2">
-      <label>Mobile<span class="co-tel"><em>+91</em><input name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="98765 43210" value="${phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : ''}" required maxlength="12"></span></label>
+      <label>Mobile<span class="co-tel"><span class="co-cc"><em id="coCcShow">+${cc.code}</em><select name="cc" aria-label="Country code" autocomplete="tel-country-code">${CO_CC.map(c => `<option value="${c.iso}"${c === cc ? ' selected' : ''}>${esc(c.name)} +${c.code}</option>`).join('')}</select></span><input name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="${cc.iso === 'IN' ? '98765 43210' : 'Mobile number'}" value="${cc.iso === 'IN' ? (phone ? phone.slice(0, 5) + ' ' + phone.slice(5) : '') : phone}" required maxlength="${cc.iso === 'IN' ? 12 : 16}"></span></label>
       <label><span>Email${coPhone() ? ' <small>(optional)</small>' : ''}</span><input name="email" type="email" value="${v('email')}" autocomplete="email"${coPhone() ? '' : ' required'} maxlength="120"></label>
     </div>
     <label>Flat / house no, building<input name="house" value="${v('house')}" autocomplete="address-line1" required maxlength="80"></label>
@@ -5168,7 +5181,7 @@ function bindCheckout(q){
   const off = () => cpn ? cpn.off : tog, togKept = () => cpn ? cpn.offer : tog;
   const total = () => r2(t - off() + (method() === 'cod' && cod ? cod.fee : 0));
   /* payment stays locked until every required delivery field is filled in correctly */
-  const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', v => /^[6-9]\d{9}$/.test(v.replace(/\D/g, ''))],
+  const NEED = [['name', 'Full name', v => v.length >= 2], ['phone', 'Mobile', () => phoneOk()],
     ['email', 'Email', v => (v === '' && coPhone()) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)], ['house', 'Flat / house no, building', v => v.length > 0],
     ['street', 'Street, area, locality', v => v.length >= 2], ['city', 'City', v => v.length >= 2], ['state', 'State', v => v !== ''],
     ['pin', 'PIN code', v => /^[1-9]\d{5}$/.test(v)]];
@@ -5200,17 +5213,25 @@ function bindCheckout(q){
   $$('input[name=pay]', f).forEach(r => r.onchange = upd);
   f.addEventListener('input', upd); f.addEventListener('change', upd);
   /* "Left at checkout" in the admin: the details and bag, sent a moment after they are typed */
-  let leadT; const leadOf = () => ({name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin')});
+  let leadT; const leadOf = () => ({name: val('name'), phone: phoneVal(), cc: E.cc.value, email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin')});
   f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin'].includes(e.target.name)) return; clearTimeout(leadT);
     leadT = setTimeout(() => { const c = leadOf(); TRK.lead('details', c, lines);
       try { localStorage.setItem(CO_KEY, JSON.stringify({...coSaved(), ...c})); } catch(e) {} }, 1500); });   // kept on this device as typed, so going back to the bag or a product and returning finds the form filled in
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
-  E.phone.oninput = () => { let d = E.phone.value.replace(/\D/g, ''); if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
+  /* any other country: digits only, up to 15 with the code; a number typed or pasted with +code (or 00code) moves its code into the country box */
+  const ccNow = () => coCc(E.cc.value), ccSet = c => { E.cc.value = c.iso; $('#coCcShow').textContent = '+' + c.code; const ind = c.iso === 'IN';
+    E.phone.placeholder = ind ? '98765 43210' : 'Mobile number'; E.phone.maxLength = ind ? 12 : 16; };
+  E.phone.oninput = () => { const sp = coCcSplit(E.phone.value, E.cc.value); if (sp) { ccSet(sp[0]); E.phone.value = sp[1]; }
+    else if (/^\s*(\+|00)/.test(E.phone.value)) { E.phone.value = '+' + E.phone.value.replace(/\D/g, '').replace(/^00/, '').slice(0, 3); return; }   // still typing the +code
+    let d = E.phone.value.replace(/\D/g, '');
+    if (ccNow().iso !== 'IN') { E.phone.value = d.slice(0, 15 - ccNow().code.length); return; }
+    if (d.length > 10 && /^(91|0)/.test(d)) d = d.replace(/^(91|0)/, ''); d = d.slice(0, 10); E.phone.value = d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; };
+  E.cc.onchange = () => { ccSet(ccNow()); E.phone.dispatchEvent(new Event('input', {bubbles: true})); E.phone.focus(); };
   /* opened from a link in our WhatsApp (?w=): the Mobile box fills in by itself with the number we wrote to, unless one is already there */
   let who = ''; try { who = localStorage.getItem('fomaxo_who') || ''; } catch(e) {}
   if (who && !E.phone.value) fetch('api/who.php', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({who})}).then(r => r.json()).then(j => {
-    if (/^[6-9]\d{9}$/.test(j.phone || '') && !E.phone.value) { E.phone.value = j.phone; E.phone.dispatchEvent(new Event('input', {bubbles: true})); }
+    if (/^[6-9]\d{9}$/.test(j.phone || '') && !E.phone.value) { ccSet(CO_CC[0]); E.phone.value = j.phone; E.phone.dispatchEvent(new Event('input', {bubbles: true})); }
     else if (!j.phone) try { localStorage.removeItem('fomaxo_who'); } catch(e) {} }).catch(() => {});
   /* a full PIN fills in City and State (api/pin.php, India Post's list) when they are still empty; typed ones are kept */
   let pinAsked = '';
@@ -5229,10 +5250,13 @@ function bindCheckout(q){
     el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'});
   };
   const val = k => E[k].value.replace(/\s+/g, ' ').trim();
+  /* the mobile as it is sent: 10 digits for India, + code and number for any other country (a leading 0 dropped: 050… in the UAE is +97150…) */
+  function phoneVal(){ const d = E.phone.value.replace(/\D/g, ''), c = ccNow(); return c.iso === 'IN' ? d : d ? '+' + c.code + d.replace(/^0+/, '') : ''; }
+  function phoneOk(){ const v = phoneVal(); return ccNow().iso === 'IN' ? /^[6-9]\d{9}$/.test(v) : v.length - ccNow().code.length >= 5 && /^\+[1-9]\d{7,14}$/.test(v); }
   function details(){
-    const c = {name: val('name'), phone: val('phone').replace(/\D/g, ''), email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin'), note: val('note'), wa: E.wa.checked ? 1 : 0};
+    const c = {name: val('name'), phone: phoneVal(), cc: E.cc.value, email: val('email'), house: val('house'), street: val('street'), landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin'), note: val('note'), wa: E.wa.checked ? 1 : 0};
     if (c.name.length < 2) return showErr('Please enter your full name.', E.name);
-    if (!/^[6-9]\d{9}$/.test(c.phone)) return showErr('Please enter a valid 10-digit mobile number.', E.phone);
+    if (!phoneOk()) return showErr(ccNow().iso === 'IN' ? 'Please enter a valid 10-digit mobile number.' : 'Please enter a valid mobile number.', E.phone);
     if (!(c.email === '' && coPhone()) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return showErr('Please enter a valid email address.', E.email);
     if (!c.house) return showErr('Please enter your flat or house number and building.', E.house);
     if (c.street.length < 2) return showErr('Please enter your street, area or locality.', E.street);
@@ -5288,7 +5312,7 @@ function bindCheckout(q){
     code = String(code || '').replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
     if (!code) { cpnShow('Please type your coupon code.'); return; }
     const b = $('#coCpnApply'); b.disabled = true; b.textContent = '…';
-    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines, phone: E.phone.value.replace(/\D/g, '')}); const cp = Number(d.discount), offer = Number(d.offer || 0);
+    try { const d = await post('api/coupon.php', {code, lines: payload({}).lines, phone: phoneVal()}); const cp = Number(d.discount), offer = Number(d.offer || 0);
       cpn = {code: d.code, cp, offer, off: cp + offer, ends: d.ends || '', free: d.free ? {...d.free, worth: Number(d.free.worth)} : null}; try { sessionStorage.setItem(CPN, d.code); } catch(e) {}
       !cp && offer > 0 && !d.free ? cpnShow('Your together extra off saves more, so we kept it.', true) : cpnShow(''); }
     catch(x) { cpn = null; try { sessionStorage.removeItem(CPN); } catch(e) {} if (quiet) { cIn.value = code; } cpnShow(x.message, /^Spend /.test(x.message)); }   // "Spend ₹999 to get your free …": a gold note

@@ -45,7 +45,7 @@ try {
      ?ref=<their visitor id>; when a friend orders from it, the sharer shows in Left at checkout as "Invited a friend" so the shop can send their coupon. */
   $db->exec('CREATE TABLE IF NOT EXISTS inviters(vid VARCHAR(16) PRIMARY KEY, phone VARCHAR(24) NOT NULL, name VARCHAR(80) NOT NULL DEFAULT \'\', at INT NOT NULL DEFAULT 0)');
   if ($t === 'invite') {
-    $phone = wa_who_phone((string)($in['w'] ?? '')) ?: substr(preg_replace('/\D/', '', (string)($in['ph'] ?? '')), -10);
+    $phone = wa_who_phone((string)($in['w'] ?? '')) ?: coupon_phone((string)($in['ph'] ?? ''));   // invites stay India-only: a number from another country (+…) is left out
     if (!preg_match('/^[6-9]\d{9}$/', $phone)) exit;
     $name = trim(mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)($in['n'] ?? '')) ?? '', 0, 80));
     if ($name === '') { $s = $db->prepare("SELECT name FROM orders WHERE phone LIKE ? ORDER BY created DESC LIMIT 1"); $s->execute(['%' . $phone]); $name = mb_substr((string)$s->fetchColumn(), 0, 80); }
@@ -63,7 +63,7 @@ try {
       exit;
     }
     if (($l['step'] ?? '') === 'buyer') {   // came back on the device they ordered from: in Left at checkout right away, only if that mobile really has an order
-      $phone = substr(preg_replace('/\D/', '', (string)($l['phone'] ?? '')), -10); if (!preg_match('/^[6-9]\d{9}$/', $phone)) exit;
+      $phone = coupon_phone((string)($l['phone'] ?? '')); if ($phone === '') exit;
       $s = $db->prepare('SELECT 1 FROM leads WHERE sid = ?'); $s->execute([$sid]); if ($s->fetchColumn()) exit;   // checkout or a WhatsApp link already noted this visit
       $s = $db->prepare("SELECT name FROM orders WHERE status NOT IN ('awaiting', 'cancelled', 'refunded') AND COALESCE(no, '') <> '' AND test = 0 AND phone LIKE ? ORDER BY created DESC LIMIT 1"); $s->execute(['%' . $phone]);
       $name = $s->fetchColumn(); if ($name === false) exit;
@@ -72,9 +72,9 @@ try {
       exit;
     }
     $txt = fn($v, $n) => trim(mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', is_string($v) ? $v : '') ?? '', 0, $n));
-    $phone = substr(preg_replace('/\D/', '', (string)($l['phone'] ?? '')), -10);
+    $phone = coupon_phone((string)($l['phone'] ?? ''));   // 10 digits, or +971501234567 for a number from another country
     $name = $txt($l['name'] ?? '', 80);
-    if ($name === '' && strlen($phone) < 10) exit;
+    if ($name === '' && $phone === '') exit;
     $bag = [];
     foreach (array_slice((array)($l['bag'] ?? []), 0, 20) as $b) if (is_array($b))
       $bag[] = ['id' => $txt($b['id'] ?? '', 48), 'opt' => $txt((string)($b['opt'] ?? ''), 16), 'qty' => max(1, min(99, (int)($b['qty'] ?? 1))), 'name' => $txt($b['name'] ?? '', 90)];
@@ -84,7 +84,7 @@ try {
     $s = $db->prepare('SELECT step, created FROM leads WHERE sid = ?'); $s->execute([$sid]); $old = $s->fetch();
     $rank = ['coupon' => 0, 'details' => 1, 'payment' => 2]; if ($old && ($rank[$old['step']] ?? -1) > $rank[$step]) $step = $old['step'];   // never step back
     shop_upsert('leads', ['sid'], ['sid' => $sid, 'vid' => $vid, 'created' => $old['created'] ?? shop_now(), 'updated' => shop_now(), 'name' => $name,
-      'phone' => strlen($phone) === 10 ? $phone : '', 'step' => $step, 'bag' => json_encode($bag, JSON_UNESCAPED_UNICODE), 'total' => max(0, min(100000000, (int)round((float)($l['total'] ?? 0) * 100))), 'ordered' => 0,
+      'phone' => $phone, 'step' => $step, 'bag' => json_encode($bag, JSON_UNESCAPED_UNICODE), 'total' => max(0, min(100000000, (int)round((float)($l['total'] ?? 0) * 100))), 'ordered' => 0,
       'email' => $email, 'state' => $state, 'address' => $txt($l['address'] ?? '', 300)]);
     exit;
   }
@@ -103,7 +103,7 @@ try {
   if ($t === 'buy' && ($iv = $id('iv')) !== '' && $iv !== $vid) try {   // a friend's order from a shared link: the sharer shows in Left at checkout with "Invited a friend"
     $s = $db->prepare('SELECT phone, name FROM inviters WHERE vid = ?'); $s->execute([$iv]); $inv = $s->fetch();
     $s = $db->prepare('SELECT no, name, phone FROM orders WHERE UPPER(no) = UPPER(?) AND created >= ? LIMIT 1'); $s->execute([$product, date('Y-m-d H:i:s', $now - 3 * 3600)]); $o = $s->fetch();
-    if ($inv && $o && substr(preg_replace('/\D/', '', (string)$o['phone']), -10) !== $inv['phone']) {   // not their own order
+    if ($inv && $o && coupon_phone((string)$o['phone']) !== $inv['phone']) {   // not their own order
       $friend = trim(explode(' ', trim((string)$o['name']))[0] ?? '');
       shop_upsert('leads', ['sid'], ['sid' => substr(md5('invite:' . $o['no']), 0, 16), 'vid' => $iv, 'created' => shop_now(), 'updated' => shop_now(), 'name' => (string)$inv['name'],
         'phone' => (string)$inv['phone'], 'step' => 'invite', 'bag' => json_encode(['friend' => mb_substr($friend, 0, 40), 'order' => (string)$o['no']], JSON_UNESCAPED_UNICODE), 'total' => 0, 'ordered' => 0, 'email' => '', 'state' => '', 'address' => '']);
