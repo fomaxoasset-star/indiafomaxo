@@ -1107,6 +1107,7 @@
       (!fresh && paid && isManager() && !s.queued ? '<button class="btn danger" data-act="r-void">Void sale</button>' : '') +
       (canRepay(s) ? '<button class="btn gold big wide" data-act="repay-open" data-id="' + s.id + '">Take payment again</button>' : '') +
       (!s.queued && s.status === 'pending' ? '<button class="btn danger wide" data-act="s-cancel" data-id="' + s.id + '">Cancel this sale</button>' : '') +
+      (!s.queued && isManager() && (s.status === 'cancelled' || s.status === 'failed') ? '<button class="btn danger wide" data-act="s-delete" data-id="' + s.id + '">Delete order</button>' : '') +
       (fresh ? '<button class="btn gold big wide" data-act="modal-close">New sale</button>' : '') +
       '</div>', { wide: true });
     var fr = $('#rframe');
@@ -2061,6 +2062,12 @@
       }
       // sales
       case 'repay-open': stopPoll(); repayOpen(id); break;
+      case 's-delete':
+        if (!confirm('Delete this unpaid order for good? It had no receipt number, so no numbers are skipped.')) break;
+        el.disabled = true;
+        api('sale_delete', { body: { id: id } }).then(function () { closeModal(); toast('Order deleted.'); if (S.view === 'sales') renderSales(); })
+          .catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
       case 's-cancel': zPaid = repaid; openModal('Cancel this sale', cancelReasonHtml(id, 's-open')); break;
       case 'repay': {
         var rm = el.getAttribute('data-m');

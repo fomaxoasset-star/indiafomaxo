@@ -625,6 +625,31 @@ switch ($action) {
         }
         json_out(['sale' => $s]);
 
+    case 'sale_delete':
+        // Managers only. Removes a sale that was never paid (cancelled or failed): it has no receipt number and
+        // never took stock, so numbering keeps no gaps. Paid sales are voided instead, never deleted.
+        need_post();
+        $u = require_manager();
+        $s = q1('SELECT * FROM sales WHERE id = ?', [(int) ($b['id'] ?? 0)]);
+        if (!$s) {
+            fail('Sale not found.', 404);
+        }
+        if (!in_array($s['status'], ['cancelled', 'failed'], true)) {
+            fail($s['status'] === 'pending' ? 'Cancel this sale first, then delete it.' : 'A paid sale keeps its receipt number. Use Void sale instead.');
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            q('DELETE FROM sale_items WHERE sale_id = ?', [$s['id']]);
+            q("DELETE FROM sales WHERE id = ? AND status IN ('cancelled', 'failed')", [$s['id']]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+        log_activity($u, 'delete', 'Deleted an unpaid sale of ' . inr((int) $s['total']) . ' (' . $s['status'] . ($s['note'] ? ', ' . $s['note'] : '') . ')', 'NOT PAID', (int) $s['store_id']);
+        json_out(['ok' => true]);
+
     case 'void_sale':
         need_post();
         $u = require_manager();
