@@ -679,10 +679,53 @@
   }
   function setCartOpen(v) { S.cartOpen = v; var c = $('#cart'); if (c) c.classList.toggle('open', v); var f = $('#cart-fab'); if (f) f.classList.toggle('hidden', v); }
 
+  // ---------------------------------------------------------------- phone numbers from any country
+  // "ISO name code" — India first, then the Gulf and other common ones, then every other country A–Z.
+  var COUNTRIES = 'IN India 91;AE United Arab Emirates 971;SA Saudi Arabia 966;QA Qatar 974;KW Kuwait 965;OM Oman 968;BH Bahrain 973;US United States 1;CA Canada 1;GB United Kingdom 44;AU Australia 61;SG Singapore 65;MY Malaysia 60;LK Sri Lanka 94;NP Nepal 977;BD Bangladesh 880;MV Maldives 960;AF Afghanistan 93;AL Albania 355;DZ Algeria 213;AD Andorra 376;AO Angola 244;AG Antigua and Barbuda 1;AR Argentina 54;AM Armenia 374;AT Austria 43;AZ Azerbaijan 994;BS Bahamas 1;BB Barbados 1;BY Belarus 375;BE Belgium 32;BZ Belize 501;BJ Benin 229;BT Bhutan 975;BO Bolivia 591;BA Bosnia and Herzegovina 387;BW Botswana 267;BR Brazil 55;BN Brunei 673;BG Bulgaria 359;BF Burkina Faso 226;BI Burundi 257;KH Cambodia 855;CM Cameroon 237;CV Cape Verde 238;CF Central African Republic 236;TD Chad 235;CL Chile 56;CN China 86;CO Colombia 57;KM Comoros 269;CG Congo 242;CD Congo (DRC) 243;CR Costa Rica 506;CI Côte d’Ivoire 225;HR Croatia 385;CU Cuba 53;CY Cyprus 357;CZ Czechia 420;DK Denmark 45;DJ Djibouti 253;DM Dominica 1;DO Dominican Republic 1;EC Ecuador 593;EG Egypt 20;SV El Salvador 503;GQ Equatorial Guinea 240;ER Eritrea 291;EE Estonia 372;SZ Eswatini 268;ET Ethiopia 251;FJ Fiji 679;FI Finland 358;FR France 33;GA Gabon 241;GM Gambia 220;GE Georgia 995;DE Germany 49;GH Ghana 233;GR Greece 30;GD Grenada 1;GT Guatemala 502;GN Guinea 224;GW Guinea-Bissau 245;GY Guyana 592;HT Haiti 509;HN Honduras 504;HK Hong Kong 852;HU Hungary 36;IS Iceland 354;ID Indonesia 62;IR Iran 98;IQ Iraq 964;IE Ireland 353;IL Israel 972;IT Italy 39;JM Jamaica 1;JP Japan 81;JO Jordan 962;KZ Kazakhstan 7;KE Kenya 254;KI Kiribati 686;XK Kosovo 383;KG Kyrgyzstan 996;LA Laos 856;LV Latvia 371;LB Lebanon 961;LS Lesotho 266;LR Liberia 231;LY Libya 218;LI Liechtenstein 423;LT Lithuania 370;LU Luxembourg 352;MO Macau 853;MG Madagascar 261;MW Malawi 265;ML Mali 223;MT Malta 356;MH Marshall Islands 692;MR Mauritania 222;MU Mauritius 230;MX Mexico 52;FM Micronesia 691;MD Moldova 373;MC Monaco 377;MN Mongolia 976;ME Montenegro 382;MA Morocco 212;MZ Mozambique 258;MM Myanmar 95;NA Namibia 264;NR Nauru 674;NL Netherlands 31;NZ New Zealand 64;NI Nicaragua 505;NE Niger 227;NG Nigeria 234;KP North Korea 850;MK North Macedonia 389;NO Norway 47;PK Pakistan 92;PW Palau 680;PS Palestine 970;PA Panama 507;PG Papua New Guinea 675;PY Paraguay 595;PE Peru 51;PH Philippines 63;PL Poland 48;PT Portugal 351;PR Puerto Rico 1;RO Romania 40;RU Russia 7;RW Rwanda 250;KN Saint Kitts and Nevis 1;LC Saint Lucia 1;VC Saint Vincent and the Grenadines 1;WS Samoa 685;SM San Marino 378;ST São Tomé and Príncipe 239;SN Senegal 221;RS Serbia 381;SC Seychelles 248;SL Sierra Leone 232;SK Slovakia 421;SI Slovenia 386;SB Solomon Islands 677;SO Somalia 252;ZA South Africa 27;KR South Korea 82;SS South Sudan 211;ES Spain 34;SD Sudan 249;SR Suriname 597;SE Sweden 46;CH Switzerland 41;SY Syria 963;TW Taiwan 886;TJ Tajikistan 992;TZ Tanzania 255;TH Thailand 66;TL Timor-Leste 670;TG Togo 228;TO Tonga 676;TT Trinidad and Tobago 1;TN Tunisia 216;TR Türkiye 90;TM Turkmenistan 993;TV Tuvalu 688;UG Uganda 256;UA Ukraine 380;UY Uruguay 598;UZ Uzbekistan 998;VU Vanuatu 678;VA Vatican City 39;VE Venezuela 58;VN Vietnam 84;YE Yemen 967;ZM Zambia 260;ZW Zimbabwe 263'.split(';').map(function (x) {
+    var m = x.match(/^([A-Z]{2}) (.+) (\d+)$/);
+    return { iso: m[1], name: m[2], code: m[3], flag: String.fromCodePoint(0x1F1E6 + m[1].charCodeAt(0) - 65, 0x1F1E6 + m[1].charCodeAt(1) - 65) };
+  });
+  var MAIN_FOR_CODE = { '1': 'US', '7': 'RU', '39': 'IT', '44': 'GB', '91': 'IN' };
+  /** Splits "+971501234567" into the country (longest matching code) and the rest; numbers without + are Indian. */
+  function splitPhone(p) {
+    p = String(p || '').trim();
+    var plus = p.charAt(0) === '+' || p.indexOf('00') === 0, d = p.replace(/\D/g, '');
+    if (p.charAt(0) !== '+' && plus) d = d.slice(2);
+    if (!plus) return { iso: 'IN', num: p };
+    for (var len = 4; len >= 1; len--) {
+      var code = d.slice(0, len), hit = COUNTRIES.filter(function (c) { return c.code === code; });
+      if (hit.length) {
+        var main = hit.filter(function (c) { return c.iso === MAIN_FOR_CODE[code]; })[0] || hit[0];
+        return { iso: main.iso, num: d.slice(len) };
+      }
+    }
+    return { iso: 'IN', num: p };
+  }
+  /** The full number from the picker and the typed digits. A number typed with + (or 00) keeps its own country code. */
+  function joinPhone(iso, num) {
+    num = String(num || '').trim();
+    if (!num) return '';
+    if (num.charAt(0) === '+') return '+' + num.replace(/\D/g, '');
+    if (num.indexOf('00') === 0) return '+' + num.replace(/\D/g, '').slice(2);
+    var c = COUNTRIES.filter(function (x) { return x.iso === iso; })[0] || COUNTRIES[0];
+    var d = num.replace(/\D/g, '');
+    if (c.code !== '39') d = d.replace(/^0+/, ''); // trunk 0 (098765…, 050…, 07911…) is not dialled from abroad; Italy keeps it
+    if (d.indexOf(c.code) === 0 && d.length > 10) d = d.slice(c.code.length); // country code typed twice
+    return '+' + c.code + d;
+  }
+  function custPhone() { return $('#c-phone') ? joinPhone($('#c-cc').value, $('#c-phone').value) : ''; }
+  function ccOptions(sel) {
+    return COUNTRIES.map(function (c, i) {
+      return (i === 17 ? '<option disabled>──────────</option>' : '') + '<option value="' + c.iso + '"' + (c.iso === sel ? ' selected' : '') + '>' + c.flag + ' +' + c.code + ' ' + esc(c.name) + '</option>';
+    }).join('');
+  }
+
   function customerModal() {
-    var c = S.customer || {};
+    var c = S.customer || {}, sp = splitPhone(c.phone);
     openModal('Customer', '<div class="err m-err hidden"></div>' +
-      '<label class="field"><span>Mobile — type it and the customer is looked up</span><input class="input" id="c-phone" type="tel" inputmode="tel" placeholder="98765 43210" value="' + esc(c.phone || '') + '" autocomplete="off" autofocus></label>' +
+      '<label class="field"><span>Mobile (any country) — type it and the customer is looked up</span><div class="phone-row">' +
+      '<select class="input cc" id="c-cc" aria-label="Country code">' + ccOptions(sp.iso) + '</select>' +
+      '<input class="input" id="c-phone" type="tel" inputmode="tel" placeholder="98765 43210" value="' + esc(sp.num) + '" autocomplete="off" autofocus></div></label>' +
       '<div id="c-info"></div>' +
       '<label class="field"><span>Name</span><input class="input cap" id="c-name" value="' + esc(c.name || '') + '" placeholder="CUSTOMER NAME" autocomplete="off" autocapitalize="characters"></label>' +
       '<label class="field"><span>Email (optional)</span><input class="input" id="c-email" type="email" inputmode="email" autocapitalize="none" placeholder="name@example.com" value="' + esc(c.email || '') + '" autocomplete="off"></label>' +
@@ -691,6 +734,7 @@
       '<button class="btn gold big" data-act="c-save">Save customer</button></div>');
     lastLookup = '';
     $('#c-phone').addEventListener('input', autoFind);
+    $('#c-cc').addEventListener('change', function () { lastLookup = ''; autoFind(); });
     $('#c-email').addEventListener('change', autoFind);
     if (c.phone || c.email) findCustomer();
   }
@@ -707,16 +751,17 @@
     clearTimeout(lookupTimer);
     lookupTimer = setTimeout(function () {
       var ph = ($('#c-phone') ? $('#c-phone').value : '').replace(/\D/g, '');
+      if (ph.length >= 6) ph = custPhone().replace(/\D/g, '');
       var em = $('#c-email') ? $('#c-email').value.trim() : '';
       var emOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
-      var key = (ph.length >= 9 ? ph : '') + '|' + (emOk ? em : '');
+      var key = (ph.length >= 8 ? ph : '') + '|' + (emOk ? em : '');
       if (key === '|' || key === lastLookup) return;
       lastLookup = key; findCustomer();
     }, 450);
   }
   function fillIfEmpty(sel, v) { var el = $(sel); if (el && !el.value.trim() && v) el.value = v; }
   function findCustomer() {
-    var phone = $('#c-phone').value.trim(), email = ($('#c-email') ? $('#c-email').value.trim() : '');
+    var phone = custPhone(), email = ($('#c-email') ? $('#c-email').value.trim() : '');
     if (!phone && !email) return;
     if (!S.online) { $('#c-info').innerHTML = '<p class="small muted">Offline — the details will still be saved with the sale.</p>'; return; }
     $('#c-info').innerHTML = '<div class="status-line" style="justify-content:flex-start"><span class="spinner"></span> Looking up customer…</div>';
@@ -727,7 +772,8 @@
         var name = (c && c.name) || (w && w.name) || '';
         fillIfEmpty('#c-name', titleCase(name));
         fillIfEmpty('#c-email', (c && c.email) || (w && w.email) || '');
-        fillIfEmpty('#c-phone', (c && c.phone) || (w && w.phone) || '');
+        var fp = (c && c.phone) || (w && w.phone) || '';
+        if (fp && !$('#c-phone').value.trim()) { var fs = splitPhone(fp); $('#c-cc').value = fs.iso; $('#c-phone').value = fs.num; }
         var where = [];
         if (c) where.push('🏬 ' + (c.visits || 0) + ' store purchase' + (c.visits === 1 ? '' : 's'));
         if (w) where.push('🌐 ' + w.orders + ' fomaxo.in order' + (w.orders === 1 ? '' : 's') + ' (last ' + esc(w.last_order) + ')');
@@ -1647,9 +1693,11 @@
       case 'discount': discountModal(); break;
       case 'c-find': findCustomer(); break;
       case 'c-save': {
-        var ph = $('#c-phone').value.trim(), em = $('#c-email').value.trim().toLowerCase(), nm = titleCase($('#c-name').value);
+        var ph = custPhone(), em = $('#c-email').value.trim().toLowerCase(), nm = titleCase($('#c-name').value);
         if (!ph && !em && !nm) { S.customer = null; closeModal(); renderCart(); break; }
-        if (ph && ph.replace(/\D/g, '').length < 7) { modalErr('Enter the full mobile number.'); break; }
+        var phd = ph.replace(/\D/g, '');
+        if (ph && (phd.length < 8 || phd.length > 15)) { modalErr('Enter the full mobile number.'); break; }
+        if (/^91/.test(phd) && $('#c-phone').value.trim().charAt(0) !== '+' && !/^91[6-9]\d{9}$/.test(phd)) { modalErr('An Indian mobile has 10 digits. For another country, pick it in the list first.'); break; }
         if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { modalErr('That email does not look right.'); break; }
         if (!ph && !em) { modalErr('Add a mobile number or an email for the customer.'); break; }
         var f = S._found;

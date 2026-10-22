@@ -698,3 +698,6 @@ html, body { overscroll-behavior-y: none; }
 .install-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 16px; background: var(--gold-dim); border-bottom: 1px solid rgba(201,162,75,.3); color: var(--gold-2); font-size: 14px; }
 .install-bar .ib-text { flex: 1; min-width: 0; }
 .install-bar .btn.gold { padding: 6px 14px; min-height: 0; }
+.phone-row { display: flex; gap: 8px; }
+.phone-row .cc { width: 132px; flex: none; padding-right: 4px; text-overflow: ellipsis; }
+.phone-row .input:not(.cc) { flex: 1; min-width: 0; }
