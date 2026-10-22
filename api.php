@@ -621,7 +621,8 @@ switch ($action) {
     // ---------------- Staff accounts ----------------
     case 'users':
         require_manager();
-        $rows = q('SELECT id, name, username, role, active, store_id, created_at FROM users ORDER BY active DESC, name')->fetchAll();
+        // Removed staff keep their row (their old sales still show their name) but are left out here.
+        $rows = q("SELECT id, name, username, role, active, store_id, created_at FROM users WHERE username NOT LIKE '~%' ORDER BY active DESC, name")->fetchAll();
         foreach ($rows as &$r) {
             $r['id'] = (int) $r['id'];
             $r['store_id'] = $r['store_id'] === null ? null : (int) $r['store_id'];
@@ -678,6 +679,23 @@ switch ($action) {
         }
         log_activity($me, 'staff', ($b['id'] ?? 0 ? 'Updated' : 'Added') . ' staff account: ' . $name . ' (' . $role . ($active ? '' : ', switched off') . ')' . ($pass !== '' && ($b['id'] ?? 0) ? ', new password' : ''));
         json_out(['ok' => true, 'id' => $id]);
+
+    case 'user_remove':
+        need_post();
+        $me = require_manager();
+        $id = (int) ($b['id'] ?? 0);
+        $x = q1('SELECT * FROM users WHERE id = ?', [$id]);
+        if (!$x || strpos($x['username'], '~') === 0) {
+            fail('That staff account is not there any more.', 404);
+        }
+        if ($id === (int) $me['id']) {
+            fail('You cannot remove your own login.');
+        }
+        // Their sales and history stay with their name; the login is closed and the username can be used again.
+        q('UPDATE users SET active = 0, username = ? WHERE id = ?', ['~removed~' . $id, $id]);
+        q('DELETE FROM tokens WHERE user_id = ?', [$id]);
+        log_activity($me, 'staff', 'Removed staff account: ' . $x['name'] . ' (' . strtoupper($x['username']) . ')');
+        json_out(['ok' => true]);
 
     // ---------------- Stores ----------------
     case 'stores':

@@ -1459,7 +1459,8 @@
       (multiStore() ? '<label class="field"><span>Works at</span><select class="input" name="store_id"><option value="">Any store (chooses on the device)</option>' +
         S.stores.map(function (x) { return '<option value="' + x.id + '"' + (u.store_id === x.id ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></label>' : '') +
       '<label class="check"><input type="checkbox" name="active" ' + (u.active ? 'checked' : '') + '> Can log in</label>' +
-      '<div class="modal-foot"><button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>');
+      '<div class="modal-foot">' + (!isNew && u.id !== S.user.id ? '<button class="btn danger" type="button" data-act="u-remove" data-id="' + u.id + '">Remove staff</button>' : '') +
+      '<button class="btn" type="button" data-act="modal-close">Cancel</button><button class="btn gold" type="submit">Save</button></div></form>');
     $('#u-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, b = $('[type=submit]', f); b.disabled = true;
@@ -1661,6 +1662,17 @@
         renderStaff(); break;
       }
       case 't-person': S.team.user = String(id); S.teamTab = 'activity'; renderStaff(); break;
+      case 'u-remove': {
+        var ru = (S._users || []).filter(function (x) { return x.id === id; })[0]; if (!ru) break;
+        openModal('Remove ' + ru.name + '?', '<div class="err m-err hidden"></div><p style="margin:0 0 14px"><b>' + esc(ru.username.toUpperCase()) + '</b> will no longer be able to log in, and they disappear from this list. Their past sales stay in Sales and Reports under their name.</p>' +
+          '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="u-remove-yes" data-id="' + ru.id + '">Remove staff</button></div>');
+        break;
+      }
+      case 'u-remove-yes':
+        el.disabled = true;
+        api('user_remove', { body: { id: id } }).then(function () { closeModal(); toast('Staff removed.'); S._users = null; loadTeam(); })
+          .catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
       case 'st-new': storeModal(null); break;
       case 'st-edit': storeModal(storeById(id)); break;
       case 'theme-toggle': setTheme(isDark() ? 'light' : 'dark'); break;
