@@ -61,7 +61,7 @@ function cfg($key = null, $default = null)
 }
 
 /** Settings a manager can change inside the app (Settings); saved in the database as set_<name>. */
-const APP_SETTINGS = ['razorpay_key_id', 'razorpay_key_secret', 'razorpay_mode', 'store_gstin', 'store_upi'];
+const APP_SETTINGS = ['razorpay_key_id', 'razorpay_key_secret', 'razorpay_mode', 'store_gstin', 'store_upi', 'store_upi_name'];
 
 function app_settings($reload = false)
 {

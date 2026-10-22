@@ -129,6 +129,7 @@ switch ($action) {
                 'store_phone' => cfg('store_phone'),
                 'store_gstin' => cfg('store_gstin'),
                 'store_upi' => cfg('store_upi', ''),
+                'store_upi_name' => (string) cfg('store_upi_name', ''),
                 'receipt_footer' => cfg('receipt_footer'),
                 'currency' => cfg('currency', 'INR'),
                 'vat_rate' => vat_rate(),
@@ -892,6 +893,7 @@ switch ($action) {
             'razorpay_test' => rzp_test_keys(),
             'store_gstin' => (string) cfg('store_gstin', ''),
             'store_upi' => (string) cfg('store_upi', ''),
+            'store_upi_name' => (string) cfg('store_upi_name', ''),
             'web_coupons' => (bool) meta_get('set_web_coupons'),
         ]);
 
@@ -947,6 +949,10 @@ switch ($action) {
         if (isset($b['razorpay_mode'])) {
             meta_set('set_razorpay_mode', $m);
             $changes[] = 'Razorpay: ' . ['live' => 'LIVE (real money)', 'test' => 'test (no real money)', 'demo' => 'practice'][$m];
+        }
+        if (array_key_exists('store_upi_name', $b)) {
+            // The name on the UPI account: customers' UPI apps show it, so the till shows it too.
+            meta_set('set_store_upi_name', mb_strtoupper(trim(mb_substr(preg_replace('/\s+/', ' ', (string) $b['store_upi_name']), 0, 60))));
         }
         if (array_key_exists('store_upi', $b)) {
             $vpa = strtolower(preg_replace('/\s+/', '', (string) $b['store_upi']));

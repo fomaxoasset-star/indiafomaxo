@@ -865,6 +865,7 @@
         try {
           var uq = qrcode(0, 'M'); uq.addData(upiUrl); uq.make();
           qrSvg = '<div class="upi-name">' + esc(S.settings.store_name || 'FOMAXO') + '</div><div class="qr-box">' + uq.createSvgTag({ cellSize: 6, margin: 2, scalable: true }) + '</div>' +
+            (S.settings.store_upi_name ? '<div class="upi-to">Payment goes to <b>' + esc(S.settings.store_upi_name) + '</b> for ' + esc(S.settings.store_name || 'FOMAXO') + '</div>' : '') +
             '<div class="upi-id">UPI ID: ' + esc(vpa) + '</div>';
         } catch (e) { qrSvg = ''; }
       }
@@ -1592,6 +1593,7 @@
         (d.razorpay_key_from === 'app' ? '<label class="check"><input type="checkbox" name="remove_razorpay_keys"> Remove the saved keys' + ' (the shop’s keys are used again)</label>' : '') +
         '<h3 class="set-h">UPI · Paytm</h3>' +
         '<label class="field"><span>Store\u2019s Paytm UPI ID</span><input class="input" name="store_upi" autocapitalize="none" spellcheck="false" value="' + esc(d.store_upi) + '" placeholder="e.g. fomaxo@paytm"></label>' +
+        '<label class="field"><span>Name on the Paytm account (customers see it after scanning)</span><input class="input" name="store_upi_name" autocapitalize="characters" spellcheck="false" value="' + esc(d.store_upi_name || '') + '" placeholder="e.g. ADIL RIZWAN N P"></label>' +
         '<p class="small muted" style="margin:-4px 0 14px">With a UPI ID, <b>UPI · Paytm</b> shows a QR with the exact amount filled in. Staff confirm when the money arrives. No Razorpay fees.</p>' +
         '<h3 class="set-h">Coupons</h3>' +
         '<label class="check"><input type="checkbox" name="web_coupons" ' + (d.web_coupons ? 'checked' : '') + '> Also accept fomaxo.in coupon codes in the store</label>' +
@@ -1606,7 +1608,7 @@
       $('#set-form').addEventListener('submit', function (e) {
         e.preventDefault();
         var f = e.target, b = $('[type=submit]', f); b.disabled = true;
-        var body = { razorpay_mode: f.razorpay_mode.value, store_gstin: f.store_gstin.value, store_upi: f.store_upi.value, web_coupons: f.web_coupons.checked ? 1 : 0 };
+        var body = { razorpay_mode: f.razorpay_mode.value, store_gstin: f.store_gstin.value, store_upi: f.store_upi.value, store_upi_name: f.store_upi_name.value, web_coupons: f.web_coupons.checked ? 1 : 0 };
         if (f.razorpay_key_id.value.trim() || f.razorpay_key_secret.value.trim()) { body.razorpay_key_id = f.razorpay_key_id.value.trim(); body.razorpay_key_secret = f.razorpay_key_secret.value.trim(); }
         if (f.remove_razorpay_keys && f.remove_razorpay_keys.checked) body.remove_razorpay_keys = 1;
         api('settings_save', { body: body }).then(function () {
