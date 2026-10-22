@@ -574,6 +574,8 @@
   }
   function addToCart(id) {
     var p = productById(id); if (!p) return false;
+    if (tapTooSoon(id)) return false;
+    var before = bagSnapshot();
     var line = null; S.cart.forEach(function (c) { if (c.product_id === id) line = c; });
     var want = (line ? line.qty : 0) + 1;
     if (want > p.stock) {
@@ -581,27 +583,51 @@
       toast('Stock shows ' + Math.max(0, p.stock) + ' — added anyway because you are offline.', true);
     }
     if (line) line.qty = want; else S.cart.push({ product_id: id, qty: 1 });
+    lastAdd = { id: id, at: Date.now() };
     renderTiles(); renderCart();
-    flashAdded(shortName(p.name) + ' ' + p.variant);
+    flashAdded(shortName(p.name) + ' ' + p.variant, before);
     return true;
   }
-  var addedTimer;
-  function flashAdded(label) {
+  // ---- protection against accidental taps on the Sell page: every change to the bag can be undone for a few seconds
+  var addedTimer, undoBag = null;
+  function bagSnapshot() { return JSON.stringify({ cart: S.cart, discount: S.discount, customer: S.customer, coupon: S.coupon }); }
+  function bagPop(html, before, ms) {
     var old = $('.added-pop'); if (old) old.remove();
+    undoBag = before;
     var t = document.createElement('div');
-    t.className = 'added-pop'; t.innerHTML = '<span class="tick">✓</span> Added: ' + esc(label);
+    t.className = 'added-pop'; t.innerHTML = html + (before ? '<button class="undo" data-act="bag-undo">Undo</button>' : '');
     document.body.appendChild(t);
-    clearTimeout(addedTimer); addedTimer = setTimeout(function () { t.remove(); }, 1400);
+    clearTimeout(addedTimer); addedTimer = setTimeout(function () { t.remove(); undoBag = null; }, ms || 4000);
+  }
+  function flashAdded(label, before) { bagPop('<span class="tick">✓</span> Added: ' + esc(label), before, 3000); }
+  function bagUndo() {
+    if (!undoBag) return;
+    var b = JSON.parse(undoBag); undoBag = null;
+    S.cart = b.cart; S.discount = b.discount; S.customer = b.customer; S.coupon = b.coupon;
+    var t = $('.added-pop'); if (t) t.remove();
+    renderTiles(); renderCart(); toast('Undone.');
+  }
+  // A tap that lands while the product list is still scrolling, or a quick second tap on the same product, is not an add.
+  var lastScroll = 0, lastAdd = { id: 0, at: 0 };
+  document.addEventListener('scroll', function () { lastScroll = Date.now(); }, true);
+  function tapTooSoon(id) {
+    var now = Date.now();
+    if (now - lastScroll < 250) return true;
+    if (id && lastAdd.id === id && now - lastAdd.at < 700) return true;
+    return false;
   }
   function changeQty(id, d) {
+    var before = bagSnapshot(), gone = null;
     S.cart.forEach(function (c) {
       if (c.product_id !== id) return;
       var p = productById(id);
       if (d > 0 && p && c.qty + 1 > p.stock && S.online) { toast('Only ' + p.stock + ' in stock.', true); return; }
       c.qty += d;
+      if (c.qty <= 0) gone = productById(id);
     });
     S.cart = S.cart.filter(function (c) { return c.qty > 0; });
     renderTiles(); renderCart();
+    if (gone) bagPop('Removed: ' + esc(shortName(gone.name) + ' ' + gone.variant), before);
   }
   function renderCart() {
     var el = $('#cart'); if (!el) return;
@@ -1650,7 +1676,8 @@
       // sell
       case 'cat': S.category = el.getAttribute('data-cat'); renderChips(); renderTiles(); break;
       case 'add': addToCart(id); break;
-      case 'pick': pickGroup(el.getAttribute('data-g')); break;
+      case 'pick': if (!tapTooSoon()) pickGroup(el.getAttribute('data-g')); break;
+      case 'bag-undo': bagUndo(); break;
       case 'sv':
         S.sellView = el.getAttribute('data-v'); LS.set('fx_sell_view', S.sellView);
         closeModal(); $('#tiles').classList.toggle('list', S.sellView === 'list'); renderTiles(); syncSortBtn(); break;
@@ -1668,7 +1695,11 @@
       case 'more2': couponDiscountModal(); break;
       case 'r-show': showReceipt(currentReceipt, false); break;
       case 'qty': changeQty(id, parseInt(el.getAttribute('data-d'), 10)); break;
-      case 'cart-clear': S.cart = []; S.discount = null; S.customer = null; S.coupon = null; renderTiles(); renderCart(); break;
+      case 'cart-clear': {
+        var cb = bagSnapshot();
+        S.cart = []; S.discount = null; S.customer = null; S.coupon = null; renderTiles(); renderCart();
+        bagPop('Bag emptied', cb, 6000); break;
+      }
       case 'coupon': couponModal(); break;
       case 'cp-remove': S.coupon = null; closeModal(); renderCart(); toast('Coupon removed.'); break;
       case 'cp-apply': {
