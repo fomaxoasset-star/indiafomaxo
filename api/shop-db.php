@@ -646,6 +646,13 @@ function shop_ads(): array {
   return $out;
 }
 
+/* Google's site check file name (google1234abcd.html) saved on Admin → Settings → Ads; fomaxo.in/<that name> then answers Google
+   (api/seo.php?p=gsv), so Merchant Center can verify the website. '' = none. */
+function shop_gsv(): string {
+  $v = (string)shop_setting('gsv');
+  return preg_match('/^google[a-z0-9]{6,40}\.html$/', $v) ? $v : '';
+}
+
 /* Site pages turned off on Admin → Settings → Site pages (STORE_LIVE.pagesOff). A page that is off leaves the top menu,
    the phone menu and the footer, and its address opens the home page. Home, products, checkout and policies always stay. */
 const SHOP_PAGES = ['fragrances' => 'Fragrance', 'personal-care' => 'Personal Care', 'gift' => 'Gift', 'combo' => 'Combo', 'collections' => 'Collections',

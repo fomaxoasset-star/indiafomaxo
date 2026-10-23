@@ -1056,6 +1056,11 @@ if ($tab === 'settings') {
     . $adIn('gadsLabel', 'Google Ads purchase label', 'AbCdEfGhIjKlMnOp', 'What comes after AW-…/ in your Purchase conversion.')
     . $adIn('clarity', 'Microsoft Clarity project ID', 'abcde12345', 'clarity.microsoft.com → your project → Settings → Overview. yvikvvr7hf is built into the website and runs even when this is empty; an ID typed here is used instead. Records visits and heatmaps; names, phones and addresses at checkout stay hidden, and customer review links and thank-you pages are not recorded.')
     . '<button class="btn">Save</button></div></form>'
+    . '<form method="post" class="box' . ($adsFirst ? ' on' : '') . '" data-pane="ads" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="gsv"><div class="bh"><h3>Google site check</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . '<p class="muted small" style="margin:0">For Google Merchant Center (or Search Console) to confirm fomaxo.in is yours. In Google choose <b>Verify website → HTML file</b>, then paste the file’s name here. Nothing to upload.</p>'
+    . '<label>Google file name<input name="gsv" value="' . h(shop_gsv()) . '" placeholder="google1234abcd.html" spellcheck="false" autocapitalize="off"></label>'
+    . (shop_gsv() !== '' ? '<p class="muted small" style="margin:-4px 0 0">Ready at <a href="/' . h(shop_gsv()) . '" target="_blank" rel="noopener">fomaxo.in/' . h(shop_gsv()) . '</a>. Keep it saved after Google verifies: Google checks again now and then.</p>' : '')
+    . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box" data-pane="pw" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="password"><div class="bh"><h3>Change your password</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:12px">'
     . '<label>Current password<input type="password" name="current" required autocomplete="current-password"></label>'
     . '<label>New password <small>(at least 8 characters)</small><input type="password" name="new" required minlength="8" autocomplete="new-password"></label>'
