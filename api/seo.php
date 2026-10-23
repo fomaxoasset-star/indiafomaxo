@@ -9,6 +9,7 @@ declare(strict_types=1);
    GET /sitemap.xml   → the home page, the Returns and FAQ pages and every product on sale.
    GET /google-shopping.xml → the product list for free Google Shopping listings (Merchant Center → Products → Add from a file → link):
                         one line per size, with the same prices, "was" prices, stock and photos as the shop.
+   GET /google<code>.html → Google's site check file (Merchant Center / Search Console), when that name is saved on Admin → Settings → Ads.
    GET /returns       → index.html with the Returns page's title and text (Merchant Center's return policy link), opening #/returns.
    GET /faq           → index.html with the FAQ page's title, text and FAQPage data (questions from FAQ_LIST in index.html), opening #/faq.
    Both come here through the rewrite rules in the root .htaccess. Names, prices, photos, hidden products and stock follow
@@ -114,6 +115,15 @@ if ($page === 'sitemap') {
     echo "</url>\n";
   }
   echo "</urlset>\n";
+  exit;
+}
+
+if ($page === 'gsv') {   // Google's site check file: answers only the one name saved on the admin page
+  $f = (string)($_GET['f'] ?? '');
+  while (ob_get_level()) ob_end_clean();
+  if ($f === '' || $f !== shop_gsv()) { http_response_code(404); exit; }
+  header('Content-Type: text/html; charset=utf-8');
+  echo "google-site-verification: $f";
   exit;
 }
 

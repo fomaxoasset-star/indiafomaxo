@@ -615,6 +615,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $on = array_keys(array_filter(['Meta' => $ads['meta'], 'TikTok' => $ads['tiktok'], 'Google' => $ads['ga4'] . $ads['gads'], 'Microsoft Clarity' => $ads['clarity']]));
     go(['tab' => 'settings', 'pane' => 'ads'], $on ? 'Saved. ' . implode(', ', $on) . ' tracking is now on the website.' : 'Saved. No ad tracking is on the website.');
   }
+  if ($a === 'gsv') {   // Google's site check file name (Merchant Center → verify website → HTML file)
+    $back = ['tab' => 'settings', 'pane' => 'ads'];
+    $v = strtolower(trim((string)($_POST['gsv'] ?? '')));
+    if ($v !== '' && preg_match('/google-site-verification/', $v) && !preg_match('/google[a-z0-9]{6,40}\.html/', $v))
+      go($back, '!That is Google’s HTML tag. Please choose the “HTML file” way in Google instead and paste the file name here (it looks like google1234abcd.html).');
+    if ($v !== '') { preg_match('/google[a-z0-9]{6,40}\.html/', $v, $m); $v = $m[0] ?? ''; }
+    if ($v === '' && trim((string)($_POST['gsv'] ?? '')) !== '') go($back, '!That doesn’t look like Google’s file name. It starts with google and ends with .html, for example google1234abcd.html.');
+    shop_set('gsv', $v);
+    go($back, $v ? 'Saved. fomaxo.in/' . $v . ' is ready. Now press Verify in Google.' : 'Saved. No Google site check file.');
+  }
   if ($a === 'pages') {
     $on = (array)($_POST['on'] ?? []);
     $off = array_values(array_filter(array_keys(SHOP_PAGES), fn($k) => !in_array($k, $on, true)));

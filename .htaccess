@@ -68,6 +68,9 @@ AddType font/woff2 .woff2
   RewriteRule ^sitemap\.xml$ api/seo.php?p=sitemap [L]
   # product list for free Google Shopping listings (Merchant Center), and the Returns page at its own address
   RewriteRule ^google-shopping\.xml$ api/seo.php?p=feed [L]
+  # Google's site check file (Merchant Center / Search Console → "HTML file"): its name is pasted on Admin → Settings → Ads, nothing to upload
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^(google[a-z0-9]{6,40}\.html)$ api/seo.php?p=gsv&f=$1 [L]
   RewriteRule ^returns/?$ api/seo.php?p=returns [L,QSA]
   RewriteRule ^faq/?$ api/seo.php?p=faq [L,QSA]
 </IfModule>
