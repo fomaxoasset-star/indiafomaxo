@@ -2415,6 +2415,27 @@ html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
   .thumbs{overflow-y:auto;scrollbar-width:none}.thumbs::-webkit-scrollbar{display:none}.thumbs button{flex:none}
   .picks{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.pick span{padding:5px 6px;font-size:9.5px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+/* AJAY 2026-10-23: laptop product page words bigger (same layout, still one screen; fitPdp() still shrinks only if needed) */
+@media(min-width:961px){
+  .buy .pd-name .sub,.buy .sub>a{font-size:14px}
+  .buy .pd-smell{font-size:15px}.buy .pd-smell span{font-size:12.5px}
+  .buy .rw-head span{font-size:14.5px}
+  .buy .lead{font-size:16.5px;line-height:1.4}
+  .buy .pp-lb{font-size:13.5px}
+  .buy .pp-row .p-save{font-size:12.5px;padding:6px 10px}
+  .buy .sale-cd{font-size:13px}
+  .buy .pd-quote{font-size:15.5px;line-height:1.4}.buy .pd-quote small{font-size:12px}
+  .buy .pd-try{font-size:15.5px}
+  .buy .pdp-offer{font-size:15px;line-height:1.35;padding:5px 12px}.buy .pdp-offer b{font-size:12px;margin-bottom:0}
+  .buy .pdel{font-size:15px}
+  .buy .assure li{font-size:13px}
+  .buy .opt-label{font-size:14px}
+  .sizes button small{font-size:13px}.sizes .bv{font-size:11.5px}
+  .qtyrow .btn,.buy>.btn{font-size:15px}
+  .pwx{font-size:13.5px;min-height:46px;padding:4px 10px}.pwt{gap:1px}.pwt small{font-size:13px}
+  .perks div{font-size:14.5px;padding:3px 12px}
+  .acc summary{font-size:15px;padding:6px 0}
+}
 /* AJAY: on phone the product photos show whole, not cut or zoomed in: each photo frame takes the photo's own shape (--ar, set by fitPhoto) */
 @media(max-width:960px){
   .stage{aspect-ratio:3/4}
@@ -3932,6 +3953,8 @@ function fitPdp(){
   // photos in the buy side keep their on-screen width when zoomed, so shrink in a few steps until it fits
   let z = 1;
   for (let i = 0; i < 4; i++) { const need = buy.getBoundingClientRect().height; if (need <= avail || z <= .72) break; z = Math.max(.72, Math.floor(z * avail / need * 100) / 100); buy.style.zoom = z; buy.style.setProperty('--bz', z); }   // --bz keeps the open section's text full size
+  // a smaller zoom lets lines wrap less, so the first step can shrink too much: grow back in small steps while it still fits (words as big as the screen allows)
+  for (let i = 0; i < 8 && z < 1; i++) { const t = Math.min(1, Math.round(z * 100 + 2) / 100); buy.style.zoom = t; buy.style.setProperty('--bz', t); if (buy.getBoundingClientRect().height > avail) { buy.style.zoom = z; buy.style.setProperty('--bz', z); break; } z = t; }
 }
 addEventListener('resize', () => requestAnimationFrame(fitPdp));
 document.addEventListener('toggle', e => { if (e.target.closest && e.target.closest('.pdp .acc')) fitPdp(); }, true);
