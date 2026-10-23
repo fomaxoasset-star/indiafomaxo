@@ -362,14 +362,15 @@ switch ($action) {
         }
         require_once __DIR__ . '/lib/website.php';
         $web = cfg('website_customers', true) ? web_customer($phone, $email) : null;
+        $webCom = cfg('website_customers', true) ? web_com_customer($phone, $email) : null;
         if (!$c) {
             $ws = $web ? (int) $web['year_spend'] : 0;
-            json_out(['customer' => null, 'phone' => $phone, 'web' => $web,
+            json_out(['customer' => null, 'phone' => $phone, 'web' => $web, 'web_com' => $webCom,
                 'tier' => $web ? tier_for($ws) : null, 'next_tier' => $web ? next_tier($ws) : null, 'year_spend' => $ws]);
         }
         $spend = customer_year_spend($c['id']);
         $storeVisits = (int) q1("SELECT COUNT(*) AS n FROM sales WHERE customer_id = ? AND status = 'paid'", [$c['id']])['n'];
-        json_out(['web' => $web, 'customer' => [
+        json_out(['web' => $web, 'web_com' => $webCom, 'customer' => [
             'visits' => $storeVisits,
             'id' => (int) $c['id'],
             'phone' => strpos($c['phone'], 'e:') === 0 ? '' : $c['phone'],
@@ -919,6 +920,7 @@ switch ($action) {
             'store_gstin' => (string) cfg('store_gstin', ''),
             'store_upi' => (string) cfg('store_upi', ''),
             'store_upi_name' => (string) cfg('store_upi_name', ''),
+            'websites' => (function () { require_once __DIR__ . '/lib/website.php'; return web_links_status(); })(),
             'web_coupons' => (bool) meta_get('set_web_coupons'),
         ]);
 

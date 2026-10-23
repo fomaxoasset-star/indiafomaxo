@@ -163,3 +163,94 @@ function web_coupon_row($code, $phone = '')
     }
     return $c;
 }
+
+// ---------------- fomaxo.com (UAE shop, same Hostinger account), read-only ----------------
+
+function web_com_db()
+{
+    static $pdo = false;
+    if ($pdo !== false) {
+        return $pdo;
+    }
+    $pdo = null;
+    $file = cfg('website_com_db_config', dirname(dirname(__DIR__), 2) . '/fomaxo.com/fomaxo-db-config.php');
+    try {
+        if ($file && @is_file($file) && @is_readable($file)) {
+            $c = require $file;
+            if (is_array($c) && !empty($c['name'])) {
+                $pdo = new PDO('mysql:host=' . ($c['host'] ?? 'localhost') . ';port=' . (int) ($c['port'] ?? 3306) . ';dbname=' . $c['name'] . ';charset=utf8mb4',
+                    (string) ($c['user'] ?? ''), (string) ($c['pass'] ?? ''), [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_TIMEOUT => 4]);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('FOMAXO POS India: fomaxo.com database not reachable: ' . $e->getMessage());
+        $pdo = null;
+    }
+    return $pdo;
+}
+
+/** A customer's fomaxo.com orders, found by mobile (or email). Amounts there are in AED, so they are shown but never added to ₹ tiers. */
+function web_com_customer($phone, $email = '')
+{
+    $pdo = web_com_db();
+    if (!$pdo) {
+        return null;
+    }
+    // UAE numbers have 9 digits after +971, Indian ones 10 after +91: match on the last 9 digits, then check the full number in PHP.
+    $digits = preg_replace('/\D/', '', (string) $phone);
+    $email = strtolower(trim((string) $email));
+    if (strlen($digits) < 9 && $email === '') {
+        return null;
+    }
+    try {
+        $st = $pdo->prepare("SELECT name, phone, email, total, created_at FROM fx_orders
+                             WHERE test = 0 AND status NOT IN ('Awaiting payment', 'Cancelled', 'Refunded') AND (phone LIKE ? OR LOWER(email) = ?)
+                             ORDER BY created_at DESC LIMIT 400");
+        $st->execute(['%' . (strlen($digits) >= 9 ? substr($digits, -4) : '#no#'), $email !== '' ? $email : '#no#']);
+        $rows = array_values(array_filter($st->fetchAll(), function ($r) use ($digits, $email) {
+            $d = preg_replace('/\D/', '', (string) $r['phone']);
+            return (strlen($digits) >= 9 && strlen($d) >= 9 && substr($d, -9) === substr($digits, -9)) || ($email !== '' && strtolower(trim($r['email'])) === $email);
+        }));
+    } catch (Throwable $e) {
+        error_log('FOMAXO POS India: fomaxo.com customer lookup failed: ' . $e->getMessage());
+        return null;
+    }
+    if (!$rows) {
+        return null;
+    }
+    $fils = 0;
+    $em = '';
+    foreach ($rows as $r) {
+        $fils += (int) round(((float) $r['total']) * 100);
+        if ($em === '' && trim((string) $r['email']) !== '') {
+            $em = strtolower(trim($r['email']));
+        }
+    }
+    return [
+        'name' => trim((string) $rows[0]['name']),
+        'phone' => trim((string) $rows[0]['phone']),
+        'email' => $em,
+        'orders' => count($rows),
+        'spent_aed' => $fils,
+        'last_order' => substr((string) $rows[0]['created_at'], 0, 10),
+    ];
+}
+
+/** Whether each website's orders can be read, for Settings → Website customers. */
+function web_links_status()
+{
+    $out = [];
+    foreach ([['in', 'web_db', "SELECT COUNT(*) FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')"],
+              ['com', 'web_com_db', "SELECT COUNT(*) FROM fx_orders WHERE test = 0 AND status NOT IN ('Awaiting payment', 'Cancelled', 'Refunded')"]] as $s) {
+        $r = ['ok' => false, 'orders' => 0, 'why' => 'website database not reachable'];
+        if ($pdo = $s[1]()) {
+            try {
+                $r = ['ok' => true, 'orders' => (int) $pdo->query($s[2])->fetchColumn(), 'why' => ''];
+            } catch (Throwable $e) {
+                $r['why'] = 'orders table not readable';
+            }
+        }
+        $out[$s[0]] = $r;
+    }
+    return $out;
+}

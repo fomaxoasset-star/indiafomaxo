@@ -788,16 +788,17 @@
     $('#c-info').innerHTML = '<div class="status-line" style="justify-content:flex-start"><span class="spinner"></span> Looking up customer…</div>';
     api('customer', { query: '&phone=' + encodeURIComponent(phone) + '&email=' + encodeURIComponent(email) }).then(function (d) {
       if (!$('#c-info')) return;
-      var w = d.web, c = d.customer;
-      if (c || w) {
-        var name = (c && c.name) || (w && w.name) || '';
+      var w = d.web, c = d.customer, wc = d.web_com;
+      if (c || w || wc) {
+        var name = (c && c.name) || (w && w.name) || (wc && wc.name) || '';
         fillIfEmpty('#c-name', titleCase(name));
-        fillIfEmpty('#c-email', (c && c.email) || (w && w.email) || '');
+        fillIfEmpty('#c-email', (c && c.email) || (w && w.email) || (wc && wc.email) || '');
         var fp = (c && c.phone) || (w && w.phone) || '';
         if (fp && !$('#c-phone').value.trim()) { var fs = splitPhone(fp); $('#c-cc').value = fs.iso; $('#c-phone').value = fs.num; }
         var where = [];
         if (c) where.push('🏬 ' + (c.visits || 0) + ' store purchase' + (c.visits === 1 ? '' : 's'));
         if (w) where.push('🌐 ' + w.orders + ' fomaxo.in order' + (w.orders === 1 ? '' : 's') + ' (last ' + esc(w.last_order) + ')');
+        if (wc) where.push('🇦🇪 ' + wc.orders + ' fomaxo.com order' + (wc.orders === 1 ? '' : 's') + ' · AED ' + Math.round(wc.spent_aed / 100).toLocaleString('en-IN') + ' (last ' + esc(wc.last_order) + ')');
         $('#c-info').innerHTML = '<div class="found"><b>✓ Found: ' + esc(titleCase(name) || 'customer') + '</b><div class="small">' + where.join('<br>') + '</div></div>' +
           tierInfo(c || { tier: d.tier, year_spend: d.year_spend, next_tier: d.next_tier });
         S._found = c || { tier: d.tier };
@@ -1590,6 +1591,12 @@
         '<label class="field"><span>Store\u2019s Paytm UPI ID</span><input class="input" name="store_upi" autocapitalize="none" spellcheck="false" value="' + esc(d.store_upi) + '" placeholder="e.g. fomaxo@paytm"></label>' +
         '<label class="field"><span>Name on the Paytm account (customers see it after scanning)</span><input class="input" name="store_upi_name" autocapitalize="characters" spellcheck="false" value="' + esc(d.store_upi_name || '') + '" placeholder="e.g. ADIL RIZWAN N P"></label>' +
         '<p class="small muted" style="margin:-4px 0 14px">With a UPI ID, <b>UPI · Paytm</b> shows a QR with the exact amount filled in. Staff confirm when the money arrives. No Razorpay fees.</p>' +
+        '<h3 class="set-h">Website customers</h3>' +
+        [['in', 'fomaxo.in', 'India orders. Typing a mobile in Customer finds website buyers and fills in their name and email.'], ['com', 'fomaxo.com', 'UAE orders (shown in AED, not added to member tiers).']].map(function (x) {
+          var st = (d.websites || {})[x[0]];
+          return st && st.ok ? '<p class="small" style="margin:0 0 8px;color:var(--ok)">✓ ' + x[1] + ' connected — ' + st.orders.toLocaleString('en-IN') + ' ' + x[2] + '</p>'
+            : '<p class="small" style="margin:0 0 8px;color:var(--out)">✗ ' + x[1] + ' not connected (' + esc((st && st.why) || 'unknown') + ').</p>';
+        }).join('') +
         '<h3 class="set-h">Coupons</h3>' +
         '<label class="check"><input type="checkbox" name="web_coupons" ' + (d.web_coupons ? 'checked' : '') + '> Also accept fomaxo.in coupon codes in the store</label>' +
         '<p class="small muted" style="margin:-6px 0 14px">Your store codes (menu → Coupons) always work. Tick this to also accept the website’s codes.</p>' +
