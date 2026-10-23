@@ -5554,7 +5554,7 @@ function bindVids(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
   tiles.forEach(t => t.onclick = () => openReel(+t.dataset.vi));
-  tiles.forEach(t => { const v = $('video', t); if (v) { v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); } });
+  tiles.forEach(t => { const v = $('video', t); if (v) { v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
   if ('IntersectionObserver' in window) { const cio = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cio.disconnect(); covers(); } }, {rootMargin: '100% 0px'}); cio.observe($('#vrow')); } else covers();   // the videos start by themselves as the page opens (autoplay, muted, looping)
