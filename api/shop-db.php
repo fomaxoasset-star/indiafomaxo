@@ -504,6 +504,7 @@ function coupon_stack_label(array $c): string { return !empty($c['stack']) ? 'Us
    a number from another country (typed at checkout with its country code, saved as +971501234567) keeps the + and every digit, so it never looks Indian */
 function coupon_phone(string $phone): string {
   $d = preg_replace('/\D/', '', $phone) ?? '';
+  if (preg_match('/^9710+([1-9]\d{7,8})$/', $d, $m)) $d = '971' . $m[1];   // +9710543146334 is +971543146334: the home 0 is not dialled after the code
   if (str_starts_with(ltrim($phone), '+') && !str_starts_with($d, '91')) return strlen($d) >= 8 && strlen($d) <= 15 ? "+$d" : '';
   return strlen($d) >= 10 ? substr($d, -10) : '';
 }
