@@ -5572,16 +5572,17 @@ function bindVids(){
   if ('IntersectionObserver' in window) { const cio = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cio.disconnect(); covers(); } }, {rootMargin: '100% 0px'}); cio.observe($('#vrow')); } else covers();   // the videos start by themselves as the page opens (autoplay, muted, looping)
   const row = $('#vrow'), nav = $('.vr-nav');   // laptop: arrows when the videos are wider than the page
   if (nav) { const fit = () => { nav.hidden = row.scrollWidth <= row.clientWidth + 2; }; fit(); addEventListener('resize', fit, {passive: true}); $$('[data-vscroll]', nav).forEach(b => b.onclick = () => row.scrollBy({left: +b.dataset.vscroll * (row.clientWidth + 14), behavior: 'smooth'})); }
-  if (navigator.connection && navigator.connection.saveData) return;   // data saver: covers only until tapped
+  const nc = navigator.connection; if (nc && (nc.saveData || /2g|3g/.test(nc.effectiveType || ''))) return;   // data saver or a slow connection: covers only until tapped
   /* light on the page: a tile loads its small preview only when it is on screen and the page has finished loading, at most 2 at a time;
      a tile without a preview keeps its photo (the full video loads only in the player); a browser that holds back autoplay downloads nothing until the first tap or click */
-  let held = false, ready = document.readyState === 'complete'; const wait = new Set();
+  let held = false, slow = false, ready = document.readyState === 'complete'; const wait = new Set();
   const busy = () => tiles.filter(t => { const v = $('video', t); return v && v.getAttribute('src') && v.readyState < 3 && !v.error; }).length;
   const pump = () => wait.forEach(t => { if (busy() < 2) { wait.delete(t); if (onScreen(t)) run(t, true); } });
   const stop = v => { v.pause(); v.removeAttribute('src'); v.load(); };
   const run = (t, on) => { const v = $('video', t); if (!v) return;
-    if (on) { if (held || !ready) return;
-      if (!v.getAttribute('src')) { if (busy() >= 2) { wait.add(t); return; } v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, pump, {once: true})); }
+    if (on) { if (held || slow || !ready) return;
+      if (!v.getAttribute('src')) { if (busy() >= 2) { wait.add(t); return; } v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, pump, {once: true}));
+        const tm = setTimeout(() => { if (v.readyState < 3 && v.getAttribute('src')) { slow = true; wait.clear(); tiles.forEach(x => { const w = $('video', x); if (w && w.readyState < 3 && w.getAttribute('src')) stop(w); }); } }, 5000); v.addEventListener('canplay', () => clearTimeout(tm), {once: true}); }   // slow Wi-Fi (no speed info, e.g. Safari): a preview not ready within 5 seconds = covers only on this visit
       v.play().then(() => t.classList.add('playing')).catch(e => { if (e.name === 'NotAllowedError') { held = true; tiles.forEach(x => { const w = $('video', x); if (w && w.readyState < 2 && w.getAttribute('src')) stop(w); }); wait.clear(); } });
     } else { wait.delete(t); if (!v.paused) { v.pause(); t.classList.remove('playing'); } if (v.readyState < 2 && v.getAttribute('src')) { stop(v); pump(); } } };
   if (!ready) addEventListener('load', () => { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }, {once: true});
