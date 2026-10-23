@@ -1,6 +1,6 @@
 /* FOMAXO India Store System - offline support. Keeps the app itself on the device so it opens without internet.
    Data requests (api.php) always go to the server; the app handles offline sales itself. */
-var VERSION = 'fomaxo-pos-in-v36';
+var VERSION = 'fomaxo-pos-in-v37';
 var PHOTOS = 'fomaxo-pos-in-photos';  // kept across app updates
 var V = '?v=' + VERSION.replace('fomaxo-pos-in-v', 'in');  // the same version index.html asks for
 var SHELL = [
@@ -24,12 +24,15 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(req.url);
   if (url.origin !== location.origin) return;
   var path = url.pathname;
-  // Product photos: from the phone's saved copy instantly, refreshed in the background.
+  // Product photos: kept on the phone and shown instantly; checked again only once a week.
   if (/\/image\.php$/.test(path)) {
     e.respondWith(caches.open(PHOTOS).then(function (c) {
       return c.match(req).then(function (hit) {
-        var net = fetch(req).then(function (res) { if (res.ok) c.put(req, res.clone()); return res; }).catch(function () { return hit; });
-        return hit || net;
+        var get = function () { return fetch(req).then(function (res) { if (res.ok) c.put(req, res.clone()); return res; }); };
+        if (!hit) return get();
+        var age = Date.now() - (Date.parse(hit.headers.get('date')) || 0);
+        if (age > 7 * 864e5) e.waitUntil(get().catch(function () {}));
+        return hit;
       });
     }));
     return;

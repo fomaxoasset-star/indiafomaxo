@@ -1,6 +1,7 @@
 <?php
-// Small product photos for the Sell screen. Makes a light copy of the fomaxo.in photo once,
-// keeps it on the server, and lets phones keep it too - so tiles show instantly.
+// Small product photos for the Sell screen. Makes a light copy of the fomaxo.in photo once and stores it
+// on the server outside public_html (so app updates never wipe it), and lets phones keep it too - so tiles
+// show instantly. A stored copy is only remade when the website's photo file changes.
 // image.php?k=gold-main2&w=360 (assets/img on fomaxo.in), image.php?k=up/new-perfume-1a2b3c4d.webp (uploaded on fomaxo.in/admin)
 require __DIR__ . '/lib/core.php';
 
@@ -12,28 +13,38 @@ if (!preg_match('#^(up/[a-z0-9-]{1,120}\.(webp|jpg)|[a-z0-9_-]{1,150})$#i', $key
     exit;
 }
 
-$cacheDir = __DIR__ . '/data/thumbs';
+$cacheDir = dirname(__DIR__) . '/fomaxo-pos-in-thumbs';
 $cacheFile = $cacheDir . '/' . str_replace(['/', '.'], ['__', '_'], $key) . '-' . $w . '.webp';
 
 function send_image($file, $type = 'image/webp')
 {
+    $mtime = filemtime($file);
     header('Content-Type: ' . $type);
     header('Cache-Control: public, max-age=604800');
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
+    $since = strtotime((string) ($_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? ''));
+    if ($since && $since >= $mtime) {
+        http_response_code(304);
+        exit;
+    }
     header('Content-Length: ' . filesize($file));
     readfile($file);
     exit;
 }
 
-if (is_file($cacheFile) && filemtime($cacheFile) > time() - 7 * 86400) {
-    send_image($cacheFile);
-}
-
 // The original: read straight from the website folder on the same hosting account, else download it.
-$data = false;
 $uploaded = strpos($key, 'up/') === 0;
 $site = dirname(__DIR__, 2) . '/fomaxo.in';
 $local = $uploaded ? $site . '/fomaxo-private/product-images/' . substr($key, 3) : $site . '/public_html/assets/img/' . $key . '.webp';
-if (@is_readable($local)) {
+$srcTime = @filemtime($local);
+
+// The stored copy is good while the website photo has not changed (or, for a downloaded photo, for 30 days).
+if (is_file($cacheFile) && ($srcTime ? filemtime($cacheFile) >= $srcTime : filemtime($cacheFile) > time() - 30 * 86400)) {
+    send_image($cacheFile);
+}
+
+$data = false;
+if ($srcTime && @is_readable($local)) {
     $data = @file_get_contents($local);
 }
 if ($data === false) {
