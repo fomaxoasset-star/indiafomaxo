@@ -5568,8 +5568,6 @@ function bindVids(){
   tiles.forEach(t => t.onclick = () => openReel(+t.dataset.vi));
   tiles.forEach(t => { const v = $('video', t); if (v) { v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('timeupdate', () => { if (v.currentTime > .05 && v.readyState >= 2) t.classList.add('shown'); }); v.addEventListener('emptied', () => t.classList.remove('shown')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
-  let moved = false;   // no video at page open: half a screen ahead only once the visitor scrolls
-  const near = t => { if (!moved) return onScreen(t); const r = t.getBoundingClientRect(); return r.top < innerHeight * 1.5 && r.bottom > -innerHeight / 2 && r.left < innerWidth && r.right > 0; };   // on screen, or half a screen above or below it: its preview is already playing when it scrolls into view
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
   if ('IntersectionObserver' in window) { const cio = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cio.disconnect(); covers(); } }, {rootMargin: '100% 0px'}); cio.observe($('#vrow')); } else covers();   // the videos start by themselves as the page opens (autoplay, muted, looping)
   const row = $('#vrow'), nav = $('.vr-nav');   // laptop: arrows when the videos are wider than the page
@@ -5579,18 +5577,17 @@ function bindVids(){
      a tile without a preview keeps its photo (the full video loads only in the player); a browser that holds back autoplay downloads nothing until the first tap or click */
   let held = false, ready = document.readyState === 'complete'; const wait = new Set();
   const busy = () => tiles.filter(t => { const v = $('video', t); return v && v.getAttribute('src') && v.readyState < 3 && !v.error; }).length;
-  const pump = () => wait.forEach(t => { if (busy() < 2) { wait.delete(t); if (near(t)) run(t, true); } });
+  const pump = () => wait.forEach(t => { if (busy() < 2) { wait.delete(t); if (onScreen(t)) run(t, true); } });
   const stop = v => { v.pause(); v.removeAttribute('src'); v.load(); };
   const run = (t, on) => { const v = $('video', t); if (!v) return;
-    if (on) { if (held || !ready || !near(t)) return;
+    if (on) { if (held || !ready) return;
       if (!v.getAttribute('src')) { if (busy() >= 2) { wait.add(t); return; } v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, pump, {once: true})); }
       v.play().then(() => t.classList.add('playing')).catch(e => { if (e.name === 'NotAllowedError') { held = true; tiles.forEach(x => { const w = $('video', x); if (w && w.readyState < 2 && w.getAttribute('src')) stop(w); }); wait.clear(); } });
     } else { wait.delete(t); if (!v.paused) { v.pause(); t.classList.remove('playing'); } if (v.readyState < 2 && v.getAttribute('src')) { stop(v); pump(); } } };
-  if (!ready) addEventListener('load', () => { ready = true; tiles.forEach(t => near(t) && run(t, true)); }, {once: true});
-  addEventListener('scroll', () => { moved = true; if (document.contains(tiles[0])) tiles.forEach(t => near(t) && run(t, true)); }, {once: true, passive: true});
+  if (!ready) addEventListener('load', () => { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }, {once: true});
   const again = () => { held = false; tiles.forEach(t => onScreen(t) && run(t, true)); };   // a phone that held back autoplay (iPhone Low Power Mode) plays them at the first touch
   ['touchend', 'pointerdown', 'keydown'].forEach(ev => addEventListener(ev, again, {once: true, passive: true}));   // a laptop or phone that held back autoplay (Low Power Mode, Safari's Auto-Play setting) starts them on the first tap, click or key
-  vrIO = new IntersectionObserver(es => es.forEach(e => run(e.target, e.isIntersecting)), {rootMargin: '50% 0px'});   // a video plays, muted, while its tile is on screen or half a screen from it; off screen it pauses (and stops loading)
+  vrIO = new IntersectionObserver(es => es.forEach(e => run(e.target, e.isIntersecting)), {rootMargin: '0px'});   // a video plays, muted, while its tile is on screen; off screen it pauses (and stops loading)
   tiles.forEach(t => vrIO.observe(t));
 }
 let reelMuted = false;   // the player opens with sound on, quietly (the row stays muted)
@@ -5635,22 +5632,13 @@ function openReel(i){
   const lent = [];   // the row's videos are already loaded: the player borrows them, so the tapped video plays at once (given back on close); a row tile playing its small preview (silent, first seconds) is not borrowed, the player loads the full video
   $$('#vrow .vt').forEach(t => { const rv = $('video', t), sv = slides[+t.dataset.vi] && $('video', slides[+t.dataset.vi]); if (!rv || !rv.src || rv.readyState < 2 || !sv || rv.dataset.src !== sv.dataset.src) return; const ph = document.createComment(''); rv.before(ph); sv.replaceWith(rv); lent.push([ph, rv]); });
   let cur = -1;
-  const borrow = (n, v) => {   // the row tile's (or phone card's) small preview, if it is playing: laid over the player's video until the full video plays
-    const t = $(`#vrow .vt[data-vi="${n}"] video, #vStrip .vs-c[data-vi="${n}"] video`), w = t && t.readyState >= 2 && t.currentTime > 0 && t;
-    if (!w || !w.dataset.src.startsWith(v.dataset.src.replace(/\.\w+$/, '-'))) return null;   // only its own preview (x-p.mp4 or x-…-p.mp4 of x.mp4); the video itself is already lent
-    const ph = document.createComment(''); w.before(ph); v.after(w); lent.push([ph, w]); w.muted = true; w.play().catch(() => {});
-    const off = () => { if (w.parentNode === v.parentNode) { ph.replaceWith(w); w.pause(); } };
-    v.addEventListener('playing', off, {once: true}); v.addEventListener('error', off, {once: true});
-    return w; };
   const go = k => { k = Math.max(0, Math.min(slides.length - 1, k)); track.scrollTo({left: k * track.clientWidth, behavior: 'smooth'}); };
   const act = k => { if (k === cur) return; cur = k;
     const sb = $('.rl-snd', el); if (sb) sb.hidden = !$('video', slides[k]);   // Instagram's player has its own sound
     slides.forEach((s, n) => { const v = $('video', s);
       if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
-      if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); s.classList.remove('paused');
-        const pv = v.readyState < 3 && borrow(n, v); v.currentTime = pv ? pv.currentTime : 0;   // its small preview is already playing on the page: it shows at once, the full video takes over from the same second
-        v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
+      if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
       else v.pause(); });
     const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
     if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
