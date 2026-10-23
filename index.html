@@ -5499,7 +5499,7 @@ function vStrip(){
   sec && sec.classList.toggle('vs-dup', !!l.length);   // phone: the cards replace the Review videos row lower down (same videos, AJAY 2026-10-21)
   el.hidden = !l.length; if (!l.length) { el.innerHTML = ''; return; }
   el.innerHTML = `<div class="vs-h"><span>Review videos</span><button type="button" class="vs-all" aria-label="Play review videos">${l.length} ›</button></div>
-    <div class="vs-row">${l.map((v, i) => `<button type="button" class="vs-c" data-vi="${i}" aria-label="${v.n ? esc(v.n) + ' ' : ''}video">${vidPoster(v) ? `<img src="${vidPoster(v, 150)}" alt="" loading="lazy" decoding="async" fetchpriority="low">` : ''}${v.pv && !v.e ? `<video muted playsinline loop preload="none" data-src="${esc(v.pv)}"></video>` : ''}<span class="vs-p" aria-hidden="true">${VI.play}</span>${v.n ? `<bdi class="vs-n">${esc(v.n)}</bdi>` : ''}</button>`).join('')}</div>`;
+    <div class="vs-row">${l.map((v, i) => `<button type="button" class="vs-c" data-vi="${i}" aria-label="${v.n ? esc(v.n) + ' ' : ''}video">${vidPoster(v) ? `<img src="${vidPoster(v, 150)}" alt="" loading="lazy" decoding="async" fetchpriority="low">` : ''}${v.pv && !v.e ? `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" muted playsinline loop preload="none" data-src="${esc(v.pv)}"></video>` : ''}<span class="vs-p" aria-hidden="true">${VI.play}</span>${v.n ? `<bdi class="vs-n">${esc(v.n)}</bdi>` : ''}</button>`).join('')}</div>`;
   $$('.vs-c', el).forEach(b => b.onclick = () => openReel(+b.dataset.vi));
   $('.vs-all', el).onclick = () => openReel(0);
   vsBind();
@@ -5539,7 +5539,7 @@ function vidSecHTML(){
   const l = rowVids(); if (!l.length) return '';
   return `<div class="wrap">${secHead('Watch &amp; shop', vidPage() ? 'Review <em class="metal">videos</em>' : 'Shop the <em class="metal">video</em>').replace(/<\/div>$/, '<span class="recs-nav vr-nav" hidden><button type="button" data-vscroll="-1" aria-label="Previous videos">‹</button><button type="button" data-vscroll="1" aria-label="More videos">›</button></span></div>')}
     <div class="vrow${vidPage() ? ' pp' : ''}" id="vrow">${l.map((v, i) => { const ps = vidProds(v), p = v.sn && !vidPage() ? null : P[ps[0]], s = p && defaultSize(p); return `<button class="vt${v.wd ? ' wide' : ''}${vidPoster(v) ? '' : ' np'}" type="button" data-vi="${i}" aria-label="${p ? esc(p.name) : v.w ? esc(v.w) : 'FOMAXO'} video">
-      ${v.e ? `<img class="vt-img" src="${vidPoster(v, VT_W(v))}" alt="" loading="lazy">` : `${v.pv ? `<video autoplay muted playsinline loop preload="none" data-poster="${vidPoster(v, VT_W(v))}" data-src="${esc(v.pv)}"></video>` : ''}${vidPoster(v) ? `<img class="vt-pic" src="${vidPoster(v, VT_W(v))}" alt="" loading="lazy">` : ''}`}
+      ${v.e ? `<img class="vt-img" src="${vidPoster(v, VT_W(v))}" alt="" loading="lazy">` : `${v.pv ? `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" autoplay muted playsinline loop preload="none" data-poster="${vidPoster(v, VT_W(v))}" data-src="${esc(v.pv)}"></video>` : ''}${vidPoster(v) ? `<img class="vt-pic" src="${vidPoster(v, VT_W(v))}" alt="" loading="lazy">` : ''}`}
       ${v.n && vidPage() ? `<span class="vt-by">${VI.by}<bdi>${esc(v.n)}</bdi></span>` : ''}<span class="vt-play" aria-hidden="true">${VI.play}</span>
       ${p ? `<span class="vt-p${v.w ? ' has-w' : ''}">${v.w ? `<i class="vt-w">${esc(v.w)}</i>` : ''}<img src="${IMGC(imgFor(p, s), 36)}" alt="" loading="lazy"><span><b>${esc(p.name)}</b>${ps.length > 1 ? `<i class="vt-more">+ ${ps.length - 1} more</i>` : priceHTML(p, s)}</span></span>` : `<span class="vt-p vt-shop"><span><b>${v.w ? esc(v.w) : 'FOMAXO'}</b><i class="vt-more">Shop Now${ps.length ? ` · + ${ps.length} more` : ''}</i></span></span>`}</button>`; }).join('')}</div></div>`;
 }
@@ -5611,7 +5611,7 @@ function reelCard(p){
 function reelSlide(v, k){
   const ps = vidProds(v).map(id => P[id]), name = ps.length ? ps[0].name : 'FOMAXO';
   return `<section class="rl-s${v.e ? ' emb' : ''}${v.wd ? ' wide' : ''}" data-k="${k}"><div class="rl-stage">
-    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video playsinline loop muted preload="none" data-poster="${vidPoster(v)}" data-src="${esc(v.v)}"></video>`}${!v.e && vidPoster(v) ? `<img class="rl-pic" src="${vidPoster(v)}" alt="">` : ''}
+    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" playsinline loop muted preload="none" data-poster="${vidPoster(v)}" data-src="${esc(v.v)}"></video>`}${!v.e && vidPoster(v) ? `<img class="rl-pic" src="${vidPoster(v)}" alt="">` : ''}
     <span class="rl-pause" aria-hidden="true">${VI.play}</span>
     ${v.n && vidPage() ? `<span class="vt-by rl-by">${VI.by}<bdi>${esc(v.n)}</bdi></span>` : ''}
     ${!ps.length ? `<div class="rl-cards"><div class="rl-card rl-shop"><div class="rl-info"><span class="rl-n">${v.w ? esc(v.w) : 'FOMAXO'}</span><span class="rl-f">${v.w ? 'FOMAXO' : 'Luxury Care'}</span></div><a class="btn sm tc" href="#/fragrances">Shop Now</a></div></div>`
