@@ -886,8 +886,6 @@ html[data-mode="light"]{
   color-scheme:light;
 }
 html[data-mode="light"] .announce{background:#1b1712;color:#f0e2c4}
-html[data-mode="light"] .announce b{color:#d7aa69}
-html[data-mode="light"] .btn:not(.line){color:#fffaf1}
 html[data-mode="light"] .card .media,html[data-mode="light"] .stage,html[data-mode="light"] .ed-media,html[data-mode="light"] .split .img,html[data-mode="light"] .gallery-g figure{box-shadow:0 30px 60px -35px rgba(60,40,10,.45)}
 /* photo tiles with text on top keep their dark, gold-on-black look */
 html[data-mode="light"] .exp a,html[data-mode="light"] .coll a,html[data-mode="light"] .card .media .tag,html[data-mode="light"] .card .media .quick{
@@ -1214,7 +1212,6 @@ h3{font-size:clamp(19px,1.5vw,23px);letter-spacing:.08em;line-height:1.25}
 @media(min-width:981px) and (max-width:1400px){.hc-bar{gap:clamp(16px,2vw,28px)}.hc-now{padding-right:clamp(16px,2vw,28px)}.hc-nav{gap:clamp(10px,1.1vw,16px)}}
 @media(min-width:981px){.hc-bar{grid-template-columns:minmax(0,1fr) auto auto}.hc-nav{min-width:0;overflow-x:auto;scrollbar-width:none}.hc-nav::-webkit-scrollbar{display:none}}
 @media(max-width:760px){
-  .hc-bar{grid-template-columns:1fr}
   .hc-buy{justify-content:space-between;padding:14px 16px;background:rgba(5,5,5,.62);border:1px solid rgba(215,170,105,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .hc-copy{padding-bottom:210px}
 }
@@ -1369,7 +1366,6 @@ html[data-mode="light"] .announce b{color:#d7aa69}
   .hc-nav button .t{display:block;font-size:11px;letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis}
   .hc-nav button .n{font-size:14px}
   .hc-buy{justify-content:space-between}
-  .hc-copy{padding-bottom:300px}
 }
 @media(max-width:1000px){
   .hero-cine{height:auto;min-height:calc(100svh - 40px);max-height:none;align-items:flex-start}
@@ -1377,7 +1373,6 @@ html[data-mode="light"] .announce b{color:#d7aa69}
   .hc-nav button .t{letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis}
   .hc-copy{padding-bottom:290px;margin:0 auto}
 }
-@media(max-width:760px){.hc-copy{padding-bottom:300px}}
 .hero-cine{height:auto;min-height:calc(100svh - 40px);max-height:none}
 .hc-copy{padding-bottom:190px}
 @media(max-width:1240px) and (min-width:1001px){.hc-copy{padding-bottom:230px}}
@@ -1441,8 +1436,6 @@ html[data-mode="light"] .hero-cine .ctas .btn:not(.line) .sub{color:#f0d3a0;opac
 .invd p{margin:0;font-size:14px;line-height:1.5}.invd input{font-size:16px;padding:12px;border:1px solid var(--line-2);background:transparent;color:inherit;width:100%;box-sizing:border-box}
 .invd-err{color:#d26a6a}.invd-x{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--gold);font-size:24px;cursor:pointer;line-height:1}
 .invd-skip{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer;padding:4px}
-.buy-trust{display:flex;align-items:center;justify-content:center;gap:8px;margin:-6px 0 0;font-size:12.5px;color:var(--muted);letter-spacing:.02em;text-align:center}
-.buy-trust .lk{width:14px;height:14px;flex:none;color:var(--gold)}
 .sizes button .sz-p{font-family:var(--sans);font-style:normal;font-size:14px;letter-spacing:.02em;color:var(--gold);margin-top:2px}
 .pc-stars.none{visibility:hidden}
 /* order again: last order on this device, in the bag and on the home page */
@@ -1773,7 +1766,6 @@ html[data-mode="light"] .pc-add.oos:not(.done),html[data-mode="light"] .pc-add.o
 .line-item .price:has(.was){font-size:19px}
 .price .was,.pprice .was{font-weight:300;font-size:.7em;letter-spacing:0}
 .price small{font-weight:400}
-@media(max-width:600px){.pc-price .price,.pc-price .price:has(.was){font-size:17px}}
 .hg-pager[hidden]{display:none!important}
 /* product box grids: centre an incomplete last row */
 .pc-grid,.grid.four.pc-grid{display:flex;flex-wrap:wrap;justify-content:center;--gc:clamp(18px,2.4vw,40px);column-gap:var(--gc);row-gap:clamp(34px,3.4vw,52px)}
@@ -1855,11 +1847,6 @@ header.nav .brand .tm{font-size:11px;transform:translateY(-10px)}
 .psave{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:4px;font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1;color:#2fa863;background:transparent;box-shadow:inset 0 0 0 1.5px #2fa863}
 html[data-mode="light"] .psave{color:#1f7d45;box-shadow:inset 0 0 0 1.5px #1f7d45}
 .psave i{font-style:normal;opacity:.7}
-.zoom-dot{position:absolute;right:24px;top:50%;z-index:2;width:68px;height:68px;margin-top:-34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:9px;font-weight:500;letter-spacing:.24em;text-transform:uppercase;color:#1a140b;background:radial-gradient(circle at 35% 30%,#e9c98b,#b8883f);box-shadow:0 8px 24px -8px rgba(0,0,0,.6);pointer-events:none;transition:opacity .3s}
-.stage.zoom .zoom-dot{opacity:0}
-html.cur-ready .zoom-dot{display:none} /* laptop: the mouse itself turns into the ZOOM circle over the photo, so no fixed circle when the mouse is away */
-.zoom-dot{display:none!important}   /* AJAY: no fixed ZOOM circle anywhere (some phones report a mouse); laptop has the mouse ZOOM ring */
-@media(max-width:600px){.zoom-dot{width:54px;height:54px;margin-top:-27px;right:14px;font-size:8px}}
 .buy #addBtn{flex:1}
 .buy .p-rate{margin-top:2px}
 .buy .save{order:4;align-self:flex-start;margin:0;font-size:10.5px;letter-spacing:.24em;padding:6px 10px;background:transparent;color:var(--gold);box-shadow:inset 0 0 0 1px var(--line-2)}
@@ -2359,7 +2346,6 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .sizes button .sz-p{margin-top:0;font-size:13px}
   .qty{height:44px}
   .buy .btn{min-height:44px}
-  .buy-trust{margin:-4px 0 0;font-size:12px}
   .perks div{padding:4px 14px;font-size:12.5px;line-height:1.4;gap:10px}
   .perks svg{width:16px;height:16px}
   .acc summary{padding:6px 0;font-size:11.5px;line-height:1.4}
@@ -2419,20 +2405,15 @@ html[data-mode="light"] .pdel b:first-child{color:#8a5a12}
 }
 /* AJAY 2026-10-23: laptop product page words bigger (same layout, still one screen; fitPdp() still shrinks only if needed) */
 @media(min-width:961px){
-  .buy .pd-name .sub,.buy .sub>a{font-size:14px}
+  .buy .sub>a{font-size:14px}
   .buy .pd-smell{font-size:15px}.buy .pd-smell span{font-size:12.5px}
-  .buy .rw-head span{font-size:14.5px}
   .buy .lead{font-size:16.5px;line-height:1.4}
-  .buy .pp-lb{font-size:13.5px}
-  .buy .pp-row .p-save{font-size:12.5px;padding:6px 10px}
-  .buy .sale-cd{font-size:13px}
   .buy .pd-quote{font-size:15.5px;line-height:1.4}.buy .pd-quote small{font-size:12px}
   .buy .pd-try{font-size:15.5px}
-  .buy .pdp-offer{font-size:15px;line-height:1.35;padding:5px 12px}.buy .pdp-offer b{font-size:12px;margin-bottom:0}
   .buy .pdel{font-size:15px}
   .buy .assure li{font-size:13px}
   .buy .opt-label{font-size:14px}
-  .sizes button small{font-size:13px}.sizes .bv{font-size:11.5px}
+  .sizes button small{font-size:13px}
   .qtyrow .btn,.buy>.btn{font-size:15px}
   .pwx{font-size:13.5px;min-height:46px;padding:4px 10px}.pwt{gap:1px}.pwt small{font-size:13px}
   .perks div{font-size:14.5px;padding:3px 12px}
@@ -3244,7 +3225,6 @@ const defaultSize = p => { const d = p.kind === 'set' ? p.sizes[0] : p.sizes.inc
 const soldHTML = (id, sz) => { const n = +(((LIVE.sold || {})[id] || {})[sz]) || 0;   // bottles of that one size (10ml and 50ml each counted on their own)
   return n > 0 ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>${n} purchased this week</span>` : ''; };
 /* "Best seller" on the product photo, top right, a little outside the frame: only the product that sold the most real bottles this week (the "X purchased this week" numbers, all sizes together). Never made up. */
-const soldN = (id, sz) => +(((LIVE.sold || {})[id] || {})[sz]) || 0;
 const soldAll = id => Object.values((LIVE.sold || {})[id] || {}).reduce((t, n) => t + (+n || 0), 0);   // all sizes of one product this week
 const isBest = id => { const t = soldAll(id); return t > 0 && Object.keys(LIVE.sold || {}).every(x => soldAll(x) <= t); };   // only the product(s) that sold the most bottles this week
 const bestHTML = (id, sz) => `<span class="best" data-best="${id}" data-k="${sz}"${isBest(id) ? '' : ' hidden'}><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7.3L12 17.8 5.8 21.5l1.6-7.3L2 9.5l7.1-.6z"/></svg><span>Best seller</span></span>`;
