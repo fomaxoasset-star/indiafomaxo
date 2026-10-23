@@ -13,6 +13,7 @@ declare(strict_types=1);
    GET /faq           → index.html with the FAQ page's title, text and FAQPage data (questions from FAQ_LIST in index.html), opening #/faq.
    Both come here through the rewrite rules in the root .htaccess. Names, prices, photos, hidden products and stock follow
    the admin page, as on the site. */
+ob_start();   // a stray blank line from a server config file must not land before <?xml (Google can't read the list then)
 require __DIR__ . '/store-lib.php';
 header('X-Content-Type-Options: nosniff');
 
@@ -101,11 +102,12 @@ if ($page === 'sitemap') {
   header('Content-Type: application/xml; charset=utf-8');
   header('Cache-Control: public, max-age=3600');
   $mod = gmdate('Y-m-d', (int)@filemtime(dirname(__DIR__) . '/index.html') ?: time());
+  $all = seo_products(); $slugs = seo_urls($all);
+  while (ob_get_level()) ob_end_clean();   // drop anything printed while loading, so <?xml is the very first thing
   echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
   echo '  <url><loc>' . SITE . "/</loc><lastmod>$mod</lastmod></url>\n";
   echo '  <url><loc>' . SITE . "/returns</loc><lastmod>$mod</lastmod></url>\n";
   echo '  <url><loc>' . SITE . "/faq</loc><lastmod>$mod</lastmod></url>\n";
-  $all = seo_products(); $slugs = seo_urls($all);
   foreach ($all as $id => $p) {
     echo '  <url><loc>' . SITE . '/fomaxo-' . h($slugs[$id]) . "</loc><lastmod>$mod</lastmod>";
     foreach (array_slice($p['images'], 0, 5) as $im) echo '<image:image><image:loc>' . h($im) . '</image:loc></image:image>';
@@ -121,6 +123,7 @@ if ($page === 'feed') {   // Google Shopping list
   $x = fn($v) => htmlspecialchars((string)$v, ENT_XML1 | ENT_QUOTES, 'UTF-8');
   $money = fn($v) => number_format((float)$v, 2, '.', '') . ' INR';
   $all = seo_products(); $slugs = seo_urls($all);
+  while (ob_get_level()) ob_end_clean();   // drop anything printed while loading, so <?xml is the very first thing
   echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">' . "\n<channel>\n<title>FOMAXO India</title>\n<link>" . SITE . "/</link>\n<description>FOMAXO luxury perfumes and personal care, India</description>\n";
   foreach ($all as $id => $p) {
     if (!$p['sizes'] || !$p['images']) continue;
