@@ -629,8 +629,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $on = (array)($_POST['on'] ?? []);
     $off = array_values(array_filter(array_keys(SHOP_PAGES), fn($k) => !in_array($k, $on, true)));
     shop_set('pages_off', json_encode($off));
-    $wa = !empty($_POST['wa_popup']); shop_set('wa_popup', $wa ? '1' : '0');   // the WhatsApp coupon popups on the website (never saved = Off)
-    go(['tab' => 'settings', 'pane' => 'pages'], ($off ? 'Saved. Hidden on the website: ' . implode(', ', array_map(fn($k) => SHOP_PAGES[$k], $off)) . '.' : 'Saved. Every page shows on the website.') . ' WhatsApp popup is ' . ($wa ? 'On.' : 'Off.'));
+    $wa = (array)($_POST['wa'] ?? []); $waOn = array_filter(SHOP_WA_POPUPS, fn($k) => in_array($k, $wa, true), ARRAY_FILTER_USE_KEY);
+    shop_set('wa_popups', json_encode(array_map(fn($k) => isset($waOn[$k]) ? 1 : 0, array_combine(array_keys(SHOP_WA_POPUPS), array_keys(SHOP_WA_POPUPS)))));
+    go(['tab' => 'settings', 'pane' => 'pages'], ($off ? 'Saved. Hidden on the website: ' . implode(', ', array_map(fn($k) => SHOP_PAGES[$k], $off)) . '.' : 'Saved. Every page shows on the website.') . ' WhatsApp popups on: ' . ($waOn ? implode(', ', array_map(fn($n) => $n[0], $waOn)) : 'none') . '.');
   }
   if (in_array($a, ['store_add', 'store_save', 'store_remove', 'stores_show'], true)) {
     $loc = stores_all(); $i = (int)($_POST['i'] ?? -1);
