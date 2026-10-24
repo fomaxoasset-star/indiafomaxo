@@ -561,7 +561,7 @@ switch ($action) {
         if (!in_array($sale['status'], ['pending', 'cancelled', 'failed'], true)) {
             fail('This sale cannot take payment (it is ' . $sale['status'] . ').');
         }
-        foreach (q('SELECT product_id, name, variant, SUM(qty) AS qty FROM sale_items WHERE sale_id = ? AND product_id IS NOT NULL GROUP BY product_id, name, variant', [$sale['id']])->fetchAll() as $it) {
+        foreach (q('SELECT product_id, name, variant, SUM(qty) AS qty FROM sale_items WHERE sale_id = ? AND product_id > 0 GROUP BY product_id, name, variant', [$sale['id']])->fetchAll() as $it) {
             if (store_stock((int) $it['product_id'], (int) $sale['store_id']) < (int) $it['qty']) {
                 fail(trim($it['name'] . ' ' . $it['variant']) . ' is out of stock now, so this sale cannot be completed. Make a new sale instead.');
             }
@@ -689,7 +689,7 @@ switch ($action) {
         try {
             $st = q("UPDATE sales SET status = 'void', note = ? WHERE id = ? AND status = 'paid'", ['VOID: ' . $reason, $s['id']]);
             if ($st->rowCount() === 1 && !empty($b['restock'])) {
-                foreach (q('SELECT product_id, qty FROM sale_items WHERE sale_id = ?', [$s['id']])->fetchAll() as $it) {
+                foreach (q('SELECT product_id, qty FROM sale_items WHERE sale_id = ? AND product_id > 0', [$s['id']])->fetchAll() as $it) {
                     move_stock((int) $it['product_id'], (int) $s['store_id'], $u['id'], (int) $it['qty'], 'void', $s['receipt_no'], $s['id']);
                 }
             }

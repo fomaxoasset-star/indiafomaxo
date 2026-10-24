@@ -543,7 +543,8 @@
         (any ? 'Try a different search.' : isManager() ? 'Go to <b>Stock</b> to add products.' : 'Ask a manager to add products.') + '</div>';
       return;
     }
-    el.innerHTML = groups.map(function (g) {
+    el.innerHTML = '<button class="ptile custom-tile" data-act="custom-item"><span class="ph"><span class="ph-letter">＋</span></span>' +
+      '<span class="pt-name">Gift / Combo</span><span class="pt-sub">Type a name and price</span></button>' + groups.map(function (g) {
       var inCart = 0, from = Infinity, anyStock = false;
       g.sizes.forEach(function (p) {
         S.cart.forEach(function (c) { if (c.product_id === p.id) inCart += c.qty; });
@@ -618,6 +619,26 @@
     if (id && lastAdd.id === id && now - lastAdd.at < 700) return true;
     return false;
   }
+  // Gift / Combo: an item that is not in Stock, with the name and price typed in at the till. No stock is used.
+  function customItemModal() {
+    openModal('Gift / Combo', '<div class="err m-err hidden"></div>' +
+      '<div class="pay-switch" style="justify-content:flex-start;margin:0 0 10px">' + ['Gift', 'Combo', 'Gift box', 'Gift wrap'].map(function (n) {
+        return '<button class="btn sm" data-act="ci-name" data-v="' + n + '">' + n + '</button>'; }).join('') + '</div>' +
+      '<label class="field"><span>Name on the receipt</span><input class="input" id="ci-name" maxlength="60" placeholder="e.g. Combo: Oud 50ml + Musk 10ml" autocomplete="off"></label>' +
+      '<label class="field"><span>Price (₹)</span><input class="input num" id="ci-price" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>' +
+      '<div class="modal-foot"><button class="btn" data-act="modal-close">Cancel</button><button class="btn gold big" data-act="ci-add">Add to bag</button></div>');
+    setTimeout(function () { var i = $('#ci-name'); if (i) i.focus(); }, 50);
+  }
+  function addCustomItem() {
+    var name = ($('#ci-name').value || '').trim().replace(/\s+/g, ' '), price = toFils($('#ci-price').value);
+    if (!name) { modalErr('Type a name, like Gift or Combo.'); return; }
+    if (price <= 0) { modalErr('Type the price.'); return; }
+    if (price > 10000000) { modalErr('The price is too high (most ₹1,00,000).'); return; }
+    var before = bagSnapshot();
+    S.cart.push({ product_id: -(Date.now() % 1e9), name: name, variant: '', price: price, qty: 1 });
+    closeModal(); renderTiles(); renderCart();
+    flashAdded(name, before);
+  }
   function changeQty(id, d) {
     var before = bagSnapshot(), gone = null;
     S.cart.forEach(function (c) {
@@ -625,7 +646,7 @@
       var p = productById(id);
       if (d > 0 && p && c.qty + 1 > p.stock && S.online) { toast('Only ' + p.stock + ' in stock.', true); return; }
       c.qty += d;
-      if (c.qty <= 0) gone = productById(id);
+      if (c.qty <= 0) gone = productById(id) || c;
     });
     S.cart = S.cart.filter(function (c) { return c.qty > 0; });
     renderTiles(); renderCart();
@@ -647,8 +668,8 @@
       '<div class="cart-lines">' + (empty ? '<div class="empty"><div class="big">Bag is empty</div>Tap a perfume to add it.</div>' :
         lines.map(function (l) {
           var p = productById(l.product_id) || {};
-          return '<div class="cline">' + (p.image ? '<img src="' + esc(thumb(p.image, 120)) + '" alt="" onerror="this.remove()">' : '<span class="cl-ph">' + esc(shortName(l.name).charAt(0)) + '</span>') +
-            '<div class="cl-mid"><b>' + esc(shortName(l.name)) + '</b><span>' + esc(l.variant) + ' · ' + money(l.price) + '</span></div>' +
+          return '<div class="cline">' + (p.image ? '<img src="' + esc(thumb(p.image, 120)) + '" alt="" onerror="this.remove()">' : '<span class="cl-ph">' + (l.product_id < 0 ? '🎁' : esc(shortName(l.name).charAt(0))) + '</span>') +
+            '<div class="cl-mid"><b>' + esc(shortName(l.name)) + '</b><span>' + (l.variant ? esc(l.variant) + ' · ' : '') + money(l.price) + '</span></div>' +
             '<div class="qty big"><button data-act="qty" data-id="' + l.product_id + '" data-d="-1" aria-label="One less">−</button><span>' + l.qty + '</span>' +
             '<button data-act="qty" data-id="' + l.product_id + '" data-d="1" aria-label="One more">+</button></div></div>';
         }).join('') + freeLineHtml()) + '</div>' +
@@ -824,7 +845,7 @@
     var id = uuid();
     var p = {
       uuid: id, receipt_token: randHex(16), method: method, store_id: curStoreId(),
-      items: cartLines().map(function (l) { return { product_id: l.product_id, qty: l.qty, price: l.price }; }),
+      items: cartLines().map(function (l) { return l.product_id < 0 ? { product_id: 0, name: l.name, qty: l.qty, price: l.price } : { product_id: l.product_id, qty: l.qty, price: l.price }; }),
       discount: S.discount, customer: S.customer ? { phone: S.customer.phone, name: S.customer.name, email: S.customer.email || '' } : null,
       coupon: S.coupon ? S.coupon.code : '',
       coupon_info: S.coupon ? { kind: S.coupon.kind, amount: S.coupon.amount, label: S.coupon.label, free_product_id: S.coupon.free ? S.coupon.free.product_id : 0 } : null,
@@ -1869,6 +1890,9 @@
         closeModal(); syncSortBtn(); renderTiles();
         toast('Sorted: ' + SORTS[S.sellSort]); break;
       case 'add-size': if (addToCart(id)) closeModal(); break;
+      case 'custom-item': customItemModal(); break;
+      case 'ci-name': $('#ci-name').value = el.getAttribute('data-v'); $('#ci-price').focus(); break;
+      case 'ci-add': addCustomItem(); break;
       case 'pay-open':
         if (!S.cart.length) break;
         if (S.coupon && !cartTotals().couponOk) { toast('Coupon ' + S.coupon.code + ' needs a bag of at least ₹' + money(Math.round(S.coupon.min * 100)) + '. Add more or remove the coupon.', true); break; }
@@ -1878,7 +1902,7 @@
       case 'qty': {
         var qd = parseInt(el.getAttribute('data-d'), 10), ql = S.cart.filter(function (c) { return c.product_id === id; })[0];
         if (qd < 0 && ql && ql.qty === 1) {
-          var qp = productById(id) || {}, qa = $('.added-pop'); if (qa) qa.remove();
+          var qp = productById(id) || ql, qa = $('.added-pop'); if (qa) qa.remove();
           openModal('Remove from the bag?', '<p style="margin:0 0 14px"><b>' + esc(shortName(qp.name || '') + ' ' + (qp.variant || '')) + '</b> will be taken off this sale.</p>' +
             '<div class="modal-foot"><button class="btn" data-act="modal-close">Keep</button><button class="btn danger" data-act="qty-remove" data-id="' + id + '">Remove</button></div>');
           break;
@@ -2082,6 +2106,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && modalState && !$('.modal-back [data-act=confirm-pay]') && !$('.modal-back [data-act=rzp-paid]')) closeModal();
     if (e.key === 'Enter' && e.target.id === 'c-phone') { e.preventDefault(); findCustomer(); }
+    if (e.key === 'Enter' && (e.target.id === 'ci-price' || e.target.id === 'ci-name')) { e.preventDefault(); if (e.target.id === 'ci-name') $('#ci-price').focus(); else addCustomItem(); }
     if (e.key === 'Enter' && e.target.id === 'cash-in') { e.preventDefault(); var b = $('[data-act=confirm-pay]'); if (b) b.click(); }
   });
   window.addEventListener('online', function () { setOnline(true); refreshProducts(); });

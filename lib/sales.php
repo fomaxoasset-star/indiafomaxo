@@ -132,9 +132,19 @@ function create_sale($user, $b, $method)
     }
     $qtyById = [];
     $priceById = [];
+    $custom = []; // Gift / Combo lines: name and price typed at the till, product_id 0, no stock
     foreach ($items as $it) {
         $pid = (int) ($it['product_id'] ?? 0);
         $qty = (int) ($it['qty'] ?? 0);
+        if ($pid === 0 && isset($it['name'])) {
+            $name = trim(preg_replace('/\s+/u', ' ', mb_substr((string) $it['name'], 0, 60)));
+            $price = (int) ($it['price'] ?? 0);
+            if ($name === '' || $price <= 0 || $price > 10000000 || $qty <= 0 || $qty > 999) {
+                fail('A Gift / Combo line needs a name and a price.');
+            }
+            $custom[] = ['product_id' => 0, 'name' => $name, 'variant' => '', 'price' => $price, 'qty' => $qty, 'was' => null];
+            continue;
+        }
         if ($pid <= 0 || $qty <= 0 || $qty > 999) {
             fail('A cart line has a wrong quantity.');
         }
@@ -145,7 +155,7 @@ function create_sale($user, $b, $method)
     }
     $storeId = resolve_store($user, $b['store_id'] ?? 0);
     $ids = array_keys($qtyById);
-    $rows = q('SELECT * FROM products WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids)->fetchAll();
+    $rows = $ids ? q('SELECT * FROM products WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids)->fetchAll() : [];
     $products = [];
     foreach ($rows as $r) {
         $products[(int) $r['id']] = $r;
@@ -172,6 +182,7 @@ function create_sale($user, $b, $method)
         $was = (int) ($p['compare_at'] ?? 0);
         $lines[] = ['product_id' => $pid, 'name' => $p['name'], 'variant' => $p['variant'], 'price' => $price, 'qty' => $qty, 'was' => $was > $price ? $was : null];
     }
+    $lines = array_merge($lines, $custom);
 
     // Coupon code (store codes, and fomaxo.in codes when switched on). Checked again here; offline sales keep what the till showed.
     $coupon = null;
@@ -348,7 +359,7 @@ function mark_paid_tx($saleId, $userId, $paidAt)
     $storeId = (int) $sale['store_id'];
     $mname = ['cash' => 'Cash', 'upi' => 'UPI', 'card' => 'Card machine', 'razorpay' => 'Razorpay QR'][$sale['method']] ?? $sale['method'];
     log_activity((int) $sale['user_id'], 'sale', 'Sold ' . inr((int) $sale['total']) . ' by ' . $mname . ($sale['offline'] ? ' (made offline)' : ''), $sale['receipt_no'], $storeId);
-    $items = q('SELECT product_id, qty FROM sale_items WHERE sale_id = ?', [$saleId])->fetchAll();
+    $items = q('SELECT product_id, qty FROM sale_items WHERE sale_id = ? AND product_id > 0', [$saleId])->fetchAll();
     foreach ($items as $it) {
         move_stock((int) $it['product_id'], $storeId, $userId, -(int) $it['qty'], 'sale', '', $saleId);
     }
