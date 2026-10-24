@@ -428,22 +428,23 @@ function markSent(btn, day) {
       var padL = 46, padB = 20, padT = 8, iw = W - padL - 4, ih = H - padB - padT;
       var vals = d.values, n = vals.length, max = nice(Math.max.apply(null, vals.concat([money ? 100 : 2]))), gap = n > 40 ? 1 : n > 20 ? 2 : 4;
       if (!money && max % 2) max += 1;
-      var bw = Math.max(1, iw / n - gap), out = '', bwMax = +box.dataset.bw || 0;   // data-bw: widest a bar may be (Progress Sales, which can have only a few bars)
-      if (bwMax && bw > bwMax) { gap += bw - bwMax; bw = bwMax; }
+      var bw = Math.max(1, iw / n - gap), out = '';
       for (var g = 0; g <= 2; g++) {
         var y = padT + ih - ih * g / 2;
         out += '<line x1="' + padL + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" style="stroke:var(--line)" stroke-width="1"/>'
           + '<text x="' + (padL - 8) + '" y="' + (y + 4) + '" text-anchor="end" style="fill:var(--muted)" font-size="11">' + short(max * g / 2, money) + '</text>';
       }
-      var every = Math.ceil(n / (W < 420 ? 6 : 12));
+      var every = Math.ceil(n / (W < 420 ? 6 : 12)), line = !!box.dataset.line, pts = [];   // data-line: a gold line with a dot per point (Progress Sales: the total so far)
       vals.forEach(function (v, i) {
         var x = padL + i * (iw / n) + gap / 2, h = v > 0 ? Math.max(2, ih * v / max) : 0, y = padT + ih - h, r = Math.min(4, bw / 2, h);
-        if (h > 0) out += '<path d="M' + x + ',' + (padT + ih) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + y + ' ' + (x + bw) + ',' + (y + r) + 'V' + (padT + ih) + 'Z" style="fill:var(--gold)"/>';
+        if (line) { pts.push((x + bw / 2).toFixed(1) + ',' + (padT + ih - ih * v / max).toFixed(1)); out += '<circle cx="' + (x + bw / 2) + '" cy="' + (padT + ih - ih * v / max) + '" r="3.5" style="fill:var(--gold2);stroke:var(--panel)" stroke-width="1.5"/>'; }
+        else if (h > 0) out += '<path d="M' + x + ',' + (padT + ih) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + y + ' ' + (x + bw) + ',' + (y + r) + 'V' + (padT + ih) + 'Z" style="fill:var(--gold)"/>';
         out += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * iw / n) + '" y="' + padT + '" width="' + (iw / n) + '" height="' + ih + '" fill="transparent"/>';
         if (i % every === 0) out += '<text x="' + (x + bw / 2) + '" y="' + (H - 4) + '" text-anchor="middle" style="fill:var(--muted)" font-size="11">' + d.labels[i] + '</text>';
       });
+      if (line) out = '<polyline points="' + pts.join(' ') + '" fill="none" style="stroke:var(--gold)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' + out;
       svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = out;
-      var tot = vals.reduce(function (a, b) { return a + b; }, 0);
+      var tot = line ? (vals[n - 1] || 0) : vals.reduce(function (a, b) { return a + b; }, 0);
       box.querySelector('.ctot').innerHTML = '<b>' + (money ? inr(tot) : d.total.toLocaleString('en-IN')) + '</b>';
       box.querySelector('.ctot').appendChild(document.createTextNode(box.dataset.caption || ''));
       svg.onmousemove = svg.onclick = function (e) {
