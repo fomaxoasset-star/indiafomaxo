@@ -689,7 +689,7 @@
       '<div class="pay-choices">' +
       '<button class="pchoice cash" data-act="pay" data-m="cash"><span class="pi">💵</span><b>Cash</b><small>Notes and coins</small></button>' +
       '<button class="pchoice" data-act="pay" data-m="upi"><span class="pi">📱</span><b>UPI · Paytm</b><small>' + (st.store_upi ? 'To the store\u2019s Paytm ' + esc(st.store_upi) : 'Customer scans the store\u2019s Paytm QR') + '</small></button>' +
-      '<button class="pchoice" data-act="pay" data-m="rzp-card"' + (qrOk ? '' : ' disabled') + '><span class="pi">💳</span><b>Card · Razorpay</b><small>' + (!st.razorpay ? 'Not set up yet' : S.online ? 'Customer scans the QR and pays by card — confirms by itself' : 'Needs internet') + '</small></button>' +
+      '<button class="pchoice" data-act="pay" data-m="rzp-card"' + (qrOk ? '' : ' disabled') + '><span class="pi">💳</span><b>Card · Razorpay</b><small>' + (!st.razorpay ? 'Not set up yet' : S.online ? 'Customer scans the QR and pays by card' : 'Needs internet') + '</small></button>' +
       '</div>');
   }
   function couponDiscountModal() {
@@ -938,7 +938,7 @@
     doneScreen(sale);
   }
 
-  var payPoll = null, zPaid = null, zResume = null;
+  var zPaid = null, zResume = null;
   var CANCEL_REASONS = ['Customer changed their mind', 'Payment not going through', 'Customer will pay later', 'Wrong items or price'];
   // Asks why a waiting sale is cancelled: quick choices, or Other with the reason typed in.
   function cancelReasonHtml(id, back) {
@@ -954,8 +954,7 @@
     if (o && o.value.trim()) return o.value.trim();
     return r && r.value !== 'Other' ? r.value : '';
   }
-  function stopPoll() { if (payPoll) { clearInterval(payPoll); payPoll = null; } }
-  // Card · Razorpay: a card payment QR. The sale completes by itself when Razorpay reports the money.
+  // Card · Razorpay: a card payment QR. Staff press Payment received once the customer has paid.
   function rzpFlow() {
     var t = cartTotals();
     if (t.total < 100) { toast('Razorpay needs at least ₹1. Take cash for this sale.', true); return; }
@@ -964,7 +963,7 @@
   }
   // Shows the card QR for a new sale, or again for a sale that was waiting or cancelled (Sales → Take payment again).
   function rzpShow(start, cust, onPaid) {
-    openModal('Card payment · Razorpay', '<div class="status-line"><span class="spinner"></span> Creating payment…</div>', { sticky: true, onClose: stopPoll });
+    openModal('Card payment · Razorpay', '<div class="status-line"><span class="spinner"></span> Creating payment…</div>', { sticky: true });
     start.then(function (d) {
       if (d.sale.status === 'paid') { closeModal(); onPaid(d.sale); return; }
       var qrHtml = '';
@@ -976,33 +975,16 @@
         (mode !== 'live' ? '<div class="note" style="margin-bottom:12px;text-align:center">' + (mode === 'demo' ? 'PRACTICE MODE — no real money' : 'RAZORPAY TEST MODE — no real money') + '</div>' : '') +
         '<div class="amount-big"><div class="lbl">Customer pays</div><div class="val num">' + inr(d.sale.total) + '</div></div>' +
         '<div class="qr-box">' + qrHtml + '</div>' +
-        '<p class="small muted" style="text-align:center;margin:0 0 6px">Customer scans with the phone camera and pays by card. Confirms by itself.</p>' +
-        '<div class="status-line" id="z-status"><span class="spinner"></span> Waiting for payment…</div>' +
+        '<p class="small muted" style="text-align:center;margin:0 0 6px">Customer scans with the phone camera and pays by card. When it is paid, press <b>Payment received</b>.</p>' +
         '<div class="err m-err hidden"></div>' +
+        '<div class="modal-foot"><button class="btn gold big block" data-act="rzp-paid" data-id="' + d.sale.id + '">✓ Payment received</button></div>' +
         '<div class="modal-foot">' + (wa ? '<a class="btn" target="_blank" rel="noopener" href="' + esc(wa) + '">Send link on WhatsApp</a>' : '') +
         '<a class="btn" target="_blank" rel="noopener" href="' + esc(d.pay_url) + '">Open on this device</a></div>' +
         paySwitch('rzp-card', d.sale.id) +
         '<div class="modal-foot"><button class="btn danger block" data-act="z-cancel" data-id="' + d.sale.id + '">Cancel payment</button></div>');
       setModalBody(qrBody);
       zPaid = onPaid;
-      zResume = function () { setModalBody(qrBody); startPoll(); };
-      var busy = false;
-      startPoll();
-      function startPoll() {
-      stopPoll();
-      payPoll = setInterval(function () {
-        if (busy) return; busy = true;
-        api('rzp_check', { query: '&id=' + d.sale.id }).then(function (r) {
-          busy = false;
-          if (r.status === 'paid') { stopPoll(); closeModal(); onPaid(r.sale); }
-          else if (r.status === 'failed' || r.status === 'cancelled') {
-            stopPoll();
-            setModalBody('<div class="err" style="margin-bottom:12px">The payment was ' + r.status + '. No money was taken and no receipt number was used.</div>' +
-              '<div class="modal-foot"><button class="btn" data-act="modal-close">Close</button><button class="btn gold" data-act="repay-open" data-id="' + d.sale.id + '">Take payment again</button></div>');
-          }
-        }, function () { busy = false; var s = $('#z-status'); if (s) s.innerHTML = '<span class="spinner"></span> Checking… (connection slow)'; });
-      }, 3000);
-      }
+      zResume = function () { setModalBody(qrBody); };
     }).catch(function (e) {
       setModalBody('<div class="err" style="margin-bottom:12px">' + esc(e.offline ? 'No internet — the Razorpay QR needs a connection. Use Cash or UPI to the store.' : e.message) + '</div>' +
         '<div class="modal-foot"><button class="btn" data-act="modal-close">Close</button></div>');
@@ -1578,7 +1560,7 @@
     openModal('Settings', '<div class="status-line"><span class="spinner"></span> Loading…</div>');
     api('settings_get').then(function (d) {
       setModalBody('<div class="err m-err hidden"></div><form id="set-form" autocomplete="off">' +
-        '<h3 class="set-h">Razorpay — UPI QR that confirms by itself</h3>' +
+        '<h3 class="set-h">Razorpay — card payments</h3>' +
         '<p class="small muted" style="margin:-4px 0 10px">' + (d.razorpay_key_saved ? (d.razorpay_key_from === 'shop' ? 'Using the fomaxo.in shop’s Razorpay keys (' : 'Keys saved (') + esc(d.razorpay_key_id) + ')' + (d.razorpay_test ? ' — <b>test keys</b>, no real money.' : '.') : 'No Razorpay keys yet.') + '</p>' +
         '<label class="field"><span>Key Id</span><input class="input" name="razorpay_key_id" autocomplete="off" spellcheck="false" placeholder="rzp_live_…"></label>' +
         '<label class="field"><span>Key Secret</span><input class="input" name="razorpay_key_secret" type="password" autocomplete="new-password" spellcheck="false" placeholder="' + (d.razorpay_key_saved ? 'Leave empty to keep the keys above' : 'From Razorpay → Account & Settings → API Keys') + '"></label>' +
@@ -1974,7 +1956,6 @@
         var to = el.getAttribute('data-m');
         if (!id) { closeModal(); payModal(to); break; }
         // A Razorpay QR is open: close it first so the customer cannot pay twice.
-        stopPoll();
         if (zPaid !== afterSale) { repayOpen(id); break; }   // from Sales: the same sale takes the new method
         el.disabled = true;
         api('rzp_cancel', { body: { id: id, reason: 'Customer paid another way' } }).then(function (r) {
@@ -1994,12 +1975,18 @@
         $$('.note-btn').forEach(function (b) { b.classList.toggle('active', b === el); });
         updateChange(); break;
       case 'confirm-pay': confirmPay(el.getAttribute('data-m'), el); break;
-      case 'z-cancel': stopPoll(); setModalBody(cancelReasonHtml(id, 'z-back')); break;
+      case 'z-cancel': setModalBody(cancelReasonHtml(id, 'z-back')); break;
       case 'z-back': if (zResume) zResume(); break;
+      case 'rzp-paid':
+        if (!confirm('Has the customer paid ' + $('.amount-big .val').textContent + ' by card? The sale gets the next receipt number.')) break;
+        el.disabled = true;
+        api('rzp_received', { body: { id: id } }).then(function (r) { closeModal(); (zPaid || repaid)(r.sale); if (S.view === 'sales') renderSales(); })
+          .catch(function (er) { el.disabled = false; modalErr(er.message); });
+        break;
       case 'cancel-save': {
         var why = cancelReason();
         if (!why) { modalErr('Choose a reason, or type it under Other.'); break; }
-        el.disabled = true; stopPoll();
+        el.disabled = true;
         api('rzp_cancel', { body: { id: id, reason: why } }).then(function (r) {
           closeModal();
           if (r.status === 'paid') { (zPaid || repaid)(r.sale); toast('The customer had already paid — sale completed.'); }
@@ -2051,7 +2038,7 @@
         break;
       }
       // sales
-      case 'repay-open': stopPoll(); repayOpen(id); break;
+      case 'repay-open': repayOpen(id); break;
       case 's-delete':
         if (!confirm('Delete this unpaid order for good? It had no receipt number, so no numbers are skipped.')) break;
         el.disabled = true;
@@ -2093,7 +2080,7 @@
     }
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modalState && !$('.modal-back [data-act=confirm-pay]') && !payPoll) closeModal();
+    if (e.key === 'Escape' && modalState && !$('.modal-back [data-act=confirm-pay]') && !$('.modal-back [data-act=rzp-paid]')) closeModal();
     if (e.key === 'Enter' && e.target.id === 'c-phone') { e.preventDefault(); findCustomer(); }
     if (e.key === 'Enter' && e.target.id === 'cash-in') { e.preventDefault(); var b = $('[data-act=confirm-pay]'); if (b) b.click(); }
   });

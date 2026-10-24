@@ -520,6 +520,28 @@ switch ($action) {
         }
         json_out(['status' => 'cancelled']);
 
+    case 'rzp_received':
+        // Staff press Payment received on the card QR once the customer has paid.
+        need_post();
+        $u = require_user();
+        $sale = q1('SELECT * FROM sales WHERE id = ?', [(int) ($b['id'] ?? 0)]);
+        if (!$sale || ($u['role'] !== 'manager' && (int) $sale['user_id'] !== (int) $u['id'])) {
+            fail('Sale not found.', 404);
+        }
+        $status = refresh_gateway_sale($sale, $u['id']);
+        if ($status === 'paid') {
+            json_out(['sale' => load_sale('id', $sale['id'])]);
+        }
+        if ($status !== 'pending') {
+            fail('This sale cannot take payment (it is ' . $status . '). Use Take payment again in Sales.');
+        }
+        if ($sale['gateway_id']) {
+            rzp_close($sale['gateway_id']); // the QR stops taking money, so the customer cannot pay twice
+        }
+        mark_paid((int) $sale['id'], $u['id']);
+        log_activity($u, 'razorpay', 'Marked a card payment of ' . inr((int) $sale['total']) . ' received', q1('SELECT receipt_no FROM sales WHERE id = ?', [$sale['id']])['receipt_no'], (int) $sale['store_id']);
+        json_out(['sale' => load_sale('id', $sale['id'])]);
+
     case 'sale_repay':
         // Take payment again for a sale that is waiting, cancelled or failed: a new Razorpay QR, or cash / UPI / card.
         // It keeps the same items and total, and gets its receipt number only once paid.
