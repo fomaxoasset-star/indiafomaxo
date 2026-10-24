@@ -950,7 +950,7 @@ if ($tab === 'progress') {
     . '<div class="kpi"><span>Orders</span><b>' . $A['paid_orders'] . '</b><small>' . ($grow($A['paid_orders'], $bOrd) ?: ($units ? $units . ' items sold' : '&nbsp;')) . '</small></div>'
     . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . ($grow($A['visitors'], $bVis) ?: number_format($A['visits']) . ' visits') . '</small></div>'
     . '<div class="kpi"><span>Visitors who buy</span><b>' . ($A['conversion'] === null ? '—' : ($A['conversion'] >= 1 ? round($A['conversion']) . ' in 100' : round($A['conversion'], 1) . '%')) . '</b><small>out of every 100 visits</small></div>'
-    . '<div class="kpi"><span>Buy again</span><b>' . $pct($rep, $A['paid_orders']) . '</b><small>' . $rep . ' orders from past customers</small></div>'
+    . '<div class="kpi"><span>Buy again</span><b>' . $pct($rep, $A['paid_orders']) . '</b><small>&nbsp;</small></div>'
     . '<div class="kpi"><span>Total sales so far</span><b>' . rupees($allRev) . '</b><small>' . $allOrd . ' orders since ' . date('M Y', strtotime($first)) . '</small></div></div>'
     . '<div class="pg2">';
   $SR = series($gStart, $cEnd); $S = &$SR['sales'];
