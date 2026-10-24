@@ -663,9 +663,9 @@ function shop_pages_off(): array {
   return is_array($o) ? array_values(array_intersect(array_keys(SHOP_PAGES), $o)) : [];
 }
 
-/* The three "New here? 10% off, coupon on WhatsApp" boxes (Admin → Settings → Site pages → WhatsApp popups, STORE_LIVE.waPop):
+/* The three "New here? 10% off, coupon on WhatsApp" boxes (Admin → Offers → WhatsApp popups, STORE_LIVE.waPop):
    welcome = the popup a new visitor sees on arrival, offer = the box inside the offer popup, bag = the line inside the bag. Never saved = Off (AJAY, 2026-10-24). */
-const SHOP_WA_POPUPS = ['welcome' => ['Welcome popup', 'Opens for a new visitor as the site opens'], 'offer' => ['In the offer popup', 'Name and WhatsApp box inside the sale popup'], 'bag' => ['In the bag', 'One line inside the bag']];
+const SHOP_WA_POPUPS = ['welcome' => ['Welcome popup', 'Opens for a new visitor as the site opens'], 'offer' => ['Offer popup', 'Name and WhatsApp box inside the sale popup'], 'bag' => ['Bag', 'One line inside the bag']];
 function shop_wa_popups(): array {
   $o = json_decode((string)shop_setting('wa_popups'), true); $o = is_array($o) ? $o : [];
   $r = []; foreach (array_keys(SHOP_WA_POPUPS) as $k) $r[$k] = !empty($o[$k]); return $r;

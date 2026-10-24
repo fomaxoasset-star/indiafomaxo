@@ -417,9 +417,10 @@ if ($tab === 'offer') {
   $opts = '<option value="">No product (no photo)</option>';
   foreach ($CAT as $id => $p) $opts .= '<option value="' . h($id) . '" data-img="' . h($p['img'] ? '/' . $p['img'] : '') . '"' . ($N['id'] === (string)$id ? ' selected' : '') . '>' . h($p['name']) . (!empty($p['hidden']) ? ' (hidden)' : '') . '</option>';
 
-  $body .= $sw('#ofPanes', ['sale' => 'Sale offer', 'new' => 'New product']) . '<div class="exp panes ofgrid" id="ofPanes">'
+  $waFirst = ($_GET['pane'] ?? '') === 'wa';   // back on the WhatsApp pane after a switch is tapped (phones show one pane at a time)
+  $body .= $sw('#ofPanes', $waFirst ? ['wa' => 'WhatsApp', 'sale' => 'Sale offer', 'new' => 'New product'] : ['sale' => 'Sale offer', 'new' => 'New product', 'wa' => 'WhatsApp']) . '<div class="exp panes ofgrid" id="ofPanes">'
     /* box 1: the sale offer */
-    . '<div class="box ofr on" data-pane="sale"><div class="bh"><h3>Sale offer</h3></div><div class="bb">'
+    . '<div class="box ofr' . ($waFirst ? '' : ' on') . '" data-pane="sale"><div class="bh"><h3>Sale offer</h3></div><div class="bb">'
     . '<p class="ofst ofst-' . $sk . '">' . h($status) . '</p>'
     . '<form method="post" class="cpf" id="offerForm" data-best="' . (int)fomaxo_best_pct()[0] . '">' . $csrfField . '<input type="hidden" name="action" value="offer_save">'
     /* product picture size in the popup: changed with the sliders in Preview, saved with Save */
@@ -456,6 +457,13 @@ if ($tab === 'offer') {
     . '<label>Short line<input name="np_line" maxlength="90" value="' . h($N['line']) . '" placeholder="Optional"></label></div>'
     . '<div class="row ofbtns"><button class="btn">Save</button><button type="button" class="btn line" data-preview="new">Preview</button></div>'
     . '<p class="muted small" style="margin:0">Shows once per visitor, before the sale popup.</p>'
+    . '</form></div></div>'
+    /* box 3: the "New here? 10% off, coupon on WhatsApp" boxes, each On / Off (never saved = Off) */
+    . '<div class="box ofr ofwa' . ($waFirst ? ' on' : '') . '" data-pane="wa"><div class="bh"><h3>WhatsApp popups</h3></div><div class="bb">'
+    . '<form method="post" class="cpf" onchange="this.submit()">' . $csrfField . '<input type="hidden" name="action" value="wa_pops">'
+    . '<p class="muted small" style="margin:0">“New here? Get 10% off, coupon on WhatsApp” for new visitors. Saves as you tap.</p>'
+    . '<div class="ofwas">' . implode('', array_map(fn($k, $n) => '<label class="pg" title="' . h($n[1]) . '"><span><b>' . h($n[0]) . '</b></span><input type="checkbox" class="tgl" name="wa[]" value="' . h($k) . '"' . (shop_wa_popups()[$k] ? ' checked' : '') . ' aria-label="Show WhatsApp ' . h(strtolower($n[0])) . '"></label>', array_keys(SHOP_WA_POPUPS), SHOP_WA_POPUPS)) . '</div>'
+    . '<noscript><button class="btn">Save</button></noscript>'
     . '</form></div></div></div>';
 }
 
@@ -1040,8 +1048,6 @@ if ($tab === 'settings') {
     . '<form method="post" class="box' . ($pgFirst ? ' on' : '') . '" data-pane="pages">' . $csrfField . '<input type="hidden" name="action" value="pages"><div class="bh"><h3>Site pages</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . '<p class="muted small" style="margin:0">Turn a page off to hide it. It leaves the menu and the footer, and its link opens the home page. Home, products, checkout and policies always show.</p>'
     . '<div class="pgs">' . implode('', array_map(fn($k, $n) => '<label class="pg"><span><b>' . h($n) . '</b><small>' . h($pgAddr[$k] ?? 'fomaxo.in/#/' . $k) . '</small></span><input type="checkbox" class="tgl" name="on[]" value="' . h($k) . '"' . (in_array($k, $OFF, true) ? '' : ' checked') . ' aria-label="Show ' . h($n) . '"></label>', array_keys(SHOP_PAGES), SHOP_PAGES)) . '</div>'
-    . '<h4 style="margin:10px 0 0">WhatsApp popups</h4><p class="muted small" style="margin:0">“New here? Get 10% off, coupon on WhatsApp” for new visitors. The numbers go to Left at checkout.</p>'
-    . '<div class="pgs">' . implode('', array_map(fn($k, $n) => '<label class="pg"><span><b>' . h($n[0]) . '</b><small style="white-space:normal">' . h($n[1]) . '</small></span><input type="checkbox" class="tgl" name="wa[]" value="' . h($k) . '"' . (shop_wa_popups()[$k] ? ' checked' : '') . ' aria-label="Show WhatsApp ' . h(strtolower($n[0])) . '"></label>', array_keys(SHOP_WA_POPUPS), SHOP_WA_POPUPS)) . '</div>'
     . '<button class="btn">Save</button></div></form>'
     . '<form method="post" class="box' . ($codFirst ? ' on' : '') . '" data-pane="cod" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="cod"><div class="bh"><h3>Cash on delivery</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . ($COD ? '' : '<p class="small" style="margin:0;color:var(--red,#e5484d)">Cash on delivery is turned off in index.html, so these numbers are not used yet.</p>')
