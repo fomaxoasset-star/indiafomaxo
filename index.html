@@ -3324,7 +3324,7 @@ const LAST_KEY = 'fomaxo_last';
 /* "New here?" WhatsApp boxes (bag, offer popup, welcome box) stay hidden for anyone this device already knows (AJAY, 2026-10-22):
    number given, checkout details saved, ordered here, opened one of our WhatsApp links (?w=), or signed in to admin on this device */
 const waKnownHere = () => { try { return !!(localStorage.getItem('fomaxo_bagwa') || JSON.parse(localStorage.getItem('fomaxo_details') || '{}').phone || localStorage.getItem(LAST_KEY) || localStorage.getItem('fomaxo_who') || localStorage.getItem('fomaxo_notrack') === '1'); } catch(e) { return true; } };
-/* each "New here?" WhatsApp box shows only when switched On on Admin → Settings → Site pages → WhatsApp popups (AJAY, 2026-10-24) */
+/* each "New here?" WhatsApp box shows only when switched On on Admin → Offers → WhatsApp popups (AJAY, 2026-10-24) */
 const waPopOn = k => (LIVE.waPop || []).includes(k);
 const waBoughtHere = () => { try { return !!(localStorage.getItem(LAST_KEY) || localStorage.getItem('fomaxo_notrack') === '1'); } catch(e) { return true; } };
 function lastOrder(){
