@@ -59,6 +59,7 @@ if ($js === '') try {
   try { $sm = shop_sold_month(); if ($sm['sold']) $live['sold'] = $sm['sold']; } catch (Throwable $e) {}   // "X purchased this week" on the product page, real orders only
   try { $live['also'] = shop_also(); } catch (Throwable $e) {}   // "You may also like" order on the product page, from real orders
   if (!shop_together()['on']) $live['fbtOff'] = 1;   // its On / Off switch: Off hides the box on every product page
+  if (shop_setting('wa_popup') === '1') $live['waPopup'] = 1;   // the WhatsApp coupon popups: Admin → Settings → Site pages → WhatsApp popup On (never saved = Off)
   try {   // star rating and number of reviews per product (same as api/reviews.php?action=summary), so the shop shows the stars at once without asking reviews.php on every page load
     $rt = []; if ($rdb = reviews_db()) foreach ($rdb->query("SELECT product, AVG(rating) a, COUNT(*) n FROM reviews WHERE status = 'live' GROUP BY product") as $r) $rt[$r['product']] = ['rating' => round((float)$r['a'], 1), 'reviews' => (int)$r['n']];
     $live['ratings'] = (object)$rt;
