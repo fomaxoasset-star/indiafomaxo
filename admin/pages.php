@@ -878,6 +878,93 @@ if ($tab === 'analytics' && !$cv) {
   $body .= '</div></div></div></div>' . wa_box('ltWa', 'ltfree', 'pct', 10, 0, 'A new COMEBACK- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.', 2);
 }
 
+/* ============ Progress: a clean page to show someone how the shop is doing, month by month or year by year ============ */
+/* Visitors, orders and income only: no names, mobiles or Left at checkout. Income and orders are real orders (New, Paid, Delivered, not test), as on Analytics. */
+if ($tab === 'progress') {
+  $db = shop_db();
+  $yr = ($_GET['v'] ?? '') === 'y';
+  $first = min(array_filter([(string)$db->query("SELECT MIN(created) FROM orders WHERE test = 0")->fetchColumn(), (string)$db->query("SELECT MIN(ts) FROM events")->fetchColumn(), date('Y-m-d')]));
+  $months = []; for ($t = strtotime(date('Y-m-01')); date('Y-m', $t) >= substr($first, 0, 7); $t = strtotime('-1 month', $t)) $months[] = date('Y-m', $t);
+  $years = array_values(array_unique(array_map(fn($m) => substr($m, 0, 4), $months)));
+  if ($yr) { $y = (string)($_GET['y'] ?? ''); if (!in_array($y, $years, true)) $y = $years[0]; $c1 = "$y-01-01"; $c2 = "$y-12-31"; $title = "Year $y"; }
+  else { $m = (string)($_GET['m'] ?? ''); if (!in_array($m, $months, true)) $m = $months[0]; $c1 = "$m-01"; $c2 = date('Y-m-t', strtotime($c1)); $title = date('F Y', strtotime($c1)); }
+  $cEnd = min($c2, date('Y-m-d'));   // this month or year: the graphs stop at today
+  $gStart = $yr ? max($c1, substr($first, 0, 7) . '-01') : $c1;   // a year starts at the month the shop started
+  $nd = (strtotime($cEnd) - strtotime($gStart)) / 86400 + 1;
+  if ($yr ? $nd <= 92 : $nd < 2) $cEnd = $c2;   // series() picks days, months or hours from the length: keep months for a year and days for a month
+  $A = analytics($c1, $c2, $CAT);
+  $span = ["$c1 00:00:00", "$c2 23:59:59"];
+  $pct = fn($a, $b) => $b > 0 ? rtrim(rtrim(number_format($a / $b * 100, 1), '0'), '.') . '%' : '0%';
+  /* repeat orders: orders in the period from a mobile that had ordered before */
+  $rep = 0; $seen = [];
+  foreach ($db->query("SELECT phone, created FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0 ORDER BY created") as $o) {
+    $k = coupon_phone((string)$o['phone']); if ($k === '') continue;
+    if ($o['created'] >= $span[0] && $o['created'] <= $span[1] && isset($seen[$k])) $rep++;
+    $seen[$k] = 1;
+  }
+  $units = array_sum(array_column($A['products'], 'units'));
+  /* growth: the same days of the month (or year) before, so a month still running is never set against a whole month */
+  $b1 = date('Y-m-d', strtotime($yr ? '-1 year' : 'first day of previous month', strtotime($c1)));
+  $b2 = min(date('Y-m-d', strtotime($yr ? '-1 year' : '-1 month', strtotime(min($c2, date('Y-m-d'))))), date($yr ? 'Y-12-31' : 'Y-m-t', strtotime($b1)));
+  [, $bRev, $bOrd] = sales_between("$b1 00:00:00", "$b2 23:59:59");
+  $s = $db->prepare("SELECT COUNT(DISTINCT vid) FROM events WHERE type = 'view' AND ts >= ? AND ts <= ?"); $s->execute(["$b1 00:00:00", "$b2 23:59:59"]); $bVis = (int)$s->fetchColumn();
+  $vsL = $yr ? date('Y', strtotime($b1)) : date('M', strtotime($b1));
+  $grow = function ($now, $before) use ($vsL) {
+    if ($before <= 0) return '';
+    $g = (int)round(($now - $before) / $before * 100);
+    return '<em class="' . ($g >= 0 ? 'up' : 'dn') . '">' . ($g >= 0 ? '▲ ' : '▼ ') . abs($g) . '%</em> ' . ($g >= 0 ? 'more' : 'less') . ' than ' . $vsL;
+  };
+  [, $allRev, $allOrd] = sales_between('', '9999-12-31 23:59:59');
+  /* month by month (a year): visitors, orders, conversion, income */
+  $rows = '';
+  if ($yr) {
+    $mv = $mo = [];
+    $s = $db->prepare("SELECT substr(ts, 1, 7) k, COUNT(DISTINCT vid) v, COUNT(DISTINCT sid) n FROM events WHERE type = 'view' AND ts >= ? AND ts <= ? GROUP BY substr(ts, 1, 7)"); $s->execute($span);
+    foreach ($s as $r) $mv[$r['k']] = [(int)$r['v'], (int)$r['n'], 0];
+    $s = $db->prepare("SELECT substr(ts, 1, 7) k, COUNT(DISTINCT sid) n FROM events WHERE type = 'buy' AND ts >= ? AND ts <= ? GROUP BY substr(ts, 1, 7)"); $s->execute($span);
+    foreach ($s as $r) if (isset($mv[$r['k']])) $mv[$r['k']][2] = (int)$r['n'];
+    for ($i = (int)($y === substr($first, 0, 4) ? substr($first, 5, 2) : 1); $i <= 12; $i++) {   // a year starts at the month the shop started
+      $k = sprintf('%s-%02d', $y, $i); [, $t, $n] = sales_between("$k-01 00:00:00", date('Y-m-t', strtotime("$k-01")) . ' 23:59:59');
+      $v = $mv[$k] ?? [0, 0, 0];
+      $rows .= '<tr' . ($k > date('Y-m') ? ' class="dim"' : '') . '><td>' . date('F', strtotime("$k-01")) . '</td><td class="r">' . number_format($v[0]) . '</td><td class="r">' . $n . '</td><td class="r"><b>' . rupees($t) . '</b></td></tr>';
+    }
+  }
+  $box = fn($cls, $h, $inner, $np = false) => '<div class="box ' . $cls . '"><div class="bh"><h3>' . $h . '</h3></div><div class="bb' . ($np ? ' np' : '') . '">' . $inner . '</div></div>';
+  $prod = '';
+  $P = array_filter($A['products'], fn($p) => $p['units'] > 0); uasort($P, fn($a, $b) => [$b['units'], $b['rev']] <=> [$a['units'], $a['rev']]);
+  foreach ($P as $id => $p) $prod .= '<tr><td><div class="pc">' . $thumbOf($id, 'th sm') . '<b>' . h($CAT[$id]['name']) . '</b></div></td><td class="r">' . $p['units'] . '</td><td class="r">' . $pct($p['units'], $units) . '</td></tr>';
+  $G = geo_stats($c1, $c2); $geo = '';
+  foreach (['countries' => 'Visitors by country', 'states' => 'Visitors by state'] as $gk => $gt) {
+    $gr = array_slice($G[$gk], 0, $gk === 'countries' ? 6 : 10, true); $mx = max(1, ...array_values($gr ?: [1])); $in = '';
+    foreach ($gr as $name => $n) $in .= '<div class="li"><span class="grow">' . ($gk === 'countries' ? '<span class="flag">' . fomaxo_flag((string)$name) . '</span> ' . h(fomaxo_country_name((string)$name)) : h((string)$name)) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
+    $geo .= $box('geo', $gt, $in ?: '<p class="empty">No visitors yet.</p>');
+  }
+  $body .= '<div class="prog">'
+    . '<div class="phead"><div><h2>Progress</h2><p class="ptitle">' . h($title) . '</p></div><form class="ppick" method="get"><input type="hidden" name="tab" value="progress">' . ($yr ? '<input type="hidden" name="v" value="y">' : '')
+    . '<span class="seg"><a href="' . h(self_url(['tab' => 'progress'])) . '"' . ($yr ? '' : ' class="on"') . '>Monthly</a><a href="' . h(self_url(['tab' => 'progress', 'v' => 'y'])) . '"' . ($yr ? ' class="on"' : '') . '>Yearly</a></span>'
+    . '<select name="' . ($yr ? 'y' : 'm') . '" aria-label="' . ($yr ? 'Year' : 'Month') . '" onchange="this.form.submit()">'
+    . implode('', array_map(fn($x) => '<option value="' . h($x) . '"' . ($x === ($yr ? $y : $m) ? ' selected' : '') . '>' . h($yr ? $x : date('F Y', strtotime("$x-01"))) . '</option>', $yr ? $years : $months)) . '</select>'
+    . '<button type="button" class="btn line sm pprint" onclick="window.print()">Print / PDF</button></form></div>'
+    . '<div class="kpis n6" style="--n:6">'
+    . '<div class="kpi good"><span>Sales</span><b>' . rupees($A['revenue']) . '</b><small>' . ($grow($A['revenue'], $bRev) ?: ($A['paid_orders'] ? rupees(intdiv($A['revenue'], $A['paid_orders'])) . ' per order' : 'no orders yet')) . '</small></div>'
+    . '<div class="kpi"><span>Orders</span><b>' . $A['paid_orders'] . '</b><small>' . ($grow($A['paid_orders'], $bOrd) ?: ($units ? $units . ' items sold' : '&nbsp;')) . '</small></div>'
+    . '<div class="kpi"><span>Visitors</span><b>' . number_format($A['visitors']) . '</b><small>' . ($grow($A['visitors'], $bVis) ?: number_format($A['visits']) . ' visits') . '</small></div>'
+    . '<div class="kpi"><span>Visitors who buy</span><b>' . ($A['conversion'] === null ? '—' : ($A['conversion'] >= 1 ? round($A['conversion']) . ' in 100' : round($A['conversion'], 1) . '%')) . '</b><small>out of every 100 visits</small></div>'
+    . '<div class="kpi"><span>Buy again</span><b>' . $pct($rep, $A['paid_orders']) . '</b><small>' . $rep . ' orders from past customers</small></div>'
+    . '<div class="kpi"><span>Total sales so far</span><b>' . rupees($allRev) . '</b><small>' . $allOrd . ' orders since ' . date('M Y', strtotime($first)) . '</small></div></div>'
+    . '<div class="pg2">';
+  foreach (['sales' => 'Sales', 'visitors' => 'Visitors'] as $k => $label)
+    $body .= '<div class="box pc" data-chart="' . $k . '" data-caption=" in total"><div class="bh"><h3>' . $label . ' <small class="muted">each ' . ($yr ? 'month' : 'day') . '</small></h3><span class="ctot"></span></div>'
+      . '<div class="chart" role="img" aria-label="' . $label . ' chart"><svg></svg><div class="tip" hidden></div></div></div>';
+  $body .= '</div><div class="pg3' . ($yr ? ' yr' : '') . '">'
+    . ($yr ? $box('pmonths', 'Month by month', '<table class="grid"><thead><tr><th>Month</th><th class="r">Visitors</th><th class="r">Orders</th><th class="r">Sales</th></tr></thead><tbody>' . $rows
+        . '</tbody><tfoot><tr><td><b>Total</b></td><td class="r"><b>' . number_format($A['visitors']) . '</b></td><td class="r"><b>' . $A['paid_orders'] . '</b></td><td class="r"><b>' . rupees($A['revenue']) . '</b></td></tr></tfoot></table>', true) : '')
+    . $box('pprod', 'Most sold', $prod ? '<table class="grid"><thead><tr><th>Perfume</th><th class="r">Sold</th><th class="r">Share</th></tr></thead><tbody>' . $prod . '</tbody></table>' : '<p class="empty">No orders in this ' . ($yr ? 'year' : 'month') . ' yet.</p>', (bool)$prod)
+    . $geo . '</div>'
+    . '<p class="muted small">Sales and orders count real orders only: cancelled and returned orders are left out. Visitor locations are approximate.</p></div>';
+  $body .= '<script type="application/json" id="chartData">' . json_encode(series($gStart, $cEnd), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script>';
+}
+
 /* ============ Sales (profit & loss; was Reports) ============ */
 if ($tab === 'sales') {
   /* the date bar picks the table: day by day up to 3 months, month by month for longer, by year for All */

@@ -671,7 +671,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /* ---------------- downloads ---------------- */
 if (($_GET['tab'] ?? '') === 'reports') $_GET['tab'] = 'sales';   // Sales was called Reports; old links still open it
 if (($_GET['tab'] ?? '') === 'members' && isset($_GET['refill'])) $_GET['tab'] = 'orders';   // Refill reminders moved from Members to Orders, next to Review requests; old links still open it
-$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'progress', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : '',
       'coupon' => ($_GET['coupon'] ?? '') === 'yes' ? 'yes' : coupon_clean((string)($_GET['coupon'] ?? ''))];
@@ -720,7 +720,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stocks', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offers', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stocks', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offers', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'progress' => 'Progress', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 session_write_close();   // nothing below changes the sign-in, so let go of it now: another admin tab, or the new-order check, need not wait while this page is built
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';

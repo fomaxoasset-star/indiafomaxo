@@ -789,3 +789,19 @@ details.order:not([open]){content-visibility:auto;contain-intrinsic-size:auto 58
 @media (max-width:340px){body .dbar .dbox input[data-date],body .dbox input[data-date]{padding-left:6px;padding-right:24px;letter-spacing:-.05em;font-variant-numeric:normal}}
 /* Settings → Database steps: the long database name breaks inside its narrow box (small laptops) instead of running past it */
 .steps b{overflow-wrap:anywhere}
+/* Progress (?tab=progress): a page that scrolls, made to show someone; month by month or year by year */
+.prog{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;margin:0 -4px;padding:0 4px 6px}.prog>*{flex:none}
+.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}.phead h2{margin:0}.ptitle{margin:2px 0 0;color:var(--gold2);font-weight:600}
+.ppick{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0}.ppick select{width:auto;font-size:13px;padding:6px 8px}
+.prog .kpis .kpi.good b{color:var(--gold2)}
+.pg2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pg2 .box{height:290px}.pg2 .bh h3 small{font-weight:400;font-size:12px;margin-left:4px}
+.pg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}.pg3 .bb{overflow:visible}.pg3 .box{overflow:visible}
+.pg3.yr{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}
+.prog .kpi em{font-style:normal;font-weight:700}.prog .kpi em.up{color:var(--green)}.prog .kpi em.dn{color:var(--red)}
+/* one screen on a laptop: the lists at the bottom take the room left and scroll inside */
+@media (min-width:1101px) and (min-height:760px){.prog{overflow:hidden;gap:10px}.pg2 .box{height:clamp(170px,26vh,250px)}.pg3,.pg3.yr{flex:1 1 auto;min-height:0;align-items:stretch}.pg3>.box{min-height:0;overflow:hidden}.pg3 .bb{overflow:auto}.prog .grid tfoot td{position:sticky}.prog .grid td{padding-top:5px;padding-bottom:5px}.prog .pc .th{width:24px;height:24px}}
+.prog .grid tfoot td{position:static}
+@media (max-width:1100px){.pg3,.pg3.yr{grid-template-columns:1fr 1fr;grid-template-areas:none}.pg3.yr>*{grid-area:auto!important}.pg3.yr .pmonths{grid-column:1/-1}}
+@media (max-width:820px){.pg2,.pg3,.pg3.yr{grid-template-columns:1fr}.pg2 .box{height:230px}.ppick{width:100%;flex-wrap:nowrap}.ppick select{flex:1;min-width:0;font-size:16px}.pprint{display:none!important}
+  .prog .kpis.n6>*{grid-column:span 3}.prog .kpis .kpi b{font-size:18px}.prog .kpis .kpi span{font-size:10px}.prog .kpis .kpi small{font-size:11px}}
+@media print{header,.mbar,.ppick{display:none!important}body.app{height:auto;overflow:visible;display:block}.prog{overflow:visible}.prog .box{break-inside:avoid}}
