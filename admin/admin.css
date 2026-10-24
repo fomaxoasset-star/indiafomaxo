@@ -814,3 +814,4 @@ details.order:not([open]){content-visibility:auto;contain-intrinsic-size:auto 58
   .pg2{grid-template-columns:1fr 1fr!important;gap:6px}.pg2 .box{height:240px!important}.box{break-inside:avoid}.bh{padding:6px 10px}
   .pg3{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px;align-items:start}.pg3.yr{grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr))!important}.pg3>*{grid-column:auto!important;grid-area:auto!important}
   .pg3 .bb,.pg3>.box{overflow:visible!important;max-height:none!important}.prog .grid td,.prog .grid th{padding:3px 5px;font-size:10.5px}.prog .pc .th{display:none}.prog .grid tfoot td{position:static!important}.geo .li{padding:3px 0;font-size:11px}.geo .li span.bar{width:50px;background:var(--line2)!important}.prog p.small{font-size:9.5px}}
+.olist>.order[hidden]{display:none!important}
