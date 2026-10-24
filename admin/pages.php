@@ -255,7 +255,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   foreach ($orders as $o) {
     $items = json_decode((string)$o['items'], true) ?: [];
     $btns = order_buttons($o);
-    $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . '><summary><span class="ox">'
+    $body .= '<details class="order os-' . h($o['status']) . '"' . (count($orders) === 1 ? ' open' : '') . ' data-s="' . h(mb_strtolower(implode(' ', [$o['no'], $o['name'], $o['email'], $o['payment_id'], $o['admin_note'], $o['coupon']]))) . '" data-p="' . h(preg_replace('/\D/', '', (string)$o['phone'])) . '"><summary><span class="ox">'
       . '<input type="checkbox" class="otk" form="obk" name="ids[]" value="' . (int)$o['id'] . '" aria-label="Tick ' . h($o['no']) . '">'
       . '<button class="xbtn" form="trf" name="id" value="' . (int)$o['id'] . '" data-confirm="Close ' . h($o['no']) . '? It leaves Sales, the boxes and every count, and is kept in Trash." title="Close this order (kept in Trash)" aria-label="Close ' . h($o['no']) . '">✕</button>' . $orderThumb($o) . '</span>'
       . '<span class="no">' . h($o['no'] ?: 'Not paid') . ($seenO !== '' && $o['created'] > $seenO ? ' <span class="onew">NEW</span>' : '') . order_waiting($o) . '</span><span class="dt">' . h(date('d M Y, H:i', strtotime($o['created']))) . '</span>'

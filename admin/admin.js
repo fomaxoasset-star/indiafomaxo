@@ -139,11 +139,31 @@ function markSent(btn, day) {
       all.checked = k > 0 && k === bx.length; all.indeterminate = k > 0 && k < bx.length;
       bx.forEach(function (x) { x.closest('.order').classList.toggle('otick', x.checked); });
     };
-    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked; }); up(); });
+    /* the search box hides the orders that do not match as you type (before Show is pressed), and Select all, the count and Paid / Delivered / Close
+       only ever take the orders that are shown: a typed "fake" with Select all must never close every order (AJAY, 2026-10-25) */
+    var q = document.querySelector('#ordFilters input[name="q"]'), cnt = document.querySelector('.obh>.muted.small'), cnt0 = cnt && cnt.firstChild.textContent;
+    var row = function (x) { return x.closest('.order'); }, shown = function (x) { return !row(x).hidden; };
+    var find = function () {
+      var t = (q.value || '').trim().toLowerCase(), d = t.replace(/\D/g, '').slice(-10), k = 0;
+      bx.forEach(function (x) {
+        var r = row(x), ok = !t || r.dataset.s.indexOf(t) > -1 || (d.length >= 4 && r.dataset.p.indexOf(d) > -1);
+        r.hidden = !ok; if (!ok) x.checked = false; else k++;
+      });
+      if (cnt) cnt.firstChild.textContent = t ? k + ' of ' + bx.length + ' shown (press Show to search every page)' : cnt0;
+      up();
+    };
+    up = (function (u) { return function () { var v = bx.filter(shown), k = v.filter(function (x) { return x.checked; }).length; u(); all.checked = k > 0 && k === v.length; all.indeterminate = k > 0 && k < v.length; }; })(up);
+    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked && shown(x); }); up(); });
     bx.forEach(function (x) { x.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); setTimeout(function () { x.checked = !x.checked; up(); }, 0); }); });
+    if (q) q.addEventListener('input', find);
     up();
     bar.querySelectorAll('button[data-ask]').forEach(function (b) { b.dataset.confirm = b.dataset.ask; });
-    document.getElementById('obk').addEventListener('submit', function (e) { var b = e.submitter; if (b && b.dataset.ask) b.dataset.confirm = b.dataset.ask.replace('{n}', n.textContent); }, true);
+    document.getElementById('obk').addEventListener('submit', function (e) {
+      bx.forEach(function (x) { if (!shown(x)) x.checked = false; });   // a hidden order is never sent
+      var k = bx.filter(function (x) { return x.checked; }).length; n.textContent = k;
+      var b = e.submitter; if (b && b.dataset.ask) b.dataset.confirm = b.dataset.ask.replace('{n}', k);
+      if (!k) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
   })();
 
   /* Orders: a button on a row (Paid, Delivered, Cancel, ✕) reloads the page; come back to the same row, not the top */
