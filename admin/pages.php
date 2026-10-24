@@ -953,8 +953,12 @@ if ($tab === 'progress') {
     . '<div class="kpi"><span>Buy again</span><b>' . $pct($rep, $A['paid_orders']) . '</b><small>' . $rep . ' orders from past customers</small></div>'
     . '<div class="kpi"><span>Total sales so far</span><b>' . rupees($allRev) . '</b><small>' . $allOrd . ' orders since ' . date('M Y', strtotime($first)) . '</small></div></div>'
     . '<div class="pg2">';
+  $SR = series($gStart, $cEnd); $unit = $yr ? 'month' : 'day';
+  $keep = array_keys(array_filter($SR['sales']['values'], fn($v) => $v > 0));   // Sales: only the days (or months) that had sales, side by side, so there are no empty gaps
+  foreach (['labels', 'full', 'values'] as $f) $SR['sales'][$f] = array_values(array_intersect_key($SR['sales'][$f], array_flip($keep)));
   foreach (['sales' => 'Sales', 'visitors' => 'Visitors'] as $k => $label)
-    $body .= '<div class="box pc" data-chart="' . $k . '" data-caption=" in total"><div class="bh"><h3>' . $label . ' <small class="muted">each ' . ($yr ? 'month' : 'day') . '</small></h3><span class="ctot"></span></div>'
+    $body .= '<div class="box pc" data-chart="' . $k . '" data-caption=" in total"' . ($k === 'sales' ? ' data-bw="44"' : '') . '><div class="bh"><h3>' . $label . ' <small class="muted">'
+      . ($k === 'sales' ? count($keep) . ' ' . $unit . (count($keep) === 1 ? '' : 's') . ' with sales' : 'each ' . $unit) . '</small></h3><span class="ctot"></span></div>'
       . '<div class="chart" role="img" aria-label="' . $label . ' chart"><svg></svg><div class="tip" hidden></div></div></div>';
   $body .= '</div><div class="pg3' . ($yr ? ' yr' : '') . '">'
     . ($yr ? $box('pmonths', 'Month by month', '<table class="grid"><thead><tr><th>Month</th><th class="r">Visitors</th><th class="r">Orders</th><th class="r">Sales</th></tr></thead><tbody>' . $rows
@@ -962,7 +966,7 @@ if ($tab === 'progress') {
     . $box('pprod', 'Most sold', $prod ? '<table class="grid"><thead><tr><th>Perfume</th><th class="r">Sold</th><th class="r">Share</th></tr></thead><tbody>' . $prod . '</tbody></table>' : '<p class="empty">No orders in this ' . ($yr ? 'year' : 'month') . ' yet.</p>', (bool)$prod)
     . $geo . '</div>'
     . '<p class="muted small">Sales and orders count real orders only: cancelled and returned orders are left out. Visitor locations are approximate.</p></div>';
-  $body .= '<script type="application/json" id="chartData">' . json_encode(series($gStart, $cEnd), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script>';
+  $body .= '<script type="application/json" id="chartData">' . json_encode($SR, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script>';
 }
 
 /* ============ Sales (profit & loss; was Reports) ============ */

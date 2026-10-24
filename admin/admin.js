@@ -428,7 +428,8 @@ function markSent(btn, day) {
       var padL = 46, padB = 20, padT = 8, iw = W - padL - 4, ih = H - padB - padT;
       var vals = d.values, n = vals.length, max = nice(Math.max.apply(null, vals.concat([money ? 100 : 2]))), gap = n > 40 ? 1 : n > 20 ? 2 : 4;
       if (!money && max % 2) max += 1;
-      var bw = Math.max(1, iw / n - gap), out = '';
+      var bw = Math.max(1, iw / n - gap), out = '', bwMax = +box.dataset.bw || 0;   // data-bw: widest a bar may be (Progress Sales, which can have only a few bars)
+      if (bwMax && bw > bwMax) { gap += bw - bwMax; bw = bwMax; }
       for (var g = 0; g <= 2; g++) {
         var y = padT + ih - ih * g / 2;
         out += '<line x1="' + padL + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" style="stroke:var(--line)" stroke-width="1"/>'
