@@ -132,7 +132,7 @@ function create_sale($user, $b, $method)
     }
     $qtyById = [];
     $priceById = [];
-    $custom = []; // Gift / Combo lines: name and price typed at the till, product_id 0, no stock
+    $custom = []; // Custom item lines: name and price typed at the till, product_id 0, no stock
     foreach ($items as $it) {
         $pid = (int) ($it['product_id'] ?? 0);
         $qty = (int) ($it['qty'] ?? 0);
@@ -140,7 +140,7 @@ function create_sale($user, $b, $method)
             $name = trim(preg_replace('/\s+/u', ' ', mb_substr((string) $it['name'], 0, 60)));
             $price = (int) ($it['price'] ?? 0);
             if ($name === '' || $price <= 0 || $price > 10000000 || $qty <= 0 || $qty > 999) {
-                fail('A Gift / Combo line needs a name and a price.');
+                fail('A custom item needs a name and a price.');
             }
             $custom[] = ['product_id' => 0, 'name' => $name, 'variant' => '', 'price' => $price, 'qty' => $qty, 'was' => null];
             continue;

@@ -544,7 +544,7 @@
       return;
     }
     el.innerHTML = '<button class="ptile custom-tile" data-act="custom-item"><span class="ph"><span class="ph-letter">＋</span></span>' +
-      '<span class="pt-name">Gift / Combo</span><span class="pt-sub">Type a name and price</span></button>' + groups.map(function (g) {
+      '<span class="pt-name">Custom item</span><span class="pt-sub">Type a name and price</span></button>' + groups.map(function (g) {
       var inCart = 0, from = Infinity, anyStock = false;
       g.sizes.forEach(function (p) {
         S.cart.forEach(function (c) { if (c.product_id === p.id) inCart += c.qty; });
@@ -619,9 +619,9 @@
     if (id && lastAdd.id === id && now - lastAdd.at < 700) return true;
     return false;
   }
-  // Gift / Combo: an item that is not in Stock, with the name and price typed in at the till. No stock is used.
+  // Custom item: an item that is not in Stock, with the name and price typed in at the till. No stock is used.
   function customItemModal() {
-    openModal('Gift / Combo', '<div class="err m-err hidden"></div>' +
+    openModal('Custom item', '<div class="err m-err hidden"></div>' +
       '<div class="pay-switch" style="justify-content:flex-start;margin:0 0 10px">' + ['Gift', 'Combo', 'Gift box', 'Gift wrap'].map(function (n) {
         return '<button class="btn sm" data-act="ci-name" data-v="' + n + '">' + n + '</button>'; }).join('') + '</div>' +
       '<label class="field"><span>Name on the receipt</span><input class="input" id="ci-name" maxlength="60" placeholder="e.g. Combo: Oud 50ml + Musk 10ml" autocomplete="off"></label>' +
@@ -631,7 +631,7 @@
   }
   function addCustomItem() {
     var name = ($('#ci-name').value || '').trim().replace(/\s+/g, ' '), price = toFils($('#ci-price').value);
-    if (!name) { modalErr('Type a name, like Gift or Combo.'); return; }
+    if (!name) { modalErr('Type the item name.'); return; }
     if (price <= 0) { modalErr('Type the price.'); return; }
     if (price > 10000000) { modalErr('The price is too high (most ₹1,00,000).'); return; }
     var before = bagSnapshot();
