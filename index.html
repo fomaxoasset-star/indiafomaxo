@@ -5438,9 +5438,9 @@ function bindCheckout(q){
   let paying = false;
   /* while payment opens, the chosen way to pay turns into a spinner at once, so the wait for Razorpay never looks stuck */
   const busy = (on, label) => { paying = on; btn.disabled = on; f.classList.toggle('co-going', on); if (on) $('#coPayTxt').textContent = label; else upd(); };
-  /* tapping a way to pay goes straight on: UPI / Card opens Razorpay, Cash on delivery places the order; the Pay button below does the same (AJAY, 2026-10-26).
+  /* tapping UPI / Card goes straight on to Razorpay (no money is taken until they pay there); Cash on delivery only gets picked, so a stray tap never places an order, and the button below places it (AJAY, 2026-10-26).
      Details still missing: the same check as the button, so it points at the first empty box */
-  $$('input[name=pay]', f).forEach(r => r.addEventListener('click', () => { if (paying || r.disabled) return; upd(); f.requestSubmit(); }));
+  $$('input[name=pay]', f).forEach(r => r.addEventListener('click', () => { if (paying || r.disabled) return; upd(); if (r.value !== 'cod') f.requestSubmit(); }));
   const done = (no, pay, review, total) => {
     let iv = ''; try { const r = JSON.parse(localStorage.getItem('fomaxo_ref') || 'null'); if (r && /^[a-z0-9]{8,16}$/.test(r.v) && Date.now() - r.t < 2592e6) iv = r.v; localStorage.removeItem('fomaxo_ref'); } catch(e) {}   // ordered from a friend's shared link
     TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, ''), ...(iv ? {iv} : {})}); ADS.buy(no, total, lines);
