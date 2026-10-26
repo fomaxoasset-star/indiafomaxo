@@ -906,7 +906,9 @@ function conversion_stats(string $from, string $to, array $CAT): array {
   /* 2. checkout drop-off, per visit */
   $n = fn(string $t) => (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
   $steps = ['checkout' => $n('checkout'), 'typed' => (int)$q('SELECT COUNT(*) FROM leads WHERE ordered <> 2 AND created >= ? AND created <= ?', $a)->fetchColumn(),
-    'pay' => $n('pay'), 'card' => $n('card'), 'buy' => $n('buy')];
+    'pay' => $n('pay'), 'card' => $n('card'), 'cardx' => $n('cardx'), 'cardfail' => $n('cardfail'), 'buy' => $n('buy')];
+  /* why Razorpay payments failed (Razorpay's reason, e.g. payment-cancelled, insufficient-funds), most first */
+  $fails = $q("SELECT product, COUNT(DISTINCT sid) n FROM events WHERE type = 'cardfail' AND ts >= ? AND ts <= ? GROUP BY product ORDER BY n DESC LIMIT 5", $a)->fetchAll(PDO::FETCH_KEY_PAIR);
   /* boxes left empty by people who typed details and did not order (then or later) */
   $paidPhones = [];
   foreach ($db->query("SELECT phone, created FROM orders WHERE status IN " . SALE_STATUSES . " AND test = 0") as $o) $paidPhones[coupon_phone((string)$o['phone'])][] = $o['created'];
@@ -939,7 +941,7 @@ function conversion_stats(string $from, string $to, array $CAT): array {
   $depth = [25 => 0, 50 => 0, 75 => 0, 100 => 0];
   foreach ($q("SELECT qty, COUNT(DISTINCT sid) n FROM events WHERE type = 'scroll' AND ts >= ? AND ts <= ? GROUP BY qty", $sa) as $r) if (isset($depth[(int)$r['qty']])) $depth[(int)$r['qty']] = min($home, (int)$r['n']);
 
-  return ['since' => $since, 'products' => $pr, 'steps' => $steps, 'empty' => $empty, 'unpaid' => ['n' => (int)$unpaid['n'], 'total' => (int)$unpaid['t']],
+  return ['since' => $since, 'products' => $pr, 'steps' => $steps, 'fails' => $fails, 'empty' => $empty, 'unpaid' => ['n' => (int)$unpaid['n'], 'total' => (int)$unpaid['t']],
     'campaigns' => array_values($camp), 'home' => $home, 'depth' => $depth];
 }
 /* "last 5 minutes · last visit 10:52" in the On the site now box, so a day of zeros can be told apart from counting that stopped */

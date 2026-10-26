@@ -94,11 +94,11 @@ if ($action === 'create') {
   $ref = 'web-' . date('ymd') . '-' . bin2hex(random_bytes(4));
   [$code, $ro, $raw] = rzp('POST', '/orders', ['amount' => $amount, 'currency' => 'INR', 'receipt' => $ref,
     'notes' => ['customer' => $cust['name'], 'mobile' => $cust['phone']]]);
-  if ($code !== 200 || empty($ro['id'])) { error_log('FOMAXO Razorpay create error: ' . $raw); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 502); }
+  if ($code !== 200 || empty($ro['id'])) { error_log('FOMAXO Razorpay create error: ' . $raw); fail('Online payment is unavailable right now. Please try again in a minute, or WhatsApp us.', 502); }
   try {
     shop_insert_order(shop_db(), ['ref' => $ro['id'], 'no' => null, 'created' => shop_now(), 'method' => 'online', 'status' => 'awaiting', 'total' => $amount,
       'items' => $order['items'], 'rows' => $order['rows'], 'cust' => $cust, 'test' => $TEST, 'coupon' => $cp['code'] ?? '', 'discount' => $cp['discount'] ?? 0, 'together' => $together]);
-  } catch (Throwable $e) { error_log('FOMAXO Razorpay save order: ' . $e->getMessage()); fail('Online payment is unavailable right now. Please try again, or choose cash on delivery.', 500); }
+  } catch (Throwable $e) { error_log('FOMAXO Razorpay save order: ' . $e->getMessage()); fail('Online payment is unavailable right now. Please try again in a minute, or WhatsApp us.', 500); }
   out(['key' => $KEY_ID, 'order_id' => $ro['id'], 'amount' => $amount, 'currency' => 'INR',
        'prefill' => ['name' => $cust['name'], 'email' => $cust['email'], 'contact' => preg_replace('/\s+/', '', $cust['phone'])]]);
 }
