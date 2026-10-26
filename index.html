@@ -5304,7 +5304,7 @@ function checkoutPage(q){
       <label>State<select name="state" autocomplete="address-level1" required><option value="">Choose state</option>${IN_STATES.map(x => `<option${x === d.state ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
     </div>
     <div class="row2 co-more2" id="coMoreBox">
-      <label><span>Landmark <small>(optional)</small></span><input name="landmark" value="${v('landmark')}" maxlength="80" placeholder="Near a temple, school, shop"></label>
+      <label><span>Landmark <small>(optional)</small></span><input name="landmark" value="${v('landmark')}" maxlength="80" placeholder="Near a school, shop"></label>
       <label><span>Note <small>(optional)</small></span><input name="note" maxlength="300" placeholder="Delivery time or gift message"></label>
     </div>
     <p class="co-fine">We remember these details on this device for your next order and WhatsApp you about your delivery.</p>
