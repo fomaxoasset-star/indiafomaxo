@@ -989,15 +989,35 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $steps = [['visits', 'Visited the site'], ['product', 'Saw a product'], ['cart', 'Added to bag'], ['checkout', 'Opened checkout'], ['typed', 'Typed details'], ['pay', 'Reached payment'], ['buy', 'Bought']];
   $worst = null; for ($i = 1; $i < count($steps); $i++) { $lost = $F[$steps[$i - 1][0]] - $F[$steps[$i][0]]; if ($lost > 0 && (!$worst || $lost > $worst[1])) $worst = [$i, $lost]; }
   $top = max(1, $F['visits']); $fun = '';
-  foreach ($steps as $i => [$k, $l]) { $lost = $i ? $F[$steps[$i - 1][0]] - $F[$k] : 0; $w = $worst && $worst[0] === $i;
-    $fun .= '<div class="st' . ($w ? ' worst' : '') . '"><span>' . $l . ($lost > 0 ? ' <span class="stop">' . $nf($lost) . ' stopped' . ($w ? ' · biggest loss' : '') . '</span>' : '') . '</span><b>' . $nf($F[$k]) . ' <small class="muted">' . $pctT($pct($F[$k], $F['visits'])) . '</small></b><span class="bar"><i style="width:' . round($F[$k] / $top * 100, 1) . '%"></i></span></div>'; }
+  /* tap a step: what it means, its numbers, why people stop there and what to do (the same words as the tips) */
+  $srcN = fn($k) => SOURCES[$k] ?? ucfirst($k); $dv = $V['by_device'];
+  $info = [
+    'visits' => ['Everyone who opened any page of the site in these dates.', array_values(array_filter([
+        $V['by_source'] ? 'Most visits came from ' . implode(', ', array_map(fn($r) => '<b>' . h($srcN($r['k'])) . '</b> (' . $nf($r['visits']) . ' visits, ' . $nf($r['adds']) . ' added to bag)', array_slice($V['by_source'], 0, 3))) . '.' : '',
+        isset($dv['phone']) || isset($dv['computer']) ? 'Phone: <b>' . $nf($dv['phone']['visits'] ?? 0) . '</b> visits · Laptop: <b>' . $nf($dv['computer']['visits'] ?? 0) . '</b> visits.' : '',
+        $V['visits'] ? '<b>' . $nf($V['bounce']) . '</b> of ' . $nf($V['visits']) . ' (' . $pctT($pct($V['bounce'], $V['visits'])) . ') saw one page and left.' : ''])),
+      'More visitors only help when they are the right people and land on the right page. A source with many visits and no adds to bag costs money for nothing.',
+      ['Compare the sources above: keep the ones whose visitors add to bag, change or stop the rest.', 'Send every ad to the exact product it shows.'], 'check ads'],
+    'product' => ['Visits that opened at least one perfume page.', ['<b>' . $nf(max(0, $F['visits'] - $F['product'])) . '</b> visits never opened a perfume page.'],
+      'They landed on the home page or another page and did not find a perfume they liked, so they left.',
+      ['Make the first screen of the home page show the best sellers with prices.', 'Send ads straight to a product page, not the home page.'], 'fix home page'],
+  ];
+  foreach ($leaks as [$a, $b, $title, $word, $extra, $why, $steps0]) $info[$b] = [$title . '.', $extra, $why, $steps0, $word];
+  $info['cart'][0] = 'Visits that added a perfume to the bag.'; $info['checkout'][0] = 'Visits that opened the checkout page.';
+  $info['typed'][0] = 'Visits that typed their name or mobile at checkout.'; $info['pay'][0] = 'Visits that reached the pay step (card, UPI or Cash on delivery).'; $info['buy'][0] = 'Visits that placed a real order.';
+  foreach ($steps as $i => [$k, $l]) { $lost = $i ? $F[$steps[$i - 1][0]] - $F[$k] : 0; $w = $worst && $worst[0] === $i; [$what, $data, $why, $todo, $word] = $info[$k];
+    $data = array_merge([$i ? '<b>' . $nf($F[$steps[$i - 1][0]]) . '</b> ' . $stepName[$steps[$i - 1][0]] . ', <b>' . $nf($F[$k]) . '</b> ' . $stepName[$k] . ($lost > 0 ? ': <b>' . $nf($lost) . '</b> stopped here (' . $pctT($pct($lost, $F[$steps[$i - 1][0]])) . ').' : '. Nobody stopped here.') : '<b>' . $nf($F['visits']) . '</b> visits.'], $data);
+    $fun .= '<details class="fs" name="fs"><summary class="st' . ($w ? ' worst' : '') . '"><span>' . $l . ($lost > 0 ? ' <span class="stop">' . $nf($lost) . ' stopped' . ($w ? ' · biggest loss' : '') . '</span>' : '') . '</span><b>' . $nf($F[$k]) . ' <small class="muted">' . $pctT($pct($F[$k], $F['visits'])) . '</small><i class="fchev" aria-hidden="true"></i></b><span class="bar"><i style="width:' . round($F[$k] / $top * 100, 1) . '%"></i></span></summary>'
+          . '<div class="fsi"><p class="muted">' . $what . '</p><p><span class="tl">What the data shows</span>' . implode('<br>', $data) . '</p>'
+          . ($i === 0 || $lost > 0 ? '<p><span class="tl">' . ($i ? 'Why people stop here' : 'Why it matters') . '</span>' . $why . '</p><div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . '<li>Reply <b class="tword">' . h($word) . '</b> in our chat and we build it, with pictures first.</li></ol></div>' : '')
+          . '</div></details>'; }
   $tipsH = '';
   foreach ($tips as $i => $t)
     $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
             . '<div class="tst"><span class="tl">Steps</span><ol>' . implode('', array_map(fn($s) => '<li>' . $s . '</li>', $t['steps'])) . '<li>Reply <b class="tword">' . h($t['word']) . '</b> in our chat and we build it, with pictures first.</li></ol></div></div></li>';
   $body .= '<div class="atop">' . date_bar($D, [], '. Your own visits and bots are not counted.') . '</div><div class="imp">'
     . '<div class="box i-fun"><div class="bh"><h3>Where visitors stop</h3></div><div class="bb"><div class="fun cfun">' . $fun . '</div>'
-    . '<p class="muted small cvn">' . ($F['visits'] < 20 ? '<b>Only ' . $nf($F['visits']) . ' visits in these dates: pick 7 or 30 days for surer tips.</b> ' : '') . 'Each line counts visits. The red words show how many stopped at that step.</p>'
+    . '<p class="muted small cvn">' . ($F['visits'] < 20 ? '<b>Only ' . $nf($F['visits']) . ' visits in these dates: pick 7 or 30 days for surer tips.</b> ' : '') . 'Each line counts visits. The red words show how many stopped at that step. <b>Tap a step</b> to see why and what to do.</p>'
     . '<div class="ihow"><b>How to use this page</b><ol><li>Start with tip 1: it affects the most people.</li><li>Read what the data shows and follow the steps.</li><li>Check again after a week: the numbers should move.</li></ol></div></div></div>'
     . '<div class="box i-tips"><div class="bh"><h3>What to fix first</h3><span class="sp"></span><a class="btn line sm" href="' . h(self_url(['tab' => 'analytics', 'vj' => 1])) . '">See the visits</a></div><div class="bb">'
     . ($tipsH ? '<ol class="tips">' . $tipsH . '</ol>' : '<p class="empty">No clear problem in these dates yet. Pick 7 or 30 days, or check back when more people have visited.</p>') . '</div></div></div>';
