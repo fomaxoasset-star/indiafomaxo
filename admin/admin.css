@@ -840,3 +840,6 @@ details.order:not([open]){content-visibility:auto;contain-intrinsic-size:auto 58
   .imp{display:block;overflow:auto;overscroll-behavior:contain}.imp>.box{overflow:visible;margin-bottom:10px}.imp .bb{overflow:visible}
 }
 @media (prefers-color-scheme:light){.vtsw button.on{background:#f3ead8}.tno{color:#fff}}
+/* Improve: tap a step in Where visitors stop */
+.fs>summary{list-style:none;cursor:pointer;border-radius:6px;padding:2px 4px;margin:0 -4px}.fs>summary::-webkit-details-marker{display:none}.fs>summary:hover{background:rgba(201,162,74,.08)}.fchev{display:inline-block;width:7px;height:7px;border-right:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold);transform:rotate(45deg);margin:0 2px 2px 8px;transition:transform .15s}.fs[open] .fchev{transform:rotate(-135deg);margin-bottom:-2px}
+.fsi{margin:6px 0 4px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:6px;font-size:13px;line-height:1.45}.fsi p{margin:0 0 6px}.fsi .tl{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);margin-bottom:1px}.fsi .tst ol{margin:0;padding-left:18px}.fsi .tst li{margin:2px 0}
