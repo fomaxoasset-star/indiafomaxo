@@ -5832,6 +5832,14 @@ function bindHome(){
   draw(false); auto();
   $('#hcAdd').onclick = () => { const p = P[HERO_SLIDES[i].id]; addToCart(p.id, defaultSize(p)); };
   $('#hcBuyNow').onclick = () => { const p = P[HERO_SLIDES[i].id]; buyNow([{id:p.id, opt:defaultSize(p), qty:1}]); };
+  /* phone (AJAY 26/10/2026, Improve tip "Many people leave on Home": they stay about 2 minutes, then leave): once the banner's price box is scrolled past,
+     a bar at the bottom gives one clear next step: try any scent in 10ml (or see every perfume when no mini is on the website). Gone again at the footer */
+  const mb = $('#mbuy'), mIds = ((S.mini && S.mini.products) || []).filter(id => P[id] && !isOut(P[id]) && hasPrice(P[id].prices[10]));   // hidden products are already left out of S.mini
+  const mFrom = mIds.length ? Math.min(...mIds.map(id => P[id].prices[10])) : 0;
+  mb.innerHTML = mFrom ? `<div class="n"><b>Not sure which one?</b><small><span>Try any scent in 10ml</span><span class="mp">from ${money(mFrom)}</span></small></div><a class="btn sm" href="#/collections/mini">Try 10ml</a>`
+    : `<div class="n"><b>Find your scent</b><small><span>Every FOMAXO perfume</span></small></div><a class="btn sm" href="#/fragrances">Shop all</a>`;
+  const hb = $('#hcBuy'), foot = $('footer');
+  mobileBarCheck = () => { const r = hb.getBoundingClientRect(); mb.classList.toggle('show', r.bottom < 0 && (!foot || foot.getBoundingClientRect().top > innerHeight)); };
   const start = () => { clearInterval(heroTimer); heroTimer = setInterval(() => show((i+1) % figs.length, false), 6500); };
   btns.forEach(b => b.onclick = () => { show(+b.dataset.i); start(); });
   /* phones: swipe the banner left or right */
