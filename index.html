@@ -5810,10 +5810,12 @@ function reelCard(p){
       <div class="rl-acts"><button class="btn line sm tc" type="button" data-add${out ? ' disabled' : ''}>Add To Cart</button><button class="btn sm tc" type="button" data-buy${out ? ' disabled' : ''}>Buy Now</button></div>
     </div>`;
 }
+/* the player's cover photo is the same light copy the row tile shows (already loaded, so it shows at once), and the other videos' covers load only when swiped to:
+   the tapped video no longer waits behind 4 full-size product photos (2.8 s → under 1 s on a slow phone, 26 Oct) */
 function reelSlide(v, k){
   const ps = vidProds(v).map(id => P[id]), name = ps.length ? ps[0].name : 'FOMAXO';
   return `<section class="rl-s${v.e ? ' emb' : ''}${v.wd ? ' wide' : ''}" data-k="${k}"><div class="rl-stage">
-    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" playsinline loop muted preload="none" data-poster="${vidPoster(v)}" data-src="${esc(v.v)}"></video>`}${!v.e && vidPoster(v) ? `<img class="rl-pic" src="${vidPoster(v)}" alt="">` : ''}
+    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" playsinline loop muted preload="none" data-poster="${vidPoster(v, VT_W(v))}" data-src="${esc(v.v)}"></video>`}${!v.e && vidPoster(v) ? `<img class="rl-pic" src="${vidPoster(v, VT_W(v))}" alt="" loading="lazy">` : ''}
     <span class="rl-pause" aria-hidden="true">${VI.play}</span>
     ${v.n && vidPage() ? `<span class="vt-by rl-by">${VI.by}<bdi>${esc(v.n)}</bdi></span>` : ''}
     ${!ps.length ? `<div class="rl-cards"><div class="rl-card rl-shop"><div class="rl-info"><span class="rl-n">${v.w ? esc(v.w) : 'FOMAXO'}</span><span class="rl-f">${v.w ? 'FOMAXO' : 'Luxury Care'}</span></div><a class="btn sm tc" href="#/fragrances">Shop Now</a></div></div>`
