@@ -993,7 +993,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     $fun .= '<div class="st' . ($w ? ' worst' : '') . '"><span>' . $l . ($lost > 0 ? ' <span class="stop">' . $nf($lost) . ' stopped' . ($w ? ' · biggest loss' : '') . '</span>' : '') . '</span><b>' . $nf($F[$k]) . ' <small class="muted">' . $pctT($pct($F[$k], $F['visits'])) . '</small></b><span class="bar"><i style="width:' . round($F[$k] / $top * 100, 1) . '%"></i></span></div>'; }
   $tipsH = '';
   foreach ($tips as $i => $t)
-    $tipsH .= '<li class="tip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
+    $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
             . '<div class="tst"><span class="tl">Steps</span><ol>' . implode('', array_map(fn($s) => '<li>' . $s . '</li>', $t['steps'])) . '<li>Reply <b class="tword">' . h($t['word']) . '</b> in our chat and we build it, with pictures first.</li></ol></div></div></li>';
   $body .= '<div class="atop">' . date_bar($D, [], '. Your own visits and bots are not counted.') . '</div><div class="imp">'
     . '<div class="box i-fun"><div class="bh"><h3>Where visitors stop</h3></div><div class="bb"><div class="fun cfun">' . $fun . '</div>'
