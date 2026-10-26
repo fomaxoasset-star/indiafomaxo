@@ -2502,6 +2502,14 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
   .pdp{padding-top:14px}
   body:has(.mbuy.show) .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 }
+/* phone (AJAY 26/10/2026, Improve tip "leave after one page"): the 01–07 names are one sideways row instead of three rows, so the price, Add To Cart and Buy Now
+   come up into the first screen, also inside Instagram's browser (its own bars take part of the screen). The name showing now slides into view */
+@media(max-width:760px){
+  .hero-cine .hc-nav{display:flex;gap:22px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px;scroll-padding:0 16px;overscroll-behavior-x:contain}
+  .hero-cine .hc-nav::-webkit-scrollbar{display:none}
+  .hero-cine .hc-nav button{flex:0 0 auto;min-width:0}
+  .hero-cine .hc-nav button .t{overflow:visible;text-overflow:clip}
+}
 </style>
 </head><body>
 <script>document.body.classList.add("home")</script>
@@ -5764,6 +5772,7 @@ function bindHome(){
     const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); set(); } }, {rootMargin: '800px 0px'}); io.observe(el); });
   let shown = false;
   const show = (n, back = n < i) => { loadSlide(n); const old = i; i = n; if (old !== i) { figs.forEach(f => f.classList.remove('prev')); wrap.classList.toggle('back', back); void wrap.offsetWidth; } figs.forEach((f,k) => f.classList.toggle('on', k === i)); if (old !== i) { figs[old].classList.add('prev'); const hc = $('#heroCine'); hc.classList.remove('hc-swap'); void hc.offsetWidth; hc.classList.add('hc-swap'); } btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
+    const nav = btns[i].parentNode; if (nav.scrollWidth > nav.clientWidth + 2) nav.scrollTo({left: Math.max(0, nav.scrollLeft + btns[i].getBoundingClientRect().left - nav.getBoundingClientRect().left - 16), behavior: shown ? 'smooth' : 'auto'});   // phone: the sideways row brings the name showing now into view
     if (shown) void btns[i].offsetWidth; shown = true; btns[i].classList.add('run');   // restart the bar's fill (not needed the first time, which saves a full layout while the page opens)
     const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = s.name || P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add To Cart'; $('#hcBuyNow').hidden = o; ahead(); };
   /* shop the collection: 8 boxes, paging through every product */
@@ -5839,6 +5848,12 @@ $('#mnavFoot').innerHTML = `<a href="mailto:${S.contact.email}">${S.contact.emai
 addEventListener('hashchange', route);
 /* welcome box: a new visitor (no welcome box yet, no number known, no order on this device) sees only this box, as soon as the site opens (or the offer popup with its WhatsApp box when that is on, AJAY 2026-10-22);
    the offer popups wait for a later visit. The name + number go to Admin → Left at checkout like the bag box (same 10% coupon, sent from there on WhatsApp) */
+/* someone who came from Instagram, Facebook or an ad link (AJAY 26/10/2026, Improve tip "leave after one page"): no popup covers the page they landed on.
+   It waits until they open a second page, or 20 s on the first one. Everyone else still gets it as the site opens */
+const SOCIAL_LAND = (() => { try { return /Instagram|FBAN|FBAV|FB_IAB/i.test(navigator.userAgent) || /[?&](fbclid|gclid|utm_source)=/.test(location.search + location.hash) || /instagram|facebook/.test(document.referrer); } catch(e) { return false; } })();
+const afterLanding = fn => { if (!SOCIAL_LAND) return setTimeout(fn, 300);
+  let done = false; const run = () => { if (done) return; done = true; removeEventListener('hashchange', h); fn(); }, h = () => setTimeout(run, 600);
+  addEventListener('hashchange', h); return setTimeout(run, 20000); };
 const welDue = () => { try { return !(localStorage.getItem('fx_wel') || waKnownHere()); } catch(e) { return false; } };
 if (waPopOn('welcome') && welDue() && !(OFFER && OFFER.popup)) {   // with the offer popup on, new visitors get that popup (and its WhatsApp box) instead
   let welT = 0;
@@ -5864,7 +5879,7 @@ if (waPopOn('welcome') && welDue() && !(OFFER && OFFER.popup)) {   // with the o
       TRK.lead('coupon', {name: nm, phone: d}, cart); renderCart();
       e.target.outerHTML = '<p class="wel-ok">Thank you. We will send your 10% coupon on WhatsApp.</p>'; $('.ofp-no', pop).textContent = 'Continue shopping'; };
   };
-  welT = setTimeout(go, 300);   // opens as the site opens (AJAY, 2026-10-22)
+  welT = afterLanding(go);   // opens as the site opens (AJAY, 2026-10-22), after the landing page for Instagram and ad visitors
 }
 /* the popups set on Admin → Offer. Only one per visit, never on the checkout or thank-you page, about 2.5 seconds after arrival:
    the New product popup first (once per visitor for that product), else the sale popup (once per visit).
@@ -5925,7 +5940,7 @@ if (OFFER || NEWP) {
     document.body.appendChild(pop); document.body.classList.add('lock'); addEventListener('keydown', onKey); waWire();
     requestAnimationFrame(() => { if (pop) { pop.classList.add('on'); $('.ofp-box', pop).focus({preventScroll: true}); } });
   };
-  if (!visitUsed() && (newpDue() || (OFFER && OFFER.popup))) setTimeout(() => { due = true; openPop(); }, 300);   // as soon as the site opens (AJAY, 2026-10-22)
+  if (!visitUsed() && (newpDue() || (OFFER && OFFER.popup))) afterLanding(() => { due = true; openPop(); });   // as soon as the site opens (AJAY, 2026-10-22), after the landing page for Instagram and ad visitors
   /* arriving on checkout first: the popup waits until they move to another page */
   addEventListener('hashchange', () => { if (onCheckout()) closePop(); else if (due) setTimeout(openPop, 600); });
   if (OFFER && OFFER.end) {
