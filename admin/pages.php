@@ -839,14 +839,7 @@ if ($tab === 'analytics' && $vj) { $body0 = $body; try {   // a failure shows it
   foreach ($V['leave'] as $r) $body .= '<tr><td><b>' . h(insights_pg_name($r['pg'], $names)) . '</b><span class="bar vbar"><i style="width:' . round($r['left_n'] / $mx * 100, 1) . '%"></i></span></td><td class="r">' . number_format($r['seen']) . '</td><td class="r">' . number_format($r['left_n']) . '</td><td class="r"><b>' . $pcT($r['left_n'], $r['seen']) . '</b></td><td class="r">' . insights_secs($r['secs']) . '</td><td class="r">' . ($r['pc'] !== null ? $r['pc'] . '%' : '–') . '</td></tr>';
   $body .= '</tbody></table><p class="muted small cvn">Left: visits that ended on this page. Seen: how far down the page people got, on average.' . ($V['has_trail'] ? '' : ' Taps and scrolling are counted from today.') . '</p></div></div>';
   /* 3. what people tap */
-  $tp = ['btn' => '', 'dead' => '', 'rage' => '']; $tn = ['btn' => 0, 'dead' => 0, 'rage' => 0];
-  foreach ($V['taps'] as $r) foreach (['btn' => !$r['dead'], 'dead' => (bool)$r['dead'], 'rage' => $r['rage'] > 0] as $k => $ok)
-    if ($ok && $tn[$k]++ < 60) $tp[$k] .= '<tr><td><b>' . h($r['label'] !== '' ? $r['label'] : '–') . '</b><small class="cn">' . h(insights_pg_name($r['pg'], $names)) . '</small></td><td class="r">' . number_format($k === 'rage' ? $r['rage'] : $r['taps']) . '</td><td class="r">' . number_format($k === 'rage' ? $r['rage_people'] : $r['people']) . '</td></tr>';
-  $body .= '<div class="box v-taps" data-pane="taps"><div class="bh"><h3>What people tap</h3><span class="seg vtsw"><button type="button" data-vt="btn" class="on">Buttons</button><button type="button" data-vt="dead">Not buttons' . ($tn['dead'] ? ' (' . $tn['dead'] . ')' : '') . '</button><button type="button" data-vt="rage">Angry' . ($tn['rage'] ? ' (' . $tn['rage'] . ')' : '') . '</button></span></div><div class="bb np">';
-  foreach (['btn' => 'No taps counted yet.', 'dead' => 'Nobody tapped something that is not a button.', 'rage' => 'No angry taps. Good.'] as $k => $empty)
-    $body .= '<div class="vtl" data-vt="' . $k . '"' . ($k === 'btn' ? '' : ' hidden') . '><table class="grid ctab"><thead><tr><th>' . ($k === 'btn' ? 'Button or link' : 'Tapped') . ' · page</th><th class="r">Taps</th><th class="r">People</th></tr></thead><tbody>' . ($tp[$k] ?: '<tr><td colspan="3" class="empty">' . $empty . '</td></tr>') . '</tbody></table></div>';
-  $body .= '<p class="muted small cvn">Not buttons: people tapped a photo or words and nothing happened, so they may expect it to open. What people type is never kept.</p></div></div></div>'
-    . '<script>document.querySelectorAll(".vtsw button").forEach(function(b){b.onclick=function(){var c=b.closest(".box");c.querySelectorAll(".vtsw button").forEach(function(x){x.classList.toggle("on",x===b)});c.querySelectorAll(".vtl").forEach(function(x){x.hidden=x.dataset.vt!==b.dataset.vt})}})</script>';
+  $body .= taps_box($V, $names, 'box v-taps', ' data-pane="taps"') . '</div>';
 } catch (Throwable $e) { $body = $body0 . '<div class="box"><p class="muted empty">Visits could not open: ' . h($e->getMessage()) . ' (line ' . $e->getLine() . '). Send us a picture of this line.</p></div>'; } }
 if ($tab === 'analytics' && !$cv && !$vj) {
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
@@ -1076,7 +1069,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     . '<div class="ihow"><b>How to use this page</b><ol><li>Start with tip 1: it affects the most people.</li><li>Read what the data shows and follow the steps.</li><li>Check again after a week: the numbers should move.</li></ol></div></div></div>'
     . '<div class="box i-tips"><div class="bh"><h3>What to fix first</h3><span class="sp"></span><a class="btn line sm" href="' . h(self_url(['tab' => 'analytics', 'vj' => 1])) . '">See the visits</a></div><div class="bb">'
     . ($tipsH ? '<ol class="tips">' . $tipsH . '</ol>' : ($doneH ? '<p class="empty">Nothing new to fix right now. A fixed tip comes back here only if the numbers are still bad a week after the fix.</p>' : '<p class="empty">No clear problem in these dates yet. Pick 7 or 30 days, or check back when more people have visited.</p>'))
-    . '</div></div></div>';
+    . '</div></div>' . taps_box($V, $names, 'box i-taps') . '</div>';
 } catch (Throwable $e) { $body = $body0 . '<div class="box"><p class="muted empty">Improve could not open: ' . h($e->getMessage()) . ' (line ' . $e->getLine() . '). Send us a picture of this line.</p></div>'; } }
 
 /* ============ Progress: a clean page to show someone how the shop is doing, month by month or year by year ============ */
