@@ -182,6 +182,10 @@ em{font-style:italic}
 .btn.sm{min-height:42px;padding:0 20px;font-size:10px}
 .btn.block{width:100%}
 .btn[disabled]{opacity:.4;pointer-events:none}
+/* phones: pulling down never reloads the page; a tap shows at once (the button presses in, no double-tap zoom wait) (AJAY 2026-10-26) */
+html,body{overscroll-behavior-y:none}
+html{touch-action:manipulation}
+.btn:active{transform:scale(.97);filter:brightness(.88);transition:none}
 .link{display:inline-block;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--champagne);border-bottom:1px solid var(--line-2);padding-bottom:6px;transition:color .4s,border-color .4s}
 .link:hover{color:var(--gold-hi);border-color:var(--gold-hi)}
 /* ---------- announcement + nav ---------- */
@@ -803,7 +807,8 @@ html[data-mode="light"] .bag-save{color:#1f7d45}
 .sres small{font-size:12px;color:var(--muted)}
 /* toast */
 .toast{position:fixed;left:50%;bottom:28px;z-index:80;transform:translate(-50%,40px);opacity:0;visibility:hidden;background:var(--panel);border:1px solid var(--gold);padding:14px 22px;display:flex;gap:16px;align-items:center;font-size:13px;transition:transform .6s var(--ease);max-width:calc(100vw - 32px)}
-.toast{transition:transform .6s var(--ease),opacity .4s,visibility .4s}.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
+.toast{transition:transform .6s var(--ease),opacity .4s,visibility .4s}
+@media(max-width:600px){.toast{transition:transform .22s var(--ease),opacity .15s,visibility .15s}}   /* phones: the added message appears quicker after a tap */.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
 @media(max-width:600px){.toast{left:16px;right:16px;transform:translateY(40px);justify-content:space-between}.toast.show{transform:none}}
 .toast #toastGo{background:var(--gold);color:var(--black);padding:8px 12px;margin:-4px -8px -4px 0}
 .toast a{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);white-space:nowrap}
@@ -5497,17 +5502,24 @@ function tyMore(){
 /* ============================ ROUTER ============================ */
 let heroTimer, homeGridTimer;
 /* back and forward return to the spot the shopper left on that page (each history step gets a key; its scroll is kept for the visit) */
+document.addEventListener('touchstart', () => {}, {passive: true});   // iPhone shows the pressed look (:active) only when the page listens to touches
 try { history.scrollRestoration = 'manual'; } catch(e) {}
 const SCROLLS = (() => { try { return JSON.parse(sessionStorage.getItem('fx_scroll') || '{}'); } catch(e) { return {}; } })();
 let shownKey = null;
 /* a reload stays on the same page and at the same spot: the spot is also saved when the page is left or hidden */
-const keepSpot = () => { if (!shownKey) return; SCROLLS[shownKey] = Math.round(scrollY); try { sessionStorage.setItem('fx_scroll', JSON.stringify(SCROLLS)); } catch(e) {} };
+// the spot is a part of the page (the box at the top of the screen) plus how far it sat from the top, and which boxes were open, not just pixels:
+// opened boxes (Description, Shipping...) close again and videos / reviews load later, so plain pixels landed lower (on reviews or the bottom)
+const spotEls = () => [...document.querySelectorAll('#app [id], #app details, #app section')].filter(e => e.offsetParent);
+const spotKey = (e, all) => e.id ? '#' + e.id : e.tagName + ':' + all.filter(x => !x.id && x.tagName === e.tagName).indexOf(e);
+const spotNow = () => { const y = Math.round(scrollY); if (!y) return 0; const all = spotEls(), a = all.find(e => e.getBoundingClientRect().bottom > 100);
+  return {y, a: a ? spotKey(a, all) : '', o: a ? Math.round(a.getBoundingClientRect().top) : 0, d: [...document.querySelectorAll('#app details')].map(x => x.open ? 1 : 0).join('')}; };
+const keepSpot = () => { if (!shownKey) return; SCROLLS[shownKey] = spotNow(); try { sessionStorage.setItem('fx_scroll', JSON.stringify(SCROLLS)); } catch(e) {} };
 addEventListener('pagehide', keepSpot); document.addEventListener('visibilitychange', () => { if (document.hidden) keepSpot(); });
 function stepKey(){ const st = history.state; if (st && st.fk) return [st.fk, true];
   const fk = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); try { history.replaceState({...(st || {}), fk}, ''); } catch(e) {} return [fk, false]; }
 function route(){
-  if (shownKey) { SCROLLS[shownKey] = Math.round(scrollY); try { sessionStorage.setItem('fx_scroll', JSON.stringify(SCROLLS)); } catch(e) {} }   // still the page being left
-  const [key, known] = stepKey(), backTo = known && key !== shownKey && SCROLLS[key] > 0 ? SCROLLS[key] : 0; shownKey = key;
+  if (shownKey) { SCROLLS[shownKey] = spotNow(); try { sessionStorage.setItem('fx_scroll', JSON.stringify(SCROLLS)); } catch(e) {} }   // still the page being left
+  const [key, known] = stepKey(), sv = SCROLLS[key], backY = sv && typeof sv === 'object' ? sv.y : +sv || 0, backTo = known && key !== shownKey && backY > 0 ? backY : 0; shownKey = key;
   const raw = location.hash.replace(/^#/, '') || '/';
   const [path, qs] = raw.split('?'); const q = new URLSearchParams(qs || '');
   const seg = path.split('/').filter(Boolean);
@@ -5551,7 +5563,10 @@ function route(){
   after && after();
   bindCommon();
   if (backTo) { let left = 50, moved = false; const stop = () => { moved = true; }; ['wheel', 'touchstart', 'keydown'].forEach(k => addEventListener(k, stop, {once: true, passive: true}));
-    const go = () => { if (moved || shownKey !== key) return; window.scrollTo({top: backTo, left: 0, behavior: 'instant'}); if (Math.abs(scrollY - backTo) > 2 && --left > 0) setTimeout(go, 100); }; go(); }   // tries again while pictures load and the page grows, up to 5s or until the shopper scrolls
+    const sp = sv && typeof sv === 'object' ? sv : {}, ds = [...document.querySelectorAll('#app details')];
+    if (sp.d && sp.d.length === ds.length) ds.forEach((x, i) => { x.open = sp.d[i] === '1'; });   // boxes the shopper had opened are open again
+    const target = () => { if (sp.a) { const all = spotEls(), e = all.find(x => spotKey(x, all) === sp.a); if (e) return Math.max(0, Math.round(e.getBoundingClientRect().top + scrollY - (+sp.o || 0))); } return backTo; };
+    const go = () => { if (moved || shownKey !== key) return; const y = target(); if (Math.abs(scrollY - y) > 2) window.scrollTo({top: y, left: 0, behavior: 'instant'}); if (--left > 0) setTimeout(go, 100); }; go(); }   // tries again while pictures load and the page grows, up to 5s or until the shopper scrolls
 }
 /* shop videos (fomaxo.in/admin → Products → Videos): a row of short upright videos on the home page; tapping one opens it full screen
    with its product's sizes, Add To Cart and Buy Now, and a swipe up or down goes to the next video. Videos of hidden products are left out.
