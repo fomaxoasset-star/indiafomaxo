@@ -46,16 +46,16 @@ function date_box(string $name, string $ymd, string $label = '', bool $required 
     . '<input type="date" tabindex="-1" aria-label="Pick ' . h($label ?: 'a date') . ' from the calendar"></span></span>';
 }
 /* the date bar on each page: which quick buttons it has, and where it starts */
-const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'improve' => [['today', 'd7', 'd30'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
+const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'yest', 'd7', 'd30', 'year'], 'd7'], 'improve' => [['today', 'yest', 'd7', 'd30'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
   'sales' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all'],
   'rvreq' => [['today', 'd7', 'd30', 'all'], 'all'],   // Review requests (on the Orders tab): by order date
   'refill' => [['today', 'd7', 'd30', 'all'], 'all'],   // Refill reminders (on the Orders tab): by reminder day (order date + Days after order)
   'products' => [['today', 'd7', 'd30', 'all'], 'd30']];   // Products: bottles sold per product, by order date
-const DATE_PRESETS = ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
+const DATE_PRESETS = ['today' => 'Today', 'yest' => 'Yesterday', 'd7' => '7 days', 'd30' => '30 days', 'year' => 'Year', 'all' => 'All'];
 /* the first and last day of a quick button ('' for All); Year is the last 12 months */
 function preset_span(string $r): array {
   $t = date('Y-m-d');
-  return match ($r) { 'today' => [$t, $t], 'd7' => [date('Y-m-d', strtotime('-6 day')), $t], 'd30' => [date('Y-m-d', strtotime('-29 day')), $t],
+  return match ($r) { 'today' => [$t, $t], 'yest' => [$y = date('Y-m-d', strtotime('-1 day')), $y], 'd7' => [date('Y-m-d', strtotime('-6 day')), $t], 'd30' => [date('Y-m-d', strtotime('-29 day')), $t],
     'year' => [date('Y-m-d', strtotime(date('Y-m-01') . ' -11 month')), $t], default => ['', ''] };
 }
 /* the dates a page shows: picked now (?r= and ?from= ?to=), else the last ones picked on that page, else its start. Each page remembers its own. */
@@ -75,9 +75,9 @@ function pick_dates(string $page): array {
   if ($save) { $saved[$page] = ['r' => $r] + ($r === 'custom' ? ['from' => $f, 'to' => $t] : []); shop_set('dates', json_encode($saved)); }
   return ['page' => $page, 'r' => $r, 'from' => $f, 'to' => $t];
 }
-/* "Today", "7 days", "30 days", "12 months", "All dates", or the dates ("1–5 Oct") */
+/* "Today", "Yesterday", "7 days", "30 days", "12 months", "All dates", or the dates ("1–5 Oct") */
 function period_label(array $D): string {
-  return ['today' => 'Today', 'd7' => '7 days', 'd30' => '30 days', 'year' => '12 months', 'all' => 'All dates'][$D['r']] ?? date_span($D['from'], $D['to']);
+  return ['today' => 'Today', 'yest' => 'Yesterday', 'd7' => '7 days', 'd30' => '30 days', 'year' => '12 months', 'all' => 'All dates'][$D['r']] ?? date_span($D['from'], $D['to']);
 }
 /* the bar at the top of a page: quick buttons, From and To, Show. $keep: the page's other filters, kept when dates change */
 function date_bar(array $D, array $keep = [], string $note = ''): string {

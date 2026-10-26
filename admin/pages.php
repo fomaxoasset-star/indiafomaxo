@@ -874,7 +874,7 @@ if ($tab === 'analytics' && !$cv && !$vj) {
   foreach (['countries' => 'Top countries', 'states' => 'Visitors by Indian state'] as $gk => $gt) {
     $rows = $G[$gk]; $mx = max(1, ...array_values($rows ?: [1]));
     $body .= '<div class="box geo" data-pane="' . $gk . '"><div class="bh"><h3>' . $gt . '</h3><span class="muted small nw">' . h(period_label($D)) . '</span></div><div class="bb">';
-    if (!$rows) $body .= '<p class="empty">No visits ' . ($D['r'] === 'today' ? 'today' : 'in these dates') . '.</p>';
+    if (!$rows) $body .= '<p class="empty">No visits ' . (['today' => 'today', 'yest' => 'yesterday'][$D['r']] ?? 'in these dates') . '.</p>';
     foreach ($rows as $name => $n) $body .= '<div class="li"><span class="grow">' . ($gk === 'countries' ? '<span class="flag">' . fomaxo_flag((string)$name) . '</span> ' . h(fomaxo_country_name((string)$name)) : h((string)$name)) . '</span><span class="bar"><i style="width:' . round($n / $mx * 100) . '%"></i></span><b class="num">' . number_format($n) . '</b></div>';
     $body .= '<p class="muted small">' . ($gk === 'states' ? 'Approximate: phone networks often show the state of their nearest hub. ' : '') . 'Looked up from the visitor’s IP address on this server; only the country' . ($gk === 'states' ? ' and state are' : ' is') . ' kept. IP geolocation by <a href="https://db-ip.com" target="_blank" rel="noopener">DB-IP</a>.</p></div></div>';
   }
