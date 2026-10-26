@@ -1116,13 +1116,13 @@ function sound_btn(): string {
 }
 
 /* "What people tap" (Analytics → Visits and Improve): buttons, things that are not buttons, angry taps, from insights_data() */
-function taps_box(array $V, array $names, string $cls, string $attr = ''): string {
+function taps_box(array $V, array $names, string $cls, string $attr = '', bool $help = false): string {   // $help: plain steps for each tab instead of the short note (Improve)
   $tp = ['btn' => '', 'dead' => '', 'rage' => '']; $tn = ['btn' => 0, 'dead' => 0, 'rage' => 0];
   foreach ($V['taps'] as $r) foreach (['btn' => !$r['dead'], 'dead' => (bool)$r['dead'], 'rage' => $r['rage'] > 0] as $k => $ok)
     if ($ok && $tn[$k]++ < 60) $tp[$k] .= '<tr><td><b>' . h($r['label'] !== '' ? $r['label'] : '–') . '</b><small class="cn">' . h(insights_pg_name($r['pg'], $names)) . '</small></td><td class="r">' . number_format($k === 'rage' ? $r['rage'] : $r['taps']) . '</td><td class="r">' . number_format($k === 'rage' ? $r['rage_people'] : $r['people']) . '</td></tr>';
   $out = '<div class="' . $cls . '"' . $attr . '><div class="bh"><h3>What people tap</h3><span class="seg vtsw"><button type="button" data-vt="btn" class="on">Buttons</button><button type="button" data-vt="dead">Not buttons' . ($tn['dead'] ? ' (' . $tn['dead'] . ')' : '') . '</button><button type="button" data-vt="rage">Angry' . ($tn['rage'] ? ' (' . $tn['rage'] . ')' : '') . '</button></span></div><div class="bb np">';
   foreach (['btn' => 'No taps counted yet.', 'dead' => 'Nobody tapped something that is not a button.', 'rage' => 'No angry taps. Good.'] as $k => $empty)
     $out .= '<div class="vtl" data-vt="' . $k . '"' . ($k === 'btn' ? '' : ' hidden') . '><table class="grid ctab"><thead><tr><th>' . ($k === 'btn' ? 'Button or link' : 'Tapped') . ' · page</th><th class="r">Taps</th><th class="r">People</th></tr></thead><tbody>' . ($tp[$k] ?: '<tr><td colspan="3" class="empty">' . $empty . '</td></tr>') . '</tbody></table></div>';
-  return $out . '<p class="muted small cvn">Not buttons: people tapped a photo or words and nothing happened, so they may expect it to open. What people type is never kept.</p></div></div>'
+  return $out . ($help ? '<ul class="thelp"><li><b>Buttons</b>: what people tapped most. Many taps on Add to bag is good.</li><li><b>Not buttons</b>: they tapped a photo or words and nothing happened. Reply <b class="tword">make it tappable</b> and we make it work.</li><li><b>Angry</b>: they tapped the same spot 3 times fast, so it felt slow or broken. Reply <b class="tword">check taps</b> and we check it.</li><li>What people type is never kept.</li></ul>' : '<p class="muted small cvn">Not buttons: people tapped a photo or words and nothing happened, so they may expect it to open. What people type is never kept.</p>') . '</div></div>'
     . '<script>document.querySelectorAll(".vtsw button").forEach(function(b){b.onclick=function(){var c=b.closest(".box");c.querySelectorAll(".vtsw button").forEach(function(x){x.classList.toggle("on",x===b)});c.querySelectorAll(".vtl").forEach(function(x){x.hidden=x.dataset.vt!==b.dataset.vt})}})</script>';
 }
