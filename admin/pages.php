@@ -1002,7 +1002,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   foreach ($done as $w => $d) if (!isset($doneH[$w]) && !in_array($w, array_column($tips, 'word'), true)) $doneH[$w] = '';
   /* no repeats: a piece of a fix that is done stays hidden with it; a piece of a tip still on the list becomes one more line of that tip */
   foreach ($tips as $i => $t) if ($t['part'] !== '' && $t['part'] !== $t['word']) {
-    if (isset($doneH[$t['part']])) { unset($tips[$i]); continue; }
+    if (isset($doneH[$t['part']]) && !$back($t['part'])) { unset($tips[$i]); continue; }
     foreach ($tips as $j => $u) if ($u['word'] === $t['part']) { $tips[$j]['data'] = array_merge($tips[$j]['data'], $t['data'] ? ['<b>' . preg_replace('~^Many people leave on ~', '', $t['title']) . ':</b> ' . strip_tags($t['data'][0], '<b>')] : []); unset($tips[$i]); break; }
   }
   usort($tips, fn($a, $b) => $b['people'] <=> $a['people']); $tips = array_slice($tips, 0, 6);
