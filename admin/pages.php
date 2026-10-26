@@ -984,6 +984,15 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   if (($er = $V['errors'][0] ?? null) && $er['people'] >= 2)
     $tip($er['people'], 'An error happens on ' . h(insights_pg_name($er['pg'], $names)), ['<b>' . $nf($er['people']) . '</b> visits had this error ' . $nf($er['n']) . ' times: <span class="muted">' . h($er['label']) . '</span>'],
       'An error can stop a button from working, so people cannot add to bag or pay.', ['Nothing for you to do: we read the error and fix it.'], 'fix the error');
+  /* fixes already built and live on fomaxo.in (reply word => day it went live, e.g. 'fix product page' => '2026-11-01'): the tip leaves the list and waits in Done.
+     It comes back only when a week has passed and the chosen dates start after the fix, so it is judged on new visits only */
+  $done = [];
+  $doneH = []; $back = fn($w) => isset($done[$w]) && time() >= strtotime($done[$w] . ' +7 days') && $from >= $done[$w];
+  foreach ($tips as $i => $t) if (isset($done[$t['word']])) {
+    if ($back($t['word'])) { $tips[$i]['data'][] = '<b>Fixed on ' . date('d/m/Y', strtotime($done[$t['word']])) . ', and still happening on the new visits.</b>'; continue; }
+    $doneH[$t['word']] = $t['title']; unset($tips[$i]);
+  }
+  foreach ($done as $w => $d) if (!isset($doneH[$w]) && !in_array($w, array_column($tips, 'word'), true)) $doneH[$w] = '';
   usort($tips, fn($a, $b) => $b['people'] <=> $a['people']); $tips = array_slice($tips, 0, 6);
   /* the funnel, the biggest leak marked */
   $steps = [['visits', 'Visited the site'], ['product', 'Saw a product'], ['cart', 'Added to bag'], ['checkout', 'Opened checkout'], ['typed', 'Typed details'], ['pay', 'Reached payment'], ['buy', 'Bought']];
@@ -1009,18 +1018,24 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     $data = array_merge([$i ? '<b>' . $nf($F[$steps[$i - 1][0]]) . '</b> ' . $stepName[$steps[$i - 1][0]] . ', <b>' . $nf($F[$k]) . '</b> ' . $stepName[$k] . ($lost > 0 ? ': <b>' . $nf($lost) . '</b> stopped here (' . $pctT($pct($lost, $F[$steps[$i - 1][0]])) . ').' : '. Nobody stopped here.') : '<b>' . $nf($F['visits']) . '</b> visits.'], $data);
     $fun .= '<details class="fs" name="fs"><summary class="st' . ($w ? ' worst' : '') . '"><span>' . $l . ($lost > 0 ? ' <span class="stop">' . $nf($lost) . ' stopped' . ($w ? ' · biggest loss' : '') . '</span>' : '') . '</span><b>' . $nf($F[$k]) . ' <small class="muted">' . $pctT($pct($F[$k], $F['visits'])) . '</small><i class="fchev" aria-hidden="true"></i></b><span class="bar"><i style="width:' . round($F[$k] / $top * 100, 1) . '%"></i></span></summary>'
           . '<div class="fsi"><p class="muted">' . $what . '</p><p><span class="tl">What the data shows</span>' . implode('<br>', $data) . '</p>'
-          . ($i === 0 || $lost > 0 ? '<p><span class="tl">' . ($i ? 'Why people stop here' : 'Why it matters') . '</span>' . $why . '</p><div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . '<li>Reply <b class="tword">' . h($word) . '</b> in our chat and we build it, with pictures first.</li></ol></div>' : '')
+          . ($i === 0 || $lost > 0 ? '<p><span class="tl">' . ($i ? 'Why people stop here' : 'Why it matters') . '</span>' . $why . '</p>' . (isset($done[$word])
+              ? '<p><span class="tl">Done</span>Fixed on ' . date('d/m/Y', strtotime($done[$word])) . '. We check the numbers again on ' . date('d/m/Y', strtotime($done[$word] . ' +7 days')) . '.</p>'
+              : '<div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . '<li>Reply <b class="tword">' . h($word) . '</b> in our chat and we build it, with pictures first.</li></ol></div>') : '')
           . '</div></details>'; }
   $tipsH = '';
   foreach ($tips as $i => $t)
     $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
             . '<div class="tst"><span class="tl">Steps</span><ol>' . implode('', array_map(fn($s) => '<li>' . $s . '</li>', $t['steps'])) . '<li>Reply <b class="tword">' . h($t['word']) . '</b> in our chat and we build it, with pictures first.</li></ol></div></div></li>';
+  $doneL = '';
+  foreach ($doneH as $w => $title)
+    $doneL .= '<li><span class="dck" aria-hidden="true"></span><div><b>' . ($title ?: h(ucfirst($w))) . '</b><span class="muted small">Fixed on ' . date('d/m/Y', strtotime($done[$w])) . ' · checked again on ' . date('d/m/Y', strtotime($done[$w] . ' +7 days')) . '</span></div></li>';
   $body .= '<div class="atop">' . date_bar($D, [], '. Your own visits and bots are not counted.') . '</div><div class="imp">'
     . '<div class="box i-fun"><div class="bh"><h3>Where visitors stop</h3></div><div class="bb"><div class="fun cfun">' . $fun . '</div>'
     . '<p class="muted small cvn">' . ($F['visits'] < 20 ? '<b>Only ' . $nf($F['visits']) . ' visits in these dates: pick 7 or 30 days for surer tips.</b> ' : '') . 'Each line counts visits. The red words show how many stopped at that step. <b>Tap a step</b> to see why and what to do.</p>'
     . '<div class="ihow"><b>How to use this page</b><ol><li>Start with tip 1: it affects the most people.</li><li>Read what the data shows and follow the steps.</li><li>Check again after a week: the numbers should move.</li></ol></div></div></div>'
     . '<div class="box i-tips"><div class="bh"><h3>What to fix first</h3><span class="sp"></span><a class="btn line sm" href="' . h(self_url(['tab' => 'analytics', 'vj' => 1])) . '">See the visits</a></div><div class="bb">'
-    . ($tipsH ? '<ol class="tips">' . $tipsH . '</ol>' : '<p class="empty">No clear problem in these dates yet. Pick 7 or 30 days, or check back when more people have visited.</p>') . '</div></div></div>';
+    . ($tipsH ? '<ol class="tips">' . $tipsH . '</ol>' : '<p class="empty">No clear problem in these dates yet. Pick 7 or 30 days, or check back when more people have visited.</p>')
+    . ($doneL ? '<div class="idone"><h3>Done</h3><ul>' . $doneL . '</ul><p class="muted small">A done tip goes back on the list only if the numbers are still bad a week after the fix.</p></div>' : '') . '</div></div></div>';
 } catch (Throwable $e) { $body = $body0 . '<div class="box"><p class="muted empty">Improve could not open: ' . h($e->getMessage()) . ' (line ' . $e->getLine() . '). Send us a picture of this line.</p></div>'; } }
 
 /* ============ Progress: a clean page to show someone how the shop is doing, month by month or year by year ============ */
