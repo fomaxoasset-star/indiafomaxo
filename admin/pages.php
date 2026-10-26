@@ -1045,6 +1045,12 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
               : (($tn = array_search($fixOf($word), array_column($tips, 'fix'), true)) !== false ? '<p><span class="tl">What to do</span>See tip <b>' . ($tn + 1) . '</b> in What to fix first.</p>'   // the same fix is a tip already: point to it, not the same steps again
               : '<div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . '<li>Reply <b class="tword">' . h($word) . '</b> in our chat and we build it, with pictures first.</li></ol></div>')) : '')
           . '</div></details>'; }
+  $fixName = ['fix old money' => 'Old Money page: people left without a next step', 'fix product page' => 'Product page: people looked but did not add to bag', 'fix home' => 'Home page: no clear next step',
+    'fix landing page' => 'First page from ads', 'check ads' => 'Ads brought visitors who did not add to bag', 'fix bag' => 'Bag: people did not open checkout', 'fix checkout' => 'Checkout: people did not type their details',
+    'make it faster' => 'Site opened slowly on phones', 'fix phone' => 'Phone: people did not add to bag'];
+  $fixL = ''; foreach ($doneH as $w => $title) $fixL .= '<li>' . ($fixName[$w] ?? ($title ?: h(ucfirst($w)))) . ' <span class="muted">· fixed ' . date('d/m/Y', strtotime($done[$w])) . ', checked again ' . date('d/m/Y', strtotime($done[$w] . ' +7 days')) . '</span></li>';
+  if ($fixL) $fun .= '<details class="fs" name="fs"><summary class="st"><span>Fixed <small class="muted">' . count($doneH) . '</small></span><b><i class="fchev" aria-hidden="true"></i></b></summary>'
+          . '<div class="fsi"><p class="muted">Problems we already fixed. Each one comes back to What to fix first only if its numbers are still bad a week after the fix.</p><ul class="fxl">' . $fixL . '</ul></div></details>';
   $tipsH = '';
   foreach ($tips as $i => $t)
     $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
