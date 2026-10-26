@@ -16,6 +16,11 @@ function insights_table(PDO $db): void {
 
 /* a page address as one name: home is "/", a product page is the product's name */
 function insights_pg(string $p): string { $p = '/' . trim($p, '/'); return in_array($p, ['/', '/home'], true) ? '/' : $p; }
+/* the recorder names a tap by its words; parts with no words get a code name (#mbuy, div.rv-sum), shown here in plain words */
+function insights_tap_name(string $l): string {
+  static $map = ['#mbuy' => 'Bottom Add to cart bar', 'div.n' => 'Bottom Add to cart bar', '#toast' => 'Added to cart message', 'div.rv-sum' => 'Reviews summary', 'article.rv' => 'A review', 'p.rw-note' => 'Review note', 'div.empty' => 'Empty cart', 'video' => 'Video'];
+  return $map[$l] ?? (preg_match('/^(#[\w-]+|[a-z]+\.[\w-]+)$/', $l) ? 'Part of the page (' . $l . ')' : $l);
+}
 function insights_pg_name(string $pg, array $names = []): string {
   if ($pg === '/') return 'Home';
   if (preg_match('~^/product/([a-z0-9-]+)~', $pg, $m)) return $names[$m[1]] ?? ucfirst($m[1]);
@@ -48,13 +53,13 @@ function insights_data(string $from, string $to, int $paths = 60): array {
       if ($t['k'] === 'l') { $load ??= (int)$t['ms']; $speed[$t['device']][] = (int)$t['ms']; continue; }
       if ($t['k'] === 'e') { $ek = $pg . '|' . $t['label']; $errs[$ek] ??= ['pg' => $pg, 'label' => $t['label'], 'people' => [], 'n' => 0]; $errs[$ek]['people'][$sid] = 1; $errs[$ek]['n']++; }
       if ($t['k'] === 's') $scroll[$pg][$sid] = max($scroll[$pg][$sid] ?? 0, (int)$t['pc']);
-      if ($t['k'] === 't') { $tk = $pg . '|' . $t['label'] . '|' . $t['dead']; $taps[$tk] ??= ['pg' => $pg, 'label' => $t['label'], 'dead' => (int)$t['dead'], 'taps' => 0, 'people' => [], 'rage' => 0, 'rage_people' => []];
+      if ($t['k'] === 't') { $tk = $pg . '|' . $t['label'] . '|' . $t['dead']; $taps[$tk] ??= ['pg' => $pg, 'label' => $t['label'], 'name' => insights_tap_name((string)$t['label']), 'dead' => (int)$t['dead'], 'taps' => 0, 'people' => [], 'rage' => 0, 'rage_people' => []];
         $taps[$tk]['taps']++; $taps[$tk]['people'][$sid] = 1; if ($t['rage']) { $taps[$tk]['rage']++; $taps[$tk]['rage_people'][$sid] = 1; } }
       for ($i = count($steps) - 1; $i >= 0; $i--) if ($steps[$i]['pg'] === $pg && $steps[$i]['at'] <= $t['ts']) break;
       if ($i < 0) for ($i = 0; $i < count($steps); $i++) if ($steps[$i]['pg'] === $pg) break;
       if ($i < 0 || $i >= count($steps)) continue;
       if ($t['k'] === 's') $steps[$i]['pc'] = max((int)$steps[$i]['pc'], (int)$t['pc']);
-      else $steps[$i]['taps'][] = ['l' => ($t['k'] === 'e' ? 'Error: ' : '') . $t['label'], 'dead' => (int)$t['dead'], 'rage' => (int)$t['rage'], 'err' => (int)($t['k'] === 'e')];
+      else $steps[$i]['taps'][] = ['l' => $t['k'] === 'e' ? 'Error: ' . $t['label'] : insights_tap_name((string)$t['label']), 'dead' => (int)$t['dead'], 'rage' => (int)$t['rage'], 'err' => (int)($t['k'] === 'e')];
     }
     $d = $did[$sid] ?? [];
     $end = isset($d['buy']) ? 'bought' : (isset($d['pay']) || isset($d['card']) ? 'payment' : (isset($d['checkout']) ? 'checkout' : (isset($d['add']) ? 'bag'
@@ -112,7 +117,7 @@ function insights_write(): void {
       if (!$D['errors']) $L[] = '(none)';
       foreach (['TAPPED BUTTONS AND LINKS' => fn($r) => !$r['dead'], 'TAPS ON THINGS THAT ARE NOT BUTTONS' => fn($r) => $r['dead'], 'ANGRY TAPS (same spot 3 times in a second)' => fn($r) => $r['rage'] > 0] as $h => $keep) {
         $L[] = ''; $L[] = "$h (page | thing | taps | people)"; $n = 0;
-        foreach ($D['taps'] as $r) if ($keep($r) && $n++ < 40) $L[] = sprintf('%s | %s | %d | %d', insights_pg_name($r['pg'], $names), $r['label'], $h[0] === 'A' ? $r['rage'] : $r['taps'], $h[0] === 'A' ? $r['rage_people'] : $r['people']);
+        foreach ($D['taps'] as $r) if ($keep($r) && $n++ < 40) $L[] = sprintf('%s | %s | %d | %d', insights_pg_name($r['pg'], $names), $r['name'], $h[0] === 'A' ? $r['rage'] : $r['taps'], $h[0] === 'A' ? $r['rage_people'] : $r['people']);
         if (!$n) $L[] = '(none)';
       }
       $L[] = ''; $L[] = 'NEWEST VISITS, STEP BY STEP';
