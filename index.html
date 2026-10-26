@@ -789,6 +789,7 @@ html[data-mode="light"] .bag-save{color:#1f7d45}
 .bag-like h5{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:500;margin:0 28px 14px}
 .bl-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 28px 14px;scroll-padding:0 28px;scrollbar-width:thin;scrollbar-color:var(--gold-lo) transparent}
 .bl-card{flex:0 0 138px;scroll-snap-align:start;display:flex;flex-direction:column;border:1px solid var(--line);background:var(--panel);padding:8px 8px 10px}
+.bl-pic{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:start;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .bl-card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:var(--panel-2)}
 .bl-card b{display:block;margin-top:9px;font-family:var(--hfont);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;color:var(--ivory);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-style:normal}
 .bl-price{margin:6px 0 10px;flex:1}.bag-like .bl-price .price{font-size:17px}.bl-price .price small{font-size:10px}.bl-price .was{font-size:11px}
@@ -810,6 +811,8 @@ html[data-mode="light"] .bag-save{color:#1f7d45}
 .toast{transition:transform .6s var(--ease),opacity .4s,visibility .4s}
 @media(max-width:600px){.toast{transition:transform .22s var(--ease),opacity .15s,visibility .15s}}   /* phones: the added message appears quicker after a tap */.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
 @media(max-width:600px){.toast{left:16px;right:16px;transform:translateY(40px);justify-content:space-between}.toast.show{transform:none}}
+/* added from inside the open bag: the line sits at the top of the bag so it never covers Checkout, and no View bag / Checkout links (the bag is open) */
+.toast.in-bag,.toast.in-bag.show{top:16px;bottom:auto;left:auto;right:16px;width:min(428px,calc(100vw - 32px));transform:none;justify-content:center;pointer-events:none}.toast.in-bag a{display:none}
 .toast #toastGo{background:var(--gold);color:var(--black);padding:8px 12px;margin:-4px -8px -4px 0}
 .toast a{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);white-space:nowrap}
 /* ---------- footer ---------- */
@@ -3408,7 +3411,8 @@ function goCheckout(h){ closePanels(); if (location.hash === h) route(); else lo
 /* "You may also like" in the bag (AJAY 2026-10-11, same as fomaxo.com): every size of every perfume the customer doesn't have in that size yet,
    biggest size first (50ml, then 10ml minis), then the sets, car fragrance and personal care not in the bag; King last; sold out ones left out.
    Within each group the order follows real orders (bagRank): what people bought together with this bag, then the best sellers, then random each visit.
-   Sets need fragrances picked, and priced-on-request items need a size chosen, so those open their product page */
+   Sets need fragrances picked, and priced-on-request items need a size chosen, so those open their product page;
+   every other card only adds to the bag when tapped anywhere, never opens the product page (AJAY 2026-10-26, same as fomaxo.com) */
 /* other items are offered in their smallest size in stock, so they are an easy add to the order */
 const addOnSize = p => p.kind === 'set' ? defaultSize(p) : ([...p.sizes].filter(s => hasPrice(p.prices[s]) && !sizeOut(p, s)).sort((a, b) => p.prices[a] - p.prices[b])[0] ?? defaultSize(p));
 const addOnPrice = p => { const v = p.prices[addOnSize(p)]; return hasPrice(v) ? +v : Infinity; };
@@ -3425,7 +3429,8 @@ function bagLikeHTML(){
   const list = bagLikeList();
   if (!list.length) return '';
   return `<div class="bag-like"><h5>You may also like</h5><div class="bl-row">${list.map(([p, s]) => { const quick = p.kind !== 'set' && hasPrice(p.prices[s]);
-    return `<div class="bl-card"><a href="#/product/${p.id}${p.kind ? '' : '?size=' + s}" data-close><img ${PIC(imgFor(p, s), '140px')} alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b></a>
+    const pic = `<img ${PIC(imgFor(p, s), '140px')} alt="${esc(p.name)}" loading="lazy"><b>${esc(p.name)}</b>`;
+    return `<div class="bl-card">${quick ? `<button type="button" class="bl-pic" data-like="${p.id}" data-opt="${s}" aria-label="Add ${esc(p.name)} ${optLabel(p, s)} to your bag">${pic}</button>` : `<a href="#/product/${p.id}" data-close>${pic}</a>`}
       <div class="bl-price">${quick ? priceHTML(p, s) : fromHTML(p)}</div>
       ${quick ? `<button type="button" class="bl-add" data-like="${p.id}" data-opt="${s}">Add${p.sizes.length > 1 ? ` · ${optLabel(p, s)}` : ''}</button>` : `<a class="bl-add" href="#/product/${p.id}" data-close>${p.kind === 'set' ? 'Choose' : 'View'}</a>`}</div>`; }).join('')}</div></div>`;
 }
@@ -3557,7 +3562,7 @@ setTimeout(() => { try { if (!cart.length || sessionStorage.getItem('fx_bagnote'
   const n = cart.reduce((a, l) => a + l.qty, 0); toast(`Welcome back. Your bag is waiting with ${n} item${n > 1 ? 's' : ''}`, true); }, 2500);
 $('#toastView').onclick = e => { e.preventDefault(); $('#toast').classList.remove('show'); renderCart(); openPanel($('#cart')); };
 /* go: also offer Checkout (after something is added, and the bag can be paid on the checkout page) */
-let tt; function toast(msg, go){ if (go) warmPay(); $('#toastMsg').textContent = msg; $('#toastGo').hidden = !(go && !/^#\/checkout/.test(location.hash) && cart.length && subtotal(cart) !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod)); const t = $('#toast'); t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3600); }
+let tt; function toast(msg, go){ if (go) warmPay(); $('#toastMsg').textContent = msg; $('#toastGo').hidden = !(go && !/^#\/checkout/.test(location.hash) && cart.length && subtotal(cart) !== null && cartCur(cart) === '₹' && (S.checkout.razorpay || S.checkout.cod)); const t = $('#toast'); t.classList.toggle('in-bag', $('#cart').classList.contains('open')); t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3600); }
 
 /* search */
 function runSearch(q){
