@@ -5396,7 +5396,14 @@ function bindCheckout(q){
   f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin'].includes(e.target.name)) return; clearTimeout(leadT);
     leadT = setTimeout(() => { const c = leadOf(); TRK.lead('details', c, lines);
       try { localStorage.setItem(CO_KEY, JSON.stringify({...coSaved(), ...c})); } catch(e) {} }, 1500); });   // kept on this device as typed, so going back to the bag or a product and returning finds the form filled in
-  $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; const el = E[b.dataset.need]; el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'}); });
+  /* jump to a box that still needs filling. On a phone the box (with its red line) lands near the top, under the header,
+     so the keyboard that opens never covers it; if the keyboard still does, scroll again once it has opened */
+  const jumpTo = el => {
+    const lb = el.closest('label') || el, phone = matchMedia('(max-width:980px)').matches, vv = window.visualViewport;
+    el.focus({preventScroll: true}); lb.scrollIntoView({behavior: 'smooth', block: phone ? 'start' : 'center'});
+    if (phone && vv) vv.addEventListener('resize', () => { if (lb.getBoundingClientRect().bottom > vv.height - 8) lb.scrollIntoView({block: 'start'}); }, {once: true});
+  };
+  $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (!b) return; jumpTo(E[b.dataset.need]); });
   /* tidy typing: mobile as "98765 43210", PIN digits only */
   /* any other country: digits only, up to 15 with the code; a number typed or pasted with +code (or 00code) moves its code into the country box */
   const ccNow = () => coCc(E.cc.value), ccSet = c => { E.cc.value = c.iso; $('#coCcShow').innerHTML = `<i class="co-flag" aria-hidden="true">${coFlag(c.iso)}</i>+${c.code}`; const ind = c.iso === 'IN';
@@ -5430,7 +5437,7 @@ function bindCheckout(q){
   const showErr = (msg, el) => {
     if (!el) { err.textContent = msg; err.hidden = false; err.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
     const lb = el.closest('label'); lb.classList.add('bad'); (lb.querySelector('.co-fe') || lb.appendChild(Object.assign(document.createElement('em'), {className: 'co-fe'}))).textContent = msg;
-    el.focus({preventScroll: true}); el.scrollIntoView({behavior: 'smooth', block: 'center'});
+    jumpTo(el);
   };
   const val = k => E[k].value.replace(/\s+/g, ' ').trim();
   /* the mobile as it is sent: 10 digits for India, + code and number for any other country (a leading 0 dropped: 050… in the UAE is +97150…) */
