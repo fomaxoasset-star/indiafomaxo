@@ -2520,13 +2520,18 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
   .pdp{row-gap:18px}
   .buy h1{font-size:clamp(28px,8vw,34px)}
 }
-/* phone (AJAY 26/10/2026, Improve tip "leave after one page"): the 01–07 names are one sideways row instead of three rows, so the price, Add To Cart and Buy Now
-   come up into the first screen, also inside Instagram's browser (its own bars take part of the screen). The name showing now slides into view */
+/* phone (AJAY 26/10/2026, Improve tip "leave after one page"): the 01–07 names sit in two short rows of four instead of three tall rows, every name whole,
+   so the price, Add To Cart and Buy Now come up into the first screen, also inside Instagram's browser (its own bars take part of the screen) */
 @media(max-width:760px){
-  .hero-cine .hc-nav{display:flex;gap:22px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px;scroll-padding:0 16px;overscroll-behavior-x:contain}
-  .hero-cine .hc-nav::-webkit-scrollbar{display:none}
-  .hero-cine .hc-nav button{flex:0 0 auto;min-width:0}
-  .hero-cine .hc-nav button .t{overflow:visible;text-overflow:clip}
+  .hero-cine .hc-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+  .hero-cine .hc-nav button{padding-bottom:8px;gap:2px}
+  .hero-cine .hc-nav button .n{font-size:13px}
+  .hero-cine .hc-nav button .t{font-size:10.5px;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis}
+}
+/* small phones: the price box keeps both buttons inside its frame */
+@media(max-width:390px){
+  .hero-cine .hc-buy{gap:8px;padding:12px}
+  .hero-cine .hc-buy .btn{padding-left:12px;padding-right:12px;min-width:0}
 }
 </style>
 </head><body>
@@ -5808,7 +5813,6 @@ function bindHome(){
     const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); set(); } }, {rootMargin: '800px 0px'}); io.observe(el); });
   let shown = false;
   const show = (n, back = n < i) => { loadSlide(n); const old = i; i = n; if (old !== i) { figs.forEach(f => f.classList.remove('prev')); wrap.classList.toggle('back', back); void wrap.offsetWidth; } figs.forEach((f,k) => f.classList.toggle('on', k === i)); if (old !== i) { figs[old].classList.add('prev'); const hc = $('#heroCine'); hc.classList.remove('hc-swap'); void hc.offsetWidth; hc.classList.add('hc-swap'); } btns.forEach((b,k) => { b.classList.toggle('on', k === i); b.classList.remove('run'); });
-    const nav = btns[i].parentNode; if (nav.scrollWidth > nav.clientWidth + 2) nav.scrollTo({left: Math.max(0, nav.scrollLeft + btns[i].getBoundingClientRect().left - nav.getBoundingClientRect().left - 16), behavior: shown ? 'smooth' : 'auto'});   // phone: the sideways row brings the name showing now into view
     if (shown) void btns[i].offsetWidth; shown = true; btns[i].classList.add('run');   // restart the bar's fill (not needed the first time, which saves a full layout while the page opens)
     const s = HERO_SLIDES[i]; $('#heroCine').classList.toggle('is-banner', !!s.banner); $('#hcName').textContent = s.name || P[s.id].name; $('#hcNow').href = '#/product/' + s.id; $('#hcPrice').innerHTML = fromHTML(P[s.id]); const ha = $('#hcAdd'), o = isOut(P[s.id]); ha.disabled = o; ha.classList.toggle('oos', o); ha.textContent = o ? 'Out of stock' : 'Add To Cart'; $('#hcBuyNow').hidden = o; ahead(); };
   /* shop the collection: 8 boxes, paging through every product */
