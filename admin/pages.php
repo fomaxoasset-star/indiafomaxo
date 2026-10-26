@@ -1066,10 +1066,10 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $body .= '<div class="atop">' . date_bar($D, [], '. Your own visits and bots are not counted.') . '</div><div class="imp">'
     . '<div class="box i-fun"><div class="bh"><h3>Where visitors stop</h3></div><div class="bb"><div class="fun cfun">' . $fun . '</div>'
     . '<p class="muted small cvn">' . ($F['visits'] < 20 ? '<b>Only ' . $nf($F['visits']) . ' visits in these dates: pick 7 or 30 days for surer tips.</b> ' : '') . 'Each line counts visits. The red words show how many stopped at that step. <b>Tap a step</b> to see why and what to do.</p>'
-    . '<div class="ihow"><b>How to use this page</b><ol><li>Start with tip 1: it affects the most people.</li><li>Read what the data shows and follow the steps.</li><li>Check again after a week: the numbers should move.</li></ol></div></div></div>'
+    . '<div class="ihow"><b>How to use this page</b><ol><li>Start with tip 1: it affects the most people.</li><li>Read what the data shows and follow the steps.</li><li>Check again after a week: the numbers should move.</li></ol></div>' . taps_box($V, $names, 'i-taps') . '</div></div>'
     . '<div class="box i-tips"><div class="bh"><h3>What to fix first</h3><span class="sp"></span><a class="btn line sm" href="' . h(self_url(['tab' => 'analytics', 'vj' => 1])) . '">See the visits</a></div><div class="bb">'
     . ($tipsH ? '<ol class="tips">' . $tipsH . '</ol>' : ($doneH ? '<p class="empty">Nothing new to fix right now. A fixed tip comes back here only if the numbers are still bad a week after the fix.</p>' : '<p class="empty">No clear problem in these dates yet. Pick 7 or 30 days, or check back when more people have visited.</p>'))
-    . '</div></div>' . taps_box($V, $names, 'box i-taps') . '</div>';
+    . '</div></div></div>';
 } catch (Throwable $e) { $body = $body0 . '<div class="box"><p class="muted empty">Improve could not open: ' . h($e->getMessage()) . ' (line ' . $e->getLine() . '). Send us a picture of this line.</p></div>'; } }
 
 /* ============ Progress: a clean page to show someone how the shop is doing, month by month or year by year ============ */
