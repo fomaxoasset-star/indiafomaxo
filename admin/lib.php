@@ -46,7 +46,7 @@ function date_box(string $name, string $ymd, string $label = '', bool $required 
     . '<input type="date" tabindex="-1" aria-label="Pick ' . h($label ?: 'a date') . ' from the calendar"></span></span>';
 }
 /* the date bar on each page: which quick buttons it has, and where it starts */
-const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
+const DATE_BARS = ['home' => [['today', 'd7', 'd30', 'year'], 'd7'], 'analytics' => [['today', 'd7', 'd30', 'year'], 'd7'], 'improve' => [['today', 'd7', 'd30'], 'd7'], 'expenses' => [['today', 'd7', 'd30'], 'd30'],
   'sales' => [['today', 'd7', 'd30', 'all'], 'all'], 'reviews' => [['today', 'd7', 'd30', 'all'], 'all'], 'members' => [['today', 'd7', 'd30', 'all'], 'all'],
   'rvreq' => [['today', 'd7', 'd30', 'all'], 'all'],   // Review requests (on the Orders tab): by order date
   'refill' => [['today', 'd7', 'd30', 'all'], 'all'],   // Refill reminders (on the Orders tab): by reminder day (order date + Days after order)

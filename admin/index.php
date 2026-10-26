@@ -671,7 +671,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /* ---------------- downloads ---------------- */
 if (($_GET['tab'] ?? '') === 'reports') $_GET['tab'] = 'sales';   // Sales was called Reports; old links still open it
 if (($_GET['tab'] ?? '') === 'members' && isset($_GET['refill'])) $_GET['tab'] = 'orders';   // Refill reminders moved from Members to Orders, next to Review requests; old links still open it
-$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'progress', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
+$tab = in_array($_GET['tab'] ?? '', ['products', 'stock', 'orders', 'coupons', 'offer', 'analytics', 'improve', 'progress', 'expenses', 'sales', 'members', 'reviews', 'stores', 'settings'], true) ? $_GET['tab'] : 'home';
 $F = ['status' => (string)($_GET['status'] ?? ''), 'method' => (string)($_GET['method'] ?? ''), 'q' => trim((string)($_GET['q'] ?? '')),
       'from' => parse_day($_GET['from'] ?? ''), 'to' => parse_day($_GET['to'] ?? ''), 'state' => in_array($_GET['state'] ?? '', FOMAXO_STATES, true) ? $_GET['state'] : '',
       'coupon' => ($_GET['coupon'] ?? '') === 'yes' ? 'yes' : coupon_clean((string)($_GET['coupon'] ?? ''))];
@@ -706,6 +706,14 @@ if ($do === 'members_excel') {
     substr($m['first'], 0, 10), substr($m['last'], 0, 10), implode(', ', array_map(fn($o) => $o['no'], $m['orders']))], members(member_min(), member_spend(), (string)($_GET['q'] ?? ''), ...array_values(array_intersect_key(pick_dates('members'), ['from' => 1, 'to' => 1]))));
   send_sheet('FOMAXO-members-' . date('Y-m-d'), ['Name', 'Mobile', 'Email', 'Latest address', 'State', 'Orders', 'Total spent (₹)', 'Average order (₹)', 'First order', 'Last order', 'Order numbers'], $rows, 'Members');
 }
+if ($do === 'visits_excel') {   // Analytics → Visits: every visit step by step, for Excel or to send to us
+  require_once dirname(__DIR__) . '/api/insights-lib.php';
+  $D = pick_dates('analytics'); $rows = [];
+  foreach (insights_data($D['from'], $D['to'], 500)['paths'] as $v) foreach ($v['steps'] as $i => $st)
+    $rows[] = [$v['start'], $v['device'], $v['country'], $v['source'], insights_end($v['end']), $i + 1, insights_pg_name($st['pg'], array_map(fn($p) => $p['name'] ?? '', $CAT)), insights_secs($st['secs']), $st['pc'] !== null ? $st['pc'] . '%' : '',
+               implode(', ', array_map(fn($t) => ($t['dead'] ? '(not a button) ' : '') . $t['l'] . ($t['rage'] ? ' [angry]' : ''), $st['taps']))];
+  send_sheet('FOMAXO-visits-' . $D['from'] . '-to-' . $D['to'], ['Visit started', 'Device', 'Country', 'From', 'End', 'Step', 'Page', 'Time on page', 'Seen down the page', 'Tapped'], $rows, 'Visits');
+}
 if ($do === 'leads_excel') {
   $okDay = fn(string $d) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $d);
   $dd = $okDay($F['from']) && $okDay($F['to']) ? [min($F['from'], $F['to']), max($F['from'], $F['to'])] : [];   // the dates picked on Analytics
@@ -720,7 +728,7 @@ if ($do === 'expenses_excel') {
 }
 
 /* ---------------- pages ---------------- */
-$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stocks', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offers', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'progress' => 'Progress', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
+$tabs = ['home' => 'Home', 'products' => 'Products', 'stock' => 'Stocks', 'orders' => 'Orders', 'coupons' => 'Coupons', 'offer' => 'Offers', 'reviews' => 'Reviews', 'analytics' => 'Analytics', 'improve' => 'Improve', 'progress' => 'Progress', 'expenses' => 'Expenses', 'sales' => 'Sales', 'members' => 'Members', 'stores' => 'Stores', 'settings' => 'Settings'];
 $flash = (string)($_SESSION['flash'] ?? ''); unset($_SESSION['flash']);
 session_write_close();   // nothing below changes the sign-in, so let go of it now: another admin tab, or the new-order check, need not wait while this page is built
 $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . '">' . h(ltrim($flash, '!')) . '</p>' : '';
