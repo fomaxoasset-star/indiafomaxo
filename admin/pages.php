@@ -986,7 +986,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
       'An error can stop a button from working, so people cannot add to bag or pay.', ['Nothing for you to do: we read the error and fix it.'], 'fix the error');
   /* fixes already built and live on fomaxo.in (reply word => day it went live, e.g. 'fix product page' => '2026-11-01'): the tip leaves the list and waits in Done.
      It comes back only when a week has passed and the chosen dates start after the fix, so it is judged on new visits only */
-  $done = [];
+  $done = ['fix phone' => '2026-10-26'];   // #512: phone Add To Cart closer, bag note above buy bar
   $doneH = []; $back = fn($w) => isset($done[$w]) && time() >= strtotime($done[$w] . ' +7 days') && $from >= $done[$w];
   foreach ($tips as $i => $t) if (isset($done[$t['word']])) {
     if ($back($t['word'])) { $tips[$i]['data'][] = '<b>Fixed on ' . date('d/m/Y', strtotime($done[$t['word']])) . ', and still happening on the new visits.</b>'; continue; }
