@@ -971,17 +971,29 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
       $tip($r['rage_people'], 'People tap “' . h($r['label']) . '” again and again', ['<b>' . $nf($r['rage_people']) . '</b> people tapped the same spot 3 times in a second on ' . h(insights_pg_name($r['pg'], $names)) . '.'],
         'This usually means it is slow, too small, or does not work on their phone.', ['Try it on your own phone. If it is slow or does nothing, tell us.'], 'check ' . mb_strtolower($r['label']), 'tap ' . $r['label']); }
   }
+  /* a source with many visits and almost no adds to bag: its own "check ads" tip below shows where it lands, so the one-page tip leaves that line out */
+  $adSrc = null; foreach ($V['by_source'] as $r) if ($r['visits'] >= 30 && $pct($r['adds'], $r['visits']) < 1) { $adSrc = $r; break; }
   if ($V['visits'] >= 20 && $pct($V['bounce'], $V['visits']) >= 50) {
     $w = $V['by_source'][0] ?? null; $ws = $w ? (SOURCES[$w['k']] ?? ucfirst($w['k'])) : '';
     /* where the biggest source lands and how many of them leave from that page at once */
-    $lands = []; if ($w) foreach ($V['land'] as $r) if (($x = $r['src'][$w['k']] ?? null) && count($lands) < 3) $lands[] = '<b>' . h(insights_pg_name($r['pg'], $names)) . '</b> ' . $nf($x['visits']) . ' (' . $nf($x['bounce']) . ' left at once)';
+    $lands = []; if ($w && (!$adSrc || $adSrc['k'] !== $w['k'])) foreach ($V['land'] as $r) if (($x = $r['src'][$w['k']] ?? null) && count($lands) < 3) $lands[] = '<b>' . h(insights_pg_name($r['pg'], $names)) . '</b> ' . $nf($x['visits']) . ' (' . $nf($x['bounce']) . ' left at once)';
     $tip($V['bounce'], $pctT($pct($V['bounce'], $V['visits'])) . ' of visits leave after one page without adding anything', array_values(array_filter(['<b>' . $nf($V['bounce']) . '</b> of ' . $nf($V['visits']) . ' visits saw one page and left' . ($V['bounce_fast'] ? ', <b>' . $nf($V['bounce_fast']) . '</b> of them within 10 seconds' : '') . '.' . ($w ? ' Most visits come from <b>' . h($ws) . '</b> (' . $nf($w['visits']) . ').' : ''),
       $lands ? h($ws) . ' visits land on: ' . implode(', ', $lands) . '.' : ''])),
       'The first page they land on decides everything. If it does not match the ad or loads slowly, they go back.', ['Send ads to the exact product and size shown in the ad.', 'Keep the first screen simple: photo, name, price, one button.'], 'fix landing page');
   }
-  foreach ($V['by_source'] as $r) if ($r['visits'] >= 30 && $pct($r['adds'], $r['visits']) < 1) { $sn = SOURCES[$r['k']] ?? ucfirst($r['k']);
-    $tip($r['visits'] - $r['adds'], 'Visitors from ' . h($sn) . ' almost never add to the bag', ['<b>' . $nf($r['visits']) . '</b> visits from ' . h($sn) . ', <b>' . $nf($r['adds']) . '</b> added to the bag.'],
-      'The ad or post brings the wrong people, or sends them to the wrong page.', ['Check who the ad is shown to and where (Audience Network brings many accidental taps).', 'Check the ad link opens the product it shows.'], 'check ads'); break; }
+  if ($r = $adSrc) { $sn = SOURCES[$r['k']] ?? ucfirst($r['k']);
+    /* where these visits land (first page) and which ad names they carry, so the ad link and the ad can be checked against the page */
+    $lands = []; foreach ($V['land'] as $l) if (($x = $l['src'][$r['k']] ?? null) && count($lands) < 4) $lands[] = '<b>' . h(insights_pg_name($l['pg'], $names)) . '</b> ' . $nf($x['visits']) . ' (' . $nf($x['adds']) . ' added)';
+    $cm = $V['by_cmp'][$r['k']] ?? []; uasort($cm, fn($a, $b) => $b['visits'] <=> $a['visits']); $named = array_filter($cm, fn($k) => $k !== '', ARRAY_FILTER_USE_KEY);
+    $cmL = $named ? 'By ad name: ' . implode(', ', array_map(fn($k, $x) => ($k === '' ? 'no name' : '<b>' . h((string)$k) . '</b>') . ' ' . $nf($x['visits']) . ' (' . $nf($x['adds']) . ' added)', array_slice(array_keys($cm), 0, 4), array_slice($cm, 0, 4))) . '.'
+      : 'None of these visits carry an ad name, so the site cannot tell paid ads from bio, story and post links (step 3).';
+    $tip($r['visits'] - $r['adds'], 'Visitors from ' . h($sn) . ' almost never add to the bag', array_values(array_filter(['<b>' . $nf($r['visits']) . '</b> visits from ' . h($sn) . ', <b>' . $nf($r['adds']) . '</b> added to the bag.',
+      $lands ? 'They land on: ' . implode(', ', $lands) . '.' : '', $cmL])),
+      'The ad or post brings the wrong people, or sends them to the wrong page.', [
+        'In <b>Meta Ads Manager</b> open the ad set → <b>Placements</b> → <b>Manual placements</b>: untick <b>Audience Network</b> and Messenger, keep Instagram Feed, Stories and Reels. Audience Network shows ads inside other apps and games, where most taps are by accident.',
+        'Open each ad → <b>Destination</b> → <b>Website URL</b>: put the address of the product in the ad, e.g. <b>fomaxo.in/fomaxo-gold</b>, not fomaxo.in. Check it on your phone: it must open that perfume.',
+        'In the same ad, under <b>URL parameters</b>, paste <b style="overflow-wrap:anywhere">utm_source=instagram&amp;utm_medium=paid&amp;utm_campaign={{campaign.name}}&amp;utm_content={{ad.name}}</b>. Then <b>Analytics → Conversion → Campaigns</b> and this tip show every ad by name.',
+        'Check <b>Audience</b>: India only, ages that buy perfume (about 20–45), and interests like perfume or fragrance.'], 'check ads'); }
   if (($p = $V['by_device']['phone'] ?? null) && ($c = $V['by_device']['computer'] ?? null) && $p['visits'] >= 15 && $c['visits'] >= 15 && $c['adds'] > 0 && $pct($p['adds'], $p['visits']) < $pct($c['adds'], $c['visits']) / 2)
     $tip($p['visits'], 'Phones add to the bag much less than laptops', ['Phone: ' . $pctT($pct($p['adds'], $p['visits'])) . ' of ' . $nf($p['visits']) . ' visits added to bag. Laptop: ' . $pctT($pct($c['adds'], $c['visits'])) . ' of ' . $nf($c['visits']) . '.'],
       'Something on the phone page is harder: a button is low, a popup covers it, or it is slow.', ['Open the product page on your phone and add to bag yourself. Note anything slow or hidden.'], 'fix phone');
@@ -997,6 +1009,9 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $done = ['fix phone' => '2026-10-26',   // #512: phone Add To Cart closer, bag note above buy bar
     'fix landing page' => '2026-10-26',   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
     'fix product page' => '2026-10-26'];   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
+  /* tips we built the site side of, where the steps left are done by you outside the site (e.g. in Meta Ads Manager): the tip stays, without "Reply …" */
+  $yours = ['check ads' => '2026-10-26'];   // landing pages and ad names shown in the tip, Ads Manager steps
+  $replyLi = fn($w) => isset($yours[$w]) ? '<li>Numbers added on ' . date('d/m/Y', strtotime($yours[$w])) . '. These steps are yours: check here again a week after you change the ads.</li>' : '<li>Reply <b class="tword">' . h($w) . '</b> in our chat and we build it, with pictures first.</li>';
   /* tips that need the same fix join into one: the one with the most people leads, the others add their numbers */
   usort($tips, fn($a, $b) => $b['people'] <=> $a['people']);
   $one = [];
@@ -1043,7 +1058,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
           . ($i === 0 || $lost > 0 ? '<p><span class="tl">' . ($i ? 'Why people stop here' : 'Why it matters') . '</span>' . $why . '</p>' . (isset($doneFix[$fixOf($word)])
               ? '<p><span class="tl">Done</span>Fixed on ' . date('d/m/Y', strtotime($doneFix[$fixOf($word)])) . '. We check the numbers again on ' . date('d/m/Y', strtotime($doneFix[$fixOf($word)] . ' +7 days')) . '.</p>'
               : (($tn = array_search($fixOf($word), array_column($tips, 'fix'), true)) !== false ? '<p><span class="tl">What to do</span>See tip <b>' . ($tn + 1) . '</b> in What to fix first.</p>'   // the same fix is a tip already: point to it, not the same steps again
-              : '<div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . '<li>Reply <b class="tword">' . h($word) . '</b> in our chat and we build it, with pictures first.</li></ol></div>')) : '')
+              : '<div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . $replyLi($word) . '</ol></div>')) : '')
           . '</div></details>'; }
   $fixName = ['fix old money' => 'Old Money page: people left without a next step', 'fix product page' => 'Product page: people looked but did not add to bag', 'fix home' => 'Home page: no clear next step',
     'fix landing page' => 'First page from ads', 'check ads' => 'Ads brought visitors who did not add to bag', 'fix bag' => 'Bag: people did not open checkout', 'fix checkout' => 'Checkout: people did not type their details',
@@ -1054,7 +1069,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $tipsH = '';
   foreach ($tips as $i => $t)
     $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
-            . '<div class="tst"><span class="tl">Steps</span><ol>' . implode('', array_map(fn($s) => '<li>' . $s . '</li>', $t['steps'])) . '<li>Reply <b class="tword">' . h($t['word']) . '</b> in our chat and we build it, with pictures first.</li></ol></div></div></li>';
+            . '<div class="tst"><span class="tl">Steps</span><ol>' . implode('', array_map(fn($s) => '<li>' . $s . '</li>', $t['steps'])) . $replyLi($t['word']) . '</ol></div></div></li>';
   $body .= '<div class="atop">' . date_bar($D, [], '. Your own visits and bots are not counted.') . '</div><div class="imp">'
     . '<div class="box i-fun"><div class="bh"><h3>Where visitors stop</h3></div><div class="bb"><div class="fun cfun">' . $fun . '</div>'
     . '<p class="muted small cvn">' . ($F['visits'] < 20 ? '<b>Only ' . $nf($F['visits']) . ' visits in these dates: pick 7 or 30 days for surer tips.</b> ' : '') . 'Each line counts visits. The red words show how many stopped at that step. <b>Tap a step</b> to see why and what to do.</p>'

@@ -28,13 +28,13 @@ function insights_end(string $k): string { return ['bought' => 'Bought', 'paymen
 function insights_data(string $from, string $to, int $paths = 60): array {
   $db = shop_db(); insights_table($db); $a = ["$from 00:00:00", "$to 23:59:59"];
   $q = function (string $sql, array $args) use ($db) { $s = $db->prepare($sql); $s->execute($args); return $s->fetchAll(); };
-  $out = ['leave' => [], 'taps' => [], 'paths' => [], 'visits' => 0, 'has_trail' => false, 'speed' => [], 'errors' => [], 'bounce' => 0, 'by_source' => [], 'by_device' => [], 'product_pc' => null, 'land' => [], 'bounce_fast' => 0];
+  $out = ['leave' => [], 'taps' => [], 'paths' => [], 'visits' => 0, 'has_trail' => false, 'speed' => [], 'errors' => [], 'bounce' => 0, 'by_source' => [], 'by_device' => [], 'product_pc' => null, 'land' => [], 'bounce_fast' => 0, 'by_cmp' => []];
   /* pages of each visit, in order; time on a page = until the next page, or the visit's last moment (at most 30 minutes) */
   $V = []; $did = [];
   foreach ($q("SELECT sid, ts, type, path, product FROM events WHERE type IN ('view', 'add', 'checkout', 'pay', 'card', 'buy') AND ts >= ? AND ts <= ? ORDER BY ts, id", $a) as $r) {
     if ($r['type'] === 'view') $V[$r['sid']][] = ['pg' => insights_pg((string)$r['path']), 'at' => (string)$r['ts']]; else $did[$r['sid']][$r['type']] = 1;
   }
-  $meta = []; if ($V) foreach ($q('SELECT sid, last, source, device, country FROM visits WHERE last >= ?', [strtotime($a[0])]) as $r) if (isset($V[$r['sid']])) $meta[$r['sid']] = $r;
+  $meta = []; if ($V) foreach ($q('SELECT sid, last, source, device, country, campaign FROM visits WHERE last >= ?', [strtotime($a[0])]) as $r) if (isset($V[$r['sid']])) $meta[$r['sid']] = $r;
   $T = []; try { foreach ($q('SELECT sid, ts, path, k, label, pc, dead, rage, ms, device FROM trail WHERE ts >= ? AND ts <= ? ORDER BY ts, id', $a) as $r) $T[$r['sid']][] = $r; } catch (Throwable $e) {}
   $out['has_trail'] = (bool)$T || (bool)$q('SELECT 1 FROM trail LIMIT 1', []);
   $out['visits'] = count($V);
@@ -63,7 +63,9 @@ function insights_data(string $from, string $to, int $paths = 60): array {
     $src = (string)($meta[$sid]['source'] ?? ''); $dev = (string)($meta[$sid]['device'] ?? '');
     /* the page each visit landed on (first page), by source: where Instagram and ad visitors arrive and how many of them left from it at once */
     $lp = $steps[0]['pg']; $out['land'][$lp] ??= ['pg' => $lp, 'visits' => 0, 'bounce' => 0, 'src' => []]; $out['land'][$lp]['visits']++; if ($end === 'bounce') $out['land'][$lp]['bounce']++;
-    if ($src !== '') { $out['land'][$lp]['src'][$src] ??= ['visits' => 0, 'bounce' => 0]; $out['land'][$lp]['src'][$src]['visits']++; if ($end === 'bounce') $out['land'][$lp]['src'][$src]['bounce']++; }
+    if ($src !== '') { $out['land'][$lp]['src'][$src] ??= ['visits' => 0, 'bounce' => 0, 'adds' => 0]; $out['land'][$lp]['src'][$src]['visits']++; if ($end === 'bounce') $out['land'][$lp]['src'][$src]['bounce']++; if (isset($d['add'])) $out['land'][$lp]['src'][$src]['adds']++;
+      /* by ad name (utm_campaign in the link; '' = no name: a bio, story or ad link without URL parameters) */
+      $cm = (string)($meta[$sid]['campaign'] ?? ''); $out['by_cmp'][$src][$cm] ??= ['visits' => 0, 'adds' => 0]; $out['by_cmp'][$src][$cm]['visits']++; if (isset($d['add'])) $out['by_cmp'][$src][$cm]['adds']++; }
     foreach (['by_source' => $src, 'by_device' => $dev] as $bk => $bv) if ($bv !== '') { $out[$bk][$bv] ??= ['k' => $bv, 'visits' => 0, 'adds' => 0]; $out[$bk][$bv]['visits']++; if (isset($d['add'])) $out[$bk][$bv]['adds']++; }
     $seen = [];
     foreach ($steps as $i => $st) { $L[$st['pg']] ??= ['pg' => $st['pg'], 'seen' => 0, 'left_n' => 0, 'secs' => []]; if (!isset($seen[$st['pg']])) { $seen[$st['pg']] = 1; $L[$st['pg']]['seen']++; } if ($st['secs'] !== null) $L[$st['pg']]['secs'][] = $st['secs']; }
