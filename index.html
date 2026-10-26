@@ -2269,7 +2269,7 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co{padding:10px 0 clamp(40px,4vw,64px)}
   .co-grid{align-items:stretch}
   .co-title{font-size:clamp(32px,2.6vw,40px);line-height:1.1;margin-bottom:6px}
-  .co-form{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 14px;align-content:start}
+  .co-form{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 14px;align-content:start;align-self:start}
   .co-form>*{grid-column:1/-1}
   .co-form .row2,.co-form .row3{display:contents}
   .co-form>label,.co-form .row2>label,.co-form .row3>label{grid-column:span 2}
@@ -2317,9 +2317,18 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co-sum{display:flex;flex-direction:column;padding:22px 26px}
   .co-sum .co-save{margin-bottom:12px}
   .co-sum-head{margin-bottom:10px}
-  /* a long bag scrolls inside the summary, so the page still fits one screen */
-  .co-items{max-height:186px;overflow-y:auto;overscroll-behavior:contain;margin:0 -10px 0 -10px;padding:0 10px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;border-bottom:0}
-  .co-items:has(.co-item:nth-child(3)){-webkit-mask-image:linear-gradient(#000 80%,transparent);mask-image:linear-gradient(#000 80%,transparent);padding-bottom:20px}
+  /* a short bag: the box is only as tall as what is in it (no empty space under the coupon).
+     a long bag (.fit, set in bindCheckout when the box would be taller than the form): the box is exactly as tall as the form
+     (contain:size, so its own items never make it taller), the list shrinks to the room left and scrolls, fades only while
+     more items are below, and says so */
+  .co-sum{align-self:start}
+  .co-sum.fit{contain:size;align-self:stretch}
+  .co-items{flex:0 1 auto;overflow-y:auto;overscroll-behavior:contain;margin:0 -10px 0 -10px;padding:0 10px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;border-bottom:0}
+  .co-sum.fit .co-items{min-height:96px}
+  .co-items.more{-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
+  .co-scrl{margin:2px 0 8px;text-align:center;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  .co-scrl[hidden]{display:none}
+  .co-total b{line-height:1.15}
   .co-sum .co-rows{border-top:1px solid var(--line)}
   .co-item{padding:12px 0 10px;grid-template-columns:58px minmax(0,1fr) auto}
   .co-img img{width:58px;height:58px}
@@ -5266,6 +5275,7 @@ function checkoutPage(q){
       <div class="co-img"><img ${PIC(lineImg(l), '80px')} alt="">${`<i>${l.qty}</i>`}</div>
       <div class="co-it"><b>${esc(p.kind === 'care' ? p.title : p.name)}</b><small>${esc(optLabel(p, l.opt))} · ${esc(p.family.split('·')[0].trim())}</small>${l.picks ? `<small>${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</small>` : ''}</div>
       <div class="co-ip">${hasPrice(c) && c > u ? `<s>${inr(c * l.qty)}</s>` : ''}<span>${inr(u * l.qty)}</span></div></div>`; }).join('')}</div>
+    <p class="co-scrl" id="coScrl" hidden>Scroll to see all ${lines.length} items</p>
     <div class="co-rows"><div><span>Subtotal</span><b>${inr(t)}</b></div><div><span>Delivery</span><b class="co-free">Free</b></div><div class="co-cpnrow" id="coMbRow"${tog > 0 ? '' : ' hidden'}><span>Together extra off (${TG_TXT})</span><b id="coMbRowOff">−${inr(tog)}</b></div>${S.checkout.coupons !== false ? `<div class="co-cpnrow" id="coCpnRow" hidden><span>Coupon <span id="coCpnRowCode"></span></span><b id="coCpnRowOff"></b></div>` : ''}${cod && cod.fee > 0 ? `<div id="coFeeRow" hidden><span>Cash on delivery fee</span><b>${inr(cod.fee)}</b></div>` : ''}</div>
     <div class="co-total"><span>Total</span><b id="coTotal">${inr(r2(t - tog))}</b></div>
     <p class="co-save" id="coSave" data-was="${was - t}"${was > t - tog ? '' : ' hidden'}>You save ${inr(r2(was - t + tog))} on this order</p>
@@ -5334,6 +5344,12 @@ function bindCheckout(q){
   const ed = $('#coEdit'), openBag = () => { renderCart(); openPanel($('#cart')); }; if (ed) ed.onclick = openBag;
   /* clicking any item in the order summary opens Your Bag, same as Edit bag */
   $$('.co-item[role=button]').forEach(it => { it.onclick = openBag; it.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBag(); } }; });
+  /* laptop: the item list scrolls when the bag is long; fade the bottom and show "Scroll to see all" only while items are hidden below */
+  const its = $('.co-items'), scl = $('#coScrl');
+  const sum = $('#coSum'), fit = () => { if (!sum || !matchMedia('(min-width:981px)').matches) return sum && sum.classList.remove('fit'); sum.classList.remove('fit'); if (sum.offsetHeight > f.offsetHeight + 1) sum.classList.add('fit'); };
+  fit(); if (window.ResizeObserver) new ResizeObserver(fit).observe(f); else addEventListener('resize', fit);
+  if (its && scl) { const more = () => { const n = its.scrollHeight - its.clientHeight; its.classList.toggle('more', n > 6 && its.scrollTop < n - 6); scl.hidden = !(n > 6); };
+    its.addEventListener('scroll', more, { passive: true }); if (window.ResizeObserver) new ResizeObserver(more).observe(its); new MutationObserver(more).observe(its, { childList: true }); more(); }
   if (S.checkout.razorpay) { loadRazorpay().catch(() => {});
     /* the phone connects to Razorpay's servers now, while the details are typed, so its payment window opens sooner after the tap (AJAY: slow to open, 2026-10-26) */
     ['https://api.razorpay.com', 'https://checkout.razorpay.com', 'https://cdn.razorpay.com'].forEach(h => { if (!document.querySelector(`link[rel=preconnect][href="${h}"]`)) document.head.appendChild(Object.assign(document.createElement('link'), {rel: 'preconnect', href: h})); }); }
