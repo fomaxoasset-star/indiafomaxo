@@ -2,8 +2,8 @@
 declare(strict_types=1);
 /* FOMAXO India — "our own Clarity": what visits did on the website, read from events (pages) and trail (taps, how far down each page, how fast
    the site opened, page errors). Admin → Analytics → Visits and Admin → Improve show it; api/data/visits.txt is the same summary as plain text
-   (rewritten at most once an hour by api/track.php, not reachable from the web) so it can be read from the hosting file manager.
-   Anonymous only: no names, mobiles or anything typed. Works on SQLite and MySQL (shop_db), so the adding up is done here in PHP. */
+   (rewritten at most once an hour by api/track.php, not reachable from the web) so it can be read from the hosting file manager,
+   with the checkout and payment steps on top (insights_checkout). Anonymous only: no names, mobiles or anything typed (empty boxes are only counted). Works on SQLite and MySQL (shop_db), so the adding up is done here in PHP. */
 
 function insights_table(PDO $db): void {
   static $done = false; if ($done) return; $done = true;
@@ -122,6 +122,27 @@ function insights_data(string $from, string $to, int $paths = 60): array {
   return $out;
 }
 
+/* why people add to bag and open checkout but do not buy: each step counted once per visit (same as Admin → Analytics → Conversion),
+   Razorpay's reasons for failed payments, which boxes people who typed but did not order left empty (counts only), and unpaid tries */
+function insights_checkout(string $from, string $to): array {
+  $db = shop_db(); $a = ["$from 00:00:00", "$to 23:59:59"];
+  $q = function (string $sql, array $args = []) use ($db) { $s = $db->prepare($sql); $s->execute($args); return $s; };
+  $n = fn(string $t) => (int)$q('SELECT COUNT(DISTINCT sid) FROM events WHERE type = ? AND ts >= ? AND ts <= ?', [$t, ...$a])->fetchColumn();
+  $L = ['CHECKOUT AND PAYMENT (visits that did each step)'];
+  foreach (['add' => 'Added to bag', 'checkout' => 'Opened checkout', 'pay' => 'Tapped pay', 'card' => 'Razorpay opened', 'cardx' => 'Closed Razorpay without paying',
+            'cardfail' => 'A payment try failed', 'buy' => 'Bought'] as $t => $label) $L[] = "$label | " . $n($t);
+  try { $L[] = 'Typed their details | ' . (int)$q('SELECT COUNT(*) FROM leads WHERE ordered <> 2 AND created >= ? AND created <= ?', $a)->fetchColumn(); } catch (Throwable $e) {}
+  $f = []; foreach ($q("SELECT product, COUNT(DISTINCT sid) n FROM events WHERE type = 'cardfail' AND ts >= ? AND ts <= ? GROUP BY product ORDER BY n DESC LIMIT 5", $a) as $r) $f[] = ($r['product'] ?: 'no reason given') . ' ' . $r['n'];
+  $L[] = 'Why payments failed (Razorpay) | ' . ($f ? implode(', ', $f) : '(none)');
+  try {
+    $e = ['people' => 0, 'name' => 0, 'phone' => 0, 'address' => 0, 'state' => 0];
+    foreach ($q('SELECT name, phone, address, state FROM leads WHERE ordered = 0 AND updated >= ? AND updated <= ?', $a) as $l) { $e['people']++; foreach (['name', 'phone', 'address', 'state'] as $k) if (trim((string)$l[$k]) === '') $e[$k]++; }
+    $L[] = "Typed but did not order | {$e['people']} (left empty: name {$e['name']}, mobile {$e['phone']}, address {$e['address']}, state {$e['state']})";
+  } catch (Throwable $e) {}
+  try { $u = $q("SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders WHERE status = 'awaiting' AND test = 0 AND created >= ? AND created <= ?", $a)->fetch(); $L[] = "Unpaid online tries | {$u['n']} (Rs {$u['t']})"; } catch (Throwable $e) {}
+  return $L;
+}
+
 /* api/data/visits.txt: rewritten at most once an hour, while visitors are on the site */
 function insights_file(): string { return __DIR__ . '/data/visits.txt'; }
 function insights_due(): bool { $f = insights_file(); return is_dir(dirname($f)) && (!is_file($f) || filemtime($f) < time() - 3600); }
@@ -133,6 +154,7 @@ function insights_write(): void {
     foreach (['Last 7 days' => 6, 'Today' => 0] as $title => $back) {
       $D = insights_data(date('Y-m-d', strtotime("-$back day")), date('Y-m-d'), $back ? 60 : 30);
       $L[] = "==== $title: {$D['visits']} visits ===="; $L[] = '';
+      array_push($L, ...insights_checkout(date('Y-m-d', strtotime("-$back day")), date('Y-m-d'))); $L[] = '';
       $L[] = 'WHERE PEOPLE LEAVE (page | visits that saw it | left from it | % left | avg time | avg seen down the page | % reached the bottom)';
       foreach ($D['leave'] as $r) $L[] = sprintf('%s | %d | %d | %d%% | %s | %s | %s', insights_pg_name($r['pg'], $names), $r['seen'], $r['left_n'], $r['seen'] ? round(100 * $r['left_n'] / $r['seen']) : 0, insights_secs($r['secs']), $r['pc'] !== null ? $r['pc'] . '%' : '–', $r['bottom'] !== null ? $r['bottom'] . '%' : '–');
       $L[] = ''; $L[] = 'HOW FAST THE SITE OPENED (device | page loads | average | slower than 3 s)';
