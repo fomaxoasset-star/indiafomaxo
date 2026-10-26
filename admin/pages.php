@@ -784,7 +784,7 @@ if ($tab === 'analytics' && $cv) {
   $body .= '</tbody></table><p class="muted small cvn">Viewed and To bag count visits. Buy rate = orders ÷ viewed. Free items are not counted.</p></div></div>';
   /* 2. checkout drop-off */
   $st = $C['steps']; $top = max(1, ...array_values($st));
-  $rows = [['Opened checkout', $st['checkout'], null], ['Typed name or mobile', $st['typed'], $st['checkout']], ['Reached payment choice', $st['pay'], $st['typed']], ['Opened Razorpay page', $st['card'], null], ['Bought', $st['buy'], $st['pay']]];
+  $rows = [['Opened checkout', $st['checkout'], null], ['Typed name or mobile', $st['typed'], $st['checkout']], ['Reached payment choice', $st['pay'], $st['typed']], ['Opened Razorpay page', $st['card'], null], ['Closed Razorpay without paying', $st['cardx'] ?? 0, null], ['A payment try failed', $st['cardfail'] ?? 0, null], ['Bought', $st['buy'], $st['pay']]];
   $body .= '<div class="box c-drop" data-pane="checkout"><div class="bh"><h3>Checkout drop-off</h3></div><div class="bb"><div class="fun cfun">';
   foreach ($rows as [$label, $n, $before]) $body .= '<div class="st"><span>' . $label . ($before !== null && $before > $n ? ' <span class="stop">' . number_format($before - $n) . ' stopped</span>' : '') . '</span><b>' . number_format($n) . '</b><span class="bar"><i style="width:' . round($n / $top * 100, 1) . '%"></i></span></div>';
   $E = $C['empty'];
@@ -792,6 +792,7 @@ if ($tab === 'analytics' && $cv) {
     . '<table class="grid etab"><thead><tr><th>Box left empty</th><th class="r">People</th><th class="r">Share</th></tr></thead><tbody>';
   foreach (['name' => 'Name', 'phone' => 'Mobile', 'state' => 'State', 'address' => 'Address', 'email' => 'Email (optional)'] as $k => $l) $body .= '<tr><td>' . $l . '</td><td class="r">' . number_format($E[$k]) . '</td><td class="r muted">' . $pc($E[$k], $E['people']) . '</td></tr>';
   $body .= '</tbody></table><p class="muted small cvn">Of ' . number_format($E['people']) . ($E['people'] === 1 ? ' person' : ' people') . ' who typed details and did not order.</p>'
+    . (!empty($C['fails']) ? '<p class="muted small cvn">Why payments failed (Razorpay): ' . implode(' · ', array_map(fn($r, $k) => h(ucfirst(str_replace('-', ' ', (string)$r))) . ' <b>' . (int)$k . '</b>', array_keys($C['fails']), $C['fails'])) . '</p>' : '')
     . '<p class="cvu">Card payments not finished: <b>' . number_format($C['unpaid']['n']) . '</b>' . ($C['unpaid']['n'] ? ' (' . rupees($C['unpaid']['total']) . ' total)' : '') . '</p>'
     . '<p class="muted small cvs">Opened Razorpay page: counting since ' . h(dmy($C['since'])) . '.</p></div></div>';
   /* 3. campaigns */
@@ -940,7 +941,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     ['typed', 'pay', 'People type their details but stop before paying', 'fix checkout', [], 'They really wanted to buy. Usually one box or one doubt stops them.',
       ['See which box was left empty in <b>Analytics → Conversion → Checkout</b>.', 'WhatsApp them from <b>Analytics → Left at checkout</b>: they gave their mobile.']],
     ['pay', 'buy', 'People reach payment but do not finish', 'check payment', [], 'The last step failed or felt unsafe.',
-      ['Check Razorpay for failed or unfinished payments.', 'WhatsApp them from <b>Analytics → Left at checkout</b> with a payment link or offer Cash on delivery.']],
+      ['See in <b>Analytics → Conversion → Checkout</b> how many closed the Razorpay page and why payments failed.', 'WhatsApp the ones marked <b>At payment</b> in <b>Analytics → Left at checkout</b> with a Razorpay payment link.']],
   ];
   $stepName = ['visits' => 'visits', 'product' => 'saw a product', 'cart' => 'added to bag', 'checkout' => 'opened checkout', 'typed' => 'typed details', 'pay' => 'reached payment', 'buy' => 'bought'];
   foreach ($leaks as [$a, $b, $title, $word, $extra, $why, $steps]) {
@@ -1003,7 +1004,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     'fix landing page' => '2026-10-26',   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
     'fix product page' => '2026-10-26',   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
     'fix home' => '2026-10-26',   // phone home: bar at the bottom after the banner, "Not sure which one? Try any scent in 10ml" → Mini Collection
-    'fix checkout' => '2026-10-26'];   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
+    'fix checkout' => '2026-10-26',
+    'check payment' => '2026-10-26'];   // payment: closed Razorpay → "Payment not finished, no money was taken" box with Try again and a WhatsApp payment link; closes and failure reasons counted in Conversion   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
   /* tips we built the site side of, where the steps left are done by you outside the site (e.g. in Meta Ads Manager): the tip stays, without "Reply …" */
   $yours = ['check ads' => '2026-10-26'];   // landing pages and ad names shown in the tip, Ads Manager steps
   $replyLi = fn($w) => isset($yours[$w]) ? '<li>Numbers added on ' . date('d/m/Y', strtotime($yours[$w])) . '. These steps are yours: check here again a week after you change the ads.</li>' : '<li>Reply <b class="tword">' . h($w) . '</b> in our chat and we build it, with pictures first.</li>';
@@ -1056,7 +1058,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
               : '<div class="tst"><span class="tl">What to do</span><ol>' . implode('', array_map(fn($x) => '<li>' . $x . '</li>', $todo)) . $replyLi($word) . '</ol></div>')) : '')
           . '</div></details>'; }
   $fixName = ['fix old money' => 'Old Money page: people left without a next step', 'fix product page' => 'Product page: people looked but did not add to bag', 'fix home' => 'Home page: no clear next step',
-    'fix landing page' => 'First page from ads', 'check ads' => 'Ads brought visitors who did not add to bag', 'fix bag' => 'Bag: people did not open checkout', 'fix checkout' => 'Checkout: people did not type their details',
+    'fix landing page' => 'First page from ads', 'check ads' => 'Ads brought visitors who did not add to bag', 'fix bag' => 'Bag: people did not open checkout', 'fix checkout' => 'Checkout: people did not type their details', 'check payment' => 'Payment: people did not finish paying',
     'make it faster' => 'Site opened slowly on phones', 'fix phone' => 'Phone: people did not add to bag'];
   $fixL = ''; foreach ($doneH as $w => $title) $fixL .= '<li>' . ($fixName[$w] ?? ($title ?: h(ucfirst($w)))) . ' <span class="muted">· fixed ' . date('d/m/Y', strtotime($done[$w])) . ', checked again ' . date('d/m/Y', strtotime($done[$w] . ' +7 days')) . '</span></li>';
   if ($fixL) $fun .= '<details class="fs" name="fs"><summary class="st"><span>Fixed <small class="muted">' . count($doneH) . '</small></span><b><i class="fchev" aria-hidden="true"></i></b></summary>'

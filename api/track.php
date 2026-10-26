@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /* FOMAXO India — visitor analytics, kept on this server (no Google or other trackers).
    POST (navigator.sendBeacon from index.html) {t: type, v: visitor id, s: visit id, src, p: path, id, opt, q, lead}
-   Types: view (page), product (product page), add (to bag), checkout, pay (payment step), card (the Razorpay payment page opened),
+   Types: view (page), product (product page), add (to bag), checkout, pay (payment step), card (the Razorpay payment page opened), cardx (closed it without paying), cardfail (a try failed; product = Razorpay's reason),
    buy (order placed), lead (checkout details typed), scroll (how far down the homepage: q = 25, 50, 75 or 100, once each per visit),
    ping (still on the site). c is the utm_campaign name in the link the visit came from, kept with the visit. Visitor and visit ids are random strings made in the browser; no IP address,
    name or cookie is stored for ordinary visits. Each visit's country and (in India) state are looked up from the IP address on this
@@ -29,7 +29,7 @@ $in = json_decode($raw, true); if (!is_array($in)) { track_seen('bad'); exit; }
 $t = (string)($in['t'] ?? '');
 $id = fn($k) => preg_match('/^[a-z0-9]{8,16}$/', (string)($in[$k] ?? '')) ? (string)$in[$k] : '';
 $vid = $id('v'); $sid = $id('s');
-if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping', 'invite', 'trail'], true)) { track_seen('bad'); exit; }
+if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'cardx', 'cardfail', 'buy', 'lead', 'scroll', 'ping', 'invite', 'trail'], true)) { track_seen('bad'); exit; }
 
 try {
   $db = shop_db(); $now = time();
