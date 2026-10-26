@@ -929,7 +929,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $pct = fn($a, $b) => $b > 0 ? round(100 * $a / $b, 1) : 0; $pctT = fn($v) => rtrim(rtrim(number_format($v, 1), '0'), '.') . '%'; $nf = fn($n) => number_format((int)$n);
   $topProd = null; foreach ($C['products'] as $id => $x) { $topProd = ['id' => $id] + $x; break; }
   $tips = [];
-  $tip = function ($people, $title, $data, $why, $steps, $word) use (&$tips) { $tips[] = compact('people', 'title', 'data', 'why', 'steps', 'word'); };
+  /* $part: the bigger tip this one is a piece of (a product page is part of 'fix product page'); it is never shown twice, see below */
+  $tip = function ($people, $title, $data, $why, $steps, $word, $part = '') use (&$tips) { $tips[] = compact('people', 'title', 'data', 'why', 'steps', 'word', 'part'); };
   $leaks = [
     ['product', 'cart', 'People look at a product but do not add it to the bag', 'fix product page',
       array_values(array_filter([$V['product_pc'] !== null ? 'On product pages people saw ' . $V['product_pc'] . '% of the page on average.' : '', $topProd && $topProd['viewed'] ? h($topProd['name']) . ': ' . $nf($topProd['viewed']) . ' visits saw it, ' . $nf($topProd['bag']) . ' added it to the bag.' : ''])),
@@ -953,9 +954,10 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   foreach ($V['leave'] as $r) {   // pages where many visits end (not the thank-you pages)
     if ($n >= 2 || preg_match('~^/(thank-you|order|review)~', $r['pg']) || $r['left_n'] < 5 || $pct($r['left_n'], $r['seen']) < 60) continue; $n++;
     $fast = $r['secs'] !== null && $r['secs'] < 15; $pn = insights_pg_name($r['pg'], $names);
+    $part = str_starts_with($r['pg'], '/product/') ? 'fix product page' : ($r['pg'] === '/' ? 'fix landing page' : (str_starts_with($r['pg'], '/checkout') ? 'fix checkout' : (preg_match('~^/(bag|cart)~', $r['pg']) ? 'fix bag' : '')));
     $tip($r['left_n'], 'Many people leave on ' . h($pn), ['<b>' . $nf($r['left_n']) . '</b> of ' . $nf($r['seen']) . ' visits ended here (' . $pctT($pct($r['left_n'], $r['seen'])) . '), after <b>' . insights_secs($r['secs']) . '</b> on average' . ($r['pc'] !== null ? ', seeing ' . $r['pc'] . '% of the page' : '') . '.'],
       $fast ? 'They leave within seconds, so the first screen is not what they expected from the ad or link.' : 'They stay a while and still leave, so the page does not give them a clear next step.',
-      $fast ? ['Make the top of this page match the ad: the same photo, price and offer they tapped on.', 'Check it opens fast on your phone with mobile data.'] : ['Look where they stop in <b>Analytics → Visits</b> and put a clear button (Add to bag / Try 10ml) there.'], 'fix ' . mb_strtolower($pn));
+      $fast ? ['Make the top of this page match the ad: the same photo, price and offer they tapped on.', 'Check it opens fast on your phone with mobile data.'] : ['Look where they stop in <b>Analytics → Visits</b> and put a clear button (Add to bag / Try 10ml) there.'], 'fix ' . mb_strtolower($pn), $part);
   }
   $n = $m = 0;
   foreach ($V['taps'] as $r) {
@@ -998,6 +1000,11 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     $doneH[$t['word']] = $t['title']; unset($tips[$i]);
   }
   foreach ($done as $w => $d) if (!isset($doneH[$w]) && !in_array($w, array_column($tips, 'word'), true)) $doneH[$w] = '';
+  /* no repeats: a piece of a fix that is done stays hidden with it; a piece of a tip still on the list becomes one more line of that tip */
+  foreach ($tips as $i => $t) if ($t['part'] !== '' && $t['part'] !== $t['word']) {
+    if (isset($doneH[$t['part']])) { unset($tips[$i]); continue; }
+    foreach ($tips as $j => $u) if ($u['word'] === $t['part']) { $tips[$j]['data'] = array_merge($tips[$j]['data'], $t['data'] ? ['<b>' . preg_replace('~^Many people leave on ~', '', $t['title']) . ':</b> ' . strip_tags($t['data'][0], '<b>')] : []); unset($tips[$i]); break; }
+  }
   usort($tips, fn($a, $b) => $b['people'] <=> $a['people']); $tips = array_slice($tips, 0, 6);
   /* the funnel, the biggest leak marked */
   $steps = [['visits', 'Visited the site'], ['product', 'Saw a product'], ['cart', 'Added to bag'], ['checkout', 'Opened checkout'], ['typed', 'Typed details'], ['pay', 'Reached payment'], ['buy', 'Bought']];
