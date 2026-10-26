@@ -2494,6 +2494,14 @@ html[data-mode="light"] .ofp-hurry{color:#c4291f}
 .ofp-wa .wel-form .btn svg{width:16px;height:16px}.ofp-wa .wel-ok{margin:0}
 .wel-ok{margin-top:18px;font-size:14px;line-height:1.5;color:#5fc48c}
 html[data-mode="light"] .wel-ok{color:#1e7a47}
+/* phone: Add To Cart closer (AJAY 2026-10-26, phones added to bag 0.9% vs laptops 2.5%): shop cards drop the 3–4 line words so the buttons sit
+   right under the price; the product page loses the breadcrumb so the photo starts higher; the "added to your bag" note sits above the buy bar, not on it */
+@media(max-width:600px){
+  .pc-tagline{display:none}
+  .pdp-crumbs{display:none}
+  .pdp{padding-top:14px}
+  body:has(.mbuy.show) .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
+}
 </style>
 </head><body>
 <script>document.body.classList.add("home")</script>
