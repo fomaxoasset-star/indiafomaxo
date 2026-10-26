@@ -2127,8 +2127,6 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-pin-tip{color:var(--gold)!important}
 .co-form .co-ap{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
 .co-form .co-cs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.co-addmore{justify-self:start;font-size:13px;color:var(--gold);border-bottom:1px solid var(--gold-lo);padding:2px 0;margin-top:-4px}
-.co-addmore:hover{color:var(--gold-hi)}
 .co-need{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border:1px dashed var(--line-2);background:var(--panel);margin-top:6px}
 .co-need>svg{flex:none;width:20px;height:20px;color:var(--gold);margin-top:2px}
 .co-need>div{display:grid;gap:6px}
@@ -2277,7 +2275,6 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co-form .co-cs>label,.co-form .co-more2>label{grid-column:span 3}
   .co-form .row2[hidden]>label{display:none}
   .co-assure{padding:8px 0;margin:0}
-  .co-addmore{grid-column:1/-1;margin-top:-2px;font-size:12px}
   .co-form>label.co-wa{grid-column:1/-1;margin-top:-6px;gap:9px;font-size:12px}
   .co-form label{gap:4px;font-size:10px;line-height:1.4}
   .co-form label small{font-size:10.5px}
@@ -5260,7 +5257,7 @@ function checkoutPage(q){
   if (t === null || cartCur(lines) !== '₹' || !(S.checkout.razorpay || coCod())) return pageHead('Checkout', 'Order on <em class="metal">WhatsApp</em>', 'An item in your bag is priced on request, so we will confirm your order with you on WhatsApp.') + `<section class="sec" style="padding-top:40px"><div class="wrap"><button class="btn" id="coWa">Order via WhatsApp</button></div></section>`;
   const tog = togetherOff(lines), d = coSaved(), v = k => esc(d[k] || ''), cod = coCod(), codSt = coCodState(cod, t, t - tog, d.name), codOk = codSt === 'ok';
   const offs = cbOffs(lines), was = lines.reduce((a, l) => { const p = P[l.id], c = p.compareAt && p.compareAt[l.opt]; return a + (hasPrice(c) && c > p.prices[l.opt] ? c : p.prices[l.opt]) * l.qty; }, 0);
-  const addr = esc([d.house, d.street].map(x => String(x || '').trim()).filter(Boolean).join(', ')), csOn = !!(d.city || d.state) || /^[1-9]\d{5}$/.test(d.pin || ''), more = !!d.landmark;
+  const addr = esc([d.house, d.street].map(x => String(x || '').trim()).filter(Boolean).join(', ')), csOn = !!(d.city || d.state) || /^[1-9]\d{5}$/.test(d.pin || '');
   const cc0 = coCcSplit(d.phone, d.cc), cc = cc0 && cc0[0].iso !== 'IN' ? cc0[0] : CO_CC[0], phone = cc.iso === 'IN' ? String(d.phone || '').replace(/\D/g, '').slice(-10) : cc0[1];
   return `<section class="co"><div class="wrap co-grid">
   <h1 class="co-title">Checkout</h1>
@@ -5303,9 +5300,8 @@ function checkoutPage(q){
       <label>City<input name="city" value="${v('city')}" autocomplete="address-level2" required maxlength="60"></label>
       <label>State<select name="state" autocomplete="address-level1" required><option value="">Choose state</option>${IN_STATES.map(x => `<option${x === d.state ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
     </div>
-    <button type="button" class="co-addmore" id="coMore"${more ? ' hidden' : ''}>+ Add a landmark or delivery note</button>
-    <div class="row2 co-more2" id="coMoreBox"${more ? '' : ' hidden'}>
-      <label><span>Landmark <small>(optional)</small></span><input name="landmark" value="${v('landmark')}" maxlength="80"></label>
+    <div class="row2 co-more2" id="coMoreBox">
+      <label><span>Landmark <small>(optional)</small></span><input name="landmark" value="${v('landmark')}" maxlength="80" placeholder="Near a temple, school, shop"></label>
       <label><span>Note <small>(optional)</small></span><input name="note" maxlength="300" placeholder="Delivery time or gift message"></label>
     </div>
     <p class="co-fine">We remember these details on this device for your next order and WhatsApp you about your delivery.</p>
@@ -5424,7 +5420,6 @@ function bindCheckout(q){
       if (j.city && !val('city')) { E.city.value = j.city; E.city.dispatchEvent(new Event('input', {bubbles: true})); }
       if (j.state && !E.state.value && IN_STATES.includes(j.state)) { E.state.value = j.state; ['input', 'change'].forEach(t => E.state.dispatchEvent(new Event(t, {bubbles: true}))); }
     }).catch(() => { clearTimeout(late); csShow(); }); };
-  $('#coMore').onclick = () => { $('#coMore').hidden = true; $('#coMoreBox').hidden = false; E.landmark.focus(); };
   $('#coNeed').addEventListener('click', e => { const b = e.target.closest('[data-need]'); if (b && (b.dataset.need === 'city' || b.dataset.need === 'state')) csShow(); }, true);
   f.addEventListener('input', e => { const lb = e.target.closest('label'); if (lb) { lb.classList.remove('bad'); const fe = lb.querySelector('.co-fe'); if (fe) fe.remove(); } });
   upd();
