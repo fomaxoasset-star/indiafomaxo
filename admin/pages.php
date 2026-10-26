@@ -809,7 +809,7 @@ if ($tab === 'analytics' && $cv) {
   $body .= '</div><p class="muted small cvn">Visits that opened the homepage. The site sends one small anonymous note at each depth, once per visit.</p>' . $since . '</div></div></div>';
 }
 /* Analytics → Visits: our own Clarity. The newest visits step by step, where people leave, what people tap (api/insights-lib.php) */
-if ($tab === 'analytics' && $vj) {
+if ($tab === 'analytics' && $vj) { $body0 = $body; try {   // a failure shows its reason instead of a white page
   require_once dirname(__DIR__) . '/api/insights-lib.php';
   $V = insights_data($from, $to, 60); $names = array_map(fn($p) => $p['name'] ?? '', $CAT);
   $pcT = fn($a, $b) => $b ? round($a / $b * 100) . '%' : '–';
@@ -847,7 +847,7 @@ if ($tab === 'analytics' && $vj) {
     $body .= '<div class="vtl" data-vt="' . $k . '"' . ($k === 'btn' ? '' : ' hidden') . '><table class="grid ctab"><thead><tr><th>' . ($k === 'btn' ? 'Button or link' : 'Tapped') . ' · page</th><th class="r">Taps</th><th class="r">People</th></tr></thead><tbody>' . ($tp[$k] ?: '<tr><td colspan="3" class="empty">' . $empty . '</td></tr>') . '</tbody></table></div>';
   $body .= '<p class="muted small cvn">Not buttons: people tapped a photo or words and nothing happened, so they may expect it to open. What people type is never kept.</p></div></div></div>'
     . '<script>document.querySelectorAll(".vtsw button").forEach(function(b){b.onclick=function(){var c=b.closest(".box");c.querySelectorAll(".vtsw button").forEach(function(x){x.classList.toggle("on",x===b)});c.querySelectorAll(".vtl").forEach(function(x){x.hidden=x.dataset.vt!==b.dataset.vt})}})</script>';
-}
+} catch (Throwable $e) { $body = $body0 . '<div class="box"><p class="muted empty">Visits could not open: ' . h($e->getMessage()) . ' (line ' . $e->getLine() . '). Send us a picture of this line.</p></div>'; } }
 if ($tab === 'analytics' && !$cv && !$vj) {
   $A = analytics($from, $to, $CAT); $f = $A['funnel'];
   $body .= '<div class="kpis n8 strip" style="--n:8">'
@@ -920,7 +920,7 @@ if ($tab === 'analytics' && !$cv && !$vj) {
 
 /* ============ Improve (AJAY 26/10/2026): how to get more people to buy, in plain words. Each tip comes from the visit data of the dates picked
    (Analytics and Analytics → Visits), shows the numbers behind it and the steps to take. A tip only shows when the data says so. ============ */
-if ($tab === 'improve') {
+if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason instead of a white page
   require_once dirname(__DIR__) . '/api/insights-lib.php';
   $D = pick_dates('improve'); $from = $D['from']; $to = $D['to'];
   $A = analytics($from, $to, $CAT); $C = conversion_stats($from, $to, $CAT); $V = insights_data($from, $to, 0); $names = array_map(fn($p) => $p['name'] ?? '', $CAT);
@@ -1001,7 +1001,7 @@ if ($tab === 'improve') {
     . '<div class="ihow"><b>How to use this page</b><ol><li>Start with tip 1: it affects the most people.</li><li>Read what the data shows and follow the steps.</li><li>Check again after a week: the numbers should move.</li></ol></div></div></div>'
     . '<div class="box i-tips"><div class="bh"><h3>What to fix first</h3><span class="sp"></span><a class="btn line sm" href="' . h(self_url(['tab' => 'analytics', 'vj' => 1])) . '">See the visits</a></div><div class="bb">'
     . ($tipsH ? '<ol class="tips">' . $tipsH . '</ol>' : '<p class="empty">No clear problem in these dates yet. Pick 7 or 30 days, or check back when more people have visited.</p>') . '</div></div></div>';
-}
+} catch (Throwable $e) { $body = $body0 . '<div class="box"><p class="muted empty">Improve could not open: ' . h($e->getMessage()) . ' (line ' . $e->getLine() . '). Send us a picture of this line.</p></div>'; } }
 
 /* ============ Progress: a clean page to show someone how the shop is doing, month by month or year by year ============ */
 /* Visitors, orders and income only: no names, mobiles or Left at checkout. Income and orders are real orders (New, Paid, Delivered, not test), as on Analytics. */
