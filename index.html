@@ -5294,7 +5294,7 @@ function checkoutPage(q){
     <div class="co-step"><span>2</span><h2>Payment</h2></div>
     <div class="co-need" id="coNeed" role="status" aria-live="polite" hidden>${LOCK_SVG}<div><b>Fill in your delivery details to unlock payment</b><span>Still needed:</span><span class="co-chips" id="coChips"></span></div></div>
     <div class="co-pay" role="radiogroup" aria-label="Payment method">
-      ${S.checkout.razorpay ? `<label class="co-opt"><input type="radio" name="pay" value="online" checked><span class="co-ot"><b>UPI / Card / Netbanking / Wallets</b><small>Pay securely now with Razorpay</small></span>${CO_ICON.card}</label>` : ''}
+      ${S.checkout.razorpay ? `<label class="co-opt"><input type="radio" name="pay" value="online" checked><span class="co-ot"><b>UPI / Card / Netbanking / Wallets</b><small>Tap to pay securely with Razorpay</small></span>${CO_ICON.card}</label>` : ''}
       ${cod ? `<label class="co-opt${codOk ? '' : ' off'}${codSt === 'na' ? ' na' : ''}"><input type="radio" name="pay" value="cod"${codOk ? (S.checkout.razorpay ? '' : ' checked') : ' disabled'}><span class="co-ot"><b>Cash on delivery</b><small class="co-cl" id="coCodLine">${coCodLine(cod, codSt)}</small>${cod.onlyName ? '' : `<small class="co-more" id="coCodNote"${codSt === 'min' ? '' : ' hidden'}>Add ${inr(cod.min - t)} more to activate COD</small>`}</span>${CO_ICON.cash}</label>` : ''}
     </div>
     <p class="co-err" id="coErr" role="alert" hidden></p>
@@ -5421,7 +5421,11 @@ function bindCheckout(q){
     try { const {note, ...keep} = c; localStorage.setItem(CO_KEY, JSON.stringify(keep)); } catch(e) {}
     return c;
   }
-  const busy = (on, label) => { btn.disabled = on; if (on) $('#coPayTxt').textContent = label; else upd(); };
+  let paying = false;
+  const busy = (on, label) => { paying = on; btn.disabled = on; if (on) $('#coPayTxt').textContent = label; else upd(); };
+  /* tapping a way to pay goes straight on: UPI / Card opens Razorpay, Cash on delivery places the order; the Pay button below does the same (AJAY, 2026-10-26).
+     Details still missing: the same check as the button, so it points at the first empty box */
+  $$('input[name=pay]', f).forEach(r => r.addEventListener('click', () => { if (paying || r.disabled) return; upd(); f.requestSubmit(); }));
   const done = (no, pay, review, total) => {
     let iv = ''; try { const r = JSON.parse(localStorage.getItem('fomaxo_ref') || 'null'); if (r && /^[a-z0-9]{8,16}$/.test(r.v) && Date.now() - r.t < 2592e6) iv = r.v; localStorage.removeItem('fomaxo_ref'); } catch(e) {}   // ordered from a friend's shared link
     TRK.send('buy', {id: String(no || '').toLowerCase().replace(/[^a-z0-9-]/g, ''), ...(iv ? {iv} : {})}); ADS.buy(no, total, lines);
