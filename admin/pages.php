@@ -958,11 +958,11 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $n = $m = 0;
   foreach ($V['taps'] as $r) {
     if ($r['dead'] && $n < 1 && $r['people'] >= 3 && $r['label'] !== '') { $n++;
-      $tip($r['people'], 'People tap “' . h($r['label']) . '” on ' . h(insights_pg_name($r['pg'], $names)) . ', but nothing happens', ['<b>' . $nf($r['people']) . '</b> people tapped it ' . $nf($r['taps']) . ' times.'],
+      $tip($r['people'], 'People tap “' . h($r['name']) . '” on ' . h(insights_pg_name($r['pg'], $names)) . ', but nothing happens', ['<b>' . $nf($r['people']) . '</b> people tapped it ' . $nf($r['taps']) . ' times.'],
         'They expect it to open or do something. Making it work removes a small annoyance.', [str_starts_with($r['label'], 'Photo') ? 'Make the photo open bigger when tapped.' : 'Make it a link to the right place (size, reviews or Add to bag).'], 'make it tappable', 'tap ' . $r['label']); }
     if ($r['rage_people'] >= 2 && $m < 1) { $m++;
-      $tip($r['rage_people'], 'People tap “' . h($r['label']) . '” again and again', ['<b>' . $nf($r['rage_people']) . '</b> people tapped the same spot 3 times in a second on ' . h(insights_pg_name($r['pg'], $names)) . '.'],
-        'This usually means it is slow, too small, or does not work on their phone.', ['Try it on your own phone. If it is slow or does nothing, tell us.'], 'check ' . mb_strtolower($r['label']), 'tap ' . $r['label']); }
+      $tip($r['rage_people'], 'People tap “' . h($r['name']) . '” again and again', ['<b>' . $nf($r['rage_people']) . '</b> people tapped the same spot 3 times in a second on ' . h(insights_pg_name($r['pg'], $names)) . '.'],
+        'This usually means it is slow, too small, or does not work on their phone.', ['Try it on your own phone. If it is slow or does nothing, tell us.'], 'check ' . mb_strtolower($r['name']), 'tap ' . $r['label']); }
   }
   /* a source with many visits and almost no adds to bag: its own "check ads" tip below shows where it lands, so the one-page tip leaves that line out */
   $adSrc = null; foreach ($V['by_source'] as $r) if ($r['visits'] >= 30 && $pct($r['adds'], $r['visits']) < 1) { $adSrc = $r; break; }
