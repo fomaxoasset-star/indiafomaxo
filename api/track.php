@@ -29,7 +29,7 @@ $in = json_decode($raw, true); if (!is_array($in)) { track_seen('bad'); exit; }
 $t = (string)($in['t'] ?? '');
 $id = fn($k) => preg_match('/^[a-z0-9]{8,16}$/', (string)($in[$k] ?? '')) ? (string)$in[$k] : '';
 $vid = $id('v'); $sid = $id('s');
-if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping', 'invite'], true)) { track_seen('bad'); exit; }
+if (!$vid || !$sid || !in_array($t, ['view', 'product', 'add', 'checkout', 'pay', 'card', 'buy', 'lead', 'scroll', 'ping', 'invite', 'trail'], true)) { track_seen('bad'); exit; }
 
 try {
   $db = shop_db(); $now = time();
@@ -41,6 +41,27 @@ try {
     $db->prepare('DELETE FROM visits WHERE last < ?')->execute([$now - 800 * 86400]);
   }
   if ($t === 'ping') exit;
+  if ($t === 'trail') {   // taps, how far down each page was seen, how fast the site opened and page errors, for Admin → Analytics → Visits and Improve (api/insights-lib.php)
+    $device = preg_match('/Mobi|Android|iPhone|iPad/i', $ua) ? 'phone' : 'computer';
+    $cl = fn($v, $max) => trim(mb_substr(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)$v) ?? '', 0, $max));
+    $n = fn($v) => max(0, min(100, (int)$v));
+    $rows = [];
+    foreach (array_slice((array)($in['tr'] ?? []), 0, 25) as $x) {
+      if (!is_array($x) || !in_array($x['k'] ?? '', ['t', 's', 'l', 'e'], true)) continue;
+      $rows[] = [shop_now(), $sid, $vid, $cl($x['p'] ?? '/', 120), $x['k'], in_array($x['k'], ['t', 'e'], true) ? $cl($x['l'] ?? '', 60) : '', $x['k'] === 's' ? $n($x['pc'] ?? 0) : 0,
+                 empty($x['d']) ? 0 : 1, empty($x['r']) ? 0 : 1, $device, $x['k'] === 'l' ? max(0, min(60000, (int)($x['ms'] ?? 0))) : 0];
+    }
+    if (!$rows) exit;
+    require_once __DIR__ . '/insights-lib.php';
+    insights_table($db);
+    $db->prepare('INSERT INTO trail(ts, sid, vid, path, k, label, pc, dead, rage, device, ms) VALUES ' . implode(',', array_fill(0, count($rows), '(?,?,?,?,?,?,?,?,?,?,?)')))->execute(array_merge(...$rows));
+    if (random_int(1, 300) === 1) $db->prepare('DELETE FROM trail WHERE ts < ?')->execute([date('Y-m-d H:i:s', $now - 120 * 86400)]);   // taps are kept 4 months
+    if (insights_due()) register_shutdown_function(function () {   // the plain-text summary in api/data/visits.txt, at most once an hour, after this note is answered
+      if (function_exists('litespeed_finish_request')) litespeed_finish_request(); elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+      insights_write();
+    });
+    exit;
+  }
   /* Invite friends (Share with friends on a product page): this device's visitor id is kept with the sharer's WhatsApp number. The link they share carries
      ?ref=<their visitor id>; when a friend orders from it, the sharer shows in Left at checkout as "Invited a friend" so the shop can send their coupon. */
   $db->exec('CREATE TABLE IF NOT EXISTS inviters(vid VARCHAR(16) PRIMARY KEY, phone VARCHAR(24) NOT NULL, name VARCHAR(80) NOT NULL DEFAULT \'\', at INT NOT NULL DEFAULT 0)');
