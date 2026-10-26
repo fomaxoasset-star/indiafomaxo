@@ -2192,6 +2192,9 @@ html[dir=rtl] .wa-tel{direction:ltr}
 .co-retry .btn{display:inline-flex;align-items:center;gap:8px}
 .co-retry .btn svg{width:16px;height:16px;color:#25d366}
 .co-retry[hidden]{display:none}
+.co-retry>*{max-width:100%;min-width:0}
+/* phone: the two buttons stack, each the full width of the box, so neither runs past its edge */
+@media(max-width:620px){.co-retry{padding:16px 14px}.co-retry{grid-template-columns:minmax(0,1fr)}.co-retry>div{display:grid;grid-template-columns:minmax(0,1fr);justify-self:stretch;gap:8px}.co-retry .btn{width:100%;justify-content:center;white-space:normal;text-align:center;letter-spacing:.1em;font-size:11px;padding:12px 10px;gap:8px;min-height:46px}}
 .co-err{border:1px solid rgba(208,73,62,.5);background:rgba(208,73,62,.08);color:#d0493e;padding:12px 16px;font-size:14px}
 html[data-mode="light"] .co-err{color:#a8322a}
 .co-btn{min-height:64px;margin-top:8px;font-size:13px;letter-spacing:.24em}
