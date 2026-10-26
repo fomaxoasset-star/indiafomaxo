@@ -2978,7 +2978,7 @@ const IMG = k => /^up\//.test(k) ? 'media/p/' + encodeURIComponent(k.slice(3)) :
 /* product photos that also have a 600px wide copy (<name>-s.webp, about half the data), with the full photo's width: shop cards, video covers and
    small pictures use the copy whenever it is sharp enough for the screen (most phones and laptops). A new photo without a copy simply uses the full one */
 const SMALL = {'dollar-1': 688, 'gold-1': 688, 'king-1': 688, 'matchacoco-10-1': 688, 'matchacoco-50-main': 688, 'oldmoney-10-1': 688, 'oldmoney-50-main': 1100, 'oldmoney-50-v3': 880, 'passionsin-1': 688, 'passionsin-10-1': 688, 'royalcandy-10-1': 688, 'royalcandy-50-main': 688};
-const IMGC = (k, w) => SMALL[k] && w * (window.devicePixelRatio || 1) <= 640 ? IMG(k + '-s') : IMG(k);   // w = how wide it shows, in CSS px
+const IMGC = (k, w) => { const n = w * (window.devicePixelRatio || 1); return IMG_W[k] && n <= 240 ? `assets/img/s/${k}.webp?v=11` : IMG_W[k] && n <= 480 ? `assets/img/m/${k}.webp?v=11` : SMALL[k] && n <= 640 ? IMG(k + '-s') : IMG(k); };   // w = how wide it shows, in CSS px: the 240 px (s/) or 480 px (m/) copy when that is enough (a video cover or a small product picture took the full photo)
 /* photos that also have 240, 480 and (when wider than 900) 720px wide copies in assets/img/s, m and t, with the full photo's width: PIC(k, sizes) lets the browser
    pick the lightest copy that is still sharp for how wide the photo shows (sizes) and the screen. A new photo without copies simply uses the full one */
 const ED = '(max-width:760px) 100vw, 44vw', SPLIT = '(max-width:760px) 100vw, 54vw', GF = '(max-width:760px) 96vw, 31vw';   /* how wide the editorial, side by side and gift card photos show */
@@ -3577,8 +3577,8 @@ function card(p, opts={}){
   return `<article class="card rv-up ${opts.d||''}" data-id="${p.id}" data-sel="${size}">
     <a class="media" href="#/product/${p.id}${opts.size ? '?size=' + opts.size : ''}" aria-label="${esc(p.name)}">
       ${p.tag ? `<span class="tag">${esc(p.tag)}</span>` : ''}<span data-off>${isOut(p) ? '<span class="off-tag oos-tag">Out of stock</span>' : offTag(p, size)}</span>
-      <img src="${IMG(img)}" alt="FOMAXO ${esc(p.name)}" loading="lazy">
-      ${alt ? `<img class="alt" src="${IMG(alt)}" alt="" loading="lazy">` : ''}
+      <img ${cardImg(img, CARD2_SIZES)} alt="FOMAXO ${esc(p.name)}" loading="lazy">
+      ${alt ? `<img class="alt" ${cardImg(alt, CARD2_SIZES)} alt="" loading="lazy">` : ''}
       <span class="quick"><span class="btn line sm block" style="background:rgba(5,5,5,.7)">View details</span></span>
     </a>
     <div class="row1"><h3><a href="#/product/${p.id}">${esc(p.name)}</a></h3><span data-price>${priceHTML(p, size)}</span></div>
@@ -3594,8 +3594,8 @@ app.addEventListener('click', e => {
   const p = P[c.dataset.id];
   const chip = e.target.closest('[data-size]');
   if (chip){ const s = chip.dataset.size === 'set' ? 'set' : +chip.dataset.size; c.dataset.sel = s; $$('.chip', c).forEach(x => x.classList.toggle('on', x === chip)); $('[data-price]', c).innerHTML = priceHTML(p, s); const ot = $('[data-off]', c); if (ot) ot.innerHTML = offTag(p, s);
-    const im = $('.media img', c); const src = IMG(imgFor(p, s)); if (im.getAttribute('src') !== src) im.src = src;
-    const al = $('.media img.alt', c), ak = altFor(p, s); if (al) { if (ak) { al.src = IMG(ak); al.hidden = false; } else al.hidden = true; }
+    const im = $('.media img', c), k = imgFor(p, s); if (im.getAttribute('src') !== IMGC(k, CARD_W())) setCardImg(im, k, CARD2_SIZES);
+    const al = $('.media img.alt', c), ak = altFor(p, s); if (al) { if (ak) { setCardImg(al, ak, CARD2_SIZES); al.hidden = false; } else al.hidden = true; }
     const st = $('[data-stk]', c); if (st) st.innerHTML = stockTag(p, s); const ac = $('[data-acts]', c); if (ac) { ac.innerHTML = cardActs(p, s); ac.classList.toggle('one', isOut(p) || sizeOut(p, s)); } }
   const sel = isNaN(+c.dataset.sel) ? c.dataset.sel : +c.dataset.sel;
   if (p.kind === 'set' && e.target.closest('[data-add],[data-buy]')) { location.hash = `#/product/${p.id}?size=${sel}`; return; }
@@ -4271,7 +4271,7 @@ function togetherOff(lines){
 const cbRows = (lines, offs) => { const seen = new Set(); return lines.map((l, i) => ({l, i})).filter(({l}) => !l.cb || !offs.has(l) || (!seen.has(l.cb) && seen.add(l.cb))); };
 const cbInfo = (lines, l, offs) => { const ls = cbGroup(lines, l.cb), g = CB[l.cb.split('~')[0]];
   return {g, ls, worth: ls.reduce((a, x) => a + +P[x.id].prices[x.opt], 0), price: ls.reduce((a, x) => a + lineUnit(x, offs), 0),
-    pics: `<span class="cb-col n${Math.min(ls.length, 4)}">${ls.slice(0, 4).map(x => `<img src="${IMG(lineImg(x))}" alt="">`).join('')}</span>`,
+    pics: `<span class="cb-col n${Math.min(ls.length, 4)}">${ls.slice(0, 4).map(x => `<img src="${IMGC(lineImg(x), VW <= 600 ? 120 : 220)}" alt="">`).join('')}</span>`,
     names: ls.map(x => { const p = P[x.id]; return (p.kind ? p.name : `${p.name} ${optLabel(p, x.opt)}`) + (g.free && g.free.includes(x.cs) ? ' (free gift)' : ''); }).join(' · ')}; };
 /* a combo whose products changed (sold out, re-priced out of its slot) leaves the bag as a whole */
 { const bad = new Set(cart.filter(l => l.cb).map(l => l.cb).filter(t => !cbValid(CB[t.split('~')[0]], cbGroup(cart, t))));
@@ -4333,10 +4333,10 @@ const MOOD = {gold: 'Strong · Seductive', dollar: 'Fresh · Zesty', oldmoney: '
 const cbName = (p, sz) => p.kind ? p.name : `${p.name} · ${sz}ml`;
 const cbSub = p => p.kind === 'car' ? 'Car fragrance' : p.kind ? (p.vol || 'Personal care') : (MOOD[p.id] || p.family || '');
 const cbSlot = (id, sz) => { const p = P[id]; return p
-  ? `<img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
+  ? `<img src="${IMGC(imgFor(p, sz), 60)}" alt="" loading="lazy"><span class="t"><b>${esc(cbName(p, sz))}</b><small>${esc(cbSub(p))}</small></span><span class="go">Change ›</span>`
   : `<span class="ph0"></span><span class="t"><b>No product</b><small>Tap to add one</small></span><span class="go">Add ›</span>`; };
 const gfCard = (g, i, label) => `<article class="gf-set rv-up d${i % 3}${g.badge ? ' hl' : ''}">
-    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" ${PIC(g.img, GF)} alt="" loading="lazy"><img class="fg" ${PIC(g.img, GF)} alt="FOMAXO ${esc(g.name)}" loading="lazy">` : (g.flex ? Array.from({length: g.slots}, (_, k) => g.items[k] || []) : g.items.slice(0, 4)).map(([id, s], k) => `<img src="${P[id] ? IMG(imgFor(P[id], s)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
+    <div class="gf-pics${g.img ? ' photo' : ''}">${g.badge ? `<span class="gf-badge">${esc(g.badge)}</span>` : ''}${g.img ? `<img class="bg" ${PIC(g.img, GF)} alt="" loading="lazy"><img class="fg" ${PIC(g.img, GF)} alt="FOMAXO ${esc(g.name)}" loading="lazy">` : (g.flex ? Array.from({length: g.slots}, (_, k) => g.items[k] || []) : g.items.slice(0, 4)).map(([id, s], k) => `<img src="${P[id] ? IMGC(imgFor(P[id], s), VW <= 600 ? 120 : 220) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}"${P[id] ? '' : ' class="none"'}${g.live ? ` data-gimg="${g.id}-${k}"` : ''} alt="" loading="lazy">`).join('')}</div>
     <div class="gf-body">${g.tag ? `<small class="cb-tag">${g.offer || g.fest ? '' : String(i + 1).padStart(2, '0') + ' · '}${esc(g.tag)}</small>` : ''}<h3>${esc(g.name)}</h3><p class="v">${esc(g.v)}</p>
       <div class="gf-pick"><small${g.flex ? ' class="cb-hint"' : ''}>${g.flex ? `Add or remove products, up to ${g.slots}` : 'Choose your products'}</small>${Array.from({length: g.slots || GIFT_SLOTS}, (_, k) => g.items[k] || []).map(([id, s], k) => `<select data-gpick="${g.id}" data-gslot="${k}" aria-label="${esc(g.name)}: product ${k + 1}"${g.combo ? ' hidden' : ''}>${giftOptions(id, s, Array.isArray(g.only) ? g.only[k] : g.only, Array.isArray(g.none) ? g.none.includes(k) : g.none)}</select>${g.free && g.free.includes(k) ? '<small class="cb-free">Your free gift</small>' : ''}${g.combo ? `<button type="button" class="cb-slot" data-cbslot="${g.id}|${k}" aria-label="${esc(g.name)}: change product ${k + 1}">${cbSlot(id, s)}</button>` : ''}`).join('')}</div>
       ${g.combo ? `<div class="cb-price" data-cbprice="${g.id}">${cbPriceHTML(g, g.items.filter(x => x.length))}</div>` : ''}
@@ -4490,7 +4490,7 @@ function bindGift(){
   $$('[data-gslot]').forEach(sel => sel.onchange = () => { const im = $(`[data-gimg="${sel.dataset.gpick}-${sel.dataset.gslot}"]`), [id, sz] = sel.value.split('|');
     const row = $(`[data-cbslot="${sel.dataset.gpick}|${sel.dataset.gslot}"]`); if (row) row.innerHTML = cbSlot(id, sz);
     const pr = $(`[data-cbprice="${sel.dataset.gpick}"]`), cg = COMBO_SETS.find(x => x.id === sel.dataset.gpick); if (pr && cg) pr.innerHTML = cbPriceHTML(cg, cbPicks(cg.id)); if (!im) return;
-    im.classList.toggle('none', !P[id]); im.src = P[id] ? IMG(imgFor(P[id], sz)) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
+    im.classList.toggle('none', !P[id]); im.src = P[id] ? IMGC(imgFor(P[id], sz), VW <= 600 ? 120 : 220) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; });
   $$('[data-gjump]').forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.gjump); t && t.scrollIntoView({behavior: 'smooth'}); });
   $$('[data-cbslot]').forEach(b => b.onclick = () => cbPicker(b));
   $$('[data-cbadd]').forEach(b => b.onclick = () => cbAdd(b.dataset.cbadd));
@@ -4523,7 +4523,7 @@ function cbPicker(btn){
   let [cur, curSz] = sel.value.split('|');
   const allParfum = [...groups.keys()].every(id => !P[id].kind);
   const card = id => { const p = P[id], szs = groups.get(id), sz = id === cur ? curSz : szs[0];
-    return `<button type="button" class="cb-card${id === cur ? ' on' : ''}" data-cbp="${id}"><img src="${IMG(imgFor(p, sz))}" alt="" loading="lazy"><span class="t"><b>${esc(p.name)}</b><small>${esc(cbSub(p))}</small>${p.kind ? '' : `<span class="sz">${szs.map(s => `<span data-cbs="${s}"${id === cur && s === curSz ? ' class="on"' : ''}>${s}ml</span>`).join('')}</span>`}</span></button>`; };
+    return `<button type="button" class="cb-card${id === cur ? ' on' : ''}" data-cbp="${id}"><img src="${IMGC(imgFor(p, sz), 60)}" alt="" loading="lazy"><span class="t"><b>${esc(p.name)}</b><small>${esc(cbSub(p))}</small>${p.kind ? '' : `<span class="sz">${szs.map(s => `<span data-cbs="${s}"${id === cur && s === curSz ? ' class="on"' : ''}>${s}ml</span>`).join('')}</span>`}</span></button>`; };
   const d = document.createElement('div'); d.className = 'cb-sheet';
   d.innerHTML = `<div class="in" role="dialog" aria-modal="true" aria-label="Choose a product"><div class="hd"><div><h3>Choose ${allParfum ? 'your parfum' : 'a product'}</h3><p>${esc(g.name)} · ${allParfum ? 'tap a parfum, then pick the size' : 'tap a product to put it in your combo'}</p></div><button type="button" class="x" data-cbx aria-label="Close">✕</button></div>
     <div class="g">${[...groups.keys()].map(card).join('')}${none ? `<button type="button" class="cb-card${cur ? '' : ' on'}" data-cbp=""><span class="ph0">—</span><span class="t"><b>No product</b><small>Leave this one empty</small></span></button>` : ''}</div>
@@ -4532,7 +4532,7 @@ function cbPicker(btn){
   const esc_ = e => { if (e.key === 'Escape') close(); };
   const set = (id, sz) => { cur = id; curSz = sz; sel.value = id ? `${id}|${sz}` : ''; sel.dispatchEvent(new Event('change'));
     $$('.cb-card', d).forEach(c => { const on = c.dataset.cbp === id; c.classList.toggle('on', on); $$('[data-cbs]', c).forEach(s => s.classList.toggle('on', on && s.dataset.cbs === sz));
-      const im = $('img', c); if (on && im) im.src = IMG(imgFor(P[id], sz)); }); };
+      const im = $('img', c); if (on && im) im.src = IMGC(imgFor(P[id], sz), 60); }); };
   d.onclick = e => { if (e.target === d || e.target.closest('[data-cbx]')) return close();
     const c = e.target.closest('[data-cbp]'); if (!c) return; const id = c.dataset.cbp, s = e.target.closest('[data-cbs]');
     set(id, s ? s.dataset.cbs : id === cur ? curSz : (groups.get(id) || [''])[0]); };
@@ -4550,10 +4550,11 @@ const HOVER = matchMedia('(hover:hover)').matches;
 const pcAltKey = (p, s) => p.kind === 'care' || p.kind === 'car' || p.kind === 'set' ? p.images[1] : altFor(p, s);
 /* a shop card photo: the browser picks the lightest copy that is still sharp for the card's width and the screen (480px on most phones and laptops,
    the 600px copy on sharper screens), from the copies listed in IMG_W / SMALL; a photo without copies just uses src */
-const CARD_SIZES = '(max-width:1100px) 44vw, (max-width:1600px) 21vw, 330px';   // how wide a shop card photo shows: two across up to 1100px, four across above
+const CARD_SIZES = '(max-width:1100px) 44vw, (max-width:1600px) 21vw, 330px';
+const CARD2_SIZES = '(max-width:600px) 75vw, 340px';   // the bigger cards (product page rows): about three quarters of a phone, at most 340px   // how wide a shop card photo shows: two across up to 1100px, four across above
 const cardSet = k => { const w = IMG_W[k], t = (d, x) => `assets/img/${d}/${k}.webp?v=11 ${x}w`; return w ? [t('s', 240), t('m', 480), SMALL[k] && `${IMG(k + '-s')} 600w`, w > 900 && t('t', 720), `${IMG(k)} ${w}w`].filter(Boolean).join(', ') : ''; };
-const cardImg = k => { const set = cardSet(k); return `src="${IMGC(k, CARD_W())}"` + (set ? ` srcset="${set}" sizes="${CARD_SIZES}"` : ''); };
-const setCardImg = (im, k) => { const set = cardSet(k); if (set) { im.sizes = CARD_SIZES; im.srcset = set; } else im.removeAttribute('srcset'); im.src = IMGC(k, CARD_W()); };
+const cardImg = (k, sz = CARD_SIZES) => { const set = cardSet(k); return `src="${IMGC(k, CARD_W())}"` + (set ? ` srcset="${set}" sizes="${sz}"` : ''); };
+const setCardImg = (im, k, sz = CARD_SIZES) => { const set = cardSet(k); if (set) { im.sizes = sz; im.srcset = set; } else im.removeAttribute('srcset'); im.src = IMGC(k, CARD_W()); };
 const pcAlt = (p, s) => { const k = HOVER && pcAltKey(p, s); return k ? `<img class="pc-alt" ${cardImg(k)} alt="" loading="lazy">` : ''; };
 function pcCard(p, i=0, o={}){
   const isSet = p.kind === 'set';
@@ -5722,7 +5723,7 @@ function rowStep(sc, d){ const m = sc.scrollWidth - sc.clientWidth, rtl = getCom
   if (d > 0 && x >= hi - 2) sc.scrollTo({left: lo, behavior: 'instant'});
   else if (d < 0 && x <= lo + 2) sc.scrollTo({left: hi, behavior: 'instant'});
   else { const g = parseFloat(getComputedStyle(sc).columnGap) || 0; sc.scrollBy({left: d * (sc.clientWidth + g), behavior: 'smooth'}); } }
-function edgeArrows(sc){ const w = sc && sc.parentElement; if (!w || !w.classList.contains('eg-w')) return;
+function edgeArrows(sc){ const w = sc && sc.parentElement; if (!w || !w.classList.contains('eg-w') || sc._eg) return; sc._eg = 1;   // once per row: closing the player drew them again, each time with one more resize watcher
   $$(':scope > .eg', w).forEach(b => b.remove());
   w.insertAdjacentHTML('beforeend', `<button type="button" class="eg eg-l" data-eg="-1" aria-label="Previous videos">${VI.left}</button><button type="button" class="eg eg-r" data-eg="1" aria-label="More videos">${VI.right}</button>`);
   $$(':scope > .eg', w).forEach(b => b.onclick = () => rowStep(sc, +b.dataset.eg));
@@ -5755,7 +5756,7 @@ function bindVids(){
   loopRow($('#vrow'));
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
   tiles.forEach(t => t.onclick = () => openReel(+t.dataset.vi));
-  tiles.forEach(t => { const v = $('video', t); if (v) { v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
+  tiles.forEach(t => { const v = $('video', t); if (v && !v._vb) { v._vb = 1; v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
   if ('IntersectionObserver' in window) { const cio = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { cio.disconnect(); covers(); } }, {rootMargin: '100% 0px'}); cio.observe($('#vrow')); } else covers();   // the videos start by themselves as the page opens (autoplay, muted, looping)
@@ -5777,7 +5778,10 @@ function bindVids(){
       v.play().then(() => t.classList.add('playing')).catch(e => { if (e.name !== 'NotAllowedError') return;
         if (v.readyState < 3 && !v._re) { v._re = 1; v.preload = 'auto'; v.addEventListener('canplay', () => v.play().then(() => t.classList.add('playing')).catch(() => hold()), {once: true}); return; }   // Safari can refuse to start a preview that is not loaded yet: it tries again once loaded, and only then holds back
         hold(); });
-    } else { wait.delete(t); if (!v.paused) { v.pause(); t.classList.remove('playing'); } if (v.readyState < 2 && v.getAttribute('src')) { stop(v); pump(); } } };
+    } else { wait.delete(t); if (!v.paused) { v.pause(); t.classList.remove('playing'); } if (v.readyState < 2 && v.getAttribute('src')) { stop(v); pump(); }
+      /* a preview that stays off screen for 4 s lets go of its video (its photo shows again): before, every preview ever played stayed loaded
+         (24 on a laptop, 14 on a phone after one swipe along the row), which uses a phone's memory. Back on screen it comes from the browser's copy */
+      clearTimeout(t._rel); t._rel = setTimeout(() => { const w = $('video', t); if (w && w.getAttribute('src') && w.paused && !onScreen(t) && !$('#reel')) stop(w); }, 4000); } };
   if (!ready) addEventListener('load', () => { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }, {once: true});
   const again = () => { held = false; tiles.forEach(t => onScreen(t) && run(t, true)); };   // a phone that held back autoplay (iPhone Low Power Mode) plays them at the first touch
   ['touchend', 'pointerdown', 'keydown'].forEach(ev => addEventListener(ev, again, {once: true, passive: true}));   // a laptop or phone that held back autoplay (Low Power Mode, Safari's Auto-Play setting) starts them on the first tap, click or key
@@ -5843,7 +5847,7 @@ function openReel(i){
       if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
       if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
-      else v.pause(); });
+      else { v.pause(); if (Math.abs(n - k) > 1 && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); s.classList.remove('shown'); } } });   // a video two or more away lets go (before, every video swiped past stayed loaded, full size)
     const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
     if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
     $$('.rl-nav button', el).forEach(b => b.disabled = (+b.dataset.rl < 0 && k === 0) || (+b.dataset.rl > 0 && k === slides.length - 1));
@@ -6023,7 +6027,7 @@ if (OFFER || NEWP) {
       <p class="ofp-pct"><span class="metal">${OFFER.pct}% off</span></p>
       <p class="ofp-on">${esc(OFFER.sub)}</p>
       ${OFFER.items.length ? `<div class="ofp-items">${OFFER.items.map(id => { const p = P[id], z = bestSize(p);
-        return `<a class="ofp-item" href="#/product/${encodeURIComponent(id)}${p.sizes.length > 1 ? '?size=' + z : ''}"><img src="${IMG(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, z))}" alt="" loading="lazy"><b>${esc(p.title || p.name)}</b>${priceHTML(p, z)}</a>`; }).join('')}</div>` : ''}
+        return `<a class="ofp-item" href="#/product/${encodeURIComponent(id)}${p.sizes.length > 1 ? '?size=' + z : ''}"><img src="${IMGC(p.kind === 'care' || p.kind === 'car' ? p.images[0] : imgFor(p, z), 140)}" alt="" loading="lazy"><b>${esc(p.title || p.name)}</b>${priceHTML(p, z)}</a>`; }).join('')}</div>` : ''}
       ${OFFER.end ? `<div class="ofp-cd" data-ofbox aria-label="Time left">${cdBoxes()}</div>` : ''}
       <p class="ofp-hurry">HURRY UP!!!</p>
       ${waHTML()}<a class="btn block ofp-go" href="#/fragrances">${esc(OFFER.btn)}</a>
