@@ -1001,8 +1001,9 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
      It comes back only when a week has passed and the chosen dates start after the fix, so it is judged on new visits only */
   $done = ['fix phone' => '2026-10-26',   // #512: phone Add To Cart closer, bag note above buy bar
     'fix landing page' => '2026-10-26',   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
-    'fix product page' => '2026-10-26',
-    'fix home' => '2026-10-26'];   // phone home: bar at the bottom after the banner, "Not sure which one? Try any scent in 10ml" → Mini Collection   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
+    'fix product page' => '2026-10-26',   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
+    'fix home' => '2026-10-26',   // phone home: bar at the bottom after the banner, "Not sure which one? Try any scent in 10ml" → Mini Collection
+    'fix checkout' => '2026-10-26'];   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
   /* tips we built the site side of, where the steps left are done by you outside the site (e.g. in Meta Ads Manager): the tip stays, without "Reply …" */
   $yours = ['check ads' => '2026-10-26'];   // landing pages and ad names shown in the tip, Ads Manager steps
   $replyLi = fn($w) => isset($yours[$w]) ? '<li>Numbers added on ' . date('d/m/Y', strtotime($yours[$w])) . '. These steps are yours: check here again a week after you change the ads.</li>' : '<li>Reply <b class="tword">' . h($w) . '</b> in our chat and we build it, with pictures first.</li>';

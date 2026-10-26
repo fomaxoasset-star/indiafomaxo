@@ -468,7 +468,7 @@ function fomaxo_coupon(array $in, array $order, ?PDO $db = null): array {
 function fomaxo_customer(array $in): array {
   $c = is_array($in['customer'] ?? null) ? $in['customer'] : [];
   $t = fn($k, $max) => trim(mb_substr(preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', is_string($c[$k] ?? null) ? $c[$k] : '') ?? '', 0, $max));
-  $o = ['name' => $t('name', 80), 'phone' => $t('phone', 20), 'email' => $t('email', 120), 'house' => $t('house', 80), 'street' => $t('street', 120),
+  $o = ['name' => $t('name', 80), 'phone' => $t('phone', 20), 'email' => $t('email', 120), 'house' => $t('house', 160), 'street' => $t('street', 120),
         'landmark' => $t('landmark', 80), 'city' => $t('city', 60), 'state' => $t('state', 60), 'pin' => $t('pin', 10), 'note' => $t('note', 300)];
   if (mb_strlen($o['name']) < 2) return ['error' => 'Please enter your full name.'];
   $d = preg_replace('/\D/', '', $o['phone']);
@@ -481,9 +481,10 @@ function fomaxo_customer(array $in): array {
     if (!preg_match('/^[6-9]\d{9}$/', $d)) return ['error' => 'Please enter a valid 10-digit Indian mobile number.'];
     $o['phone'] = '+91 ' . substr($d, 0, 5) . ' ' . substr($d, 5);
   }
-  /* email is optional (the phone checkout doesn't ask for it), but when given it must be valid */
+  /* email is optional at checkout, but when given it must be valid */
   if ($o['email'] !== '' && !filter_var($o['email'], FILTER_VALIDATE_EMAIL)) return ['error' => 'Please enter a valid email address.'];
-  if ($o['house'] === '' || mb_strlen($o['street']) < 2 || mb_strlen($o['city']) < 2) return ['error' => 'Please enter your full delivery address.'];
+  /* checkout sends the whole address in one box (house); older pages sent house and street apart */
+  if (mb_strlen(trim($o['house'] . ' ' . $o['street'])) < 5 || mb_strlen($o['city']) < 2) return ['error' => 'Please enter your full delivery address.'];
   if (!in_array($o['state'], FOMAXO_STATES, true)) return ['error' => 'Please choose your state.'];
   if (!preg_match('/^[1-9]\d{5}$/', $o['pin'])) return ['error' => 'Please enter a valid 6-digit PIN code.'];
   $o['wa'] = !empty($c['wa']) ? 1 : 0;   // ticked "Send me order updates and offers on WhatsApp" (unticked unless they chose it)
