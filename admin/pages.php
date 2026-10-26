@@ -967,8 +967,11 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
         'This usually means it is slow, too small, or does not work on their phone.', ['Try it on your own phone. If it is slow or does nothing, tell us.'], 'check ' . mb_strtolower($r['label'])); }
   }
   if ($V['visits'] >= 20 && $pct($V['bounce'], $V['visits']) >= 50) {
-    $w = $V['by_source'][0] ?? null;
-    $tip($V['bounce'], $pctT($pct($V['bounce'], $V['visits'])) . ' of visits leave after one page without adding anything', ['<b>' . $nf($V['bounce']) . '</b> of ' . $nf($V['visits']) . ' visits saw one page and left.' . ($w ? ' Most visits come from <b>' . h(SOURCES[$w['k']] ?? ucfirst($w['k'])) . '</b> (' . $nf($w['visits']) . ').' : '')],
+    $w = $V['by_source'][0] ?? null; $ws = $w ? (SOURCES[$w['k']] ?? ucfirst($w['k'])) : '';
+    /* where the biggest source lands and how many of them leave from that page at once */
+    $lands = []; if ($w) foreach ($V['land'] as $r) if (($x = $r['src'][$w['k']] ?? null) && count($lands) < 3) $lands[] = '<b>' . h(insights_pg_name($r['pg'], $names)) . '</b> ' . $nf($x['visits']) . ' (' . $nf($x['bounce']) . ' left at once)';
+    $tip($V['bounce'], $pctT($pct($V['bounce'], $V['visits'])) . ' of visits leave after one page without adding anything', array_values(array_filter(['<b>' . $nf($V['bounce']) . '</b> of ' . $nf($V['visits']) . ' visits saw one page and left' . ($V['bounce_fast'] ? ', <b>' . $nf($V['bounce_fast']) . '</b> of them within 10 seconds' : '') . '.' . ($w ? ' Most visits come from <b>' . h($ws) . '</b> (' . $nf($w['visits']) . ').' : ''),
+      $lands ? h($ws) . ' visits land on: ' . implode(', ', $lands) . '.' : ''])),
       'The first page they land on decides everything. If it does not match the ad or loads slowly, they go back.', ['Send ads to the exact product and size shown in the ad.', 'Keep the first screen simple: photo, name, price, one button.'], 'fix landing page');
   }
   foreach ($V['by_source'] as $r) if ($r['visits'] >= 30 && $pct($r['adds'], $r['visits']) < 1) { $sn = SOURCES[$r['k']] ?? ucfirst($r['k']);
@@ -986,7 +989,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
       'An error can stop a button from working, so people cannot add to bag or pay.', ['Nothing for you to do: we read the error and fix it.'], 'fix the error');
   /* fixes already built and live on fomaxo.in (reply word => day it went live, e.g. 'fix product page' => '2026-11-01'): the tip leaves the list and waits in Done.
      It comes back only when a week has passed and the chosen dates start after the fix, so it is judged on new visits only */
-  $done = ['fix phone' => '2026-10-26'];   // #512: phone Add To Cart closer, bag note above buy bar
+  $done = ['fix phone' => '2026-10-26',   // #512: phone Add To Cart closer, bag note above buy bar
+    'fix landing page' => '2026-10-26'];   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
   $doneH = []; $back = fn($w) => isset($done[$w]) && time() >= strtotime($done[$w] . ' +7 days') && $from >= $done[$w];
   foreach ($tips as $i => $t) if (isset($done[$t['word']])) {
     if ($back($t['word'])) { $tips[$i]['data'][] = '<b>Fixed on ' . date('d/m/Y', strtotime($done[$t['word']])) . ', and still happening on the new visits.</b>'; continue; }
@@ -1004,7 +1008,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     'visits' => ['Everyone who opened any page of the site in these dates.', array_values(array_filter([
         $V['by_source'] ? 'Most visits came from ' . implode(', ', array_map(fn($r) => '<b>' . h($srcN($r['k'])) . '</b> (' . $nf($r['visits']) . ' visits, ' . $nf($r['adds']) . ' added to bag)', array_slice($V['by_source'], 0, 3))) . '.' : '',
         isset($dv['phone']) || isset($dv['computer']) ? 'Phone: <b>' . $nf($dv['phone']['visits'] ?? 0) . '</b> visits · Laptop: <b>' . $nf($dv['computer']['visits'] ?? 0) . '</b> visits.' : '',
-        $V['visits'] ? '<b>' . $nf($V['bounce']) . '</b> of ' . $nf($V['visits']) . ' (' . $pctT($pct($V['bounce'], $V['visits'])) . ') saw one page and left.' : ''])),
+        $V['visits'] ? '<b>' . $nf($V['bounce']) . '</b> of ' . $nf($V['visits']) . ' (' . $pctT($pct($V['bounce'], $V['visits'])) . ') saw one page and left.' : '',
+        $V['land'] ? 'First page of each visit: ' . implode(', ', array_map(fn($r) => '<b>' . h(insights_pg_name($r['pg'], $names)) . '</b> ' . $nf($r['visits']) . ' (' . $nf($r['bounce']) . ' left at once)', array_slice($V['land'], 0, 4))) . '.' : ''])),
       'More visitors only help when they are the right people and land on the right page. A source with many visits and no adds to bag costs money for nothing.',
       ['Compare the sources above: keep the ones whose visitors add to bag, change or stop the rest.', 'Send every ad to the exact product it shows.'], 'check ads'],
     'product' => ['Visits that opened at least one perfume page.', ['<b>' . $nf(max(0, $F['visits'] - $F['product'])) . '</b> visits never opened a perfume page.'],

@@ -28,7 +28,7 @@ function insights_end(string $k): string { return ['bought' => 'Bought', 'paymen
 function insights_data(string $from, string $to, int $paths = 60): array {
   $db = shop_db(); insights_table($db); $a = ["$from 00:00:00", "$to 23:59:59"];
   $q = function (string $sql, array $args) use ($db) { $s = $db->prepare($sql); $s->execute($args); return $s->fetchAll(); };
-  $out = ['leave' => [], 'taps' => [], 'paths' => [], 'visits' => 0, 'has_trail' => false, 'speed' => [], 'errors' => [], 'bounce' => 0, 'by_source' => [], 'by_device' => [], 'product_pc' => null];
+  $out = ['leave' => [], 'taps' => [], 'paths' => [], 'visits' => 0, 'has_trail' => false, 'speed' => [], 'errors' => [], 'bounce' => 0, 'by_source' => [], 'by_device' => [], 'product_pc' => null, 'land' => [], 'bounce_fast' => 0];
   /* pages of each visit, in order; time on a page = until the next page, or the visit's last moment (at most 30 minutes) */
   $V = []; $did = [];
   foreach ($q("SELECT sid, ts, type, path, product FROM events WHERE type IN ('view', 'add', 'checkout', 'pay', 'card', 'buy') AND ts >= ? AND ts <= ? ORDER BY ts, id", $a) as $r) {
@@ -59,8 +59,11 @@ function insights_data(string $from, string $to, int $paths = 60): array {
     $d = $did[$sid] ?? [];
     $end = isset($d['buy']) ? 'bought' : (isset($d['pay']) || isset($d['card']) ? 'payment' : (isset($d['checkout']) ? 'checkout' : (isset($d['add']) ? 'bag'
          : (count($steps) === 1 && !array_filter($steps[0]['taps'], fn($x) => !$x['dead'] && !$x['err']) ? 'bounce' : 'left'))));
-    if ($end === 'bounce') $out['bounce']++;
+    if ($end === 'bounce') { $out['bounce']++; if ($steps[0]['secs'] !== null && $steps[0]['secs'] < 10) $out['bounce_fast']++; }
     $src = (string)($meta[$sid]['source'] ?? ''); $dev = (string)($meta[$sid]['device'] ?? '');
+    /* the page each visit landed on (first page), by source: where Instagram and ad visitors arrive and how many of them left from it at once */
+    $lp = $steps[0]['pg']; $out['land'][$lp] ??= ['pg' => $lp, 'visits' => 0, 'bounce' => 0, 'src' => []]; $out['land'][$lp]['visits']++; if ($end === 'bounce') $out['land'][$lp]['bounce']++;
+    if ($src !== '') { $out['land'][$lp]['src'][$src] ??= ['visits' => 0, 'bounce' => 0]; $out['land'][$lp]['src'][$src]['visits']++; if ($end === 'bounce') $out['land'][$lp]['src'][$src]['bounce']++; }
     foreach (['by_source' => $src, 'by_device' => $dev] as $bk => $bv) if ($bv !== '') { $out[$bk][$bv] ??= ['k' => $bv, 'visits' => 0, 'adds' => 0]; $out[$bk][$bv]['visits']++; if (isset($d['add'])) $out[$bk][$bv]['adds']++; }
     $seen = [];
     foreach ($steps as $i => $st) { $L[$st['pg']] ??= ['pg' => $st['pg'], 'seen' => 0, 'left_n' => 0, 'secs' => []]; if (!isset($seen[$st['pg']])) { $seen[$st['pg']] = 1; $L[$st['pg']]['seen']++; } if ($st['secs'] !== null) $L[$st['pg']]['secs'][] = $st['secs']; }
@@ -80,6 +83,7 @@ function insights_data(string $from, string $to, int $paths = 60): array {
   $pp = []; foreach ($scroll as $pg => $sc) if (str_starts_with($pg, '/product/')) foreach ($sc as $v) $pp[] = $v;
   $out['product_pc'] = $pp ? (int)round(array_sum($pp) / count($pp)) : null;
   usort($out['by_source'], fn($x, $y) => $y['visits'] <=> $x['visits']);
+  usort($out['land'], fn($x, $y) => [$y['visits'], $y['bounce']] <=> [$x['visits'], $x['bounce']]); $out['land'] = array_slice($out['land'], 0, 20);
   $all = array_values($V); usort($all, fn($x, $y) => strcmp($y['last'], $x['last']));
   $out['paths'] = array_slice($all, 0, $paths);
   return $out;
