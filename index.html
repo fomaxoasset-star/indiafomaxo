@@ -1699,7 +1699,7 @@ html[data-mode="light"] .btn.oos,html[data-mode="light"] .btn.oos:hover,html[dat
 .pc-type{font-family:var(--hfont);font-weight:500;font-size:clamp(16px,1.2vw,19px);line-height:1.3;letter-spacing:.02em;color:var(--gold);text-wrap:balance}
 .pcard h3 a:hover .pc-name{color:var(--ivory)}
 .price-rate{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-.pd-smell{margin:-4px 0 0;font-size:13px;letter-spacing:.08em;font-weight:500;color:var(--ivory)}.pd-smell span{color:var(--gold);text-transform:uppercase;font-size:11px;letter-spacing:.18em;margin-right:8px}
+.pd-smell i{font-style:normal;white-space:nowrap}.pd-smell{margin:-4px 0 0;font-size:13px;letter-spacing:.08em;font-weight:500;color:var(--ivory)}.pd-smell span{color:var(--gold);text-transform:uppercase;font-size:11px;letter-spacing:.18em;margin-right:8px}
 .pd-quote{margin:0;padding:12px 16px;border-left:2px solid var(--gold);background:rgba(201,162,92,.07);font-size:14px;line-height:1.55;color:var(--ivory);font-weight:500}.pd-quote[hidden]{display:none}.pd-quote .stars{display:flex;margin-bottom:6px;color:var(--gold)}.pd-quote small{display:block;margin-top:6px;font-weight:400;font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
 @media (min-width:961px){.pd-quote{padding:8px 14px;font-size:13px;line-height:1.45}.pd-quote .stars{margin-bottom:2px}.pd-quote small{margin-top:3px;font-size:10px}}
 .pd-try{align-self:flex-start;background:none;border:0;padding:0;font:inherit;font-size:13.5px;letter-spacing:.04em;color:var(--ivory);cursor:pointer;text-align:start}.pd-try b{color:var(--gold);font-weight:600;text-decoration:underline;text-underline-offset:4px}.pd-try[hidden]{display:none}
@@ -2502,6 +2502,19 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
   .pdp{padding-top:14px}
   body:has(.mbuy.show) .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 }
+/* phone product page (AJAY 26/10/2026, Improve tip "look at the product but do not add it to the bag"): the row of small photos under the big photo
+   becomes dots on the photo (swipe still changes it), none with one photo, and the name is a little smaller, so the name, price and delivery come higher */
+@media(max-width:600px){
+  .pdp .gallery{position:relative}
+  .pdp .thumbs{position:absolute;left:0;right:0;bottom:8px;z-index:2;justify-content:center;gap:0}
+  .pdp .thumbs:has(>button:only-child){display:none}
+  .pdp .thumbs button{width:22px;height:22px;aspect-ratio:auto;border:0;background:none;opacity:1;padding:0;display:flex;align-items:center;justify-content:center}
+  .pdp .thumbs button::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.7);box-shadow:0 0 0 1px rgba(0,0,0,.25);transition:.3s}
+  .pdp .thumbs button.on::before{width:18px;border-radius:4px;background:var(--gold)}
+  .pdp .thumbs img{display:none}
+  .pdp{row-gap:18px}
+  .buy h1{font-size:clamp(28px,8vw,34px)}
+}
 /* phone (AJAY 26/10/2026, Improve tip "leave after one page"): the 01–07 names are one sideways row instead of three rows, so the price, Add To Cart and Buy Now
    come up into the first screen, also inside Instagram's browser (its own bars take part of the screen). The name showing now slides into view */
 @media(max-width:760px){
@@ -2660,6 +2673,8 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
    A product with no price shows "Price on request" and can still be
    ordered through the checkout below.
    ===================================================================== */
+/* how to use a FOMAXO face wash (product page "How to use") */
+const FACE_USE = "Wet your face. Pump the foam into your palm and massage it gently over your face for 30 seconds, away from the eyes. Rinse well with water. Use morning and night.";
 window.STORE = {
   currency: "₹",   // prices converted from AED at 1 AED = ₹26.17 (Oct 2026), rounded
 
@@ -2874,10 +2889,12 @@ window.STORE = {
       { id: "pc-aloevita-wash", name: "Aloe Vita", type: "Face Wash — Radiance, Refreshed Naturally", cat: "face",
         price: 250, was: 300, rating: 0, reviews: 0, vol: "100ml", image: "pc-aloevita-wash",
         short: "A foaming face wash with aloe vera for radiant, naturally refreshed skin.",
+        good: ["Radiant skin", "Refreshed skin"], made: "Aloe vera · natural exfoliants · vitamin E", use: FACE_USE,
         description: ["Aloe Vita Face Wash is a foaming cleanser with aloe vera, natural exfoliants and vitamin E, for skin that looks radiant and feels refreshed."] },
       { id: "pc-radiant-wash", name: "Radiant Bloom", type: "Face Wash — Tan Removal & Skin Brightening", cat: "face",
         price: 250, was: 300, rating: 0, reviews: 0, vol: "100ml", image: "pc-radiant-wash",
         short: "A foaming face wash for tan removal and brighter-looking skin.",
+        good: ["Tan removal", "Skin brightening", "Oil control"], made: "Aloe vera · natural exfoliants · vitamin E", use: FACE_USE,
         description: ["Radiant Bloom Face Wash, with aloe vera and natural exfoliants, is made to help remove tan, brighten skin and control oil."] },
       { id: "pc-radiant-gel", name: "Radiant Bloom", type: "Moisturizing Shower Gel", cat: "body",
         price: 275, was: 300, image: "pc-radiant-gel",
@@ -3790,7 +3807,7 @@ function product(id, q){
       <div class="buy">
         <div style="display:flex;flex-direction:column;gap:14px">
           <span class="sub">${tierOf(p) ? `<a href="#/collections/tier-${p.tier}">${esc(tierOf(p).name)}</a>` : esc(CAT_NAME[catOf(p)])}</span>
-          <div class="ptitle"><h1>${esc(p.name)}</h1><span class="ptype">${esc(p.family)}</span></div>
+          <div class="ptitle"><h1>${esc(p.name)}</h1>${isCare ? '' : `<span class="ptype">${esc(p.family)}</span>`}</div>
           ${smellHTML(p)}
           <a class="p-rate" id="pRate" href="#reviews" data-jump="reviews">${pRateHTML(p.rating, p.reviews)}</a>
           <p class="pd-sold" id="psold">${soldHTML(p.id, size)}</p>
@@ -3817,6 +3834,7 @@ function product(id, q){
         <div class="acc">
           <details${wide ? '' : ' open'}><summary>Description</summary><div class="body">${p.description.map(d => `<p>${esc(d)}</p>`).join('')}</div></details>
           ${p.notes && p.notes.key ? `<details${wide ? '' : ' open'}><summary>Fragrance notes</summary><div class="body notes-list"><div><b>Key notes</b><span>${esc(p.notes.key)}</span></div></div></details>` : ''}${p.notes && !p.notes.key ? `<details><summary>Fragrance notes</summary><div class="body notes-list"><div><b>Top</b><span>${esc(p.notes.top)}</span></div><div><b>Heart</b><span>${esc(p.notes.heart)}</span></div><div><b>Base</b><span>${esc(p.notes.base)}</span></div></div></details>` : ''}
+          ${p.use ? `<details${wide ? '' : ' open'}><summary>How to use</summary><div class="body"><p>${esc(p.use)}</p></div></details>` : ''}
           <details><summary>Shipping &amp; delivery</summary><div class="body">${ship}</div></details>
           ${isCare || isCar ? '' : `<details><summary>Gifting &amp; personalisation</summary><div class="body"><p>Designed as the perfect gift for weddings, functions and special occasions. Premium packaging makes it ready to gift without extra effort.</p><p>Custom engraving is available on bottles for names, initials or special messages.</p><p><a class="link ext" href="#/collections/name" aria-label="Explore Exclusive Personalized Gifting">Explore Exclusive Personalized Gifting<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a></p></div></details>`}
         </div>
@@ -4958,18 +4976,20 @@ function rvViewer(ph, at){
   addEventListener('keydown', onKey); addEventListener('hashchange', rvxClose);
   requestAnimationFrame(() => { el.classList.add('on'); $('.rvx-x', el).focus({preventScroll: true}); });
 }
-/* product page: "Smells like" one note from the top, heart and base, so a first-time visitor knows the scent in one line */
+/* product page: "Smells like" one note (personal care: "Good for" and "Made with" from its good / made in the store content) from the top, heart and base, so a first-time visitor knows the scent in one line */
 const SMELL_PICK = {gold: ['Bergamot', 'Agarwood', 'Musk']};   // AJAY's choice of notes for a product's Smells like line (instead of the first top/heart/base note)
-const smellHTML = p => { const n = p.notes; if (!n || n.key) return ''; const w = SMELL_PICK[p.id] || [n.top, n.heart, n.base].map(x => String(x || '').split('·')[0].trim()).filter(Boolean); return w.length ? `<p class="pd-smell"><span>Smells like</span>${w.map(esc).join(' · ')}</p>` : ''; };
+const smellHTML = p => { if (p.kind === 'care') return (p.good ? `<p class="pd-smell"><span>Good for</span>${p.good.map(g => `<i>${esc(g)}</i>`).join(' · ')}</p>` : '') + (p.made ? `<p class="pd-smell"><span>Made with</span>${esc(p.made)}</p>` : '');
+  const n = p.notes; if (!n || n.key) return ''; const w = SMELL_PICK[p.id] || [n.top, n.heart, n.base].map(x => String(x || '').split('·')[0].trim()).filter(Boolean); return w.length ? `<p class="pd-smell"><span>Smells like</span>${w.map(esc).join(' · ')}</p>` : ''; };
 /* the 10ml as a cheap first try (only when the product has a 10ml with a price and another size is picked) */
 const tryHTML = (p, size) => p.kind !== 'set' && !isOut(p) && p.sizes.includes(10) && hasPrice(p.prices[10]) && !sizeOut(p, 10) && size !== 10 ? `New to FOMAXO? <b>Try the 10ml first · ${money(p.prices[10])}</b>` : '';
-/* best real review under the price: 5 stars with words, verified first, then most helpful, then newest */
-function quoteFill(list){
+/* best real review under the price: 5 stars with words, verified first, then most helpful, then newest.
+   A product with no reviews yet shows the best one of another FOMAXO product, with that product's name (other) */
+function quoteFill(list, other){
   const q = $('#pquote'); if (!q) return;
   const r = (list || []).filter(x => +x.rating === 5 && String(x.text || '').trim().length >= 15).sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || (b.helpful || 0) - (a.helpful || 0) || String(b.date).localeCompare(String(a.date)))[0];
   if (!r) { q.hidden = true; fitPdp(); return; }
   const t = rvTidy(r.text).trim(), cut = t.length > 160 ? t.slice(0, 157).replace(/\s+\S*$/, '') + '…' : t;
-  q.innerHTML = `${rvStars(5)}“${esc(cut)}”<small>${esc(rvCap(r.name))}${r.verified ? ' · Verified Purchaser' : ''}</small>`; q.hidden = false; fitPdp();   // the quote arrives after the page is drawn: fit the laptop buy side again
+  q.innerHTML = `${rvStars(5)}“${esc(cut)}”<small>${esc(rvCap(r.name))}${r.verified ? ' · Verified Purchaser' : ''}${other && P[r.product] ? ` · about ${esc(P[r.product].name)}` : ''}</small>`; q.hidden = false; fitPdp();   // the quote arrives after the page is drawn: fit the laptop buy side again
 }
 function bindReviews(p){
   const list = $('#rvList'), box = $('#rvFormBox'), sort = $('#rvSort');
@@ -4983,6 +5003,7 @@ function bindReviews(p){
       const pr = $('#pRate'); if (pr) pr.innerHTML = pRateHTML(d.rating, d.count);
       $('#rvCount').textContent = d.count ? `${d.count} review${d.count > 1 ? 's' : ''}` : 'Reviews';
       all = d.reviews || []; page = 0; quoteFill(all);
+      if (!d.count) rvGet('action=best').then(b => { if (list.isConnected) quoteFill((b.reviews || []).filter(x => x.product !== p.id && P[x.product]), true); }).catch(() => {});   // nothing for this product yet: a real 5-star review of another FOMAXO product, named
       ph = rvPhotoList(all); gal.hidden = !ph.length; gal.innerHTML = ph.length ? rvGalHTML(ph) : '';
       if (d.count) show(); else { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; }
     } catch(e) { if (list.isConnected) { list.innerHTML = `<p class="rv-none">Be the first to review ${esc(p.name)}.</p>`; pager.hidden = true; } }

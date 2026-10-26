@@ -931,7 +931,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $tips = [];
   $tip = function ($people, $title, $data, $why, $steps, $word) use (&$tips) { $tips[] = compact('people', 'title', 'data', 'why', 'steps', 'word'); };
   $leaks = [
-    ['product', 'cart', 'People look at the perfume but do not add it to the bag', 'fix product page',
+    ['product', 'cart', 'People look at a product but do not add it to the bag', 'fix product page',
       array_values(array_filter([$V['product_pc'] !== null ? 'On product pages people saw ' . $V['product_pc'] . '% of the page on average.' : '', $topProd && $topProd['viewed'] ? h($topProd['name']) . ': ' . $nf($topProd['viewed']) . ' visits saw it, ' . $nf($topProd['bag']) . ' added it to the bag.' : ''])),
       'Nobody can buy without adding to the bag first, so this is where most sales are lost.',
       ['Open <b>Analytics → Visits</b> and read 5 visits that saw a product page: what they tapped and where they stopped.', 'The first screen of the product page should show price, size, smell and delivery, with one gold Add to bag button.', 'Show the cheaper first try (10ml) and real reviews close to the button.']],
@@ -990,7 +990,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   /* fixes already built and live on fomaxo.in (reply word => day it went live, e.g. 'fix product page' => '2026-11-01'): the tip leaves the list and waits in Done.
      It comes back only when a week has passed and the chosen dates start after the fix, so it is judged on new visits only */
   $done = ['fix phone' => '2026-10-26',   // #512: phone Add To Cart closer, bag note above buy bar
-    'fix landing page' => '2026-10-26'];   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
+    'fix landing page' => '2026-10-26',   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
+    'fix product page' => '2026-10-26'];   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
   $doneH = []; $back = fn($w) => isset($done[$w]) && time() >= strtotime($done[$w] . ' +7 days') && $from >= $done[$w];
   foreach ($tips as $i => $t) if (isset($done[$t['word']])) {
     if ($back($t['word'])) { $tips[$i]['data'][] = '<b>Fixed on ' . date('d/m/Y', strtotime($done[$t['word']])) . ', and still happening on the new visits.</b>'; continue; }
