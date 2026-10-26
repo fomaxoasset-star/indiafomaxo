@@ -1026,7 +1026,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     if (isset($done[$t['word']])) $doneH[$t['word']] = $t['title']; unset($tips[$i]);
   }
   foreach ($done as $w => $d) if (!isset($doneH[$w]) && !in_array($fixOf($w), array_column($tips, 'fix'), true)) $doneH[$w] = '';
-  $tips = array_slice(array_values($tips), 0, 6);
+  $closed = json_decode((string)shop_setting('improve_closed'), true) ?: [];   // tips closed with ×
+  $tips = array_slice(array_values(array_filter($tips, fn($t) => !isset($closed[$t['fix']]))), 0, 6);
   /* the funnel, the biggest leak marked */
   $steps = [['visits', 'Visited the site'], ['product', 'Saw a product'], ['cart', 'Added to bag'], ['checkout', 'Opened checkout'], ['typed', 'Typed details'], ['pay', 'Reached payment'], ['buy', 'Bought']];
   $worst = null; for ($i = 1; $i < count($steps); $i++) { $lost = $F[$steps[$i - 1][0]] - $F[$steps[$i][0]]; if ($lost > 0 && (!$worst || $lost > $worst[1])) $worst = [$i, $lost]; }
@@ -1061,11 +1062,15 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     'fix landing page' => 'First page from ads', 'check ads' => 'Ads brought visitors who did not add to bag', 'fix bag' => 'Bag: people did not open checkout', 'fix checkout' => 'Checkout: people did not type their details', 'check payment' => 'Payment: people did not finish paying',
     'make it faster' => 'Site opened slowly on phones', 'fix phone' => 'Phone: people did not add to bag'];
   $fixL = ''; foreach ($doneH as $w => $title) $fixL .= '<li>' . ($fixName[$w] ?? ($title ?: h(ucfirst($w)))) . ' <span class="muted">· fixed ' . date('d/m/Y', strtotime($done[$w])) . ', checked again ' . date('d/m/Y', strtotime($done[$w] . ' +7 days')) . '</span></li>';
-  if ($fixL) $fun .= '<details class="fs" name="fs"><summary class="st"><span>Fixed <small class="muted">' . count($doneH) . '</small></span><b><i class="fchev" aria-hidden="true"></i></b></summary>'
+  foreach ($closed as $ck => $c) $fixL .= '<li>' . h($c['t'] !== '' ? $c['t'] : ucfirst((string)$ck)) . ' <span class="muted">· closed by you ' . date('d/m/Y', strtotime($c['d'])) . '</span>'
+    . '<form method="post" class="iundo">' . $csrfField . '<input type="hidden" name="action" value="improve_close"><input type="hidden" name="iclose" value="' . h((string)$ck) . '"><input type="hidden" name="undo" value="1"><button type="submit">Undo</button></form></li>';
+  if ($fixL) $fun .= '<details class="fs" name="fs"><summary class="st"><span>Fixed <small class="muted">' . (count($doneH) + count($closed)) . '</small></span><b><i class="fchev" aria-hidden="true"></i></b></summary>'
           . '<div class="fsi"><p class="muted">Problems we already fixed. Each one comes back to What to fix first only if its numbers are still bad a week after the fix.</p><ul class="fxl">' . $fixL . '</ul></div></details>';
   $tipsH = '';
   foreach ($tips as $i => $t)
-    $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div><h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
+    $tipsH .= '<li class="itip"><span class="tno">' . ($i + 1) . '</span><div>'
+      . '<form method="post" class="iclose" onsubmit="return confirm(\'Close this tip? It moves to Fixed. You can Undo it there.\')">' . $csrfField . '<input type="hidden" name="action" value="improve_close"><input type="hidden" name="iclose" value="' . h($t['fix']) . '"><input type="hidden" name="title" value="' . h(strip_tags($t['title'])) . '"><button type="submit" aria-label="Close this tip" title="Close this tip">×</button></form>'
+      . '<h4>' . $t['title'] . '</h4><p><span class="tl">What the data shows</span>' . implode('<br>', $t['data']) . '</p><p><span class="tl">Why it matters</span>' . $t['why'] . '</p>'
             . '<div class="tst"><span class="tl">Steps</span><ol>' . implode('', array_map(fn($s) => '<li>' . $s . '</li>', $t['steps'])) . $replyLi($t['word']) . '</ol></div></div></li>';
   $body .= '<div class="atop">' . date_bar($D, [], '. Your own visits and bots are not counted.') . '</div><div class="imp">'
     . '<div class="box i-fun"><div class="bh"><h3>Where visitors stop</h3></div><div class="bb"><div class="fun cfun">' . $fun . '</div>'

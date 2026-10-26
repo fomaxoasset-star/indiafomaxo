@@ -382,6 +382,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['low_stock'])) shop_set('low_stock', (string)max(0, min(99, (int)$_POST['low_stock'])));
     go(['tab' => 'stock'], 'Stock saved.');
   }
+  if ($a === 'improve_close') {   // a tip closed with × (or its Undo): it leaves What to fix first and waits in Fixed
+    $cl = json_decode((string)shop_setting('improve_closed'), true) ?: []; $ck = trim((string)($_POST['iclose'] ?? ''));
+    if ($ck !== '') { if (!empty($_POST['undo'])) unset($cl[$ck]); else $cl[$ck] = ['d' => date('Y-m-d'), 't' => mb_substr(trim(strip_tags((string)($_POST['title'] ?? ''))), 0, 120)]; }
+    shop_set('improve_closed', json_encode($cl, JSON_UNESCAPED_UNICODE)); go(['tab' => 'improve']);
+  }
   if ($a === 'member_min') { shop_set('member_min', (string)max(1, min(999, (int)($_POST['member_min'] ?? 5)))); go(['tab' => 'members'], 'Members now need ' . member_min() . ' or more orders.'); }
   if ($a === 'member_spend') {
     $v = trim((string)($_POST['member_spend'] ?? '')); shop_set('member_spend', (string)max(0, min(10000000, (int)$v)));
