@@ -180,6 +180,11 @@ try {
       out(['products' => (object)$o]);
     }
 
+    case 'best': {   // product page: a product with no reviews yet shows a real 5-star review of another FOMAXO product (index.html quoteFill)
+      $rows = db()->query("SELECT * FROM reviews WHERE status = 'live' AND rating = 5 AND LENGTH(body) >= 15 ORDER BY verified DESC, helpful DESC, created DESC LIMIT 20")->fetchAll();
+      out(['reviews' => array_map('publicReview', $rows)]);
+    }
+
     case 'list': {
       $p = validProduct($_GET['product'] ?? '');
       $order = ($_GET['sort'] ?? '') === 'helpful' ? 'helpful DESC, created DESC' : 'created DESC';
