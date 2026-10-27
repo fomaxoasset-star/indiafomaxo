@@ -146,6 +146,7 @@ function r2_wanted(): array {
 /* copies the videos not on Cloudflare yet, for up to $secs seconds: [copied now, error or ''] */
 function r2_sync(float $secs = 8): array {
   $c = r2_conf(); if (!$c) return [0, ''];
+  if (function_exists('set_time_limit')) @set_time_limit((int)$secs + 180);   // one big video may still be on its way when the time is up: the page must not stop half-way (a white page)
   global $PRIV; $lk = @fopen("$PRIV/r2-sync.lock", 'c'); if (!$lk || !flock($lk, LOCK_EX | LOCK_NB)) return [0, ''];   // one copy at a time
   $t = microtime(true); $n = 0; $err = '';
   try {
@@ -185,6 +186,16 @@ function r2_total(): int {
   }
   @file_put_contents($cf, json_encode(['t' => time(), 'b' => $b]), LOCK_EX);
   return $b;
+}
+/* the same, after this page has gone to the browser: the admin never waits on Cloudflare while it loads */
+function r2_sync_later(float $secs = 60): void {
+  static $once = false; if ($once || !r2_conf()) return; $once = true;
+  register_shutdown_function(function () use ($secs) {
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();   // the next admin page doesn't wait for this one
+    ignore_user_abort(true);
+    if (function_exists('litespeed_finish_request')) litespeed_finish_request(); elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    try { r2_sync($secs); } catch (Throwable $e) {}
+  });
 }
 /* checks the keys (a small test file), lets fomaxo.in play the videos (CORS, so Safari's black-frame check still works),
    and checks the public address: '' when all is well, else what to fix */

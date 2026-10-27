@@ -681,7 +681,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   }
   /* Cloudflare R2: keys once, then the videos are copied there (a few each time this page opens) and a switch plays them from there */
   $r2 = r2_conf(); $r2On = r2_on();
-  if ($r2) { try { r2_sync(6); } catch (Throwable $e) {} }   // new uploads go to Cloudflare the next time this page opens
+  if ($r2) r2_sync_later();   // new uploads go to Cloudflare after this page has loaded
   $r2want = $r2 ? r2_wanted() : []; $r2have = $r2 ? r2_have() : []; $r2done = count(array_filter($r2want, fn($sz, $f) => ($r2have[$f] ?? -1) === $sz, ARRAY_FILTER_USE_BOTH));
   $r2Box = !$r2 ? '<form class="box vig" method="post">' . $csrfField . '<input type="hidden" name="action" value="vid_r2_keys"><div class="bh"><h3>Cloudflare <small class="muted">faster videos</small></h3></div><div class="bb">'
       . '<p class="muted small">Keep the videos on Cloudflare too (free up to 10 GB). They play from there, and from Hostinger if Cloudflare ever fails.</p>'

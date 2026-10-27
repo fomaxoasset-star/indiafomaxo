@@ -281,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
       shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
       if ($toCom) { $vids[0]['sent_com'] = true; shop_videos_save($vids); }
-      if (!empty($vids[0]['hq'])) { try { r2_sync(25); } catch (Throwable $e) {} }   // the sharp copy goes to Cloudflare now (what's left goes the next time the Videos page opens)
+      if (!empty($vids[0]['hq'])) r2_sync_later();   // the sharp copy goes to Cloudflare straight after the answer, so saving never waits on it
       go($vb, 'Video added' . ($toCom ? ' here and on fomaxo.com' : '') . '. It shows on the home page now.' . (!empty($_POST['to_com']) && !$toCom ? ' It could not be sent to fomaxo.com: please upload it there too.' : ''));
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
