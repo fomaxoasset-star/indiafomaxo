@@ -269,8 +269,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $img = save_images(($prod ?: 'fomaxo') . '-cover'); if (is_array($img) && $img) $cover = 'up/' . $img[0];
       }
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + (preg_match('/^[a-f0-9]{32}$/', (string)($_POST['fp'] ?? '')) ? ['fp' => (string)$_POST['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (($_POST['shape'] ?? '') === '169' ? ['wide' => true] : []));
+      if (r2_conf() && preg_match('/^[a-f0-9]{16}$/', (string)($_POST['hq_parts'] ?? '')) && preg_match('/^(.+)\.\w+$/', $name, $bm)) {   // the sharp 1080p copy, made in the browser when Cloudflare is connected: straight to Cloudflare, then off Hostinger
+        $hd = "$PRIV/video-parts/" . $_POST['hq_parts']; $hn = (int)($_POST['hq_parts_n'] ?? 0); $ht = (int)($_POST['hq_parts_size'] ?? 0); $hq = $bm[1] . '-h.mp4';
+        $ok = is_dir($hd) && $hn > 0 && $hn <= 1000 && $ht > 0 && $ht <= 100 * 1048576 && ($out = @fopen(video_dir() . "/$hq", 'wb'));
+        for ($k = 0; $ok && $k < $hn; $k++) { $in = @fopen("$hd/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
+        if (!empty($out)) fclose($out);
+        clearstatcache(); $ok = $ok && (int)@filesize(video_dir() . "/$hq") === $ht && function_exists('finfo_open') && finfo_file(finfo_open(FILEINFO_MIME_TYPE), video_dir() . "/$hq") === 'video/mp4';
+        foreach (glob("$hd/*") ?: [] as $x) @unlink($x); @rmdir($hd);
+        if ($ok) $vids[0]['hq'] = $hq; else @unlink(video_dir() . "/$hq");
+        unset($out);
+      }
       shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
       if ($toCom) { $vids[0]['sent_com'] = true; shop_videos_save($vids); }
+      if (!empty($vids[0]['hq'])) { try { r2_sync(25); } catch (Throwable $e) {} }   // the sharp copy goes to Cloudflare now (what's left goes the next time the Videos page opens)
       go($vb, 'Video added' . ($toCom ? ' here and on fomaxo.com' : '') . '. It shows on the home page now.' . (!empty($_POST['to_com']) && !$toCom ? ' It could not be sent to fomaxo.com: please upload it there too.' : ''));
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
@@ -328,6 +339,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
       if ((string)$v['file'] !== '') { @unlink(video_dir() . '/' . basename((string)$v['file'])); video_pub_drop(basename((string)$v['file'])); }
       if ((string)($v['prev'] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v['prev'])); video_pub_drop(basename((string)$v['prev'])); }
+      if ((string)($v['hq'] ?? '') !== '') @unlink(video_dir() . '/' . basename((string)$v['hq']));   // on Cloudflare, it goes at the next copy (r2_sync)
       if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
       $msg = 'Video deleted.';
     } else go($vb, '!Please try again.');
