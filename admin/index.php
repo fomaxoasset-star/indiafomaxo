@@ -206,7 +206,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       go($vb, ($e !== '' ? '!' . $e . '. Keys saved; ' : 'Cloudflare connected. ') . $n . ' video file' . ($n === 1 ? '' : 's') . ' copied' . ($err !== '' ? " (stopped: $err)" : '') . ($left ? ". $left left: tap Copy the rest." : '. Turn on Play videos from Cloudflare.'));
     }
     if ($a === 'vid_r2_sync') { [$n, $err] = r2_sync(25); go($vb, ($err !== '' ? '!' : '') . "$n video file" . ($n === 1 ? '' : 's') . ' copied to Cloudflare' . ($err !== '' ? ". Stopped: $err" : '.')); }
-    if ($a === 'vid_r2_on') { $on = !empty($_POST['on']) && r2_conf(); shop_set('r2_on', $on ? '1' : '0');
+    if ($a === 'vid_r2_on') { $on = !empty($_POST['on']) && r2_conf();
+      if ($on && !r2_live(true)) { shop_set('r2_on', '0'); go($vb, '!Not turned on: ' . preg_replace('~^https://~', '', (string)r2_conf()['url']) . ' does not answer yet, so videos keep playing from Hostinger. Check that it shows Active in Cloudflare → R2 → Settings → Custom Domains, then try again.'); }
+      shop_set('r2_on', $on ? '1' : '0');
       go($vb, $on ? 'ON – videos now play from Cloudflare (faster).' : 'OFF – videos play from Hostinger again.'); }
     if ($a === 'vid_r2_off') { shop_set('r2_on', '0'); r2_save(null); go($vb, 'Cloudflare disconnected. Videos play from Hostinger as before.'); }
     if ($a === 'vid_to_com_all') {   // videos uploaded before the tick: send every one not sent yet to fomaxo.com

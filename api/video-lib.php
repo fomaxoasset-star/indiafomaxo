@@ -97,7 +97,23 @@ function r2_save(?array $c): bool {
   if ($ok) @chmod($f, 0600);
   return $ok;
 }
-function r2_on(): bool { return shop_setting('r2_on') === '1' && r2_conf() !== null; }
+function r2_on(): bool { return shop_setting('r2_on') === '1' && r2_conf() !== null && r2_live(); }
+/* does the public address really send our videos (DNS, custom domain, CORS)? One small ask of a copied file, at most every
+   10 minutes; while it fails the website plays everything from Hostinger as before (v.fomaxo.com not on the internet yet, 27/10/2026) */
+function r2_live(bool $fresh = false): bool {
+  global $PRIV; $cf = "$PRIV/r2-live.json"; $j = json_decode((string)@file_get_contents($cf), true);
+  if (!$fresh && is_array($j) && ($j['t'] ?? 0) > time() - 600) return !empty($j['ok']);
+  $c = r2_conf(); $have = r2_have(); $ok = false;
+  if ($c && $have && function_exists('curl_init')) {
+    asort($have); $f = (string)array_key_first($have);   // the smallest file
+    $ch = curl_init(rtrim($c['url'], '/') . '/' . $f);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_TIMEOUT => 6, CURLOPT_HTTPHEADER => ['Range: bytes=0-0', 'Origin: https://fomaxo.in'], CURLOPT_HEADER => true]);
+    $out = (string)curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    $ok = in_array($code, [200, 206], true) && preg_match('~^access-control-allow-origin:\s*(\*|https://(www\.)?fomaxo\.in)\s*$~mi', $out);   // without CORS the page could not use it either
+  }
+  @file_put_contents($cf, json_encode(['t' => time(), 'ok' => $ok]), LOCK_EX);
+  return $ok;
+}
 /* the videos already on Cloudflare: name => size */
 function r2_have(): array { global $PRIV; $h = json_decode((string)@file_get_contents("$PRIV/r2-have.json"), true); return is_array($h) ? $h : []; }
 function r2_have_save(array $h): void { global $PRIV; @file_put_contents("$PRIV/r2-have.json", json_encode($h), LOCK_EX); }
