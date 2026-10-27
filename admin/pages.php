@@ -1225,15 +1225,19 @@ if ($tab === 'reviews') {
   $rq = trim((string)($_GET['q'] ?? '')); $rv = (string)($_GET['v'] ?? ''); $rv = in_array($rv, ['1', '0'], true) ? $rv : '';
   $rp = (string)($_GET['p'] ?? ''); if (!preg_match('/^[\w-]{1,60}$/', $rp)) $rp = '';
   $rs = (string)($_GET['s'] ?? ''); $rs = in_array($rs, ['1', '2', '3', '4', '5'], true) ? $rs : '';
+  $rw = (string)($_GET['who'] ?? ''); if (!preg_match('/^(m:\+?\d{6,16}|n:.{1,80})$/su', $rw)) $rw = '';   // one reviewer, tapped in Top Reviewers (m:mobile or n:name, as grouped there)
   $ri = (string)($_GET['pr'] ?? ''); $ri = in_array($ri, ['bad', 'faulty', 'late', '1'], true) ? $ri : '';   // Bad product / Faulty product / Late delivery chips (old ?pr=1 links: the last two)
   /* the date bar: picking dates shows only the reviews written in them (the counts, stars and top reviewers too) */
   $D = pick_dates('reviews'); $dd = $D['r'] === 'all' ? [] : ['from' => $D['from'], 'to' => $D['to']];
   $ALL = reviews_list($dd); $list = reviews_list(array_filter(['q' => $rq, 'product' => $rp], 'strlen') + $dd + ($rv !== '' ? ['verified' => (int)$rv] : []) + ($rs !== '' ? ['stars' => (int)$rs] : []) + ($ri !== '' ? ['issue' => $ri] : []), $ALL);
+  $rvKey = fn($r) => $r['phone'] !== '' ? 'm:' . $r['phone'] : 'n:' . mb_strtolower($r['name']);
+  if ($rw !== '') $list = array_values(array_filter($list, fn($r) => $rvKey($r) === $rw));
+  $rwName = ''; foreach ($ALL as $r) if ($rvKey($r) === $rw) { $rwName = $r['customer'] ?: $r['name']; break; }
   /* 50 reviews a page, newest first (each one carries its reply box, so a long list was slow to open on a phone); the counts above still cover every review */
   $rpp = 50; $rpages = max(1, (int)ceil(count($list) / $rpp)); $rpage = max(1, min($rpages, (int)($_GET['page'] ?? 1)));
   $nv = count(array_filter($ALL, fn($r) => (int)$r['verified'] === 1)); $nu = count($ALL) - $nv;
-  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri], 'strlen'); $back = h(json_encode($keep + ($rpage > 1 ? ['page' => $rpage] : [])));
-  $body .= date_bar($D, ['q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri]) . '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '') . ($rs !== '' ? '<input type="hidden" name="s" value="' . $rs . '">' : '') . ($ri !== '' ? '<input type="hidden" name="pr" value="' . $ri . '">' : '')
+  $keep = array_filter(['tab' => 'reviews', 'q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri, 'who' => $rw], 'strlen'); $back = h(json_encode($keep + ($rpage > 1 ? ['page' => $rpage] : [])));
+  $body .= date_bar($D, ['q' => $rq, 'v' => $rv, 'p' => $rp, 's' => $rs, 'pr' => $ri, 'who' => $rw]) . '<form method="get" class="row rtool"><input type="hidden" name="tab" value="reviews">' . ($rw !== '' ? '<input type="hidden" name="who" value="' . h($rw) . '">' : '') . ($rv !== '' ? '<input type="hidden" name="v" value="' . $rv . '">' : '') . ($rp !== '' ? '<input type="hidden" name="p" value="' . h($rp) . '">' : '') . ($rs !== '' ? '<input type="hidden" name="s" value="' . $rs . '">' : '') . ($ri !== '' ? '<input type="hidden" name="pr" value="' . $ri . '">' : '')
     . '<input type="search" name="q" value="' . h($rq) . '" placeholder="Words, name or mobile"><button class="btn line sm">Search</button>'
     . '<a class="chip' . ($rv === '1' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '1' ? '' : '1'] + $keep)) . '">Verified purchaser <b>' . $nv . '</b></a>'
     . '<a class="chip' . ($rv === '0' ? ' on' : '') . '" href="' . h(self_url(['v' => $rv === '0' ? '' : '0'] + $keep)) . '">Unverified <b>' . $nu . '</b></a>'
@@ -1243,7 +1247,7 @@ if ($tab === 'reviews') {
     . implode('', array_map(fn($n) => '<a class="chip' . ($rs === (string)$n ? ' on' : '') . '" href="' . h(self_url(['s' => $rs === (string)$n ? '' : (string)$n] + $keep)) . '" title="Show only ' . $n . '-star reviews">' . $n . '★ <b>' . count(array_filter($ALL, fn($r) => (int)round((float)$r['rating']) === $n)) . '</b></a>', [5, 4, 3, 2, 1])) . '</form>';
   $body .= $sw('#rvPanes', ['list' => 'Reviews', 'stars' => 'Stars By Product', 'top' => 'Top Reviewers']) . '<div class="revs panes" id="rvPanes">';
   /* every review */
-  $body .= '<div class="box on" data-pane="list" data-csrf="' . h($CSRF) . '"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . ($D['r'] === 'all' ? '' : ' · ' . h(period_label($D))) . '. Hidden reviews leave the website and the star rating; Show puts them back. Delete removes a review for good.</span></div><div class="bb">';
+  $body .= '<div class="box on" data-pane="list" data-csrf="' . h($CSRF) . '"><div class="bh">' . ($rp !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['p' => 1]))) . '" title="Show every product">' . h($CAT[$rp]['name'] ?? $rp) . ' <b>✕</b></a>' : '') . ($rw !== '' ? '<a class="chip on" href="' . h(self_url(array_diff_key($keep, ['who' => 1]))) . '" title="Show every reviewer">Reviews by ' . h($rwName !== '' ? $rwName : substr($rw, 2)) . ' <b>✕</b></a>' . (str_starts_with($rw, 'm:') ? '<a class="small" href="' . h(self_url(['tab' => 'members', 'c' => $rw])) . '">Customer page</a>' : '') : '') . '<span class="muted small" style="flex:1">' . count($list) . ' review' . (count($list) === 1 ? '' : 's') . ($D['r'] === 'all' ? '' : ' · ' . h(period_label($D))) . '. Hidden reviews leave the website and the star rating; Show puts them back. Delete removes a review for good.</span></div><div class="bb">';
   if (!reviews_db()) $body .= '<p class="empty">No reviews yet.</p>';
   elseif (!$list) $body .= '<p class="empty">No reviews' . ($rq !== '' || $rv !== '' || $rs !== '' || $ri !== '' ? ' match this search.' : ' yet.') . '</p>';
   $rvSent = json_decode((string)shop_setting('review_wa'), true) ?: [];   // review id => day its customer got a WhatsApp
@@ -1291,7 +1295,7 @@ if ($tab === 'reviews') {
   $who = array_filter($who, fn($w) => $w['n'] >= $tmin); uasort($who, fn($a, $b) => $b['n'] <=> $a['n']);
   $body .= '<div class="box" data-pane="top"><div class="bh"><h3>Top Reviewers</h3><form method="post" class="row">' . $csrfField . '<input type="hidden" name="action" value="top_reviewers"><input type="hidden" name="back" value="' . $back . '"><label class="mrule">at least<input type="number" name="top_reviewers" min="1" max="99" value="' . $tmin . '"> reviews</label><button class="btn line sm">Save</button></form></div><div class="bb">';
   if (!$who) $body .= '<p class="empty">Nobody has ' . $tmin . ' or more reviews yet.</p>';
-  foreach ($who as $k => $w) $body .= '<div class="li"><span class="grow"><b>' . ($w['phone'] ? '<a href="' . h(self_url(['tab' => 'members', 'c' => $k])) . '">' . h($w['name']) . '</a>' : h($w['name'])) . '</b><small>' . ($w['phone'] ? h(phone_fmt($w['phone'])) . ' · ' : '') . 'average ' . number_format($w['sum'] / $w['n'], 1) . ' ★</small></span><b>' . $w['n'] . '</b><span class="muted small">reviews</span></div>';
+  foreach ($who as $k => $w) $body .= '<a class="li' . ($k === $rw ? ' on' : '') . '" href="' . h(self_url(['who' => $k === $rw ? '' : $k] + $keep)) . '" title="Show their reviews"><span class="grow"><b>' . h($w['name']) . '</b><small>' . ($w['phone'] ? h(phone_fmt($w['phone'])) . ' · ' : '') . 'average ' . number_format($w['sum'] / $w['n'], 1) . ' ★</small></span><b>' . $w['n'] . '</b><span class="muted small">reviews</span></a>';
   $body .= '</div></div></div>';
 }
 
