@@ -297,7 +297,8 @@ window.fxPick = function (src, done) {
   /* Two buttons above the list (Cloudflare connected), both done one video after another, the same way as one Replace:
      Replace all with sharper videos = pick all the originals at once; each is matched to its video by the same fingerprint (or the same size), the rest are named.
      Make All Videos Again = every video whose original is kept on Cloudflare is made again from it (1080p, 720p, preview): nothing to pick */
-  var list = document.querySelector('.vlist .bb'), allRows = function () { return [].slice.call(document.querySelectorAll('.vrow[data-vid]')); };
+  var later = function (go) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); };   // this script comes before the list on the page
+  var list, allRows = function () { return [].slice.call(document.querySelectorAll('.vrow[data-vid]')); };
   var run = function (q, ab, label) {   // q: [{row, file | get(), fp}]
     var all = allRows(), i = 0, ok = 0, busy = false, it = null;
     var next = function () {
@@ -318,6 +319,7 @@ window.fxPick = function (src, done) {
     b.style.cssText = 'font:inherit;font-size:12px;line-height:1.6;color:#b8913a;background:none;border:1px solid currentColor;border-radius:999px;padding:2px 12px;cursor:pointer;margin-left:6px';
     return b;
   };
+  later(function () { list = document.querySelector('.vlist .bb');
   if (f.dataset.hq && list && window.DataTransfer && f.elements.replace) {
     var rw = document.createElement('div'); rw.style.cssText = 'margin:0 0 8px;text-align:right;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px';
     var repRows = function () { return allRows().filter(function (r) { return r.querySelector('.vrep'); }); };
@@ -357,6 +359,7 @@ window.fxPick = function (src, done) {
     }
     if (rw.children.length) list.insertBefore(rw, list.firstChild);
   }
+  });
 })();
 /* Small previews for the home page row: each video without one gets a 640px, silent copy of its first 5 seconds (about 0.25 MB, AJAY 23/10/2026: half the size so the row starts sooner),
    made here in the browser and kept next to it (vid/name-p.mp4). The row plays that; the full video loads only when the player opens.
