@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!preg_match('/^[a-f0-9]{32}$/', $c['acct'])) go($vb, '!Please paste the Account ID (32 letters and numbers).');
       if (!preg_match('/^[A-Za-z0-9]{16,64}$/', $c['key']) || !preg_match('/^[A-Za-z0-9]{32,128}$/', $c['secret'])) go($vb, '!Please paste the Access Key ID and the Secret Access Key.');
       if (!preg_match('/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/', $c['bucket'])) go($vb, '!Please type the bucket name.');
-      if (!preg_match('~^https://[a-z0-9.-]+\.[a-z]{2,}$~i', $c['url'])) go($vb, '!Please type the public address, e.g. https://v.fomaxo.in');
+      if (!preg_match('~^https://[a-z0-9.-]+\.[a-z]{2,}$~i', $c['url'])) go($vb, '!Please type the public address, e.g. https://v.fomaxo.com');
       $e = r2_check($c); if (str_starts_with($e, 'Cloudflare did not')) go($vb, '!' . $e);
       r2_save($c); [$n, $err] = r2_sync(20);
       $left = count(array_diff_assoc(r2_wanted(), r2_have()));
