@@ -8,7 +8,7 @@ declare(strict_types=1);
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
 
 const IG_CODE = '/^[A-Za-z0-9_-]{5,40}$/';   // an Instagram reel shown with Instagram's own player (pasted link, no token)
-const VIDEO_FILE = '/^[a-z0-9-]{1,48}-[a-f0-9]{8}(-p|-h)?\.(mp4|mov|webm)$/';   // -p = the small preview the home page row plays (made on the admin page, vshrink.js); -h = the sharp 1080p copy, kept on Cloudflare only
+const VIDEO_FILE = '/^[a-z0-9-]{1,48}-[a-f0-9]{8}(-p|-h|-o)?\.(mp4|mov|webm)$/';   // -p = the small preview the home page row plays (made on the admin page, vshrink.js); -h = the sharp 1080p copy, kept on Cloudflare only; -o = the original from the phone, Cloudflare only (Make All Videos Again remakes from it)
 function shop_videos(): array { return array_values(array_filter(json_decode((string)shop_setting('videos'), true) ?: [], fn($v) => is_array($v) && !empty($v['id']) && (preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) || preg_match(IG_CODE, (string)($v['embed'] ?? ''))))); }
 function shop_videos_save(array $v): void { shop_set('videos', json_encode(array_values($v), JSON_UNESCAPED_SLASHES)); }
 function video_dir(): string { global $PRIV; $d = "$PRIV/videos"; if (!is_dir($d)) @mkdir($d, 0750, true); return $d; }
@@ -152,10 +152,10 @@ function r2_put(array $c, string $f): string {
 /* every video file the list uses (the video and its small preview) */
 function r2_wanted(): array {
   $w = []; $have = null;
-  foreach (shop_videos() as $v) foreach ([(string)($v['file'] ?? ''), (string)($v['prev'] ?? ''), (string)($v['hq'] ?? '')] as $f) {
+  foreach (shop_videos() as $v) foreach ([(string)($v['file'] ?? ''), (string)($v['prev'] ?? ''), (string)($v['hq'] ?? ''), (string)($v['orig'] ?? '')] as $f) {
     if (!preg_match(VIDEO_FILE, $f)) continue;
     if (is_file(video_dir() . "/$f")) $w[$f] = (int)filesize(video_dir() . "/$f");
-    elseif ($f === (string)($v['hq'] ?? '') && isset(($have ??= r2_have())[$f])) $w[$f] = $have[$f];   // the sharp copy leaves Hostinger once it is on Cloudflare
+    elseif (in_array($f, [(string)($v['hq'] ?? ''), (string)($v['orig'] ?? '')], true) && isset(($have ??= r2_have())[$f])) $w[$f] = $have[$f];   // the sharp copy and the original leave Hostinger once they are on Cloudflare
   }
   return $w;
 }
@@ -177,7 +177,7 @@ function r2_sync(float $secs = 8): array {
       if (microtime(true) - $t > $secs) break;
       $e = r2_put($c, $f); if ($e !== '') { $err = $e; break; }
       $have[$f] = $sz; r2_have_save($have); $n++;
-      if (str_ends_with($f, '-h.mp4')) @unlink(video_dir() . "/$f");
+      if (preg_match('/-(h|o)\.\w+$/', $f)) @unlink(video_dir() . "/$f");
       @unlink("$PRIV/r2-total.json");   // the 10 GB bar counts again   // Hostinger keeps only the small copy (the fallback), never the big one
     }
   } finally { flock($lk, LOCK_UN); fclose($lk); }
