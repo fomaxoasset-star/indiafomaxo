@@ -5867,6 +5867,7 @@ function vidsNow(){
     if (!ready) { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }   // someone scrolling down is past the first screen: the previews no longer wait for the whole page to finish loading (about 2 s sooner on a slow phone)
     near(); }, {once: true, passive: true});
 }
+const MAC_SAFARI = /Macintosh/.test(navigator.userAgent) && /Safari\//.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/.test(navigator.userAgent) && !(navigator.maxTouchPoints > 1);   // laptop Safari only (not iPhone or iPad)
 let reelMuted = false;   // the player opens with sound on, quietly (the row stays muted)
 const REEL_VOL = .3; let reelAC = null;
 const warmAC = () => { if (reelMuted) return; try { reelAC = reelAC || new (window.AudioContext || window.webkitAudioContext)(); if (reelAC.state === 'suspended') reelAC.resume().catch(() => {}); } catch (e) {} };   // the sound path is made ready while the finger is still down, so the video does not wait for it after the tap
@@ -5927,7 +5928,8 @@ function openReel(i){
       if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); if (v.currentTime) v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
       else { v.pause(); if (Math.abs(n - k) > 1 && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); s.classList.remove('shown'); } } });   // a video two or more away lets go (before, every video swiped past stayed loaded, full size)
     const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
-    if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
+    if (MAC_SAFARI) { if (cv && cv.readyState < 4) { cv.addEventListener('canplaythrough', near, {once: true}); setTimeout(near, 6000); } else near(); }   // Mac Safari downloads the whole next and previous videos at once, so the one on screen waited (fomaxo.com report 2026-10-27: 5.5 s, stuck): there they load once it has enough to play to the end
+    else if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
     $$('.rl-nav button', el).forEach(b => b.disabled = (+b.dataset.rl < 0 && k === 0) || (+b.dataset.rl > 0 && k === slides.length - 1));
   };
   const sio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) act(+e.target.dataset.k); }), {root: track, threshold: .6});
