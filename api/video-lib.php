@@ -137,8 +137,13 @@ function r2_sync(float $secs = 8): array {
   global $PRIV; $lk = @fopen("$PRIV/r2-sync.lock", 'c'); if (!$lk || !flock($lk, LOCK_EX | LOCK_NB)) return [0, ''];   // one copy at a time
   $t = microtime(true); $n = 0; $err = '';
   try {
-    $have = r2_have();
-    foreach (r2_wanted() as $f => $sz) {
+    $have = r2_have(); $want = r2_wanted();
+    foreach (array_diff_key($have, $want) as $f => $sz) {   // deleted videos leave Cloudflare too, so the 10 GB bar stays true
+      if (microtime(true) - $t > $secs) break;
+      [$code] = r2_req($c, 'DELETE', $f); if ($code !== 204 && $code !== 200 && $code !== 404) break;
+      unset($have[$f]); r2_have_save($have);
+    }
+    foreach ($want as $f => $sz) {
       if (($have[$f] ?? -1) === $sz) continue;
       if (microtime(true) - $t > $secs) break;
       $e = r2_put($c, $f); if ($e !== '') { $err = $e; break; }
@@ -147,6 +152,9 @@ function r2_sync(float $secs = 8): array {
   } finally { flock($lk, LOCK_UN); fclose($lk); }
   return [$n, $err];
 }
+/* Cloudflare's free space: 10 GB; the bytes our videos take there */
+const R2_FREE = 10 * 1000 ** 3;
+function r2_used(): int { return (int)array_sum(r2_have()); }
 /* checks the keys (a small test file), lets fomaxo.in play the videos (CORS, so Safari's black-frame check still works),
    and checks the public address: '' when all is well, else what to fix */
 function r2_check(array $c): string {
