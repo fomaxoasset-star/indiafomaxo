@@ -203,11 +203,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $e = r2_check($c); if (str_starts_with($e, 'Cloudflare did not')) go($vb, '!' . $e);
       r2_save($c); [$n, $err] = r2_sync(20);
       $left = count(array_diff_assoc(r2_wanted(), r2_have()));
-      go($vb, ($e !== '' ? '!' . $e . '. Keys saved; ' : 'Cloudflare connected. ') . $n . ' video file' . ($n === 1 ? '' : 's') . ' copied' . ($err !== '' ? " (stopped: $err)" : '') . ($left ? ". $left left: tap Copy the rest now." : '. Switch it on to play the videos from Cloudflare.'));
+      go($vb, ($e !== '' ? '!' . $e . '. Keys saved; ' : 'Cloudflare connected. ') . $n . ' video file' . ($n === 1 ? '' : 's') . ' copied' . ($err !== '' ? " (stopped: $err)" : '') . ($left ? ". $left left: tap Copy the rest." : '. Turn on Play videos from Cloudflare.'));
     }
     if ($a === 'vid_r2_sync') { [$n, $err] = r2_sync(25); go($vb, ($err !== '' ? '!' : '') . "$n video file" . ($n === 1 ? '' : 's') . ' copied to Cloudflare' . ($err !== '' ? ". Stopped: $err" : '.')); }
     if ($a === 'vid_r2_on') { $on = !empty($_POST['on']) && r2_conf(); shop_set('r2_on', $on ? '1' : '0');
-      go($vb, $on ? 'Videos now play from Cloudflare. Any video not copied yet still plays from Hostinger.' : 'Videos play from Hostinger again.'); }
+      go($vb, $on ? 'ON – videos now play from Cloudflare (faster).' : 'OFF – videos play from Hostinger again.'); }
     if ($a === 'vid_r2_off') { shop_set('r2_on', '0'); r2_save(null); go($vb, 'Cloudflare disconnected. Videos play from Hostinger as before.'); }
     if ($a === 'vid_to_com_all') {   // videos uploaded before the tick: send every one not sent yet to fomaxo.com
       $ok = 0; $bad = 0; foreach ($vids as $k => $v) if (video_to_com_ok($v)) { if (video_to_com(video_dir() . '/' . $v['file'], $v)) { $vids[$k]['sent_com'] = true; $ok++; } else $bad++; }
