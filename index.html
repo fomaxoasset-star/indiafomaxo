@@ -2115,7 +2115,6 @@ html.cb-lock,html.cb-lock body{overflow:hidden}
 .co-form input,.co-form select,.co-form textarea{background:var(--panel);width:100%;min-width:0}
 .co-form select{appearance:none;-webkit-appearance:none;padding-right:40px;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat}
 .co-form textarea{min-height:96px}
-.co-form .row3{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:14px}
 .co-form label.bad input,.co-form label.bad select,.co-form label.bad .co-tel .co-cc{border-color:#d0493e}
 .co-fe{font-style:normal;font-size:13px;letter-spacing:0;text-transform:none;color:#d0493e}
 html[data-mode="light"] .co-fe{color:#a8322a}
@@ -2275,8 +2274,8 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co-title{font-size:clamp(32px,2.6vw,40px);line-height:1.1;margin-bottom:6px}
   .co-form{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 14px;align-content:start;align-self:start}
   .co-form>*{grid-column:1/-1}
-  .co-form .row2,.co-form .row3{display:contents}
-  .co-form>label,.co-form .row2>label,.co-form .row3>label{grid-column:span 2}
+  .co-form .row2{display:contents}
+  .co-form>label,.co-form .row2>label{grid-column:span 2}
   .co-form .co-ap>label:first-child{grid-column:span 4}
   .co-form .co-cs>label,.co-form .co-more2>label{grid-column:span 3}
   .co-form .row2[hidden]>label{display:none}
@@ -2293,7 +2292,6 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co-step span{width:30px;height:30px;font-size:15px}
   .co-step h2,.co-sum h2{font-size:clamp(22px,1.8vw,26px)}
   .co-fine{font-size:12px;line-height:1.5}
-  .co-req{margin:0}
   .co-need{padding:6px 14px;gap:12px;margin-top:0}
   .co-need>div{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
   .co-need b{font-size:14px}
@@ -2348,9 +2346,7 @@ html[data-mode="light"] .co-gift .co-gift-tag{color:#1f7d45}
   .co-cpn-saved{margin-top:10px;padding:10px 14px}
 }
 @media(max-width:620px){
-  .co-form .row2,.co-form .row3{grid-template-columns:minmax(0,1fr)}
-  .co-form .row3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .co-form .row3 label:nth-child(3){grid-column:1/-1}
+  .co-form .row2{grid-template-columns:minmax(0,1fr)}
   .co-form .co-ap{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
   .co-form .co-cs{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .co-pin-tip{display:none}
@@ -5754,7 +5750,15 @@ function vidSecHTML(){
       ${v.n && vidPage() ? `<span class="vt-by">${VI.by}<bdi>${esc(v.n)}</bdi></span>` : ''}<span class="vt-play" aria-hidden="true">${VI.play}</span>
       ${p ? `<span class="vt-p${v.w ? ' has-w' : ''}">${v.w ? `<i class="vt-w">${esc(v.w)}</i>` : ''}<img src="${IMGC(imgFor(p, s), 36)}" alt="" loading="lazy"><span><b>${esc(p.name)}</b>${ps.length > 1 ? `<i class="vt-more">+ ${ps.length - 1} more</i>` : priceHTML(p, s)}</span></span>` : `<span class="vt-p vt-shop"><span><b>${v.w ? esc(v.w) : 'FOMAXO'}</b><i class="vt-more">Shop Now${ps.length ? ` · + ${ps.length} more` : ''}</i></span></span>`}</button>`; }).join('')}</div></div></div>`;
 }
-let vrIO = null, vrNear = null;
+let vrIO = null, vrNear = null, vWarm = null;
+/* a finger (or mouse) pressing on a row video already starts loading its full video, so it is on its way by the time the tap ends and the player opens;
+   a press that turns into a swipe of the row (or no tap within 1.5 s) lets it go again */
+const unwarm = () => { if (!vWarm) return; clearTimeout(vWarm.t); if (!vWarm.v.parentNode) { vWarm.v.removeAttribute('src'); vWarm.v.load(); } vWarm = null; };
+function warmFull(t){ const x = rowVids()[+t.dataset.vi], rv = $('video', t); if (!x || x.e || !x.v || $('#reel') || (vWarm && vWarm.src === x.v)) return;
+  if (rv && rv.dataset.src === x.v && rv.getAttribute('src')) return;   // the tile already plays the full video: the player borrows it
+  unwarm(); const w = document.createElement('video');
+  ['disablepictureinpicture', 'disableremoteplayback', 'playsinline', 'loop', 'muted'].forEach(a => w.setAttribute(a, '')); w.setAttribute('x-webkit-airplay', 'deny'); w.muted = true; w.preload = 'auto'; w.dataset.src = x.v; w.src = x.v;
+  vWarm = {src: x.v, v: w, t: setTimeout(unwarm, 1500)}; }
 /* a sideways video row also gets a round arrow on its left and one on its right (phone and laptop, next to the ‹ › above it; AJAY 2026-10-25): each moves one screen of videos that way.
    From the first videos a move back (arrow or finger) jumps to the last ones, and from the end a move on jumps back to the first (AJAY 2026-10-25: "from first, swipe both sides"); the jump is instant, so the videos in between never load */
 function rowStep(sc, d){ const m = sc.scrollWidth - sc.clientWidth, rtl = getComputedStyle(sc).direction === 'rtl', lo = rtl ? -m : 0, hi = rtl ? 0 : m, x = sc.scrollLeft;   // d: -1 left, 1 right (as the arrows point)
@@ -5794,7 +5798,7 @@ function bindVids(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   loopRow($('#vrow'));
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
-  tiles.forEach(t => t.onclick = () => openReel(+t.dataset.vi));
+  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) warmFull(t); }; t.onpointercancel = unwarm; });
   tiles.forEach(t => { const v = $('video', t); if (v && !v._vb) { v._vb = 1; v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
@@ -5832,6 +5836,7 @@ function bindVids(){
     if (busy() >= 2) { wq.add(t); return; } wq.delete(t);
     v.preload = 'auto'; v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, () => { pump(); wq.forEach(warm); }, {once: true})); };
   addEventListener('scroll', () => { if (vrNear || !document.contains(tiles[0])) return;
+    if (!ready) { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }   // someone scrolling down is past the first screen: the previews no longer wait for the whole page to finish loading (about 2 s sooner on a slow phone)
     vrNear = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) wq.delete(e.target); else if (!onScreen(e.target)) warm(e.target); }), {rootMargin: '50% 0px'});
     tiles.forEach(t => vrNear.observe(t)); }, {once: true, passive: true});
 }
@@ -5878,6 +5883,8 @@ function openReel(i){
   const track = $('.rl-track', el), slides = $$('.rl-s', el);
   const lent = [];   // the row's videos are already loaded: the player borrows them, so the tapped video plays at once (given back on close); a row tile playing its small preview (silent, first seconds) is not borrowed, the player loads the full video
   $$('#vrow .vt').forEach(t => { const rv = $('video', t), sv = slides[+t.dataset.vi] && $('video', slides[+t.dataset.vi]); if (!rv || !rv.src || rv.readyState < 2 || !sv || lent.some(x => x[1] === sv) || rv.dataset.src !== sv.dataset.src) return; const ph = document.createComment(''); rv.before(ph); sv.replaceWith(rv); lent.push([ph, rv]); });
+  const iv = slides[i] && $('video', slides[i]);   // the full video a press already started loading takes the place of the empty one
+  if (vWarm && iv && !lent.some(x => x[1] === iv) && vWarm.src === iv.dataset.src) { clearTimeout(vWarm.t); vWarm.v.dataset.poster = iv.dataset.poster || ''; if (!vWarm.v.dataset.poster) delete vWarm.v.dataset.poster; iv.replaceWith(vWarm.v); vWarm = null; } else unwarm();
   $$('#vrow video, #vStrip video').forEach(v => { if (!lent.some(x => x[1] === v) && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); } });   // the row's small previews let go while the player is open (Safari showed the full video black with them all loaded); they come back from the browser's copy on close
   slides.forEach(s => { const v = $('video', s); if (v) v.addEventListener('playing', () => vidLit(v, () => s.classList.add('shown'))); });   // the cover photo goes once real pictures show
   let cur = -1;
