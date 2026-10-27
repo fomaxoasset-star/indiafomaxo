@@ -22,6 +22,20 @@ function track_seen(string $why, string $msg = ''): void {
 register_shutdown_function(function () { $e = error_get_last(); if ($e && in_array($e['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR], true)) track_seen('error', $e['message']); });
 $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
 if ($ua === '' || preg_match('/bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|embedly|python|curl|wget|httpclient|phantom|selenium/i', $ua)) { track_seen('bot'); exit; }
+
+/* vtime (AJAY 27/10/2026): how long a tapped video took to start, step by step, from the shop's own phones and everyone else's (owner visits too,
+   so a test tap on the owner's iPhone counts). One line each in api/data/vtime.txt (private, never shown to browsers), at most 300 KB.
+   It only records; nothing about how videos play depends on it. */
+if (($_SERVER['CONTENT_LENGTH'] ?? 0) < 4096 && str_contains($raw = (string)file_get_contents('php://input', false, null, 0, 4096), '"t":"vtime"')) {
+  $in = json_decode($raw, true); $f = __DIR__ . '/data/vtime.txt';
+  if (!is_array($in) || !is_array($in['vt'] ?? null) || (is_file($f) && filesize($f) > 300000)) exit;
+  $st = []; foreach (array_slice($in['vt'], 0, 24) as $x) if (is_array($x) && preg_match('/^[a-z]{2,12}$/', (string)($x[0] ?? ''))) $st[] = $x[0] . ' ' . max(0, min(99999, (int)($x[1] ?? 0)));
+  $br = preg_match('/CriOS|Chrome/', $ua) ? 'Chrome' : (preg_match('/FxiOS|Firefox/', $ua) ? 'Firefox' : (preg_match('/Safari/', $ua) ? 'Safari' : 'Other'));
+  $os = preg_match('/iPhone|iPad|iPod/', $ua) ? 'iPhone' : (preg_match('/Android/', $ua) ? 'Android' : (preg_match('/Mac OS X/', $ua) ? 'Mac' : (preg_match('/Windows/', $ua) ? 'Windows' : 'Other')));
+  $cl = fn($v, $n) => mb_substr(preg_replace('/[^\w .\/-]/u', '', (string)$v), 0, $n);
+  @file_put_contents($f, date('d/m H:i:s') . ' | ' . $os . ' ' . $br . (fomaxo_is_admin_visitor() ? ' (owner)' : '') . ' | ' . $cl($in['how'] ?? '', 12) . ' | ' . $cl($in['net'] ?? '', 16) . ' | ' . $cl($in['vf'] ?? '', 40) . ' | ' . implode(', ', $st) . "\n", FILE_APPEND | LOCK_EX);
+  exit;
+}
 if (fomaxo_is_admin_visitor()) { track_seen('owner'); exit; }
 
 $raw = (string)file_get_contents('php://input', false, null, 0, 8192);
