@@ -3,7 +3,7 @@
 .vrow{--n:9;--g:14px;--w:calc((100% - (var(--n) - 1) * var(--g)) / var(--n));display:flex;gap:var(--g);overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:4px;overscroll-behavior-x:contain}
 .vrow::-webkit-scrollbar{display:none}
 .vstrip{display:none}@media(max-width:600px){#vidSec.vs-dup{display:none}}
-@media(max-width:600px){.vstrip:not([hidden]){display:block;min-width:0}.vs-h{display:flex;align-items:center;justify-content:space-between;font-family:Jost,sans-serif;font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}.vs-all{font:inherit;color:inherit;letter-spacing:.12em;background:none;border:0;padding:6px 0 6px 12px;cursor:pointer;opacity:.8}.vs-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;padding:6px 0 2px}.vs-row::-webkit-scrollbar{display:none}.vs-c{flex:none;position:relative;width:104px;height:185px;padding:0;border:1.5px solid var(--gold);border-radius:0;overflow:hidden;background:var(--panel);cursor:pointer}.vs-c img,.vs-c video{width:100%;height:100%;object-fit:cover;display:block}.vs-c video{position:absolute;inset:0;opacity:0;transition:opacity .4s}.vs-c.playing video{opacity:1}.vs-c:after{content:"";position:absolute;left:0;right:0;bottom:0;height:45%;background:linear-gradient(transparent,rgba(0,0,0,.75));pointer-events:none}.vs-p{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:#111;border:1.5px solid #e9cf8c;color:#e9cf8c;display:flex;align-items:center;justify-content:center}.vs-p svg{width:13px;height:13px;margin-left:1px}.vs-n{position:absolute;left:4px;right:4px;bottom:7px;z-index:1;font:500 12.5px/1.2 Jost,sans-serif;font-style:normal;color:#fff;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}   /* phone product page: Review videos cards above the photo (covers only) */
+@media(max-width:600px){.vstrip:not([hidden]){display:block;min-width:0}.vs-h{display:flex;align-items:center;justify-content:space-between;font-family:Jost,sans-serif;font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}.vs-all{font:inherit;color:inherit;letter-spacing:.12em;background:none;border:0;padding:6px 0 6px 12px;cursor:pointer;opacity:.8}.vs-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;padding:6px 0 2px}.vs-row::-webkit-scrollbar{display:none}.vs-c{flex:none;position:relative;width:104px;height:185px;padding:0;border:1.5px solid var(--gold);border-radius:0;overflow:hidden;background:var(--panel);cursor:pointer}.vs-c img,.vs-c video{width:100%;height:100%;object-fit:cover;display:block}.vs-c video{position:absolute;inset:0;opacity:0;transition:opacity .4s}.vs-c.playing video{opacity:1}.vs-c:after{content:"";position:absolute;left:0;right:0;bottom:0;height:45%;background:linear-gradient(transparent,rgba(0,0,0,.75));pointer-events:none}.vs-p{position:absolute;top:8px;right:8px;z-index:1;width:28px;height:28px;border-radius:50%;background:#111;border:1.5px solid #e9cf8c;color:#e9cf8c;display:flex;align-items:center;justify-content:center}.vs-p svg{width:13px;height:13px;margin-left:1px}.vs-n{position:absolute;left:4px;right:4px;bottom:7px;z-index:1;font:500 12.5px/1.2 Jost,sans-serif;font-style:normal;color:#fff;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}   /* phone product page: Review videos cards above the photo (covers only) */
 .vt{position:relative;flex:0 0 var(--w);aspect-ratio:9/16;overflow:hidden;background:#000;border:1px solid var(--line);scroll-snap-align:start;padding:0;text-align:left;color:#f2ebdd;cursor:pointer}
 .vt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .9s var(--ease)}
 .vt:hover video{transform:scale(1.03)}
@@ -3269,7 +3269,7 @@ function alsoOrder(id, pool){
   const rank = {}, add = l => (l || []).forEach(x => { if (!(x in rank)) rank[x] = Object.keys(rank).length; });
   add((ALSO.pairs || {})[id]); add(ALSO.top);
   const r = x => x.id in rank ? rank[x.id] : 1e4 + (ALSO_RND[x.id] ??= Math.random());
-  return pool.filter((x, i, a) => x.id !== id && a.indexOf(x) === i).sort((a, b) => isOut(a) - isOut(b) || r(a) - r(b));   // out of stock at the end
+  return pool.filter((x, i, a) => x.id !== id && a.indexOf(x) === i && !isOut(x)).sort((a, b) => r(a) - r(b));   // out of stock is never shown (AJAY 2026-10-27)
 }
 // the bag's order: products bought together with what's in the bag (best first), then the best sellers, then a random order kept for this visit
 function bagRank(ids){
@@ -3571,10 +3571,11 @@ $('#q').addEventListener('input', e => runSearch(e.target.value));
 
 /* ============================ SHARED PARTS ============================ */
 function card(p, opts={}){
-  const size = opts.size || defaultSize(p);
+  const ok = opts.inStock ? p.sizes.filter(s => !sizeOut(p, s)) : p.sizes;   // inStock: only the sizes we have (You may also like)
+  const size = opts.size || (ok.includes(defaultSize(p)) ? defaultSize(p) : ok[0]);
   const img = imgFor(p, size);
   const alt = altFor(p, size);
-  const chips = p.sizes.length > 1 && !opts.size ? `<div class="chips">${p.sizes.map(s => `<button class="chip${s===size?' on':''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}" data-size="${s}">${optLabel(p, s)}</button>`).join('')}</div>` : `<div class="meta">${p.kind==='set' ? '2ml vials' : optLabel(p, size)} · ${esc(p.family.split('·')[0].trim())}</div>`;
+  const chips = ok.length > 1 && !opts.size ? `<div class="chips">${ok.map(s => `<button class="chip${s===size?' on':''}${sizeOut(p, s) && !isOut(p) ? ' so' : ''}" data-size="${s}">${optLabel(p, s)}</button>`).join('')}</div>` : `<div class="meta">${p.kind==='set' ? '2ml vials' : optLabel(p, size)} · ${esc(p.family.split('·')[0].trim())}</div>`;
   return `<article class="card rv-up ${opts.d||''}" data-id="${p.id}" data-sel="${size}">
     <a class="media" href="#/product/${p.id}${opts.size ? '?size=' + opts.size : ''}" aria-label="${esc(p.name)}">
       ${p.tag ? `<span class="tag">${esc(p.tag)}</span>` : ''}<span data-off>${isOut(p) ? '<span class="off-tag oos-tag">Out of stock</span>' : offTag(p, size)}</span>
@@ -3901,7 +3902,7 @@ function product(id, q){
 
     <section style="padding:80px 0 120px;border-top:1px solid var(--line)">
       <div class="sec-head"><div class="t rv-up"><span class="eyebrow">You may also like</span><h2>Complete your <em class="metal">collection</em></h2></div></div>
-      <div class="grid four${isCare ? ' pc-grid' : ' also-row'}" id="alsoRow">${related.map((r,i) => isCare ? pcCard(r, i) : card(r, {d:'d'+i})).join('')}</div>
+      <div class="grid four${isCare ? ' pc-grid' : ' also-row'}" id="alsoRow">${related.map((r,i) => isCare ? pcCard(r, i) : card(r, {d:'d'+i, inStock: true})).join('')}</div>
     </section>
   </div>`;
 }
