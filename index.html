@@ -5752,13 +5752,14 @@ function vidSecHTML(){
 }
 let vrIO = null, vrNear = null, vWarm = null;
 /* a finger (or mouse) pressing on a row video already starts loading its full video, so it is on its way by the time the tap ends and the player opens;
-   a press that turns into a swipe of the row (or no tap within 1.5 s) lets it go again */
+   a press that turns into a swipe of the row (or no tap within 1.5 s) lets it go again.
+   On good internet (bg) the full video of a preview playing on screen already loads in the background, so a tap plays it at once; it lets go once the tile leaves the screen */
 const unwarm = () => { if (!vWarm) return; clearTimeout(vWarm.t); if (!vWarm.v.parentNode) { vWarm.v.removeAttribute('src'); vWarm.v.load(); } vWarm = null; };
-function warmFull(t){ const x = rowVids()[+t.dataset.vi], rv = $('video', t); if (!x || x.e || !x.v || $('#reel') || (vWarm && vWarm.src === x.v)) return;
+function warmFull(t, bg){ const x = rowVids()[+t.dataset.vi], rv = $('video', t); if (!x || x.e || !x.v || $('#reel') || (vWarm && (bg || vWarm.src === x.v))) return;
   if (rv && rv.dataset.src === x.v && rv.getAttribute('src')) return;   // the tile already plays the full video: the player borrows it
   unwarm(); const w = document.createElement('video');
   ['disablepictureinpicture', 'disableremoteplayback', 'playsinline', 'loop', 'muted'].forEach(a => w.setAttribute(a, '')); w.setAttribute('x-webkit-airplay', 'deny'); w.muted = true; w.preload = 'auto'; w.dataset.src = x.v; w.src = x.v;
-  vWarm = {src: x.v, v: w, t: setTimeout(unwarm, 1500)}; }
+  vWarm = {src: x.v, v: w, bg, tile: t, t: bg ? 0 : setTimeout(unwarm, 1500)}; }
 /* a sideways video row also gets a round arrow on its left and one on its right (phone and laptop, next to the ‹ › above it; AJAY 2026-10-25): each moves one screen of videos that way.
    From the first videos a move back (arrow or finger) jumps to the last ones, and from the end a move on jumps back to the first (AJAY 2026-10-25: "from first, swipe both sides"); the jump is instant, so the videos in between never load */
 function rowStep(sc, d){ const m = sc.scrollWidth - sc.clientWidth, rtl = getComputedStyle(sc).direction === 'rtl', lo = rtl ? -m : 0, hi = rtl ? 0 : m, x = sc.scrollLeft;   // d: -1 left, 1 right (as the arrows point)
@@ -5798,7 +5799,7 @@ function bindVids(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   loopRow($('#vrow'));
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
-  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) warmFull(t); }; t.onpointercancel = unwarm; });
+  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) warmFull(t); }; t.onpointercancel = () => { if (vWarm && !vWarm.bg) unwarm(); }; });
   tiles.forEach(t => { const v = $('video', t); if (v && !v._vb) { v._vb = 1; v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
@@ -5809,23 +5810,24 @@ function bindVids(){
   const nc = navigator.connection; if (nc && (nc.saveData || /2g|3g/.test(nc.effectiveType || ''))) return;   // data saver or a slow connection: covers only until tapped
   /* light on the page: a tile loads its small preview only when it is on screen and the page has finished loading, at most 2 at a time;
      a tile without a preview keeps its photo (the full video loads only in the player); a browser that holds back autoplay downloads nothing until the first tap or click */
-  let held = false, slow = false, ready = document.readyState === 'complete'; const wait = new Set();
+  let held = false, slow = false, ready = document.readyState === 'complete', near = () => {}, side = () => {}; const wait = new Set();
   const busy = () => tiles.filter(t => { const v = $('video', t); return v && v.getAttribute('src') && v.readyState < 3 && !v.error; }).length;
   const pump = () => wait.forEach(t => { if (busy() < 2) { wait.delete(t); if (onScreen(t)) run(t, true); } });
   const stop = v => { v.pause(); v.removeAttribute('src'); v.load(); };
+  const good = v => nc && nc.effectiveType ? nc.effectiveType === '4g' && !(nc.downlink && nc.downlink < 3) : v._ms > 0 && v._ms < 1200;   // good internet: 4G or better, or (Safari, no speed info) its preview was ready within 1.2 s
   const hold = () => { held = true; tiles.forEach(x => { const w = $('video', x); if (w && w.readyState < 2 && w.getAttribute('src')) stop(w); }); wait.clear(); };
   const run = (t, on) => { const v = $('video', t); if (!v) return;
     if (on) { if (held || slow || !ready || $('#reel')) return;
-      if (!v.getAttribute('src')) { if (busy() >= 2) { wait.add(t); return; } v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, pump, {once: true}));
+      if (!v.getAttribute('src')) { if (busy() >= 2) { wait.add(t); return; } v.src = v.dataset.src; v._st = performance.now(); v._ms = 0; v.addEventListener('canplay', () => { v._ms = performance.now() - v._st; }, {once: true}); ['canplay', 'error'].forEach(ev => v.addEventListener(ev, pump, {once: true}));
         const tm = setTimeout(() => { if (!held && !v.paused && v.readyState < 3 && v.getAttribute('src')) { slow = true; wait.clear(); tiles.forEach(x => { const w = $('video', x); if (w && w.readyState < 3 && w.getAttribute('src')) stop(w); }); } }, 5000); v.addEventListener('canplay', () => clearTimeout(tm), {once: true}); }   // slow Wi-Fi (no speed info, e.g. Safari): a playing preview not ready within 5 seconds = covers only on this visit (one held back by Safari's autoplay rule is not counted as slow)
-      v.play().then(() => t.classList.add('playing')).catch(e => { if (e.name !== 'NotAllowedError') return;
+      v.play().then(() => { t.classList.add('playing'); side(t); clearTimeout(t._bg); t._bg = setTimeout(() => { if (onScreen(t) && !v.paused && !held && !slow && !busy() && !wait.size && good(v)) warmFull(t, true); }, 1500); }).catch(e => { if (e.name !== 'NotAllowedError') return;
         if (v.readyState < 3 && !v._re) { v._re = 1; v.preload = 'auto'; v.addEventListener('canplay', () => v.play().then(() => t.classList.add('playing')).catch(() => hold()), {once: true}); return; }   // Safari can refuse to start a preview that is not loaded yet: it tries again once loaded, and only then holds back
         hold(); });
-    } else { wait.delete(t); if (!v.paused) { v.pause(); t.classList.remove('playing'); } if (v.readyState < 2 && v.getAttribute('src')) { stop(v); pump(); }
+    } else { wait.delete(t); clearTimeout(t._bg); if (vWarm && vWarm.bg && vWarm.tile === t) unwarm(); if (!v.paused) { v.pause(); t.classList.remove('playing'); } if (v.readyState < 2 && v.getAttribute('src')) { stop(v); pump(); }
       /* a preview that stays off screen for 4 s lets go of its video (its photo shows again): before, every preview ever played stayed loaded
          (24 on a laptop, 14 on a phone after one swipe along the row), which uses a phone's memory. Back on screen it comes from the browser's copy */
       clearTimeout(t._rel); t._rel = setTimeout(() => { const w = $('video', t); if (w && w.getAttribute('src') && w.paused && !onScreen(t) && !$('#reel')) stop(w); }, 4000); } };
-  if (!ready) addEventListener('load', () => { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }, {once: true});
+  if (!ready) addEventListener('load', () => { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); near(); }, {once: true});
   const again = () => { held = false; tiles.forEach(t => onScreen(t) && run(t, true)); };   // a phone that held back autoplay (iPhone Low Power Mode) plays them at the first touch
   ['touchend', 'pointerdown', 'keydown'].forEach(ev => addEventListener(ev, again, {once: true, passive: true}));   // a laptop or phone that held back autoplay (Low Power Mode, Safari's Auto-Play setting) starts them on the first tap, click or key
   vrIO = new IntersectionObserver(es => es.forEach(e => run(e.target, e.isIntersecting)), {rootMargin: '0px'});   // a video plays, muted, while its tile is on screen; off screen it pauses (and stops loading)
@@ -5835,10 +5837,16 @@ function bindVids(){
   const wq = new Set(), warm = t => { const v = $('video', t); if (!v || v.getAttribute('src') || held || slow || !ready || $('#reel')) return;
     if (busy() >= 2) { wq.add(t); return; } wq.delete(t);
     v.preload = 'auto'; v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, () => { pump(); wq.forEach(warm); }, {once: true})); };
-  addEventListener('scroll', () => { if (vrNear || !document.contains(tiles[0])) return;
+  /* AJAY 27/10/2026 "all previews playing as soon as the user sees it": the row's first previews load while the row is still a screen away,
+     and a preview on screen also loads the next 2 along the row (and the one before), so a swipe shows them already moving */
+  near = () => { if (vrNear || !document.contains(tiles[0])) return;
+    vrNear = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) wq.delete(e.target); else if (!onScreen(e.target)) warm(e.target); }), {rootMargin: '100% 0px'});
+    tiles.forEach(t => vrNear.observe(t)); };
+  side = t => { const k = tiles.indexOf(t); [k + 1, k + 2, k - 1].forEach(n => tiles[n] && warm(tiles[n])); };
+  if (ready) near();
+  addEventListener('scroll', () => { if (!document.contains(tiles[0])) return;
     if (!ready) { ready = true; tiles.forEach(t => onScreen(t) && run(t, true)); }   // someone scrolling down is past the first screen: the previews no longer wait for the whole page to finish loading (about 2 s sooner on a slow phone)
-    vrNear = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) wq.delete(e.target); else if (!onScreen(e.target)) warm(e.target); }), {rootMargin: '50% 0px'});
-    tiles.forEach(t => vrNear.observe(t)); }, {once: true, passive: true});
+    near(); }, {once: true, passive: true});
 }
 let reelMuted = false;   // the player opens with sound on, quietly (the row stays muted)
 const REEL_VOL = .3; let reelAC = null;
