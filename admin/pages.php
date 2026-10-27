@@ -678,8 +678,24 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
       . '<div class="igadd">' . $vpick('Product in the reel') . '<button class="btn" onclick="if(this.form.checkValidity())this.textContent=\'Adding…\'">Add</button></div>'))
       . '</div></form>';
   }
+  /* Cloudflare R2: keys once, then the videos are copied there (a few each time this page opens) and a switch plays them from there */
+  $r2 = r2_conf(); $r2On = r2_on();
+  if ($r2) { try { r2_sync(6); } catch (Throwable $e) {} }   // new uploads go to Cloudflare the next time this page opens
+  $r2want = $r2 ? r2_wanted() : []; $r2have = $r2 ? r2_have() : []; $r2done = count(array_filter($r2want, fn($sz, $f) => ($r2have[$f] ?? -1) === $sz, ARRAY_FILTER_USE_BOTH));
+  $r2Box = !$r2 ? '<form class="box vig" method="post">' . $csrfField . '<input type="hidden" name="action" value="vid_r2_keys"><div class="bh"><h3>Cloudflare <small class="muted">faster videos</small></h3></div><div class="bb">'
+      . '<p class="muted small">Keep the videos on Cloudflare too (free up to 10 GB). They play from there, and from Hostinger if Cloudflare ever fails.</p>'
+      . '<input name="r2_acct" required spellcheck="false" autocomplete="off" placeholder="Account ID" aria-label="Cloudflare Account ID">'
+      . '<input name="r2_key" required spellcheck="false" autocomplete="off" placeholder="Access Key ID" aria-label="Access Key ID">'
+      . '<input name="r2_secret" type="password" required autocomplete="new-password" spellcheck="false" placeholder="Secret Access Key" aria-label="Secret Access Key">'
+      . '<input name="r2_bucket" required spellcheck="false" autocomplete="off" value="fomaxo-videos-asia" placeholder="Bucket name" aria-label="Bucket name">'
+      . '<div class="igadd"><input name="r2_url" type="url" required spellcheck="false" value="https://v.fomaxo.com" placeholder="https://v.fomaxo.com" aria-label="Public address"><button class="btn" onclick="if(this.form.checkValidity())this.textContent=\'Checking…\'">Connect</button></div>'
+      . '<details class="igtok"><summary>Where are these?</summary><ol><li>Open <b>dash.cloudflare.com</b> → R2 Object Storage</li><li>Account ID is on the right of the R2 page</li><li>Manage API tokens → Create API token → Object Read &amp; Write, bucket fomaxo-videos-asia</li><li>Copy the Access Key ID and Secret Access Key</li><li>Bucket → Settings → Custom Domains → v.fomaxo.com</li></ol><p>Kept on your Hostinger server only, never shown again.</p></details></div></form>'
+    : '<form class="box vig" method="post">' . $csrfField . '<input type="hidden" name="action" value="vid_r2_on"><div class="bh"><h3>Cloudflare <small class="muted">' . h(preg_replace('~^https://~', '', $r2['url'])) . '</small></h3><button class="btn line sm" name="action" value="vid_r2_off" onclick="return confirm(\'Disconnect Cloudflare? Videos play from Hostinger again.\')">Disconnect</button></div><div class="bb">'
+      . '<label class="pg igauto"><span><b>' . ($r2On ? 'Videos play from Cloudflare' : 'Off: videos play from Hostinger') . '</b><small>' . $r2done . ' of ' . count($r2want) . ' video files copied' . ($r2done < count($r2want) ? ', the rest play from Hostinger' : '') . '</small></span><input type="checkbox" class="tgl" name="on" value="1"' . ($r2On ? ' checked' : '') . ' aria-label="Play videos from Cloudflare" onchange="this.form.submit()"></label>'
+      . ($r2done < count($r2want) ? '<p class="muted small"><button class="lnk" name="action" value="vid_r2_sync" onclick="this.textContent=\'Copying…\'">Copy the rest now</button></p>' : '')
+      . '</div></form>';
   $body .= '<div class="row"><a class="btn line sm" href="' . h(self_url(['tab' => 'products'])) . '">← Products</a><h2 class="sp">Shop videos</h2></div>'
-    . $sw('#vidPanes', ['list' => 'Your videos', 'add' => 'Add a video']) . '<div class="vids panes" id="vidPanes"><div class="vleft" data-pane="add">' . $igBox
+    . $sw('#vidPanes', ['list' => 'Your videos', 'add' => 'Add a video']) . '<div class="vids panes" id="vidPanes"><div class="vleft" data-pane="add">' . $igBox . $r2Box
     . '<form class="box vlink" method="post" onsubmit="this.querySelector(\'.btn\').textContent=\'Adding…\'">' . $csrfField . '<input type="hidden" name="action" value="vid_link"><div class="bh"><h3>Paste a link</h3></div><div class="bb">'
     . '<input type="url" name="url" required inputmode="url" placeholder="https://www.instagram.com/reel/…" spellcheck="false" aria-label="Video link">'
     . '<div class="igadd">' . $vpick('Product in the video') . '<button class="btn">Add</button></div>'
