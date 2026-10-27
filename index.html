@@ -5818,7 +5818,7 @@ function vidsNow(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   loopRow($('#vrow'));
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
-  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) { vPress = performance.now(); warmFull(t); } }; t.onpointercancel = () => { if (vWarm && !vWarm.bg) unwarm(); }; });
+  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) { vPress = performance.now(); warmFull(t); warmAC(); } }; t.onpointercancel = () => { if (vWarm && !vWarm.bg) unwarm(); }; });
   tiles.forEach(t => { const v = $('video', t); if (v && !v._vb) { v._vb = 1; v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
@@ -5869,6 +5869,7 @@ function vidsNow(){
 }
 let reelMuted = false;   // the player opens with sound on, quietly (the row stays muted)
 const REEL_VOL = .3; let reelAC = null;
+const warmAC = () => { if (reelMuted) return; try { reelAC = reelAC || new (window.AudioContext || window.webkitAudioContext)(); if (reelAC.state === 'suspended') reelAC.resume().catch(() => {}); } catch (e) {} };   // the sound path is made ready while the finger is still down, so the video does not wait for it after the tap
 function quiet(v){   // low volume: iPhone ignores video.volume, so the sound goes through a gain of 0.3 (same-site videos); elsewhere video.volume does it too
   v.volume = REEL_VOL; if (v._g) { if (reelAC && reelAC.state === 'suspended') reelAC.resume(); return; }
   try { if (new URL(v.currentSrc || v.src, location.href).origin !== location.origin) return;
@@ -5923,7 +5924,7 @@ function openReel(i){
     slides.forEach((s, n) => { const v = $('video', s);
       if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
-      if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
+      if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); if (v.currentTime) v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
       else { v.pause(); if (Math.abs(n - k) > 1 && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); s.classList.remove('shown'); } } });   // a video two or more away lets go (before, every video swiped past stayed loaded, full size)
     const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
     if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
