@@ -70,12 +70,102 @@ function shop_videos_live(): array {
   foreach (shop_videos() as $v) { if (empty($v['on']) || !empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
     $all = video_products($v); $ps = array_values(array_filter($all, fn($id) => isset($cat[$id]) && empty($cat[$id]['hidden'])));   // one product, several, or none (a Shop Now button)
     if (($all || (string)($v['product'] ?? '') !== '') && !$ps) continue;   // every product in it is hidden or deleted
-    $out[] = ['v' => video_url((string)$v['file'])] + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_url((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) && filesize(video_dir() . '/' . $v['file']) <= 1.5 * 1048576 ? ['pv' => video_url((string)$v['file'])] : [])) + (($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []) + ($ps && !empty($v['shop']) ? ['sn' => 1] : []); }
+    $out[] = ['v' => video_cdn((string)$v['file'])] + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_cdn((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) && filesize(video_dir() . '/' . $v['file']) <= 1.5 * 1048576 ? ['pv' => video_cdn((string)$v['file'])] : [])) + (($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []) + ($ps && !empty($v['shop']) ? ['sn' => 1] : []); }
   return $out;
 }
 /* the products a video sells, first one first ('product' plus 'also'); only those in $cat when it is given */
 function video_products(array $v, ?array $cat = null): array {
   return array_values(array_unique(array_filter(array_merge([(string)($v['product'] ?? '')], (array)($v['also'] ?? [])), fn($id) => is_string($id) && $id !== '' && ($cat === null || isset($cat[$id])))));
+}
+/* Cloudflare R2 (Admin → Products → Videos → Cloudflare): the same video files, also kept on Cloudflare (free up to 10 GB,
+   nothing to pay for watching) and played from there once its switch is on. The keys are typed there and kept in
+   fomaxo-private/r2.php (never on GitHub). A video not copied yet, or the switch off, plays from media/v as before, and a
+   video Cloudflare fails to send falls back to media/v on the website by itself (index.html vidFallback). */
+function r2_file(): string { global $PRIV; return "$PRIV/r2.php"; }
+function r2_conf(): ?array { $f = r2_file(); $c = is_file($f) ? require $f : null; return is_array($c) && !empty($c['acct']) && !empty($c['key']) && !empty($c['secret']) && !empty($c['bucket']) && !empty($c['url']) ? $c : null; }
+function r2_save(?array $c): bool {
+  $f = r2_file();
+  if (!$c) return @unlink($f) || !is_file($f);
+  $ok = @file_put_contents($f, "<?php\n// Cloudflare R2 keys for the shop videos (written by fomaxo.in/admin → Products → Videos)\nreturn " . var_export($c, true) . ";\n", LOCK_EX) !== false;
+  if ($ok) @chmod($f, 0600);
+  return $ok;
+}
+function r2_on(): bool { return shop_setting('r2_on') === '1' && r2_conf() !== null; }
+/* the videos already on Cloudflare: name => size */
+function r2_have(): array { global $PRIV; $h = json_decode((string)@file_get_contents("$PRIV/r2-have.json"), true); return is_array($h) ? $h : []; }
+function r2_have_save(array $h): void { global $PRIV; @file_put_contents("$PRIV/r2-have.json", json_encode($h), LOCK_EX); }
+/* the AWS signature (version 4) R2 asks for; $hd: lower-case headers in order, with host, x-amz-content-sha256 and x-amz-date */
+function r2_sign(array $c, string $method, string $uri, string $query, array $hd, string $region = 'auto'): string {
+  $amz = $hd['x-amz-date']; $day = substr($amz, 0, 8); $scope = "$day/$region/s3/aws4_request";
+  $canon = $method . "\n" . $uri . "\n" . $query . "\n" . implode('', array_map(fn($k, $v) => "$k:" . trim((string)$v) . "\n", array_keys($hd), $hd)) . "\n" . implode(';', array_keys($hd)) . "\n" . $hd['x-amz-content-sha256'];
+  $k = hash_hmac('sha256', 'aws4_request', hash_hmac('sha256', 's3', hash_hmac('sha256', $region, hash_hmac('sha256', $day, 'AWS4' . $c['secret'], true), true), true), true);
+  return 'AWS4-HMAC-SHA256 Credential=' . $c['key'] . "/$scope, SignedHeaders=" . implode(';', array_keys($hd)) . ', Signature=' . hash_hmac('sha256', "AWS4-HMAC-SHA256\n$amz\n$scope\n" . hash('sha256', $canon), $k);
+}
+/* one signed request to R2 (its S3 address): [HTTP code, answer or error]. $body is a string, or ['file' => path] for a video */
+function r2_req(array $c, string $method, string $path, string $query = '', $body = '', array $hd = []): array {
+  if (!function_exists('curl_init')) return [0, 'curl is off on this server'];
+  $host = $c['acct'] . '.r2.cloudflarestorage.com'; $uri = '/' . $c['bucket'] . ($path !== '' ? '/' . $path : '');
+  $file = is_array($body) ? (string)$body['file'] : '';
+  $hash = $file !== '' ? hash_file('sha256', $file) : hash('sha256', (string)$body);
+  $hd = array_change_key_case($hd) + ['host' => $host, 'x-amz-content-sha256' => $hash, 'x-amz-date' => gmdate('Ymd\THis\Z')]; ksort($hd);
+  $auth = r2_sign($c, $method, $uri, $query, $hd);
+  $ch = curl_init("https://$host$uri" . ($query !== '' ? "?$query" : ''));
+  $opt = [CURLOPT_CUSTOMREQUEST => $method, CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 120,
+    CURLOPT_HTTPHEADER => array_merge(['Authorization: ' . $auth], array_map(fn($k, $v) => "$k: $v", array_keys(array_diff_key($hd, ['host' => 1])), array_diff_key($hd, ['host' => 1])))];
+  $fh = null;
+  if ($file !== '') { $fh = fopen($file, 'rb'); $opt += [CURLOPT_UPLOAD => true, CURLOPT_INFILE => $fh, CURLOPT_INFILESIZE => filesize($file)]; }
+  elseif ($method === 'PUT' || $method === 'POST') $opt[CURLOPT_POSTFIELDS] = (string)$body;
+  curl_setopt_array($ch, $opt); $out = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch); if ($fh) fclose($fh);
+  if ($out === false) return [0, $err ?: 'no answer'];
+  return [$code, $code >= 300 && preg_match('~<Message>([^<]+)~', (string)$out, $m) ? $m[1] : (string)$out];
+}
+/* copies one video to R2: '' when done, else what went wrong */
+function r2_put(array $c, string $f): string {
+  $p = video_dir() . "/$f"; if (!preg_match(VIDEO_FILE, $f) || !is_file($p)) return 'file missing';
+  $type = ['mp4' => 'video/mp4', 'mov' => 'video/quicktime', 'webm' => 'video/webm'][pathinfo($f, PATHINFO_EXTENSION)] ?? 'video/mp4';
+  [$code, $msg] = r2_req($c, 'PUT', $f, '', ['file' => $p], ['Content-Type' => $type, 'Cache-Control' => 'public, max-age=31536000, immutable']);   // a new name for every upload, so it never changes
+  return $code === 200 ? '' : ($msg !== '' ? substr($msg, 0, 160) : "error $code");
+}
+/* every video file the list uses (the video and its small preview) */
+function r2_wanted(): array {
+  $w = []; foreach (shop_videos() as $v) foreach ([(string)($v['file'] ?? ''), (string)($v['prev'] ?? '')] as $f) if (preg_match(VIDEO_FILE, $f) && is_file(video_dir() . "/$f")) $w[$f] = (int)filesize(video_dir() . "/$f");
+  return $w;
+}
+/* copies the videos not on Cloudflare yet, for up to $secs seconds: [copied now, error or ''] */
+function r2_sync(float $secs = 8): array {
+  $c = r2_conf(); if (!$c) return [0, ''];
+  global $PRIV; $lk = @fopen("$PRIV/r2-sync.lock", 'c'); if (!$lk || !flock($lk, LOCK_EX | LOCK_NB)) return [0, ''];   // one copy at a time
+  $t = microtime(true); $n = 0; $err = '';
+  try {
+    $have = r2_have();
+    foreach (r2_wanted() as $f => $sz) {
+      if (($have[$f] ?? -1) === $sz) continue;
+      if (microtime(true) - $t > $secs) break;
+      $e = r2_put($c, $f); if ($e !== '') { $err = $e; break; }
+      $have[$f] = $sz; r2_have_save($have); $n++;
+    }
+  } finally { flock($lk, LOCK_UN); fclose($lk); }
+  return [$n, $err];
+}
+/* checks the keys (a small test file), lets fomaxo.in play the videos (CORS, so Safari's black-frame check still works),
+   and checks the public address: '' when all is well, else what to fix */
+function r2_check(array $c): string {
+  [$code, $msg] = r2_req($c, 'PUT', 'fomaxo-check.txt', '', 'ok', ['Content-Type' => 'text/plain']);
+  if ($code !== 200) return 'Cloudflare did not accept the keys: ' . ($code ? substr($msg, 0, 160) : $msg);
+  $cors = '<?xml version="1.0" encoding="UTF-8"?><CORSConfiguration><CORSRule><AllowedOrigin>https://fomaxo.in</AllowedOrigin><AllowedOrigin>https://www.fomaxo.in</AllowedOrigin>'
+    . '<AllowedMethod>GET</AllowedMethod><AllowedMethod>HEAD</AllowedMethod><AllowedHeader>*</AllowedHeader><ExposeHeader>Content-Length</ExposeHeader><ExposeHeader>Content-Range</ExposeHeader><MaxAgeSeconds>86400</MaxAgeSeconds></CORSRule></CORSConfiguration>';
+  [$code, $msg] = r2_req($c, 'PUT', '', 'cors=', $cors, ['Content-Type' => 'application/xml', 'Content-MD5' => base64_encode(md5($cors, true))]);
+  if ($code !== 200) return 'The keys work, but CORS could not be set: ' . substr($msg, 0, 160);
+  $ch = curl_init(rtrim($c['url'], '/') . '/fomaxo-check.txt'); curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 20]);
+  $out = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+  return $code === 200 && trim((string)$out) === 'ok' ? '' : 'The keys work, but ' . $c['url'] . ' does not open the files yet (custom domain not connected to the bucket?)';
+}
+/* the address the website plays a video from: Cloudflare when on and copied, else media/v */
+function video_cdn(string $f): string {
+  static $on = null, $have = null, $base = '';
+  if ($on === null) { $on = r2_on(); $have = $on ? r2_have() : []; $base = $on ? rtrim((string)r2_conf()['url'], '/') : ''; }
+  if ($on && isset($have[$f])) { try { video_pub($f); } catch (Throwable $e) {} return "$base/$f"; }   // the media/v copy stays, for the fallback
+  return video_url($f);
 }
 /* sends a video with Range support (iPhones only play videos that can be asked for in parts) */
 function send_video(string $path): void {
