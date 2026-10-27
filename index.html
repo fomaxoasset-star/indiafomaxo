@@ -5788,6 +5788,19 @@ function loopRow(sc){ if (!sc || sc.dataset.loop) return; const ks = [...sc.chil
   sc.scrollLeft = s * W();
   let t = 0; const fix = () => { const w = W(), x = Math.abs(sc.scrollLeft); if (w && x < w * .5) sc.scrollLeft = s * (x + w); else if (w && x > w * 1.5) sc.scrollLeft = s * (x - w); };
   sc.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(fix, 150); }, {passive: true}); }
+/* video timer (AJAY 27/10/2026, to find where Safari waits): for the video a tap opens, how many ms after the finger went down each step came
+   (player open, loading started, size known, first picture loaded, ready, playing, first picture drawn, cover photo gone), sent once as one small
+   note to api/track.php → api/data/vtime.txt. It only listens; nothing about how the video plays depends on it */
+let vPress = 0;
+function vTimer(s, how){ const v = s && $('video', s); if (!v) return;
+  const t0 = performance.now() - vPress < 3000 ? vPress : performance.now(), at = () => Math.round(performance.now() - t0), st = [['open', at()], ['ready', v.readyState]], seen = {};
+  let sent = false, waits = 0; const mark = k => { if (!seen[k]) { seen[k] = 1; st.push([k, at()]); } };
+  const fin = () => { if (sent) return; sent = true; if (waits) st.push(['waiting', waits]); clearTimeout(tm);
+    const nc = navigator.connection; TRK.send('vtime', {vt: st, how, net: nc ? (nc.effectiveType || '') + (nc.downlink ? ' ' + nc.downlink : '') : '', vf: String(v.dataset.src || '').split('/').pop()}); };
+  const tm = setTimeout(fin, 12000);
+  [['loadstart', 'loadstart'], ['loadedmetadata', 'meta'], ['loadeddata', 'data'], ['canplay', 'canplay'], ['play', 'play'], ['stalled', 'stalled'], ['error', 'error']].forEach(([ev, k]) => v.addEventListener(ev, () => mark(k), {once: true}));
+  v.addEventListener('waiting', () => waits++);
+  v.addEventListener('playing', () => { mark('playing'); if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(() => mark('frame')); vidLit(v, () => { mark('shown'); setTimeout(fin, 50); }); }, {once: true}); }
 /* Safari can play a video and still show it black: the cover photo goes only once a real picture (not a black frame) is on the screen */
 function vidLit(v, done){ (v._litQ = v._litQ || []).push(done); if (v._lit) return; v._lit = 1;   // a video the player borrows from the row can be checked for both at once: each waiting cover goes when the check passes
   const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d', {willReadFrequently: true}); let n = 0;
@@ -5804,7 +5817,7 @@ function vidsNow(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   loopRow($('#vrow'));
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
-  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) warmFull(t); }; t.onpointercancel = () => { if (vWarm && !vWarm.bg) unwarm(); }; });
+  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = e => { if (e.isPrimary && e.button < 1) { vPress = performance.now(); warmFull(t); } }; t.onpointercancel = () => { if (vWarm && !vWarm.bg) unwarm(); }; });
   tiles.forEach(t => { const v = $('video', t); if (v && !v._vb) { v._vb = 1; v.addEventListener('playing', () => t.classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => t.classList.add('shown'))); v.addEventListener('emptied', () => t.classList.remove('shown')); v.addEventListener('pause', () => t.classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const covers = () => tiles.forEach(t => { const v = $('video', t); if (v && v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } });   // cover photos load only when the row is about a screen away, not with the first screen
@@ -5897,9 +5910,11 @@ function openReel(i){
   const lent = [];   // the row's videos are already loaded: the player borrows them, so the tapped video plays at once (given back on close); a row tile playing its small preview (silent, first seconds) is not borrowed, the player loads the full video
   $$('#vrow .vt').forEach(t => { const rv = $('video', t), sv = slides[+t.dataset.vi] && $('video', slides[+t.dataset.vi]); if (!rv || !rv.src || rv.readyState < 2 || !sv || lent.some(x => x[1] === sv) || rv.dataset.src !== sv.dataset.src) return; const ph = document.createComment(''); rv.before(ph); sv.replaceWith(rv); lent.push([ph, rv]); });
   const iv = slides[i] && $('video', slides[i]);   // the full video a press already started loading takes the place of the empty one
-  if (vWarm && iv && !lent.some(x => x[1] === iv) && vWarm.src === iv.dataset.src) { clearTimeout(vWarm.t); vWarm.v.dataset.poster = iv.dataset.poster || ''; if (!vWarm.v.dataset.poster) delete vWarm.v.dataset.poster; iv.replaceWith(vWarm.v); vWarm = null; } else unwarm();
+  let how = iv && lent.some(x => x[1] === iv) ? 'row' : 'new';
+  if (vWarm && iv && how === 'new' && vWarm.src === iv.dataset.src) { how = vWarm.bg ? 'early' : 'press'; clearTimeout(vWarm.t); vWarm.v.dataset.poster = iv.dataset.poster || ''; if (!vWarm.v.dataset.poster) delete vWarm.v.dataset.poster; iv.replaceWith(vWarm.v); vWarm = null; } else unwarm();
   $$('#vrow video, #vStrip video').forEach(v => { if (!lent.some(x => x[1] === v) && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); } });   // the row's small previews let go while the player is open (Safari showed the full video black with them all loaded); they come back from the browser's copy on close
   slides.forEach(s => { const v = $('video', s); if (v) v.addEventListener('playing', () => vidLit(v, () => s.classList.add('shown'))); });   // the cover photo goes once real pictures show
+  vTimer(slides[i], how);
   let cur = -1;
   const go = k => { k = Math.max(0, Math.min(slides.length - 1, k)); track.scrollTo({left: k * track.clientWidth, behavior: 'smooth'}); };
   const act = k => { if (k === cur) return; cur = k;
