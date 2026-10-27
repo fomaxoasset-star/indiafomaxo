@@ -301,8 +301,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($keepC && preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)$nv['cover'], $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
         $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'hq' => 1, 'fp' => 1, 'wide' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : [])) + array_intersect_key($nv, ['hq' => 1, 'fp' => 1, 'wide' => 1, 'orig' => 1]);
         $vids[$rep]['file'] = $nv['file']; if (!$keepC) $vids[$rep]['cover'] = $nv['cover'];
+        $toCom = ((!empty($ov['sent_com']) || ($ov['from'] ?? '') === 'fomaxo.com') && preg_match('/^[a-f0-9]{32}$/', (string)($ov['fp'] ?? ''))) && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], (string)$ov['fp']);   // fomaxo.com has this video too: it gets the sharper one as well
         shop_videos_save($vids); r2_sync_later();
-        go($vb, 'Video number ' . ($rep + 1) . ' replaced' . (!empty($vids[$rep]['hq']) ? ' with the sharp one: 1080p goes to Cloudflare now' : '') . '. Same product, words and place.');
+        go($vb, 'Video number ' . ($rep + 1) . ' replaced' . ($toCom ? ' here and on fomaxo.com' : '') . (!empty($vids[$rep]['hq']) ? ' with the sharp one: 1080p goes to Cloudflare now' : '') . '. Same product, words and place.');
       }
       shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
       if ($toCom) { $vids[0]['sent_com'] = true; shop_videos_save($vids); }

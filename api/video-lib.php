@@ -34,18 +34,14 @@ function video_url(string $f): string { try { $ok = video_pub($f); } catch (Thro
 function video_com_inbox(): string { $p = getenv('FOMAXO_COM_MEDIA') ?: dirname(__DIR__, 3) . '/fomaxo.com/fomaxo-media'; return is_dir($p) && is_writable($p) ? "$p/video-inbox" : ''; }
 /* a video on our server that can still go to fomaxo.com: not from fomaxo.com, not sent yet */
 function video_to_com_ok(array $v): bool { return empty($v['embed']) && empty($v['from']) && empty($v['sent_com']) && preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) && is_file(video_dir() . '/' . $v['file']); }
-function video_to_com(string $path, array $v): bool {
+function video_to_com(string $path, array $v, string $rep = ''): bool {
   $in = video_com_inbox(); $name = basename($path); if ($in === '' || (!is_dir($in) && !@mkdir($in, 0755, true))) return false;
   $tmp = "$in/$name." . bin2hex(random_bytes(4)) . '.part';
   if (!@copy($path, $tmp) || !@rename($tmp, "$in/$name")) { @unlink($tmp); return false; }
-  $more = [];   // the sharp 1080p copy and the original go too (fomaxo.com keeps them on its Cloudflare part); from Cloudflare when they already left Hostinger
-  foreach (['hq', 'orig'] as $k) { $f = basename((string)($v[$k] ?? '')); if (!preg_match(VIDEO_FILE, $f)) continue;
-    $tmp = "$in/$f." . bin2hex(random_bytes(4)) . '.part'; $src = video_dir() . "/$f";
-    $ok = is_file($src) ? @copy($src, $tmp) : (($c = r2_conf()) && isset(r2_have()[$f]) && function_exists('curl_init') && ($fh = @fopen($tmp, 'wb')) && (function () use ($c, $f, $fh) {
-      @set_time_limit(600); $ch = curl_init(rtrim($c['url'], '/') . "/$f"); curl_setopt_array($ch, [CURLOPT_FILE => $fh, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 500, CURLOPT_FAIL_ON_ERROR => true]);
-      $r = curl_exec($ch); curl_close($ch); fclose($fh); return (bool)$r; })());
-    if ($ok && @filesize($tmp) && @rename($tmp, "$in/$f")) $more[$k] = $f; else @unlink($tmp);
-  }
+  $more = [];   // the sharp 1080p copy goes too while it is still here (fomaxo.com keeps it on its Cloudflare part); the original stays on this site only
+  $f = basename((string)($v['hq'] ?? '')); $tmp = "$in/$f." . bin2hex(random_bytes(4)) . '.part';
+  if (preg_match(VIDEO_FILE, $f) && is_file(video_dir() . "/$f")) { if (@copy(video_dir() . "/$f", $tmp) && @rename($tmp, "$in/$f")) $more['hq'] = $f; else @unlink($tmp); }
+  if (preg_match('/^[a-f0-9]{32}$/', $rep)) $more['replace'] = $rep;   // a sharper copy of a video fomaxo.com already has (its old fingerprint): it takes that video's place there
   if (!@file_put_contents("$in/$name.json", json_encode(['file' => $name] + $more + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX)) return false;
   @unlink(dirname($in, 2) . '/fomaxo-cache/products.json');   // fomaxo.com's one-minute copy of its shop answer: its next page load adds the video straight away
   return true;
@@ -62,7 +58,16 @@ function video_inbox(): void {
       $m = json_decode((string)@file_get_contents($j), true); $f = basename((string)($m['file'] ?? ''));
       if (!is_array($m) || !preg_match(VIDEO_FILE, $f) || !is_file("$in/$f")) { if (@filemtime($j) < time() - 3600) @unlink($j); continue; }   // the file is still being copied: next time
       if (!@rename("$in/$f", video_dir() . "/$f")) continue;
-      $more = []; foreach (['hq', 'orig'] as $k) { $x = basename((string)($m[$k] ?? '')); if (preg_match(VIDEO_FILE, $x) && is_file("$in/$x") && @rename("$in/$x", video_dir() . "/$x")) $more[$k] = $x; }   // the sharp copy and the original: they go to our Cloudflare part at the next copy
+      $more = []; $x = basename((string)($m['hq'] ?? ''));   // the sharp copy: to our Cloudflare part at the next copy (dropped when Cloudflare isn't connected here)
+      if (preg_match(VIDEO_FILE, $x) && is_file("$in/$x")) { if (r2_conf() && @rename("$in/$x", video_dir() . "/$x")) $more['hq'] = $x; else @unlink("$in/$x"); }
+      $old = (string)($m['replace'] ?? '');
+      if (preg_match('/^[a-f0-9]{32}$/', $old)) {   // a sharper copy of one of our videos: it takes that video's place, keeping product, words, cover and place; none matches = dropped
+        @unlink($j); $at = false; foreach ($vids as $k => $x2) if (($x2['fp'] ?? '') === $old && empty($x2['embed'])) { $at = $k; break; }
+        if ($at === false) { @unlink(video_dir() . "/$f"); if (!empty($more['hq'])) @unlink(video_dir() . '/' . $more['hq']); continue; }
+        foreach (['file', 'prev', 'hq'] as $k) if ((string)($vids[$at][$k] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$vids[$at][$k])); video_pub_drop(basename((string)$vids[$at][$k])); }
+        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'hq' => 1, 'fp' => 1, 'wide' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + (!empty($m['wide']) ? ['wide' => true] : []);
+        $vids[$at]['file'] = $f; $added++; continue;
+      }
       @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $f, 'cover' => '', 'product' => isset($cat[$prod]) ? $prod : '', 'on' => true, 'from' => 'fomaxo.com']
         + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []) + (in_array($m['where'] ?? '', ['home', 'product'], true) ? ['where' => $m['where']] : []) + (($nm = mb_substr(trim((string)($m['person'] ?? '')), 0, 30)) !== '' ? ['person' => $nm] : []) + $more);
