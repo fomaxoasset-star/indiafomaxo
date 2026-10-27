@@ -245,6 +245,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($a === 'vid_add') {
       $f = $_FILES['video'] ?? null; $pd = '';
+      $rep = array_search((string)($_POST['replace'] ?? ''), array_column($vids, 'id'), true);   // Replace with sharper video: the new file takes this video's place, product, words and settings
+      if ($rep !== false && !empty($vids[$rep]['embed'])) $rep = false;
+      if ($rep !== false) { $prod = (string)($vids[$rep]['product'] ?? ''); $none = true; }
       if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
       if (preg_match('/^[a-f0-9]{16}$/', (string)($_POST['parts'] ?? ''))) {   // a video sent in pieces: join them, and check nothing is missing
         $pd = "$PRIV/video-parts/" . $_POST['parts']; $pn = (int)($_POST['parts_n'] ?? 0); $total = (int)($_POST['parts_size'] ?? 0);
@@ -281,9 +284,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($ok) $vids[0]['hq'] = $hq; else @unlink(video_dir() . "/$hq");
         unset($out);
       }
+      if (r2_conf() && preg_match('/^[a-f0-9]{16}$/', (string)($_POST['orig_parts'] ?? '')) && preg_match('/^(.+)\.\w+$/', $name, $bm)) {   // the original from the phone, kept on Cloudflare only: Make All Videos Again remakes every copy from it later
+        $od = "$PRIV/video-parts/" . $_POST['orig_parts']; $on = (int)($_POST['orig_parts_n'] ?? 0); $ot = (int)($_POST['orig_parts_size'] ?? 0); $tmp = video_dir() . '/' . $bm[1] . '-o.part';
+        $ok = is_dir($od) && $on > 0 && $on <= 1000 && $ot > 0 && $ot <= 500 * 1048576 && ($out = @fopen($tmp, 'wb'));
+        for ($k = 0; $ok && $k < $on; $k++) { $in = @fopen("$od/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
+        if (!empty($out)) fclose($out);
+        clearstatcache(); $oe = $ok && (int)@filesize($tmp) === $ot && function_exists('finfo_open') ? (['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm', 'video/x-m4v' => 'mp4'][(string)finfo_file(finfo_open(FILEINFO_MIME_TYPE), $tmp)] ?? '') : '';
+        foreach (glob("$od/*") ?: [] as $x) @unlink($x); @rmdir($od);
+        if ($oe !== '' && @rename($tmp, video_dir() . '/' . $bm[1] . "-o.$oe")) $vids[0]['orig'] = $bm[1] . "-o.$oe"; else @unlink($tmp);
+        unset($out);
+      }
+      if ($rep !== false) {   // the old video's entry keeps everything but its files; its old files go (on Cloudflare at the next copy). Make All Videos Again sends no new original: the old one stays
+        $nv = array_shift($vids); $ov = $vids[$rep];
+        foreach (['file', 'prev', 'hq', 'orig'] as $k) if ((string)($ov[$k] ?? '') !== '' && ($k !== 'orig' || !empty($nv['orig']))) { @unlink(video_dir() . '/' . basename((string)$ov[$k])); video_pub_drop(basename((string)$ov[$k])); }
+        $keepC = (string)($ov['cover'] ?? '') !== '';   // the cover already chosen stays (the page sends a frame of the new video as a cover by itself)
+        if ($keepC && preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)$nv['cover'], $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
+        $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'hq' => 1, 'fp' => 1, 'wide' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : [])) + array_intersect_key($nv, ['hq' => 1, 'fp' => 1, 'wide' => 1, 'orig' => 1]);
+        $vids[$rep]['file'] = $nv['file']; if (!$keepC) $vids[$rep]['cover'] = $nv['cover'];
+        shop_videos_save($vids); r2_sync_later();
+        go($vb, 'Video number ' . ($rep + 1) . ' replaced' . (!empty($vids[$rep]['hq']) ? ' with the sharp one: 1080p goes to Cloudflare now' : '') . '. Same product, words and place.');
+      }
       shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
       if ($toCom) { $vids[0]['sent_com'] = true; shop_videos_save($vids); }
-      if (!empty($vids[0]['hq'])) r2_sync_later();   // the sharp copy goes to Cloudflare straight after the answer, so saving never waits on it
+      if (!empty($vids[0]['hq']) || !empty($vids[0]['orig'])) r2_sync_later();   // the sharp copy goes to Cloudflare straight after the answer, so saving never waits on it
       go($vb, 'Video added' . ($toCom ? ' here and on fomaxo.com' : '') . '. It shows on the home page now.' . (!empty($_POST['to_com']) && !$toCom ? ' It could not be sent to fomaxo.com: please upload it there too.' : ''));
     }
     if ($a === 'vid_order') {   // drag to reorder (admin.js, without reloading): the video ids in their new order
@@ -341,7 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
       if ((string)$v['file'] !== '') { @unlink(video_dir() . '/' . basename((string)$v['file'])); video_pub_drop(basename((string)$v['file'])); }
       if ((string)($v['prev'] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v['prev'])); video_pub_drop(basename((string)$v['prev'])); }
-      if ((string)($v['hq'] ?? '') !== '') @unlink(video_dir() . '/' . basename((string)$v['hq']));   // on Cloudflare, it goes at the next copy (r2_sync)
+      foreach (['hq', 'orig'] as $k) if ((string)($v[$k] ?? '') !== '') @unlink(video_dir() . '/' . basename((string)$v[$k]));   // on Cloudflare, it goes at the next copy (r2_sync)
       if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
       $msg = 'Video deleted.';
     } else go($vb, '!Please try again.');
