@@ -851,4 +851,4 @@ details.order:not([open]){content-visibility:auto;contain-intrinsic-size:auto 58
 .r2bar{margin:6px 0 4px}.r2t{display:flex;align-items:baseline;gap:4px;font-size:13px}.r2t span{margin-left:auto;opacity:.7}
 .r2bar i{display:block;height:8px;border-radius:5px;background:rgba(128,128,128,.22);overflow:hidden;margin-top:5px}.r2bar s{display:block;height:100%;background:var(--gold,#c9a35b);border-radius:5px}
 .r2bar.near s{background:#d98c1f}.r2bar.full s{background:#c0392b}.r2bar p{margin:6px 0 0;font-size:12.5px;line-height:1.4;color:#b06d10}.r2bar.full p{color:#c0392b}
-.r2st{font-weight:600}.r2st.on{color:#3c9a45}.r2cp{margin:8px 0 2px}
+.r2st{font-weight:600}.r2st.on{color:#3c9a45}.r2st.wait{color:#c47f12}.r2cp{margin:8px 0 2px}
