@@ -82,9 +82,16 @@ function video_products(array $v, ?array $cat = null): array {
    fomaxo-private/r2.php (never on GitHub). A video not copied yet, or the switch off, plays from media/v as before, and a
    video Cloudflare fails to send falls back to media/v on the website by itself (index.html vidFallback). */
 function r2_file(): string { global $PRIV; return "$PRIV/r2.php"; }
-function r2_conf(): ?array { $f = r2_file(); $c = is_file($f) ? require $f : null; return is_array($c) && !empty($c['acct']) && !empty($c['key']) && !empty($c['secret']) && !empty($c['bucket']) && !empty($c['url']) ? $c : null; }
+/* fomaxo.com's keys (same Hostinger account, one level above its public_html): typed once there, used here too, so both sites share the bucket */
+function r2_com_file(): string { return getenv('FOMAXO_COM_R2') ?: dirname(__DIR__, 3) . '/fomaxo.com/fomaxo-r2.php'; }
+function r2_conf(): ?array {
+  $ok = fn($x) => is_array($x) && !empty($x['acct']) && !empty($x['key']) && !empty($x['secret']) && !empty($x['bucket']) && !empty($x['url']);
+  $f = r2_file(); $x = is_file($f) ? require $f : null; if ($ok($x)) return $x;   // keys typed here win
+  $f = r2_com_file(); $x = @is_readable($f) ? (function ($f) { try { return require $f; } catch (Throwable $e) { return null; } })($f) : null;
+  return $ok($x) ? ['shared' => true] + $x : null;
+}
 function r2_save(?array $c): bool {
-  $f = r2_file();
+  $f = r2_file(); unset($c['shared']);
   if (!$c) return @unlink($f) || !is_file($f);
   $ok = @file_put_contents($f, "<?php\n// Cloudflare R2 keys for the shop videos (written by fomaxo.in/admin → Products → Videos)\nreturn " . var_export($c, true) . ";\n", LOCK_EX) !== false;
   if ($ok) @chmod($f, 0600);
