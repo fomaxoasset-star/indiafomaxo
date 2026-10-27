@@ -38,7 +38,15 @@ function video_to_com(string $path, array $v): bool {
   $in = video_com_inbox(); $name = basename($path); if ($in === '' || (!is_dir($in) && !@mkdir($in, 0755, true))) return false;
   $tmp = "$in/$name." . bin2hex(random_bytes(4)) . '.part';
   if (!@copy($path, $tmp) || !@rename($tmp, "$in/$name")) { @unlink($tmp); return false; }
-  if (!@file_put_contents("$in/$name.json", json_encode(['file' => $name] + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX)) return false;
+  $more = [];   // the sharp 1080p copy and the original go too (fomaxo.com keeps them on its Cloudflare part); from Cloudflare when they already left Hostinger
+  foreach (['hq', 'orig'] as $k) { $f = basename((string)($v[$k] ?? '')); if (!preg_match(VIDEO_FILE, $f)) continue;
+    $tmp = "$in/$f." . bin2hex(random_bytes(4)) . '.part'; $src = video_dir() . "/$f";
+    $ok = is_file($src) ? @copy($src, $tmp) : (($c = r2_conf()) && isset(r2_have()[$f]) && function_exists('curl_init') && ($fh = @fopen($tmp, 'wb')) && (function () use ($c, $f, $fh) {
+      @set_time_limit(600); $ch = curl_init(rtrim($c['url'], '/') . "/$f"); curl_setopt_array($ch, [CURLOPT_FILE => $fh, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 500, CURLOPT_FAIL_ON_ERROR => true]);
+      $r = curl_exec($ch); curl_close($ch); fclose($fh); return (bool)$r; })());
+    if ($ok && @filesize($tmp) && @rename($tmp, "$in/$f")) $more[$k] = $f; else @unlink($tmp);
+  }
+  if (!@file_put_contents("$in/$name.json", json_encode(['file' => $name] + $more + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX)) return false;
   @unlink(dirname($in, 2) . '/fomaxo-cache/products.json');   // fomaxo.com's one-minute copy of its shop answer: its next page load adds the video straight away
   return true;
 }
@@ -54,12 +62,13 @@ function video_inbox(): void {
       $m = json_decode((string)@file_get_contents($j), true); $f = basename((string)($m['file'] ?? ''));
       if (!is_array($m) || !preg_match(VIDEO_FILE, $f) || !is_file("$in/$f")) { if (@filemtime($j) < time() - 3600) @unlink($j); continue; }   // the file is still being copied: next time
       if (!@rename("$in/$f", video_dir() . "/$f")) continue;
+      $more = []; foreach (['hq', 'orig'] as $k) { $x = basename((string)($m[$k] ?? '')); if (preg_match(VIDEO_FILE, $x) && is_file("$in/$x") && @rename("$in/$x", video_dir() . "/$x")) $more[$k] = $x; }   // the sharp copy and the original: they go to our Cloudflare part at the next copy
       @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $f, 'cover' => '', 'product' => isset($cat[$prod]) ? $prod : '', 'on' => true, 'from' => 'fomaxo.com']
-        + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []) + (in_array($m['where'] ?? '', ['home', 'product'], true) ? ['where' => $m['where']] : []) + (($nm = mb_substr(trim((string)($m['person'] ?? '')), 0, 30)) !== '' ? ['person' => $nm] : []));
+        + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []) + (in_array($m['where'] ?? '', ['home', 'product'], true) ? ['where' => $m['where']] : []) + (($nm = mb_substr(trim((string)($m['person'] ?? '')), 0, 30)) !== '' ? ['person' => $nm] : []) + $more);
       $added++;
     }
-    if ($added) shop_videos_save($vids);
+    if ($added) { shop_videos_save($vids); r2_sync_later(); }
   } catch (Throwable $e) {} finally { flock($lk, LOCK_UN); fclose($lk); }
 }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website; shown on the home page and as Review videos on their product pages (wh: h = home page only, p = product pages only, none = both) */
