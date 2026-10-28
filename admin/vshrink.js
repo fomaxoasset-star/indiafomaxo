@@ -321,8 +321,12 @@ window.fxPick = function (src, done) {
   };
   later(function () { list = document.querySelector('.vlist .bb');
   if (f.dataset.hq && list && window.DataTransfer && f.elements.replace) {
-    var rw = document.createElement('div'); rw.style.cssText = 'margin:0 0 8px;text-align:right;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px';
+    var rw = document.createElement('div'); rw.style.cssText = 'margin:0 0 8px;text-align:right;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:6px';
     var repRows = function () { return allRows().filter(function (r) { return r.querySelector('.vrep'); }); };
+    /* the buttons used now and then wait behind a small "More" (AJAY 28/10/2026): Make All Videos Again and Make All Previews Again */
+    var more = document.createElement('details'); more.className = 'vmore'; more.style.cssText = 'display:inline-block;text-align:right';
+    more.innerHTML = '<summary style="list-style:none;cursor:pointer;font-size:12px;line-height:1.6;color:#b8913a;border:1px solid currentColor;border-radius:999px;padding:2px 12px;display:inline-block">More ▾</summary>';
+    var moreIn = document.createElement('div'); moreIn.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-top:6px'; more.appendChild(moreIn); more = moreIn;
     if (repRows().length) {
       var many = document.createElement('input'); many.type = 'file'; many.multiple = true; many.accept = 'video/*,.mp4,.mov,.m4v,.webm'; many.hidden = true; document.body.appendChild(many);
       var ab = pill('Replace all with sharper videos'); ab.classList.add('vrepall'); rw.appendChild(ab);
@@ -347,7 +351,7 @@ window.fxPick = function (src, done) {
     }
     var agRows = allRows().filter(function (r) { return r.dataset.orig; });
     if (agRows.length) {
-      var ag = pill('Make All Videos Again'); ag.classList.add('vagainall'); rw.appendChild(ag);
+      var ag = pill('Make All Videos Again'); ag.classList.add('vagainall'); more.appendChild(ag);
       agRows.forEach(function (r) { var b = document.createElement('button'); b.type = 'button'; b.className = 'vagain'; b.hidden = true; b.dataset.rep = r.dataset.vid; b.dataset.n = allRows().indexOf(r) + 1; r.appendChild(b); });   // sets the upload box for that video, like Replace
       ag.onclick = function () {
         if (!confirm('Make all ' + agRows.length + ' videos again from their originals on Cloudflare (1080p, 720p and preview)? About 1 to 2 minutes each. Keep this page open.')) return;
@@ -357,7 +361,8 @@ window.fxPick = function (src, done) {
         }}; }), ag, 'made again');
       };
     }
-    if (rw.children.length) list.insertBefore(rw, list.firstChild);
+    rw.appendChild(moreIn.parentNode); list.insertBefore(rw, list.firstChild);
+    setTimeout(function () { if (!moreIn.children.length) moreIn.parentNode.remove(); if (!rw.children.length) rw.remove(); }, 2500);   // nothing behind "More" (Make All Previews Again comes at 1.5 s)
   }
   });
 })();
@@ -399,7 +404,8 @@ setTimeout(function () {   // after the page has loaded (the list comes after th
     all.style.cssText = 'font:inherit;font-size:12px;line-height:1.6;color:#b8913a;background:none;border:1px solid currentColor;border-radius:999px;padding:2px 12px;cursor:pointer';
     all.onclick = function () { if (!confirm('Make the preview again for all ' + mkAll.length + ' videos? It runs one by one; keep this page open.')) return;
       all.disabled = true; all.textContent = 'Making All Previews…'; mkAll.forEach(function (r) { if (!r._mk.disabled) r._mk.click(); }); };
-    wrap.appendChild(all); box.parentNode.insertBefore(wrap, box);
+    var mi = document.querySelector('.vmore > div');   // Cloudflare connected: behind "More", with Make All Videos Again
+    if (mi) { all.style.marginLeft = '6px'; mi.appendChild(all); } else { wrap.appendChild(all); box.parentNode.insertBefore(wrap, box); }
   }
   /* a way that hangs (some Mac Safari videos never finish in the fast way) is given up after a while, so the next way or the next video goes on */
   var limit = function (p, ms, stop) { var t; return Promise.race([p, new Promise(function (ok) { t = setTimeout(function () { try { stop && stop(); } catch (e) {} ok(null); }, ms); })]).then(function (r) { clearTimeout(t); return r; }); };
