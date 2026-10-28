@@ -1137,3 +1137,41 @@ function taps_box(array $V, array $names, string $cls, string $attr = '', bool $
   return $out . ($help ? '' : '<p class="muted small cvn">Not buttons: people tapped a photo or words and nothing happened, so they may expect it to open. What people type is never kept.</p>') . '</div></div>'
     . '<script>document.querySelectorAll(".vtsw button").forEach(function(b){b.onclick=function(){var c=b.closest(".box");c.querySelectorAll(".vtsw button").forEach(function(x){x.classList.toggle("on",x===b)});c.querySelectorAll(".vtl").forEach(function(x){x.hidden=x.dataset.vt!==b.dataset.vt});c.querySelectorAll(".thelp").forEach(function(x){x.hidden=x.dataset.h!==b.dataset.vt})}})</script>';
 }
+/* Improve → Video speed (AJAY 28/10/2026): how fast previews and full videos started for shoppers, which froze and which did not play,
+   from the lines the shop's pages send (api/data/vtime.txt: "d/m H:i:s | iPhone Safari | preview|video | 4g | file | start 812, freeze 0" or "none 12000").
+   Same box on fomaxo.com. $from/$to: Y-m-d */
+function vspeed_box(string $file, string $from, string $to): string {
+  $rows = []; $y = (int)date('Y'); $m = (int)date('n');
+  foreach (is_file($file) ? (file($file, FILE_IGNORE_NEW_LINES) ?: []) : [] as $l) {
+    $p = explode(' | ', $l); if (count($p) < 6 || !in_array($p[2], ['preview', 'video'], true) || !preg_match('~^(\d\d)/(\d\d) (\d\d:\d\d)~', $p[0], $d)) continue;
+    $day = sprintf('%04d-%02d-%02d', (int)$d[2] > $m ? $y - 1 : $y, $d[2], $d[1]); if ($day < $from || $day > $to) continue;
+    $st = []; foreach (explode(', ', $p[5]) as $s) { [$k, $v] = array_pad(explode(' ', $s, 2), 2, 0); $st[$k] = (int)$v; }
+    $rows[] = ['when' => "$d[1]/$d[2] $d[3]", 'dev' => trim(str_replace('(owner)', '', $p[1])), 'own' => str_contains($p[1], '(owner)'), 'how' => $p[2], 'net' => strtoupper($p[3]), 'vf' => $p[4], 'ms' => isset($st['start']) ? $st['start'] : null, 'fr' => $st['freeze'] ?? 0, 'held' => !empty($st['held'])];
+  }
+  $med = function (array $a) { if (!$a) return '–'; sort($a); $v = $a[intdiv(count($a), 2)]; return number_format($v / 1000, 1) . ' s'; };
+  $part = fn($how) => array_values(array_filter($rows, fn($r) => $r['how'] === $how));
+  $P = $part('preview'); $Vd = $part('video');
+  $ok = fn($a) => array_values(array_filter(array_column($a, 'ms'), fn($x) => $x !== null));
+  $pc = fn($a) => $a ? round(100 * count($ok($a)) / count($a)) . '%' : '–';
+  $froze = array_values(array_filter($Vd, fn($r) => $r['fr'] > 0));
+  $name = function ($vf) { $k = preg_replace('~-[a-f0-9]{8}.*$~', '', basename((string)$vf)); return $k !== '' ? ucwords(str_replace(['pc-', '-'], ['', ' '], $k)) . ' video' : ''; };
+  $probs = array_reverse(array_values(array_filter($rows, fn($r) => $r['ms'] === null || $r['fr'] > 0)));
+  $li = '';
+  foreach (array_slice($probs, 0, 30) as $r) {
+    $t = $r['ms'] === null ? ($r['how'] === 'preview' ? '✕ Preview did not play' . ($r['held'] ? ' (phone blocks moving videos, e.g. Low Power Mode)' : '') : '✕ Full video did not play') : '⚠ Video froze ' . $r['fr'] . ($r['fr'] > 1 ? ' times' : ' time');
+    $li .= '<li class="' . ($r['ms'] === null ? 'red' : 'amb') . '"><span class="t">' . h($t) . '</span> · ' . h($r['dev']) . ($r['net'] !== '' ? ' · ' . h($r['net']) : '') . ' · ' . h($r['when']) . ($r['own'] ? ' · <span class="muted">you</span>' : '') . ' <span class="muted small">· ' . h($name($r['vf'])) . '</span></li>';
+  }
+  $by = []; foreach ($rows as $r) { $b = &$by[$r['dev']]; $b ??= ['n' => 0, 'p' => [], 'v' => [], 'x' => 0]; $b['n']++; if ($r['ms'] !== null) $b[$r['how'] === 'preview' ? 'p' : 'v'][] = $r['ms']; if ($r['ms'] === null || $r['fr'] > 0) $b['x']++; unset($b); }
+  uasort($by, fn($a, $b) => $b['n'] <=> $a['n']);
+  $tr = ''; foreach ($by as $dev => $b) $tr .= '<tr><td>' . h($dev) . '</td><td class="r">' . $b['n'] . '</td><td class="r">' . $med($b['p']) . '</td><td class="r">' . $med($b['v']) . '</td><td class="r ' . ($b['x'] ? 'bad' : 'ok') . '">' . $b['x'] . '</td></tr>';
+  $tile = fn($cls, $big, $l1, $l2) => '<div class="kp ' . $cls . '"><b>' . $big . '</b><span>' . $l1 . '<br>' . $l2 . '</span></div>';
+  $pOk = $ok($P); $vOk = $ok($Vd);
+  return '<div class="box i-vs"><div class="bh"><h3>Video speed</h3><span class="muted small">Every shopper\'s phone and computer, these dates</span></div><div class="bb">'
+    . (!$rows ? '<p class="empty">No video plays in these dates yet. Shoppers\' previews and videos show here as they watch them.</p>' :
+      '<div class="vsk">' . $tile(count($pOk) < count($P) ? 'a' : 'g', $med($pOk), 'Previews start in', $pc($P) . ' of ' . count($P) . ' played')
+      . $tile(count($vOk) < count($Vd) ? 'a' : 'g', $med($vOk), 'Full videos start in', $pc($Vd) . ' of ' . count($Vd) . ' played')
+      . $tile($froze ? 'a' : 'g', (string)count($froze), 'Videos froze', 'while playing') . '</div>'
+      . '<h4>Problems <small class="muted">newest first</small></h4>' . ($li ? '<ul class="vsp">' . $li . '</ul>' : '<p class="muted small vsnone">None: every preview and video played without freezing.</p>')
+      . '<h4>By phone and browser</h4><table class="vst"><tr><th>Phone / computer</th><th class="r">Plays</th><th class="r">Preview starts</th><th class="r">Video starts</th><th class="r">Problems</th></tr>' . $tr . '</table>')
+    . '</div></div>';
+}
