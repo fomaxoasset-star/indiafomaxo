@@ -271,6 +271,32 @@ window.fxPick = function (src, done) {
   var fpIn = document.createElement('input'); fpIn.type = 'hidden'; fpIn.name = 'fp'; f.appendChild(fpIn);
   var dupNote = document.createElement('p'); dupNote.className = 'vdup'; dupNote.hidden = true; dupNote.style.cssText = 'margin:6px 0 0;font-size:12.5px;line-height:1.4;color:#c0392b;font-weight:600'; inp.parentNode.appendChild(dupNote);
   var dupOf = null;
+  /* {d: seconds, r: width / height, px: a 16x16 picture from inside the video (at 1 s, or 40% in for a short one) or null} of a picked file
+     or a video on the site; null if it can't be read. At most 4 load at once */
+  var metaN = 0, metaQ = [];
+  var meta = function (src) {
+    return new Promise(function (ok) {
+      var go = function () {
+        metaN++;
+        var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), m = null, t, fin = false;
+        var end = function (x) { if (fin) return; fin = true; clearTimeout(t); v.removeAttribute('src'); v.load(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); metaN--; if (metaQ.length) metaQ.shift()(); };
+        t = setTimeout(function () { end(m); }, 20000);
+        v.preload = 'metadata'; v.muted = true; v.playsInline = true; if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';
+        v.onloadedmetadata = function () {
+          if (!v.duration || !v.videoWidth) return end(null);
+          m = {d: v.duration, r: v.videoWidth / v.videoHeight, px: null};
+          var at = Math.min(1, v.duration * 0.4);
+          v.onseeked = function () { if (Math.abs(v.currentTime - at) > 0.1) return end(m);   /* a server that can't jump inside the file leaves it at 0 s: no picture then, the length decides */
+            try { m.px = shrink(shrink(v, 128), 16).getContext('2d').getImageData(0, 0, 16, 16).data; } catch (e) {} end(m); };
+          v.preload = 'auto'; v.currentTime = at;
+        };
+        v.onerror = function () { end(m); }; v.src = u;
+      };
+      if (metaN < 4) go(); else metaQ.push(go);
+    });
+  };
+  var shrink = function (img, n) { var c = document.createElement('canvas'); c.width = c.height = n; var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, n, n); return c; };   // in two steps, so a big and a small copy of one video give the same picture
+  var pxDiff = function (a, b) { var s = 0, n = 0; for (var i = 0; i < a.length; i += 4) { s += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); n += 3; } return s / n; };
   var fingerprint = function (file) {
     if (!window.crypto || !crypto.subtle || !file.arrayBuffer) return Promise.resolve('');
     var MB1 = 1048576, parts = [new Blob([String(file.size)]), file.slice(0, MB1), file.slice(Math.max(MB1, file.size - MB1))];
@@ -281,7 +307,9 @@ window.fxPick = function (src, done) {
     var file = inp.files && inp.files[0]; fpIn.value = ''; dupOf = null; dupNote.hidden = true; if (!file) return;
     fingerprint(file).then(function (fp) {
       if (inp.files[0] !== file) return; fpIn.value = fp;
-      var rows = [].slice.call(document.querySelectorAll('.vrow[data-vid]')), hit = rows.filter(function (r) { return (fp && r.dataset.fp === fp) || +r.dataset.sz === file.size; })[0];
+      var rows = [].slice.call(document.querySelectorAll('.vrow[data-vid]')), hits = rows.filter(function (r) { return (fp && r.dataset.fp === fp) || +r.dataset.sz === file.size; }), hit = hits[0];
+      /* Replace with the original of that same video is what it is for: no "already in your list" question (AJAY tapped Cancel on it, 28/10/2026) */
+      var rep = f.elements.replace && f.elements.replace.value; if (rep && hits.some(function (r) { return r.dataset.vid === rep; })) return;
       if (!hit) return; dupOf = hit;
       var nm = [].map.call(hit.querySelectorAll('.vchip:not(.none)'), function (c) { return c.textContent.replace(/[✕\s]+$/, ''); }).filter(Boolean).slice(0, 2).join(', ');
       dupNote.textContent = '⚠ This video is already uploaded: number ' + (rows.indexOf(hit) + 1) + ' in your list' + (nm ? ' (' + nm + ')' : '') + '. Upload it again only if you mean to.'; dupNote.hidden = false;
@@ -289,6 +317,8 @@ window.fxPick = function (src, done) {
   });
   f.addEventListener('submit', function (e) { if (dupOf && !f.dataset.go && !f.dataset.dupOk) { if (confirm('This video is already in your list. Upload it again?')) f.dataset.dupOk = 1; else { e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
   inp.addEventListener('change', function () { delete f.dataset.dupOk; });
+  /* a row's Replace starts by itself once the video is picked (AJAY had to find Upload after picking, 28/10/2026); a moment first, so the shape is read */
+  inp.addEventListener('change', function () { if (!f.dataset.one || !inp.files[0] || !(f.elements.replace && f.elements.replace.value)) return; delete f.dataset.one; setTimeout(function () { if (!f.dataset.go) { if (f.requestSubmit) f.requestSubmit(); else btn.click(); } }, 1500); });
   inp.addEventListener('change', function () {
     var file = inp.files && inp.files[0], r = f.querySelectorAll('input[name=shape]'); auto = file && window.fxCover ? window.fxCover(file) : null; pk.hidden = !file; pk.textContent = 'Pick cover from the video'; if (!file || r.length < 2) return;
     var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.src = URL.createObjectURL(file);
@@ -364,11 +394,38 @@ window.fxPick = function (src, done) {
         var files = [].slice.call(many.files || []); if (!files.length) return;
         ab.disabled = true; ab.textContent = 'Matching ' + files.length + ' videos…';
         Promise.all(files.map(fingerprint)).then(function (fps) {
-          var rows = repRows(), all = allRows(), q = [], miss = [], used = {};
+          var rows = repRows(), q = [], left = [], used = {};
           files.forEach(function (file, i) {
             var r = rows.filter(function (o) { return !used[o.dataset.vid] && ((fps[i] && o.dataset.fp === fps[i]) || +o.dataset.sz === file.size); })[0];
-            if (r) { used[r.dataset.vid] = 1; q.push({file: file, fp: fps[i], row: r}); } else miss.push(file.name);
+            if (r) { used[r.dataset.vid] = 1; q.push({file: file, fp: fps[i], row: r}); } else left.push(i);
           });
+          /* older videos have no fingerprint and their size changed when they were made smaller (only 1 of AJAY's matched, 28/10/2026):
+             then the length, the shape and a small picture from inside each video decide. Each video on the site is read (only its first part), each picked one too */
+          var free = rows.filter(function (o) { return !used[o.dataset.vid] && o.dataset.pvsrc; });
+          if (!left.length || !free.length) return [q, left.map(function (i) { return files[i].name; })];
+          ab.textContent = 'Matching by length and picture…';
+          return Promise.all(free.map(function (o) { return meta(o.dataset.pvsrc); }).concat(left.map(function (i) { return meta(files[i]); }))).then(function (ms) {
+            var rm = ms.slice(0, free.length), miss = [];
+            left.forEach(function (i, k) {
+              /* same shape and within 0.6 s; then the picture from inside decides (under 30 apart, the nearest wins, the next within 8 = not sure);
+                 with no picture to compare, the nearest length wins and two within 0.05 s = not sure */
+              var m = ms[free.length + k], c = [], best = null, tie = false;
+              if (m) free.forEach(function (o, j) {
+                var x = rm[j]; if (!x || used[o.dataset.vid] || Math.abs(x.r - m.r) > 0.03 * Math.max(x.r, m.r)) return;
+                var d = Math.abs(x.d - m.d); if (d > 0.6) return;
+                var p = x.px && m.px ? pxDiff(x.px, m.px) : null; if (p !== null && p >= 30) return;
+                c.push({o: o, d: d, p: p});
+              });
+              var withPx = c.filter(function (e) { return e.p !== null; }), by = withPx.length ? 'p' : 'd', gap = withPx.length ? 8 : 0.05;
+              if (withPx.length) c = withPx;
+              c.sort(function (e, f) { return e[by] - f[by]; });
+              if (c.length) { best = c[0].o; tie = c.length > 1 && c[1][by] - c[0][by] <= gap; }
+              if (best && !tie) { used[best.dataset.vid] = 1; q.push({file: files[i], fp: fps[i], row: best}); } else miss.push(files[i].name);
+            });
+            return [q, miss];
+          });
+        }).then(function (res) {
+          var q = res[0], miss = res[1], all = allRows();
           var nums = q.map(function (it) { return all.indexOf(it.row) + 1; }).sort(function (a, b) { return a - b; });
           var left = miss.length ? '\n\nNot matched (replace these with the button on their row): ' + miss.join(', ') : '';
           var reset = function () { ab.disabled = false; ab.textContent = 'Replace all with sharper videos'; };
