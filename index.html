@@ -160,6 +160,8 @@ img{display:block;max-width:100%}
 /* ---------- type ---------- */
 .metal{background:var(--metal);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheen 10s ease-in-out infinite}
 #cart:not(.seen) img{display:none}/* the bag's photos load the first time it opens, not with every page */
+#cart:not(.seen),#search:not(.seen),#mnav:not(.seen){content-visibility:hidden}/* the bag, search and phone menu are only laid out the first time they open (openPanel adds .seen), not while the page opens */
+html:not(.scroll-back):not(.cv-off) .page-fade>.page-fade>:is(#fbt,#reviews,.pdp-also){content-visibility:auto;contain-intrinsic-size:auto 700px}/* product page: Customers bought together, the reviews and You may also like are laid out and drawn as they come near the screen, so the photo, price and Add to Cart show sooner on a phone (same as the home sections below). A tap on the stars (data-jump) adds .cv-off first, so it lands exactly on the reviews */
 #app:empty{min-height:100vh}/* until the page is drawn, the footer waits below the screen instead of jumping down */
 html:not(.scroll-back) body.home .page-fade>section.sec:not(.vid-sec),html:not(.scroll-back) body.home .page-fade>section.again-home,html:not(.scroll-back) body>footer{content-visibility:auto;contain-intrinsic-size:auto 900px}/* home sections lower down are only laid out and drawn as they come near the screen: much less work for a phone while the page opens (not when Back returns to a scrolled spot, which needs the real heights) */
 .metal.still,.rings.still i{animation-play-state:paused}/* off screen: the sheen and the pulsing rings wait (bindCommon) */
@@ -234,7 +236,7 @@ section.sec{padding:clamp(90px,11vw,160px) 0}
 .sec-head .t{display:flex;flex-direction:column;gap:18px;max-width:720px}
 .sec-head.c{justify-content:center;text-align:center}.sec-head.c .t{align-items:center}
 .hair{height:1px;background:linear-gradient(90deg,transparent,var(--line-2),transparent)}
-.page-fade{animation:pagein .9s var(--ease)}.page-fade.no-fade{animation:none}.hero-cine.hc-early{min-height:calc(100vh + 120px);max-height:none}/* keeps the footer off the screen until the full home page replaces the early banner */
+.page-fade{animation:pagein .9s var(--ease)}.page-fade.no-fade,.no-fade .page-fade{animation:none}.hero-cine.hc-early{min-height:calc(100vh + 120px);max-height:none}/* keeps the footer off the screen until the full home page replaces the early banner */
 @keyframes pagein{from{opacity:0;transform:translateY(14px)}}
 /* ---------- HERO ---------- */
 .ctas{display:flex;gap:14px;flex-wrap:wrap}
@@ -2719,8 +2721,8 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
    A product with no price shows "Price on request" and can still be
    ordered through the checkout below.
    ===================================================================== */
-/* how to use a FOMAXO face wash (product page "How to use") */
-const FACE_USE = "Wet your face. Pump the foam into your palm and massage it gently over your face for 30 seconds, away from the eyes. Rinse well with water. Use morning and night.";
+/* window.STORE stays plain data (text, numbers, lists): api/store-lib.php reads it for the product addresses, Google Shopping and the admin page,
+   and a name such as a const in it made that read come back empty (the face wash "How to use" text is written out in full for that reason) */
 window.STORE = {
   currency: "₹",   // prices converted from AED at 1 AED = ₹26.17 (Oct 2026), rounded
 
@@ -2935,12 +2937,12 @@ window.STORE = {
       { id: "pc-aloevita-wash", name: "Aloe Vita", type: "Face Wash — Radiance, Refreshed Naturally", cat: "face",
         price: 250, was: 300, rating: 0, reviews: 0, vol: "100ml", image: "pc-aloevita-wash",
         short: "A foaming face wash with aloe vera for radiant, naturally refreshed skin.",
-        good: ["Radiant skin", "Refreshed skin"], made: "Aloe vera · natural exfoliants · vitamin E", use: FACE_USE,
+        good: ["Radiant skin", "Refreshed skin"], made: "Aloe vera · natural exfoliants · vitamin E", use: "Wet your face. Pump the foam into your palm and massage it gently over your face for 30 seconds, away from the eyes. Rinse well with water. Use morning and night.",
         description: ["Aloe Vita Face Wash is a foaming cleanser with aloe vera, natural exfoliants and vitamin E, for skin that looks radiant and feels refreshed."] },
       { id: "pc-radiant-wash", name: "Radiant Bloom", type: "Face Wash — Tan Removal & Skin Brightening", cat: "face",
         price: 250, was: 300, rating: 0, reviews: 0, vol: "100ml", image: "pc-radiant-wash",
         short: "A foaming face wash for tan removal and brighter-looking skin.",
-        good: ["Tan removal", "Skin brightening", "Oil control"], made: "Aloe vera · natural exfoliants · vitamin E", use: FACE_USE,
+        good: ["Tan removal", "Skin brightening", "Oil control"], made: "Aloe vera · natural exfoliants · vitamin E", use: "Wet your face. Pump the foam into your palm and massage it gently over your face for 30 seconds, away from the eyes. Rinse well with water. Use morning and night.",
         description: ["Radiant Bloom Face Wash, with aloe vera and natural exfoliants, is made to help remove tan, brighten skin and control oil."] },
       { id: "pc-radiant-gel", name: "Radiant Bloom", type: "Moisturizing Shower Gel", cat: "body",
         price: 275, was: 300, image: "pc-radiant-gel",
@@ -3908,7 +3910,7 @@ function product(id, q){
         <div id="rvList"><p class="rv-none">Loading reviews…</p></div><div class="rv-pager" id="rvPager" hidden><button type="button" class="rv-arrow" data-pg="-1" aria-label="Previous reviews">&#8249;</button><span id="rvPgInfo"></span><button type="button" class="rv-arrow" data-pg="1" aria-label="Next reviews">&#8250;</button></div></div>
     </div>
 
-    <section style="padding:80px 0 120px;border-top:1px solid var(--line)">
+    <section class="pdp-also" style="padding:80px 0 120px;border-top:1px solid var(--line)">
       <div class="sec-head"><div class="t rv-up"><span class="eyebrow">You may also like</span><h2>Complete your <em class="metal">collection</em></h2></div></div>
       <div class="grid four${isCare ? ' pc-grid' : ' also-row'}" id="alsoRow">${related.map((r,i) => isCare ? pcCard(r, i) : card(r, {d:'d'+i, inStock: true})).join('')}</div>
     </section>
@@ -4629,9 +4631,11 @@ function pcCard(p, i=0, o={}){
 }
 /* shop cards in a row line up: each part (name, offer line, price, stock tag, stars, words, sizes) takes the height of the
    tallest one in its row, so a card without a stock tag or sizes keeps the same gaps as its neighbours */
+const CV_EV = 'oncontentvisibilityautostatechange' in window;   // browsers that say when a part lower down gets drawn (Chrome, Edge, Safari 18+)
 const EV_PARTS = ['h3', '.pc-ofl', '.pc-price', '.stk-row', '.pc-stars', '.pc-tagline', '.pc-sizes'];
 function evenCards(){
   $$('.pc-grid').forEach(g => {
+    if (CV_EV && g.checkVisibility && !g.checkVisibility({contentVisibilityAuto: true})) return;   // a row not drawn yet (content-visibility, lower down the page): measuring it would draw it now; it is lined up when it comes near the screen (below)
     const cards = [...g.children].filter(c => c.classList.contains('pcard')), rows = new Map();
     cards.forEach(c => EV_PARTS.forEach(sel => { const el = $(sel, c); if (el) { el.style.minHeight = ''; el.classList.remove('ev0'); } }));
     cards.forEach(c => { const t = c.offsetTop; rows.has(t) ? rows.get(t).push(c) : rows.set(t, [c]); });
@@ -4660,6 +4664,7 @@ const agFit = () => $$('.again-home .again').forEach(a => { const r = $('.ag-row
 const evenSoon = () => { cancelAnimationFrame(evFrame); evFrame = requestAnimationFrame(() => { evenCards(); agFit(); }); };
 new MutationObserver(ms => { if (ms.some(m => !(m.target.closest && m.target.closest('[data-ofcd]')))) evenSoon(); }).observe(app, {childList: true, subtree: true});
 addEventListener('resize', evenSoon);
+document.addEventListener('contentvisibilityautostatechange', e => { if (!e.skipped) evenSoon(); }, true);   // a part lower down is about to be drawn: line up its cards first
 document.fonts && document.fonts.ready.then(evenSoon);
 app.addEventListener('click', e => {
   const b = e.target.closest('[data-psize]'); if (!b) return;
@@ -5630,7 +5635,7 @@ let heroTimer, homeGridTimer;
 document.addEventListener('touchstart', () => {}, {passive: true});   // iPhone shows the pressed look (:active) only when the page listens to touches
 try { history.scrollRestoration = 'manual'; } catch(e) {}
 const SCROLLS = (() => { try { return JSON.parse(sessionStorage.getItem('fx_scroll') || '{}'); } catch(e) { return {}; } })();
-let shownKey = null;
+let shownKey = null, shownFirst = false;
 /* a reload stays on the same page and at the same spot: the spot is also saved when the page is left or hidden */
 // the spot is a part of the page (the box at the top of the screen) plus how far it sat from the top, and which boxes were open, not just pixels:
 // opened boxes (Description, Shipping...) close again and videos / reviews load later, so plain pixels landed lower (on reviews or the bottom)
@@ -5657,7 +5662,7 @@ function route(){
     case undefined: html = home(); after = bindHome; break;
     case 'fragrances': html = fragrances(q); break;
     case 'product': if (seg[1] === 'discovery') { location.replace('#/fragrances'); return; } html = product(seg[1], q); after = () => P[seg[1]] && bindProduct(P[seg[1]]); break;
-    case 'collections': html = collections(seg[1]); if (seg[1] === 'fragrance') after = bindFragColl; if (seg[1] === 'name') after = bindGift; break;
+    case 'collections': html = collections(seg[1]); if (seg[1] === 'name') after = bindGift; break;
     case 'personal-care': html = personalCare(q); break;
     case 'gift': html = giftPage(); after = bindGift; break;
     case 'combo': html = comboPage(); after = bindGift; break;
@@ -5679,7 +5684,7 @@ function route(){
   if (seg[0] === 'checkout') $('#toast').classList.remove('show');
   document.body.classList.toggle('home', !seg[0]);
   document.documentElement.classList.toggle('scroll-back', !!backTo);
-  const early = $('.hc-early', app);   // first open of the home page: the banner is already showing, so no fade-in
+  const early = !shownFirst || $('.hc-early', app); shownFirst = true;   // the first page of a visit shows at once, with no fade-in (phones from an ad waited ~1 s more for it); later pages fade in
   app.innerHTML = `<div class="page-fade${early ? ' no-fade' : ''}"${/^(checkout|thank-you|review|owner|contact|partnership)$/.test(seg[0]) ? ' data-clarity-mask="true"' : ''}>${html}</div>`;   // typed and shown customer details stay hidden in Clarity recordings
   const navKey = seg[0] === 'collections' && seg[1] === 'name' ? 'gift' : seg[0];
   $$('#menu a').forEach(a => a.classList.toggle('on', a.dataset.r === navKey || (seg[0] === 'product' && a.dataset.r === (P[seg[1]] && P[seg[1]].kind === 'care' ? 'personal-care' : 'fragrances'))));
@@ -6001,9 +6006,9 @@ function bindHome(){
 }
 app.addEventListener('click', e => { const b = e.target.closest('[data-quickadd]'); if (!b) return; const p = P[b.dataset.quickadd]; if (p) addToCart(p.id, defaultSize(p)); });
 app.addEventListener('click', e => { const b = e.target.closest('[data-quickbuy]'); if (!b) return; const p = P[b.dataset.quickbuy]; if (!p) return; if (p.kind === 'set') { location.hash = '#/product/' + p.id; return; } buyNow([{id:p.id, opt:defaultSize(p), qty:1}]); });
-function bindFragColl(){
-  $$('[data-jump]').forEach(a => a.onclick = e => { e.preventDefault(); const el = document.getElementById(a.dataset.jump); el && el.scrollIntoView({behavior:'smooth', block:'start'}); });
-}
+/* links that scroll to a part of the same page (data-jump): the product page's stars → the reviews, the fragrance collection's chips → a row.
+   One listener for every page: the product page's stars had none, so a tap opened a "not found" page (#reviews) */
+app.addEventListener('click', e => { const a = e.target.closest('[data-jump]'); if (!a) return; e.preventDefault(); document.documentElement.classList.add('cv-off'); const el = document.getElementById(a.dataset.jump); el && el.scrollIntoView({behavior:'smooth', block:'start'}); });
 function bindContact(){
   const tp = $('#contactForm [name=topic]'); if (tp) tp.onchange = () => { if (tp.value === 'partnership') location.hash = '#/partnership'; };
   if (tp && tp.value === 'partnership') { location.replace('#/partnership'); return; }
