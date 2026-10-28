@@ -208,7 +208,7 @@ window.fxPick = function (src, done) {
     var src = file || inp.files[0];
     btn.disabled = true; btn.textContent = 'Uploading…'; f.dataset.go = 1;
     var hq = send.hq; send.hq = null;
-    var orig = f.dataset.hq && !f.dataset.again ? inp.files[0] : null; if (orig === src) orig = null;   // the original too (Cloudflare only), so Make All Videos Again can remake every copy from it later
+    var orig = f.dataset.hq && !f.dataset.again ? inp.files[0] : null; if (orig === src && !hq) orig = null;   // the original too (Cloudflare only), so Make All Videos Again can remake every copy from it later
     if (src) return parts(src).then(function (p) {
       var fd = new FormData(f); fd.delete('video'); fd.set('parts', p.up); fd.set('parts_n', p.n); fd.set('parts_size', src.size); fd.set('parts_type', src.type); fd.set('how', how + ', ' + p.n + ' pieces'); if (send.cover) fd.set('cover', send.cover, 'cover.jpg');
       var more = Promise.resolve(), sharp = false;   // the small one is up: if the sharp copy or the original don't upload, it still goes on the website
@@ -248,6 +248,9 @@ window.fxPick = function (src, done) {
         f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event('submit', {cancelable: true})); });
       return; }
     delete f.dataset.hqDone;
+    /* the sharp copy is made and the video is a small MP4 already (up to 10 MB): it goes up as it is, no second copy to make.
+       Making that one smaller stuck for minutes on some WhatsApp videos (step log 28/10/2026) */
+    if (send.hq && asIs && plain) { how = 'as is (sharp copy made)'; send(null); return; }
     /* making it smaller: no progress for 45 seconds, or a tap on Skip = upload the original instead (in pieces) */
     var t0 = Date.now(), last = -1, moved = t0, wasmAt = 0, bail, gaveUp = new Promise(function (ok) { bail = ok; });
     var sk = document.createElement('button'); sk.type = 'button'; sk.className = 'btn line sm vskip'; sk.textContent = 'Skip, upload original'; var skipped = false; sk.onclick = function () { skipped = true; bail(); }; if (keeps(file)) note.appendChild(sk);   // any size: the original goes up as it is when Skip is tapped
@@ -289,7 +292,7 @@ window.fxPick = function (src, done) {
         var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), m = null, t, fin = false;
         var end = function (x) { if (fin) return; fin = true; clearTimeout(t); v.removeAttribute('src'); v.load(); v.remove(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); metaN--; if (metaQ.length) metaQ.shift()(); };
         t = setTimeout(function () { end(m); }, 8000);
-        v.preload = 'metadata'; v.muted = true; v.playsInline = true; v.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px'; document.body.appendChild(v);   // iPhone Safari loads only a video that is on the page if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';
+        v.preload = 'metadata'; v.muted = true; v.playsInline = true; v.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px'; document.body.appendChild(v); if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';   // iPhone Safari loads only a video that is on the page
         v.onloadedmetadata = function () {
           if (!v.duration || !v.videoWidth) return end(null);
           m = {d: v.duration, r: v.videoWidth / v.videoHeight, px: null};
@@ -452,7 +455,8 @@ window.fxPick = function (src, done) {
         if (!confirm('Make all ' + agRows.length + ' videos again from their originals on Cloudflare (1080p, 720p and preview)? About 1 to 2 minutes each. Keep this page open.')) return;
         ag.disabled = true; f.dataset.again = 1;
         run(agRows.map(function (r) { return {row: r, get: function () {
-          return fetch(r.dataset.orig, {mode: 'cors'}).then(function (x) { return x.ok ? x.blob() : Promise.reject(); }).then(function (b) { var nm = r.dataset.orig.split('/').pop(); return new File([b], nm, {type: b.type || 'video/mp4'}); });
+          /* a fresh copy: one the browser kept from playing it has no permission for this page, and then every original "did not load" (fomaxo.com 28/10/2026) */
+          return fetch(r.dataset.orig + (r.dataset.orig.indexOf('?') < 0 ? '?' : '&') + 'fx=' + Date.now(), {mode: 'cors', cache: 'no-store'}).then(function (x) { if (!x.ok) vlog('original ' + x.status + ': ' + r.dataset.orig); return x.ok ? x.blob() : Promise.reject(); }, function (e) { vlog('original did not load: ' + r.dataset.orig + ' ' + e); return Promise.reject(e); }).then(function (b) { var nm = r.dataset.orig.split('/').pop(); return new File([b], nm, {type: b.type || 'video/mp4'}); });
         }}; }), ag, 'made again');
       };
     }
