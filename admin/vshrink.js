@@ -67,7 +67,13 @@ window.fxPick = function (src, done) {
   var f = document.querySelector('form[data-vshrink]'); if (!f) return;
   var inp = f.querySelector('input[type=file][name=video]'), MB = 1048576, note = f.querySelector('.vsh'), btn = f.querySelector('.btn');
   var mime = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].filter(function (m) { return window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m); })[0];
-  var why = '', pct = -1, say = function (t) { note.hidden = false; note.querySelector('span').textContent = t; var m = /smaller… (\d+)%/.exec(t); if (m) pct = +m[1]; };
+  /* every step and problem goes to the server's private log too (api/data/vlog.txt), numbers left out so each step shows once */
+  addEventListener('error', function (e) { vlog('js error: ' + (e.message || '') + ' ' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '')); });
+  var lastLog = '', vlog = function (t) {
+    var k = String(t).replace(/\d+(\.\d+)?\s*%|\d+ of \d+/g, '#'); if (!t || k === lastLog) return; lastLog = k;
+    try { var fd = new FormData(); fd.append('csrf', (f.querySelector('[name=csrf]') || {}).value || ''); fd.append('t', t); fetch('/admin/?vlog=1', {method: 'POST', body: fd, credentials: 'same-origin', keepalive: true}).catch(function () {}); } catch (e) {}
+  };
+  var why = '', pct = -1, say = function (t) { note.hidden = false; note.querySelector('span').textContent = t; vlog('say: ' + t); var m = /smaller… (\d+)%/.exec(t); if (m) pct = +m[1]; };
   var GOAL = 4.6 * MB * 8, AB = 96000;   // bits: every made-smaller video lands at about 5 MB or less (96 kbit/s sound)
   var rate = function (sec) { return Math.max(300000, Math.min(2500000, Math.floor(GOAL / Math.max(1, sec || 30)) - AB)); };   // video bits per second for that length
   var side = function (br) { return br < 350000 ? 720 : br < 700000 ? 960 : 1280; };   // longest side: fewer pixels when there are fewer bits, so it stays sharp instead of blocky
@@ -217,6 +223,7 @@ window.fxPick = function (src, done) {
      getAttribute, not f.action: the form's hidden field named "action" hides f.action (it would post to "[object HTMLInputElement]", a 404) */
   function post(fd) {
     fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function (r) {
+      vlog('post: ' + r.type + ' ' + r.status);
       if (r.type === 'opaqueredirect' || r.ok) { if (f._batch) f._batch(true); else { mark(true); done(''); location.replace(location.href); } }
       else { stop('The upload did not finish (error ' + r.status + '). Please tap Upload again.'); if (f._batch) f._batch(false); else mark(false); }
     }, function () { stop('The upload stopped. Check your internet, then tap Upload again.'); if (f._batch) f._batch(false); else mark(false); });
@@ -224,6 +231,7 @@ window.fxPick = function (src, done) {
   f.addEventListener('submit', function (e) {
     var file = inp.files[0]; if (!file || f.dataset.go) return;
     e.preventDefault();
+    vlog('submit: ' + file.name + ' ' + (file.size / MB).toFixed(1) + 'MB ' + (file.type || '?') + (f.elements.replace && f.elements.replace.value ? ' replace=' + f.elements.replace.value : '') + (f.dataset.batch ? ' batch' : '') + (f.dataset.hq ? ' hq' : '') + (f.dataset.hqDone ? ' after-hq' : '') + ' | ' + navigator.userAgent);
     if (!f.dataset.batch) try { sessionStorage.removeItem('fxRowMarks'); } catch (x) {}   // a new single upload / Replace: the ticks from before go
     /* over 5 MB (any type) is made smaller, to about 5 MB, in sharp 720p, so the site stays fast; any type other than MP4/WebM (iPhone .mov, .mkv, .avi…) is turned into MP4.
        Only a video under 10 MB in a type the site keeps (MP4, WebM, MOV) may go up as it is when that can't be done here */
@@ -236,7 +244,7 @@ window.fxPick = function (src, done) {
     /* Cloudflare connected: first a sharp 1080p copy (about 11 MB) that only Cloudflare keeps; then the usual small 720p one for Hostinger, the backup.
        A browser that can't (no WebCodecs), or 4 minutes without finishing: just the small one, as before */
     if (f.dataset.hq && !f.dataset.hqDone) { f.dataset.hqDone = 1; var hqStop, hqT = new Promise(function (ok) { hqStop = ok; setTimeout(function () { ok(null); }, 240000); });
-      Promise.race([fast(file, 1, true), hqT]).then(function (h) { try { stopNow && stopNow.cancel(); } catch (e) {} stopNow = null; send.hq = h && h.size ? h : null; why = ''; pct = -1;
+      Promise.race([fast(file, 1, true), hqT]).then(function (h) { try { stopNow && stopNow.cancel(); } catch (e) {} stopNow = null; send.hq = h && h.size ? h : null; vlog('hq: ' + (h && h.size ? (h.size / MB).toFixed(1) + 'MB' : 'none (' + (why || 'timeout') + ')')); why = ''; pct = -1;
         f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event('submit', {cancelable: true})); });
       return; }
     delete f.dataset.hqDone;
@@ -279,9 +287,9 @@ window.fxPick = function (src, done) {
       var go = function () {
         metaN++;
         var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), m = null, t, fin = false;
-        var end = function (x) { if (fin) return; fin = true; clearTimeout(t); v.removeAttribute('src'); v.load(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); metaN--; if (metaQ.length) metaQ.shift()(); };
-        t = setTimeout(function () { end(m); }, 20000);
-        v.preload = 'metadata'; v.muted = true; v.playsInline = true; if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';
+        var end = function (x) { if (fin) return; fin = true; clearTimeout(t); v.removeAttribute('src'); v.load(); v.remove(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); metaN--; if (metaQ.length) metaQ.shift()(); };
+        t = setTimeout(function () { end(m); }, 8000);
+        v.preload = 'metadata'; v.muted = true; v.playsInline = true; v.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px'; document.body.appendChild(v);   // iPhone Safari loads only a video that is on the page if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';
         v.onloadedmetadata = function () {
           if (!v.duration || !v.videoWidth) return end(null);
           m = {d: v.duration, r: v.videoWidth / v.videoHeight, px: null};
@@ -318,7 +326,7 @@ window.fxPick = function (src, done) {
   f.addEventListener('submit', function (e) { if (dupOf && !f.dataset.go && !f.dataset.dupOk) { if (confirm('This video is already in your list. Upload it again?')) f.dataset.dupOk = 1; else { e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
   inp.addEventListener('change', function () { delete f.dataset.dupOk; });
   /* a row's Replace starts by itself once the video is picked (AJAY had to find Upload after picking, 28/10/2026); a moment first, so the shape is read */
-  inp.addEventListener('change', function () { if (!f.dataset.one || !inp.files[0] || !(f.elements.replace && f.elements.replace.value)) return; delete f.dataset.one; setTimeout(function () { if (!f.dataset.go) { if (f.requestSubmit) f.requestSubmit(); else btn.click(); } }, 1500); });
+  inp.addEventListener('change', function () { if (!f.dataset.one || !inp.files[0] || !(f.elements.replace && f.elements.replace.value)) return; delete f.dataset.one; setTimeout(function () { if (f.dataset.go || f.dataset.hqDone || btn.disabled) return; if (f.requestSubmit) f.requestSubmit(); else btn.click(); }, 1500); });   // Upload tapped in the meantime: it is already on its way, don't start it twice (two copies at once stuck, AJAY 28/10/2026)
   inp.addEventListener('change', function () {
     var file = inp.files && inp.files[0], r = f.querySelectorAll('input[name=shape]'); auto = file && window.fxCover ? window.fxCover(file) : null; pk.hidden = !file; pk.textContent = 'Pick cover from the video'; if (!file || r.length < 2) return;
     var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.src = URL.createObjectURL(file);
@@ -359,7 +367,7 @@ window.fxPick = function (src, done) {
   var run = function (q, ab, label) {   // q: [{row, file | get(), fp}]
     var all = allRows(), i = 0, ok = 0, busy = false, it = null; try { sessionStorage.removeItem(MK); } catch (e) {} [].forEach.call(document.querySelectorAll('.vmark'), function (t) { t.remove(); });
     var next = function () {
-      if (i >= q.length) { ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; done((ok < q.length ? '!' : '') + ok + ' of ' + q.length + ' videos ' + label + (ok < q.length ? '. Try the others again with the button on their row.' : '.')); f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
+      if (i >= q.length) { vlog('batch done: ' + ok + '/' + q.length + ' ' + label); ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; done((ok < q.length ? '!' : '') + ok + ' of ' + q.length + ' videos ' + label + (ok < q.length ? '. Try the others again with the button on their row.' : '.')); f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
       it = q[i++]; var n = all.indexOf(it.row) + 1; ab.textContent = (i) + ' of ' + q.length + ' (number ' + n + ')… keep this page open';
       (it.file ? Promise.resolve(it.file) : it.get()).then(function (file) {
         f.dataset.batch = 1; it.row.querySelector('.vrep, .vagain').click();   // the upload box is set for that video (no file picker in a batch)
@@ -429,6 +437,7 @@ window.fxPick = function (src, done) {
           var nums = q.map(function (it) { return all.indexOf(it.row) + 1; }).sort(function (a, b) { return a - b; });
           var left = miss.length ? '\n\nNot matched (replace these with the button on their row): ' + miss.join(', ') : '';
           var reset = function () { ab.disabled = false; ab.textContent = 'Replace all with sharper videos'; };
+          vlog('replace all: ' + files.length + ' picked, matched ' + q.length + (miss.length ? ', not matched: ' + miss.join(', ') : '') + ' | ' + navigator.userAgent);
           if (!q.length) { alert('None of these videos matched a video in your list.' + left); return reset(); }
           if (!confirm('Replace ' + q.length + ' video' + (q.length > 1 ? 's' : '') + ' (number ' + nums.join(', ') + ') with the sharper ones? About 1 to 2 minutes each. Keep this page open.' + left)) return reset();
           run(q, ab, 'replaced');

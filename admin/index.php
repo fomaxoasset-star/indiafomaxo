@@ -160,6 +160,14 @@ if (isset($_GET['vchunk'])) {
   $d = "$root/$up"; if (!is_dir($d)) @mkdir($d, 0750, true);
   exit(json_encode(['ok' => move_uploaded_file($f['tmp_name'], "$d/$i") ? 1 : 0, 'size' => (int)@filesize("$d/$i")]));
 }
+/* what the Videos page did on the owner's browser (upload / Replace steps and problems), so a "not working" can be looked at: api/data/vlog.txt (private), last ~300 KB */
+if (isset($_GET['vlog'])) {
+  if ($_SERVER['REQUEST_METHOD'] === 'POST' && hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) {
+    $lf = dirname(__DIR__) . '/api/data/vlog.txt'; if (@filesize($lf) > 300000) @file_put_contents($lf, substr((string)@file_get_contents($lf), -150000), LOCK_EX);
+    @file_put_contents($lf, gmdate('Y-m-d H:i:s') . ' ' . substr(preg_replace('/[\x00-\x1f]+/', ' ', (string)($_POST['t'] ?? '')), 0, 600) . "\n", FILE_APPEND | LOCK_EX);
+  }
+  http_response_code(204); exit;
+}
 /* this browser is the owner's: analytics leave its visits to the shop out */
 setcookie('fx_owner', fomaxo_owner_token(), ['expires' => time() + 400 * 86400, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax']);
 
