@@ -226,13 +226,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $hq = basename((string)($v['hq'] ?? '')); $ok = false; $got = false;
       if ($v && preg_match(VIDEO_FILE, $hq) && preg_match(VIDEO_FILE, (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) && video_com_inbox() !== '') {
         $loc = video_dir() . "/$hq";
-        if (!is_file($loc) && ($c = r2_conf())) {   // only on Cloudflare: a copy here for a moment
+        $onR2 = isset(r2_have()[$hq]);   // on Cloudflare: fomaxo.com plays that same file, nothing is copied
+        if (!is_file($loc) && !$onR2 && ($c = r2_conf())) {
           $tmp = "$loc.part"; $fh = @fopen($tmp, 'wb'); $ch = curl_init(rtrim((string)$c['url'], '/') . '/' . rawurlencode($hq));
           curl_setopt_array($ch, [CURLOPT_FILE => $fh, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 120, CURLOPT_FAILONERROR => true]);
           $got = $fh && curl_exec($ch) && curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200; curl_close($ch); if ($fh) fclose($fh);
           if ($got && filesize($tmp) > 0 && @rename($tmp, $loc)) $got = true; else { @unlink($tmp); $got = false; }
         }
-        if (is_file($loc)) $ok = video_to_com(video_dir() . '/' . $v['file'], $v, '', ['match' => 1]);
+        if (is_file($loc) || $onR2) $ok = video_to_com(video_dir() . '/' . $v['file'], $v, '', ['match' => 1]);
         if ($got) @unlink($loc);   // it stays on Cloudflare
         if ($ok && empty($v['sent_com'])) { $vids[$k]['sent_com'] = true; shop_videos_save($vids); }
       }
@@ -326,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach (['file', 'prev', 'hq', 'orig'] as $k) if ((string)($ov[$k] ?? '') !== '' && ($k !== 'orig' || !empty($nv['orig']))) { @unlink(video_dir() . '/' . basename((string)$ov[$k])); video_pub_drop(basename((string)$ov[$k])); }
         $keepC = (string)($ov['cover'] ?? '') !== '';   // the cover already chosen stays (the page sends a frame of the new video as a cover by itself)
         if ($keepC && preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)$nv['cover'], $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
-        $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'hq' => 1, 'fp' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : [])) + array_intersect_key($nv, ['hq' => 1, 'fp' => 1, 'orig' => 1]);   // the shape picked before stays (AJAY 28/10/2026: Make All flipped 9:16 to 16:9); change it on the row
+        $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'hq' => 1, 'fp' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : []) + (!empty($nv['hq']) ? ['hqk' => 1] : [])) + array_intersect_key($nv, ['hq' => 1, 'fp' => 1, 'orig' => 1]);   // the shape picked before stays (AJAY 28/10/2026: Make All flipped 9:16 to 16:9); change it on the row
         $vids[$rep]['file'] = $nv['file']; if (!$keepC) $vids[$rep]['cover'] = $nv['cover'];
         $toCom = ((!empty($ov['sent_com']) || ($ov['from'] ?? '') === 'fomaxo.com') && preg_match('/^[a-f0-9]{32}$/', (string)($ov['fp'] ?? ''))) && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], (string)$ov['fp']);   // fomaxo.com has this video too: it gets the sharper one as well
         if (!$toCom && !empty($vids[$rep]['hq']) && empty($vids[$rep]['from']) && video_com_inbox() !== '' && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], '', ['match' => 1])) { $vids[$rep]['sent_com'] = true; $toCom = true; }   // not on fomaxo.com yet as such: it takes the place of the same video there (never adds one)
