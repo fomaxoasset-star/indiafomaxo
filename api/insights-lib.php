@@ -18,6 +18,8 @@ function insights_table(PDO $db): void {
 
 /* a page address as one name: home is "/", a product page is the product's name */
 function insights_pg(string $p): string { $p = '/' . trim($p, '/'); return in_array($p, ['/', '/home'], true) ? '/' : $p; }
+/* errors that are not from fomaxo.in's code: another site's script (browsers hide its message as "Script error.") and the Instagram / Facebook in-app browser's own added code */
+function insights_foreign_err(string $l): bool { return (bool)preg_match('/^Script error|Java object is g|window\._M/i', $l); }
 /* the recorder names a tap by its words; parts with no words get a code name (#mbuy, div.rv-sum), shown here in plain words */
 function insights_tap_name(string $l): string {
   static $map = ['#mbuy' => 'Bottom Add to cart bar', 'div.n' => 'Bottom Add to cart bar', '#toast' => 'Added to cart message', 'div.rv-sum' => 'Reviews summary', 'article.rv' => 'A review', 'p.rw-note' => 'Review note', 'div.empty' => 'Empty cart', 'video' => 'Video'];
@@ -59,6 +61,7 @@ function insights_data(string $from, string $to, int $paths = 60): array {
     if (!isset($pos[$sid])) return;   // a visit with no page in these dates is left out
     $steps = &$V[$sid]; $p = $pos[$sid];
     foreach ($rows as $n => $t) {   // each tap, scroll and error goes to the last step on that page that started before it
+      if ($t['k'] === 'e' && insights_foreign_err((string)$t['label'])) continue;   // saved before the page skipped them (index.html ownErr)
       $pg = insights_pg((string)$t['path']);
       if ($t['k'] === 'l') { $load[$sid] ??= (int)$t['ms']; $speed[$t['device']][] = (int)$t['ms']; $first['s'][$t['device']] = min($first['s'][$t['device']] ?? PHP_INT_MAX, $p * 100000 + $n); continue; }
       if ($t['k'] === 'e') { $ek = $pg . '|' . $t['label']; $first['e'][$ek] = min($first['e'][$ek] ?? PHP_INT_MAX, $p * 100000 + $n); $errs[$ek] ??= ['pg' => $pg, 'label' => $t['label'], 'people' => [], 'n' => 0]; $errs[$ek]['people'][$sid] = 1; $errs[$ek]['n']++; }

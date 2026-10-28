@@ -3206,7 +3206,10 @@ const TRK = (() => {
   setInterval(() => { if (trail.length) flush(); }, 15e3);
   addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
   addEventListener('load', () => setTimeout(() => { try { const n = performance.getEntriesByType('navigation')[0], ms = n && n.loadEventStart > 0 ? Math.round(n.loadEventStart) : 0; if (ms && !off) trail.push({k: 'l', p: pg(), ms: Math.min(ms, 60000)}); } catch(e) {} }, 0), {once: true});
-  let errN = 0; addEventListener('error', e => { if (off || !(e instanceof ErrorEvent) || errN++ >= 5) return; trail.push({k: 'e', p: pg(), l: String(e.message || 'Error').replace(/\d{6,}/g, '#').slice(0, 60)}); }, true);
+  /* only errors from fomaxo.in's own code: "Script error." (a script from another site, e.g. ad or Clarity tags) and errors the Instagram / Facebook
+     in-app browser throws from its own added code ("Java object is gone", window._M…) are not ours and cannot stop our buttons */
+  const ownErr = e => { if (/^Script error|Java object is g|window\._M/i.test(e.message || '')) return false; try { return !e.filename || new URL(e.filename, location.href).origin === location.origin; } catch(x) { return true; } };
+  let errN = 0; addEventListener('error', e => { if (off || !(e instanceof ErrorEvent) || !ownErr(e) || errN++ >= 5) return; trail.push({k: 'e', p: pg(), l: String(e.message || 'Error').replace(/\d{6,}/g, '#').slice(0, 60)}); }, true);
   const trailPage = () => { flush(); tPage = pg(); setTimeout(() => { if (tPage === pg()) tMax = Math.max(tMax, seenPc()); }, 1500); };   // a short page counts as seen to its end
   let lastView = '';
   return {

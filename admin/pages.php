@@ -1052,7 +1052,8 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
     'fix product page' => '2026-10-26',   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
     'fix home' => '2026-10-26',   // phone home: bar at the bottom after the banner, "Not sure which one? Try any scent in 10ml" → Mini Collection
     'fix checkout' => '2026-10-26',
-    'check payment' => '2026-10-26'];   // payment: closed Razorpay → "Payment not finished, no money was taken" box with Try again and a WhatsApp payment link; closes and failure reasons counted in Conversion   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
+    'check payment' => '2026-10-26',   // payment: closed Razorpay → "Payment not finished, no money was taken" box with Try again and a WhatsApp payment link; closes and failure reasons counted in Conversion   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
+    'fix the error' => '2026-10-29'];   // "Script error." and the Instagram / Facebook in-app browser's own errors are not our code: no longer saved or counted (index.html ownErr, insights_foreign_err)
   /* tips we built the site side of, where the steps left are done by you outside the site (e.g. in Meta Ads Manager): the tip stays, without "Reply …" */
   $yours = ['check ads' => '2026-10-26'];   // landing pages and ad names shown in the tip, Ads Manager steps
   $replyLi = fn($w) => isset($yours[$w]) ? '<li>Numbers added on ' . date('d/m/Y', strtotime($yours[$w])) . '. These steps are yours: check here again a week after you change the ads.</li>' : '<li>Reply <b class="tword">' . h($w) . '</b> in our chat and we build it, with pictures first.</li>';
