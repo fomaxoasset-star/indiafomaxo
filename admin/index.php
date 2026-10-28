@@ -219,6 +219,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       shop_set('r2_on', $on ? '1' : '0');
       go($vb, $on ? 'ON – videos now play from Cloudflare (faster).' : 'OFF – videos play from Hostinger again.'); }
     if ($a === 'vid_r2_off') { shop_set('r2_on', '0'); r2_save(null); go($vb, 'Cloudflare disconnected. Videos play from Hostinger as before.'); }
+    if ($a === 'vid_send_sharp') {   // Send sharp videos to fomaxo.com, one video per call (the page goes through the list): its 1080p copy, fetched back from Cloudflare,
+      // goes to fomaxo.com's inbox with match=1: fomaxo.com puts it in place of its video with the same fingerprint, or its only video of that product, else leaves it (never adds one)
+      header('Content-Type: application/json'); header('Cache-Control: no-store');
+      $k = array_search((string)($_POST['vid'] ?? ''), array_column($vids, 'id'), true); $v = $k === false ? null : $vids[$k];
+      $hq = basename((string)($v['hq'] ?? '')); $ok = false; $got = false;
+      if ($v && preg_match(VIDEO_FILE, $hq) && preg_match(VIDEO_FILE, (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) && video_com_inbox() !== '') {
+        $loc = video_dir() . "/$hq";
+        if (!is_file($loc) && ($c = r2_conf())) {   // only on Cloudflare: a copy here for a moment
+          $tmp = "$loc.part"; $fh = @fopen($tmp, 'wb'); $ch = curl_init(rtrim((string)$c['url'], '/') . '/' . rawurlencode($hq));
+          curl_setopt_array($ch, [CURLOPT_FILE => $fh, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 120, CURLOPT_FAILONERROR => true]);
+          $got = $fh && curl_exec($ch) && curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200; curl_close($ch); if ($fh) fclose($fh);
+          if ($got && filesize($tmp) > 0 && @rename($tmp, $loc)) $got = true; else { @unlink($tmp); $got = false; }
+        }
+        if (is_file($loc)) $ok = video_to_com(video_dir() . '/' . $v['file'], $v, '', ['match' => 1]);
+        if ($got) @unlink($loc);   // it stays on Cloudflare
+        if ($ok && empty($v['sent_com'])) { $vids[$k]['sent_com'] = true; shop_videos_save($vids); }
+      }
+      echo json_encode(['ok' => $ok]); exit;
+    }
     if ($a === 'vid_to_com_all') {   // videos uploaded before the tick: send every one not sent yet to fomaxo.com
       $ok = 0; $bad = 0; foreach ($vids as $k => $v) if (video_to_com_ok($v)) { if (video_to_com(video_dir() . '/' . $v['file'], $v)) { $vids[$k]['sent_com'] = true; $ok++; } else $bad++; }
       if ($ok) shop_videos_save($vids);

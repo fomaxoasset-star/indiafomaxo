@@ -34,7 +34,7 @@ function video_url(string $f): string { try { $ok = video_pub($f); } catch (Thro
 function video_com_inbox(): string { $p = getenv('FOMAXO_COM_MEDIA') ?: dirname(__DIR__, 3) . '/fomaxo.com/fomaxo-media'; return is_dir($p) && is_writable($p) ? "$p/video-inbox" : ''; }
 /* a video on our server that can still go to fomaxo.com: not from fomaxo.com, not sent yet */
 function video_to_com_ok(array $v): bool { return empty($v['embed']) && empty($v['from']) && empty($v['sent_com']) && preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) && is_file(video_dir() . '/' . $v['file']); }
-function video_to_com(string $path, array $v, string $rep = ''): bool {
+function video_to_com(string $path, array $v, string $rep = '', array $add = []): bool {
   $in = video_com_inbox(); $name = basename($path); if ($in === '' || (!is_dir($in) && !@mkdir($in, 0755, true))) return false;
   $tmp = "$in/$name." . bin2hex(random_bytes(4)) . '.part';
   if (!@copy($path, $tmp) || !@rename($tmp, "$in/$name")) { @unlink($tmp); return false; }
@@ -42,7 +42,7 @@ function video_to_com(string $path, array $v, string $rep = ''): bool {
   $f = basename((string)($v['hq'] ?? '')); $tmp = "$in/$f." . bin2hex(random_bytes(4)) . '.part';
   if (preg_match(VIDEO_FILE, $f) && is_file(video_dir() . "/$f")) { if (@copy(video_dir() . "/$f", $tmp) && @rename($tmp, "$in/$f")) $more['hq'] = $f; else @unlink($tmp); }
   if (preg_match('/^[a-f0-9]{32}$/', $rep)) $more['replace'] = $rep;   // a sharper copy of a video fomaxo.com already has (its old fingerprint): it takes that video's place there
-  if (!@file_put_contents("$in/$name.json", json_encode(['file' => $name] + $more + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX)) return false;
+  if (!@file_put_contents("$in/$name.json", json_encode(['file' => $name] + $more + $add + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX)) return false;
   @unlink(dirname($in, 2) . '/fomaxo-cache/products.json');   // fomaxo.com's one-minute copy of its shop answer: its next page load adds the video straight away
   return true;
 }
