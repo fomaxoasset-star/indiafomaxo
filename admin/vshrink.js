@@ -271,6 +271,15 @@ window.fxPick = function (src, done) {
   var fpIn = document.createElement('input'); fpIn.type = 'hidden'; fpIn.name = 'fp'; f.appendChild(fpIn);
   var dupNote = document.createElement('p'); dupNote.className = 'vdup'; dupNote.hidden = true; dupNote.style.cssText = 'margin:6px 0 0;font-size:12.5px;line-height:1.4;color:#c0392b;font-weight:600'; inp.parentNode.appendChild(dupNote);
   var dupOf = null;
+  var meta = function (src) {   // {d: seconds, r: width / height} of a video (a picked file or one on the site), null if it can't be read
+    return new Promise(function (ok) {
+      var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), end = function (x) { clearTimeout(t); v.removeAttribute('src'); v.load(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); };
+      var t = setTimeout(function () { end(null); }, 20000);
+      v.preload = 'metadata'; v.muted = true;
+      v.onloadedmetadata = function () { end(v.duration && v.videoWidth ? {d: v.duration, r: v.videoWidth / v.videoHeight} : null); };
+      v.onerror = function () { end(null); }; v.src = u;
+    });
+  };
   var fingerprint = function (file) {
     if (!window.crypto || !crypto.subtle || !file.arrayBuffer) return Promise.resolve('');
     var MB1 = 1048576, parts = [new Blob([String(file.size)]), file.slice(0, MB1), file.slice(Math.max(MB1, file.size - MB1))];
@@ -364,11 +373,32 @@ window.fxPick = function (src, done) {
         var files = [].slice.call(many.files || []); if (!files.length) return;
         ab.disabled = true; ab.textContent = 'Matching ' + files.length + ' videos…';
         Promise.all(files.map(fingerprint)).then(function (fps) {
-          var rows = repRows(), all = allRows(), q = [], miss = [], used = {};
+          var rows = repRows(), q = [], left = [], used = {};
           files.forEach(function (file, i) {
             var r = rows.filter(function (o) { return !used[o.dataset.vid] && ((fps[i] && o.dataset.fp === fps[i]) || +o.dataset.sz === file.size); })[0];
-            if (r) { used[r.dataset.vid] = 1; q.push({file: file, fp: fps[i], row: r}); } else miss.push(file.name);
+            if (r) { used[r.dataset.vid] = 1; q.push({file: file, fp: fps[i], row: r}); } else left.push(i);
           });
+          /* older videos have no fingerprint and their size changed when they were made smaller (only 1 of AJAY's matched, 28/10/2026):
+             then the length and the shape decide. Each video on the site is read (only its first bytes), each picked one too;
+             a match is within 0.6 seconds and the same shape, the nearest length wins, and two rows just as near = not matched */
+          var free = rows.filter(function (o) { return !used[o.dataset.vid] && o.dataset.pvsrc; });
+          if (!left.length || !free.length) return [q, left.map(function (i) { return files[i].name; })];
+          ab.textContent = 'Matching by length…';
+          return Promise.all(free.map(function (o) { return meta(o.dataset.pvsrc); }).concat(left.map(function (i) { return meta(files[i]); }))).then(function (ms) {
+            var rm = ms.slice(0, free.length), miss = [];
+            left.forEach(function (i, k) {
+              var m = ms[free.length + k], best = null, bd = 9, tie = false;
+              if (m) free.forEach(function (o, j) {
+                var x = rm[j]; if (!x || used[o.dataset.vid] || Math.abs(x.r - m.r) > 0.03 * Math.max(x.r, m.r)) return;
+                var d = Math.abs(x.d - m.d); if (d > 0.6) return;
+                if (d < bd - 0.05) { best = o; bd = d; tie = false; } else if (d <= bd + 0.05) tie = true;
+              });
+              if (best && !tie) { used[best.dataset.vid] = 1; q.push({file: files[i], fp: fps[i], row: best}); } else miss.push(files[i].name);
+            });
+            return [q, miss];
+          });
+        }).then(function (res) {
+          var q = res[0], miss = res[1], all = allRows();
           var nums = q.map(function (it) { return all.indexOf(it.row) + 1; }).sort(function (a, b) { return a - b; });
           var left = miss.length ? '\n\nNot matched (replace these with the button on their row): ' + miss.join(', ') : '';
           var reset = function () { ab.disabled = false; ab.textContent = 'Replace all with sharper videos'; };
