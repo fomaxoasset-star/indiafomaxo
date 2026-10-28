@@ -217,13 +217,14 @@ window.fxPick = function (src, done) {
      getAttribute, not f.action: the form's hidden field named "action" hides f.action (it would post to "[object HTMLInputElement]", a 404) */
   function post(fd) {
     fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function (r) {
-      if (r.type === 'opaqueredirect' || r.ok) { if (f._batch) f._batch(true); else location.replace(location.href); }
-      else { stop('The upload did not finish (error ' + r.status + '). Please tap Upload again.'); if (f._batch) f._batch(false); }
-    }, function () { stop('The upload stopped. Check your internet, then tap Upload again.'); if (f._batch) f._batch(false); });
+      if (r.type === 'opaqueredirect' || r.ok) { if (f._batch) f._batch(true); else { mark(true); done(''); location.replace(location.href); } }
+      else { stop('The upload did not finish (error ' + r.status + '). Please tap Upload again.'); if (f._batch) f._batch(false); else mark(false); }
+    }, function () { stop('The upload stopped. Check your internet, then tap Upload again.'); if (f._batch) f._batch(false); else mark(false); });
   }
   f.addEventListener('submit', function (e) {
     var file = inp.files[0]; if (!file || f.dataset.go) return;
     e.preventDefault();
+    if (!f.dataset.batch) try { sessionStorage.removeItem('fxRowMarks'); } catch (x) {}   // a new single upload / Replace: the ticks from before go
     /* over 5 MB (any type) is made smaller, to about 5 MB, in sharp 720p, so the site stays fast; any type other than MP4/WebM (iPhone .mov, .mkv, .avi…) is turned into MP4.
        Only a video under 10 MB in a type the site keeps (MP4, WebM, MOV) may go up as it is when that can't be done here */
     var plain = /^video\/(mp4|webm|x-m4v)$/i.test(file.type) || /\.(mp4|m4v|webm)$/i.test(file.name), mov = /quicktime/i.test(file.type) || /\.mov$/i.test(file.name);
@@ -297,12 +298,38 @@ window.fxPick = function (src, done) {
   /* Two buttons above the list (Cloudflare connected), both done one video after another, the same way as one Replace:
      Replace all with sharper videos = pick all the originals at once; each is matched to its video by the same fingerprint (or the same size), the rest are named.
      Make All Videos Again = every video whose original is kept on Cloudflare is made again from it (1080p, 720p, preview): nothing to pick */
+  /* after an upload, a Replace or Replace all / Make All Videos Again, the result shows in a box in the middle of the screen (the small note at the bottom
+     was easy to miss, AJAY 28/10/2026): green ✓, red ! for a problem; a tap or 10 seconds closes it */
+  var done = function (t) { try { sessionStorage.setItem('fxUpDone', t || '1'); } catch (e) {} };
+  var showDone = function () {
+    var t = ''; try { t = sessionStorage.getItem('fxUpDone') || ''; sessionStorage.removeItem('fxUpDone'); } catch (e) {} if (!t) return;
+    var fl = document.querySelector('.flash'); if (t === '1') { if (!fl) return; t = (fl.classList.contains('bad') ? '!' : '') + fl.textContent; }
+    if (fl) fl.remove();
+    var bad = t.charAt(0) === '!', bx = document.createElement('div'); bx.setAttribute('role', 'alert');
+    bx.style.cssText = 'position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);padding:16px';
+    bx.innerHTML = '<div style="max-width:420px;width:100%;background:' + (bad ? '#2a1f1d' : '#1f2a1f') + ';border:1px solid ' + (bad ? '#7a4038' : '#3f6a48') + ';color:' + (bad ? '#f6dcd6' : '#dff0e2') + ';border-radius:14px;padding:22px 20px;text-align:center;font-size:16px;line-height:1.45;box-shadow:0 12px 40px rgba(0,0,0,.35)"><div style="width:44px;height:44px;line-height:44px;margin:0 auto 10px;border-radius:50%;font-size:22px;font-weight:700;background:' + (bad ? '#c0392b' : '#3c9a45') + ';color:#fff">' + (bad ? '!' : '✓') + '</div><span></span><div style="margin-top:14px;font-size:13px;opacity:.75">Tap to close</div></div>';
+    bx.querySelector('span').textContent = bad ? t.slice(1) : t;
+    var shut = function () { bx.remove(); }; bx.onclick = shut; setTimeout(shut, 10000); document.body.appendChild(bx);
+  };
+  /* each replaced row gets a green ✓ Replaced, one that did not work a red ✕ Not replaced (AJAY 28/10/2026), straight away during Replace all
+     and still after the page reloads (kept for this browser tab until the next upload starts) */
+  var MK = 'fxRowMarks', marks = function () { try { return JSON.parse(sessionStorage.getItem(MK) || '{}') || {}; } catch (e) { return {}; } };
+  var tick = function (row, y) {
+    var t = row.querySelector('.vmark'); if (!t) { t = document.createElement('span'); t.className = 'vmark'; (row.querySelector('.vrep, .vagain') || row.lastChild).insertAdjacentElement('beforebegin', t); }
+    t.textContent = y ? '✓ Replaced' : '✕ Not replaced';
+    t.style.cssText = 'display:inline-block;margin:0 6px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.6;white-space:nowrap;color:#fff;background:' + (y ? '#3c9a45' : '#c0392b');
+  };
+  var mark = function (y, id) {
+    id = id || (f.elements.replace && f.elements.replace.value); if (!id) return;
+    var m = marks(); m[id] = y ? 1 : 0; try { sessionStorage.setItem(MK, JSON.stringify(m)); } catch (e) {}
+    var row = document.querySelector('.vrow[data-vid="' + id + '"]'); if (row) tick(row, y);
+  };
   var later = function (go) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); };   // this script comes before the list on the page
   var list, allRows = function () { return [].slice.call(document.querySelectorAll('.vrow[data-vid]')); };
   var run = function (q, ab, label) {   // q: [{row, file | get(), fp}]
-    var all = allRows(), i = 0, ok = 0, busy = false, it = null;
+    var all = allRows(), i = 0, ok = 0, busy = false, it = null; try { sessionStorage.removeItem(MK); } catch (e) {} [].forEach.call(document.querySelectorAll('.vmark'), function (t) { t.remove(); });
     var next = function () {
-      if (i >= q.length) { ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
+      if (i >= q.length) { ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; done((ok < q.length ? '!' : '') + ok + ' of ' + q.length + ' videos ' + label + (ok < q.length ? '. Try the others again with the button on their row.' : '.')); f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
       it = q[i++]; var n = all.indexOf(it.row) + 1; ab.textContent = (i) + ' of ' + q.length + ' (number ' + n + ')… keep this page open';
       (it.file ? Promise.resolve(it.file) : it.get()).then(function (file) {
         f.dataset.batch = 1; it.row.querySelector('.vrep, .vagain').click();   // the upload box is set for that video (no file picker in a batch)
@@ -310,7 +337,7 @@ window.fxPick = function (src, done) {
         setTimeout(function () { if (it.fp) fpIn.value = it.fp; f.dataset.dupOk = 1; busy = true; if (f.requestSubmit) f.requestSubmit(); else btn.click(); }, 600);
       }, function () { next(); });   // the original could not be fetched: on to the next one
     };
-    f._batch = function (y) { if (!busy) return; busy = false; if (y) ok++; stop(''); next(); };
+    f._batch = function (y) { if (!busy) return; busy = false; if (y) ok++; mark(y, it.row.dataset.vid); stop(''); next(); };
     setInterval(function () { if (busy && !btn.disabled && !f.dataset.go) f._batch(false); }, 3000);   // it stopped without saving (could not be made smaller): on to the next one
     next();
   };
@@ -319,6 +346,8 @@ window.fxPick = function (src, done) {
     b.style.cssText = 'font:inherit;font-size:12px;line-height:1.6;color:#b8913a;background:none;border:1px solid currentColor;border-radius:999px;padding:2px 12px;cursor:pointer;margin-left:6px';
     return b;
   };
+  later(showDone);
+  later(function () { var m = marks(); Object.keys(m).forEach(function (id) { var r = document.querySelector('.vrow[data-vid="' + id + '"]'); if (r) tick(r, m[id]); }); });
   later(function () { list = document.querySelector('.vlist .bb');
   if (f.dataset.hq && list && window.DataTransfer && f.elements.replace) {
     var rw = document.createElement('div'); rw.style.cssText = 'margin:0 0 8px;text-align:right;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:6px';
