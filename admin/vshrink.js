@@ -238,8 +238,7 @@ window.fxPick = function (src, done) {
     var plain = /^video\/(mp4|webm|x-m4v)$/i.test(file.type) || /\.(mp4|m4v|webm)$/i.test(file.name), mov = /quicktime/i.test(file.type) || /\.mov$/i.test(file.name);
     var big = file.size > 5 * MB || !plain, asIs = file.size <= 10 * MB && (plain || mov);
     var can = mime && HTMLCanvasElement.prototype.captureStream;
-    var cant = function () { btn.disabled = false; btn.textContent = 'Upload'; say('This video could not be made smaller here, so it was not uploaded. Please save it as MP4 and upload again. (' + (why || 'no way to convert') + ')'); skipBtn(file); };
-    if (!big) { send(null); return; }
+    if (!big && !(f.dataset.hq && !f.dataset.hqDone)) { delete f.dataset.hqDone; send(null); return; }   // small: as it is (with Cloudflare, after its 1080p copy is made: always three copies, AJAY 28/10/2026)
     btn.disabled = true; setTimeout(function () { btn.textContent = 'Please wait…'; });
     /* Cloudflare connected: first a sharp 1080p copy (about 11 MB) that only Cloudflare keeps; then the usual small 720p one for Hostinger, the backup.
        A browser that can't (no WebCodecs), or 4 minutes without finishing: just the small one, as before */
@@ -271,63 +270,37 @@ window.fxPick = function (src, done) {
       clearInterval(dog); sk.remove(); bail(); if (skipped) { send(null); return; } if (how === 'as is') how = 'as is (' + (why || 'slow way failed') + ')';
       /* some browsers (Safari with auto-play off) only play a video after a tap: then the slow way gets one more go, started by a tap */
       if (can && /NotAllowed/.test(why)) { tapOnce(file); return; }
-      if (!asIs) { cant(); return; }
+      /* any size, any type: when it can't be made smaller here it still goes up as it is (AJAY 28/10/2026: no restrictions) */
       if (file.size > 5 * MB) { say('This browser can\'t make it smaller, so it goes up as it is (' + (file.size / MB).toFixed(1) + ' MB). Chrome makes it smaller.'); setTimeout(function () { send(null); }, 3500); return; }   // Safari on a Mac
       send(null);
     });
   });
   /* 9:16 or 16:9: the ring is picked from the chosen video's real shape (it can still be changed by hand) */
-  /* the same video picked again by mistake: a warning under the box, and Upload asks once. Known by a fingerprint of the picked file
-     (its size + first and last MB), kept with every upload from now on; older videos are matched when they went up as they were (same size) */
+  /* a fingerprint of the picked file (its size + first and last MB), kept with the video */
   var fpIn = document.createElement('input'); fpIn.type = 'hidden'; fpIn.name = 'fp'; f.appendChild(fpIn);
-  var dupNote = document.createElement('p'); dupNote.className = 'vdup'; dupNote.hidden = true; dupNote.style.cssText = 'margin:6px 0 0;font-size:12.5px;line-height:1.4;color:#c0392b;font-weight:600'; inp.parentNode.appendChild(dupNote);
-  var dupOf = null;
-  /* {d: seconds, r: width / height, px: a 16x16 picture from inside the video (at 1 s, or 40% in for a short one) or null} of a picked file
-     or a video on the site; null if it can't be read. At most 4 load at once */
-  var metaN = 0, metaQ = [];
-  var meta = function (src) {
-    return new Promise(function (ok) {
-      var go = function () {
-        metaN++;
-        var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), m = null, t, fin = false;
-        var end = function (x) { if (fin) return; fin = true; clearTimeout(t); v.removeAttribute('src'); v.load(); v.remove(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); metaN--; if (metaQ.length) metaQ.shift()(); };
-        t = setTimeout(function () { end(m); }, 8000);
-        v.preload = 'metadata'; v.muted = true; v.playsInline = true; v.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px'; document.body.appendChild(v); if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';   // iPhone Safari loads only a video that is on the page
-        v.onloadedmetadata = function () {
-          if (!v.duration || !v.videoWidth) return end(null);
-          m = {d: v.duration, r: v.videoWidth / v.videoHeight, px: null};
-          var at = Math.min(1, v.duration * 0.4);
-          v.onseeked = function () { if (Math.abs(v.currentTime - at) > 0.1) return end(m);   /* a server that can't jump inside the file leaves it at 0 s: no picture then, the length decides */
-            try { m.px = shrink(shrink(v, 128), 16).getContext('2d').getImageData(0, 0, 16, 16).data; } catch (e) {} end(m); };
-          v.preload = 'auto'; v.currentTime = at;
-        };
-        v.onerror = function () { end(m); }; v.src = u;
-      };
-      if (metaN < 4) go(); else metaQ.push(go);
-    });
-  };
-  var shrink = function (img, n) { var c = document.createElement('canvas'); c.width = c.height = n; var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, n, n); return c; };   // in two steps, so a big and a small copy of one video give the same picture
-  var pxDiff = function (a, b) { var s = 0, n = 0; for (var i = 0; i < a.length; i += 4) { s += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); n += 3; } return s / n; };
   var fingerprint = function (file) {
     if (!window.crypto || !crypto.subtle || !file.arrayBuffer) return Promise.resolve('');
     var MB1 = 1048576, parts = [new Blob([String(file.size)]), file.slice(0, MB1), file.slice(Math.max(MB1, file.size - MB1))];
     return new Blob(parts).arrayBuffer().then(function (b) { return crypto.subtle.digest('SHA-256', b); })
       .then(function (h) { return [].map.call(new Uint8Array(h).slice(0, 16), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }, function () { return ''; });
   };
+  /* no "already in your list" warning or question any more (AJAY 28/10/2026: no restrictions); the fingerprint is still kept with the video */
+  /* the same video picked again by mistake (AJAY 28/10/2026: "duplicate warning needed"): a red line under the box, and Upload asks once.
+     Same fingerprint, or the same file size. A row's Replace never asks */
+  var dupNote = document.createElement('p'); dupNote.className = 'vdup'; dupNote.hidden = true; dupNote.style.cssText = 'margin:6px 0 0;font-size:12.5px;line-height:1.4;color:#c0392b;font-weight:600'; inp.parentNode.appendChild(dupNote);
+  var dupOf = null;
   inp.addEventListener('change', function () {
-    var file = inp.files && inp.files[0]; fpIn.value = ''; dupOf = null; dupNote.hidden = true; if (!file) return;
+    var file = inp.files && inp.files[0]; fpIn.value = ''; dupOf = null; dupNote.hidden = true; delete f.dataset.dupOk; if (!file) return;
     fingerprint(file).then(function (fp) {
       if (inp.files[0] !== file) return; fpIn.value = fp;
-      var rows = [].slice.call(document.querySelectorAll('.vrow[data-vid]')), hits = rows.filter(function (r) { return (fp && r.dataset.fp === fp) || +r.dataset.sz === file.size; }), hit = hits[0];
-      /* a row's Replace takes any video, no questions (AJAY 28/10/2026: "just upload video I click to replace") */
       if (f.elements.replace && f.elements.replace.value) return;
+      var rows = [].slice.call(document.querySelectorAll('.vrow[data-vid]')), hit = rows.filter(function (r) { return (fp && r.dataset.fp === fp) || +r.dataset.sz === file.size; })[0];
       if (!hit) return; dupOf = hit;
       var nm = [].map.call(hit.querySelectorAll('.vchip:not(.none)'), function (c) { return c.textContent.replace(/[✕\s]+$/, ''); }).filter(Boolean).slice(0, 2).join(', ');
       dupNote.textContent = '⚠ This video is already uploaded: number ' + (rows.indexOf(hit) + 1) + ' in your list' + (nm ? ' (' + nm + ')' : '') + '. Upload it again only if you mean to.'; dupNote.hidden = false;
     });
   });
-  f.addEventListener('submit', function (e) { if (dupOf && !f.dataset.go && !f.dataset.dupOk) { if (confirm('This video is already in your list. Upload it again?')) f.dataset.dupOk = 1; else { e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
-  inp.addEventListener('change', function () { delete f.dataset.dupOk; });
+  f.addEventListener('submit', function (e) { if (dupOf && !f.dataset.go && !f.dataset.dupOk && !(f.elements.replace && f.elements.replace.value)) { if (confirm('This video is already in your list. Upload it again?')) f.dataset.dupOk = 1; else { e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
   /* a row's Replace starts by itself once the video is picked (AJAY had to find Upload after picking, 28/10/2026); a moment first, so the shape is read */
   inp.addEventListener('change', function () { if (!f.dataset.one || !inp.files[0] || !(f.elements.replace && f.elements.replace.value)) return; delete f.dataset.one; setTimeout(function () { if (f.dataset.go || f.dataset.hqDone || btn.disabled) return; if (f.requestSubmit) f.requestSubmit(); else btn.click(); }, 1500); });   // Upload tapped in the meantime: it is already on its way, don't start it twice (two copies at once stuck, AJAY 28/10/2026)
   inp.addEventListener('change', function () {
@@ -336,10 +309,7 @@ window.fxPick = function (src, done) {
     v.onloadedmetadata = function () { if (v.videoWidth && v.videoHeight) (v.videoWidth > v.videoHeight ? r[1] : r[0]).checked = true; URL.revokeObjectURL(v.src); };
     v.onerror = function () { URL.revokeObjectURL(v.src); };
   });
-  /* Two buttons above the list (Cloudflare connected), both done one video after another, the same way as one Replace:
-     Replace all with sharper videos = pick all the originals at once; each is matched to its video by the same fingerprint (or the same size), the rest are named.
-     Make All Videos Again = every video whose original is kept on Cloudflare is made again from it (1080p, 720p, preview): nothing to pick */
-  /* after an upload, a Replace or Replace all / Make All Videos Again, the result shows in a box in the middle of the screen (the small note at the bottom
+  /* after an upload or a Replace, the result shows in a box in the middle of the screen (the small note at the bottom
      was easy to miss, AJAY 28/10/2026): green ✓, red ! for a problem; a tap or 10 seconds closes it */
   var done = function (t) { try { sessionStorage.setItem('fxUpDone', t || '1'); } catch (e) {} };
   var showDone = function () {
@@ -389,85 +359,14 @@ window.fxPick = function (src, done) {
   };
   later(showDone);
   later(function () { var m = marks(); Object.keys(m).forEach(function (id) { var r = document.querySelector('.vrow[data-vid="' + id + '"]'); if (r) tick(r, m[id]); }); });
+  /* two buttons above the list (AJAY 28/10/2026): Make All Videos Again (every video whose original is kept on Cloudflare is made again from it: 1080p, small copy, preview)
+     and Make All Previews Again (added by the preview part below) */
   later(function () { list = document.querySelector('.vlist .bb');
   if (f.dataset.hq && list && window.DataTransfer && f.elements.replace) {
-    var rw = document.createElement('div'); rw.style.cssText = 'margin:0 0 8px;text-align:right;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:6px';
-    var repRows = function () { return allRows().filter(function (r) { return r.querySelector('.vrep'); }); };
-    /* the buttons used now and then wait behind a small "More" (AJAY 28/10/2026): Make All Videos Again and Make All Previews Again */
-    var more = document.createElement('details'); more.className = 'vmore'; more.style.cssText = 'display:inline-block;text-align:right';
-    more.innerHTML = '<summary style="list-style:none;cursor:pointer;font-size:12px;line-height:1.6;color:#b8913a;border:1px solid currentColor;border-radius:999px;padding:2px 12px;display:inline-block">More ▾</summary>';
-    var moreIn = document.createElement('div'); moreIn.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-top:6px'; more.appendChild(moreIn); more = moreIn;
-    if (repRows().length) {
-      var many = document.createElement('input'); many.type = 'file'; many.multiple = true; many.accept = 'video/*,.mp4,.mov,.m4v,.webm'; many.hidden = true; document.body.appendChild(many);
-      var ab = pill('Replace all with sharper videos'); ab.classList.add('vrepall'); rw.appendChild(ab);
-      ab.onclick = function () { many.value = ''; many.click(); };
-      many.onchange = function () {
-        var files = [].slice.call(many.files || []); if (!files.length) return;
-        ab.disabled = true; ab.textContent = 'Matching ' + files.length + ' videos…';
-        Promise.all(files.map(fingerprint)).then(function (fps) {
-          var rows = repRows(), q = [], left = [], used = {};
-          files.forEach(function (file, i) {
-            var r = rows.filter(function (o) { return !used[o.dataset.vid] && ((fps[i] && o.dataset.fp === fps[i]) || +o.dataset.sz === file.size); })[0];
-            if (r) { used[r.dataset.vid] = 1; q.push({file: file, fp: fps[i], row: r}); } else left.push(i);
-          });
-          /* older videos have no fingerprint and their size changed when they were made smaller (only 1 of AJAY's matched, 28/10/2026):
-             then the length, the shape and a small picture from inside each video decide. Each video on the site is read (only its first part), each picked one too */
-          var free = rows.filter(function (o) { return !used[o.dataset.vid] && o.dataset.pvsrc; });
-          if (!left.length || !free.length) return [q, left.map(function (i) { return files[i].name; })];
-          ab.textContent = 'Matching by length and picture…';
-          return Promise.all(free.map(function (o) { return meta(o.dataset.pvsrc); }).concat(left.map(function (i) { return meta(files[i]); }))).then(function (ms) {
-            var rm = ms.slice(0, free.length), miss = [];
-            left.forEach(function (i, k) {
-              /* same shape and within 0.6 s; then the picture from inside decides (under 30 apart, the nearest wins, the next within 8 = not sure);
-                 with no picture to compare, the nearest length wins and two within 0.05 s = not sure */
-              var m = ms[free.length + k], c = [], best = null, tie = false;
-              if (m) free.forEach(function (o, j) {
-                var x = rm[j]; if (!x || used[o.dataset.vid] || Math.abs(x.r - m.r) > 0.03 * Math.max(x.r, m.r)) return;
-                var d = Math.abs(x.d - m.d); if (d > 0.6) return;
-                var p = x.px && m.px ? pxDiff(x.px, m.px) : null; if (p !== null && p >= 30) return;
-                c.push({o: o, d: d, p: p});
-              });
-              var withPx = c.filter(function (e) { return e.p !== null; }), by = withPx.length ? 'p' : 'd', gap = withPx.length ? 8 : 0.05;
-              if (withPx.length) c = withPx;
-              c.sort(function (e, f) { return e[by] - f[by]; });
-              if (c.length) { best = c[0].o; tie = c.length > 1 && c[1][by] - c[0][by] <= gap; }
-              if (best && !tie) { used[best.dataset.vid] = 1; q.push({file: files[i], fp: fps[i], row: best}); } else miss.push(files[i].name);
-            });
-            return [q, miss];
-          });
-        }).then(function (res) {
-          var q = res[0], miss = res[1], all = allRows();
-          var nums = q.map(function (it) { return all.indexOf(it.row) + 1; }).sort(function (a, b) { return a - b; });
-          var left = miss.length ? '\n\nNot matched (replace these with the button on their row): ' + miss.join(', ') : '';
-          var reset = function () { ab.disabled = false; ab.textContent = 'Replace all with sharper videos'; };
-          vlog('replace all: ' + files.length + ' picked, matched ' + q.length + (miss.length ? ', not matched: ' + miss.join(', ') : '') + ' | ' + navigator.userAgent);
-          if (!q.length) { alert('None of these videos matched a video in your list.' + left); return reset(); }
-          if (!confirm('Replace ' + q.length + ' video' + (q.length > 1 ? 's' : '') + ' (number ' + nums.join(', ') + ') with the sharper ones? About 1 to 2 minutes each. Keep this page open.' + left)) return reset();
-          run(q, ab, 'replaced');
-        });
-      };
-    }
-    /* Send sharp videos to fomaxo.com (AJAY 28/10/2026: "use same for fomaxo.com"): each video's 1080p copy takes the place of the same video there,
-       one after another; a video fomaxo.com doesn't have is left out there, never added twice */
-    var scRows = allRows().filter(function (r) { return r.dataset.hqc; });
-    if (scRows.length) {
-      var sc = pill('Send sharp videos to fomaxo.com'); sc.classList.add('vsendcom'); rw.appendChild(sc);
-      sc.onclick = function () {
-        if (!confirm('Send the sharp copy of ' + scRows.length + ' videos to fomaxo.com? Each one takes the place of the same video there. Keep this page open.')) return;
-        sc.disabled = true; var i = 0, ok = 0, csrf = (f.querySelector('[name=csrf]') || {}).value || '';
-        var next = function () {
-          if (i >= scRows.length) { vlog('send to com: ' + ok + '/' + scRows.length); done((ok < scRows.length ? '!' : '') + ok + ' of ' + scRows.length + ' sharp videos sent to fomaxo.com. They show there within a minute.'); location.replace(location.href); return; }
-          var r = scRows[i++]; sc.textContent = 'Sending ' + i + ' of ' + scRows.length + '… keep this page open';
-          var fd = new FormData(); fd.append('csrf', csrf); fd.append('action', 'vid_send_sharp'); fd.append('vid', r.dataset.vid);
-          fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (x) { return x.json(); })
-            .then(function (j) { if (j && j.ok) ok++; else vlog('send to com failed: ' + r.dataset.vid); }, function (e) { vlog('send to com error: ' + r.dataset.vid + ' ' + e); }).then(next);
-        };
-        next();
-      };
-    }
+    var bar = document.createElement('div'); bar.className = 'vallbar'; bar.style.cssText = 'flex:none;margin:0 0 8px;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:6px';
     var agRows = allRows().filter(function (r) { return r.dataset.orig; });
     if (agRows.length) {
-      var ag = pill('Make All Videos Again'); ag.classList.add('vagainall'); more.appendChild(ag);
+      var ag = pill('Make All Videos Again'); ag.classList.add('vagainall'); bar.appendChild(ag);
       agRows.forEach(function (r) { var b = document.createElement('button'); b.type = 'button'; b.className = 'vagain'; b.hidden = true; b.dataset.rep = r.dataset.vid; b.dataset.n = allRows().indexOf(r) + 1; r.appendChild(b); });   // sets the upload box for that video, like Replace
       ag.onclick = function () {
         if (!confirm('Make all ' + agRows.length + ' videos again from their originals on Cloudflare (1080p, 720p and preview)? About 1 to 2 minutes each. Keep this page open.')) return;
@@ -478,9 +377,21 @@ window.fxPick = function (src, done) {
         }}; }), ag, 'made again');
       };
     }
-    rw.appendChild(moreIn.parentNode); list.insertBefore(rw, list.firstChild);
-    setTimeout(function () { if (!moreIn.children.length) moreIn.parentNode.remove(); if (!rw.children.length) rw.remove(); }, 2500);   // nothing behind "More" (Make All Previews Again comes at 1.5 s)
+    list.insertBefore(bar, list.firstChild);
   }
+  });
+  /* the sharp copies go to fomaxo.com by themselves (AJAY 28/10/2026: "use same for fomaxo.com", no extra buttons): each video not sent yet,
+     one after another while this page is open; fomaxo.com puts it in place of the same video there, never adds one */
+  later(function () {
+    var q = allRows().filter(function (r) { return r.dataset.hqc; }); if (!q.length || !window.fetch) return;
+    var csrf = (f.querySelector('[name=csrf]') || {}).value || '', ok = 0, i = 0;
+    var next = function () {
+      if (i >= q.length) { vlog('send to com: ' + ok + '/' + q.length); return; }
+      var r = q[i++], fd = new FormData(); fd.append('csrf', csrf); fd.append('action', 'vid_send_sharp'); fd.append('vid', r.dataset.vid);
+      fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (x) { return x.json(); })
+        .then(function (j) { if (j && j.ok) { ok++; delete r.dataset.hqc; } else vlog('send to com failed: ' + r.dataset.vid); }, function (e) { vlog('send to com error: ' + r.dataset.vid + ' ' + e); }).then(next);
+    };
+    setTimeout(next, 4000);   // after the page has settled
   });
 })();
 /* Small previews for the home page row: each video without one gets a 640px, silent copy of its first 5 seconds (about 0.25 MB, AJAY 23/10/2026: half the size so the row starts sooner),
@@ -521,7 +432,7 @@ setTimeout(function () {   // after the page has loaded (the list comes after th
     all.style.cssText = 'font:inherit;font-size:12px;line-height:1.6;color:#b8913a;background:none;border:1px solid currentColor;border-radius:999px;padding:2px 12px;cursor:pointer';
     all.onclick = function () { if (!confirm('Make the preview again for all ' + mkAll.length + ' videos? It runs one by one; keep this page open.')) return;
       all.disabled = true; all.textContent = 'Making All Previews…'; mkAll.forEach(function (r) { if (!r._mk.disabled) r._mk.click(); }); };
-    var mi = document.querySelector('.vmore > div');   // Cloudflare connected: behind "More", with Make All Videos Again
+    var mi = document.querySelector('.vlist .vallbar');   // Cloudflare connected: next to Make All Videos Again
     if (mi) { all.style.marginLeft = '6px'; mi.appendChild(all); } else { wrap.appendChild(all); box.parentNode.insertBefore(wrap, box); }
   }
   /* a way that hangs (some Mac Safari videos never finish in the fast way) is given up after a while, so the next way or the next video goes on */
