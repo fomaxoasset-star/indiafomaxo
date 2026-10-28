@@ -941,8 +941,14 @@ function conversion_stats(string $from, string $to, array $CAT): array {
   $depth = [25 => 0, 50 => 0, 75 => 0, 100 => 0];
   foreach ($q("SELECT qty, COUNT(DISTINCT sid) n FROM events WHERE type = 'scroll' AND ts >= ? AND ts <= ? GROUP BY qty", $sa) as $r) if (isset($depth[(int)$r['qty']])) $depth[(int)$r['qty']] = min($home, (int)$r['n']);
 
+  /* 5. people who added to bag, by the country of their visit (unknown country last) */
+  $bagc = [];
+  foreach ($q("SELECT v.country cc, COUNT(DISTINCT e.vid) n FROM events e LEFT JOIN visits v ON v.sid = e.sid WHERE e.type = 'add' AND e.ts >= ? AND e.ts <= ? GROUP BY v.country ORDER BY n DESC", $a) as $r)
+    $bagc[(string)$r['cc']] = ($bagc[(string)$r['cc']] ?? 0) + (int)$r['n'];
+  if (isset($bagc[''])) { $unk = $bagc['']; unset($bagc['']); $bagc[''] = $unk; }
+
   return ['since' => $since, 'products' => $pr, 'steps' => $steps, 'fails' => $fails, 'empty' => $empty, 'unpaid' => ['n' => (int)$unpaid['n'], 'total' => (int)$unpaid['t']],
-    'campaigns' => array_values($camp), 'home' => $home, 'depth' => $depth];
+    'campaigns' => array_values($camp), 'home' => $home, 'depth' => $depth, 'bagc' => $bagc];
 }
 /* "last 5 minutes · last visit 10:52" in the On the site now box, so a day of zeros can be told apart from counting that stopped */
 function last_visit_note(): string {
