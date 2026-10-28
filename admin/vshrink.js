@@ -217,13 +217,14 @@ window.fxPick = function (src, done) {
      getAttribute, not f.action: the form's hidden field named "action" hides f.action (it would post to "[object HTMLInputElement]", a 404) */
   function post(fd) {
     fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin', redirect: 'manual'}).then(function (r) {
-      if (r.type === 'opaqueredirect' || r.ok) { if (f._batch) f._batch(true); else { done(''); location.replace(location.href); } }
-      else { stop('The upload did not finish (error ' + r.status + '). Please tap Upload again.'); if (f._batch) f._batch(false); }
-    }, function () { stop('The upload stopped. Check your internet, then tap Upload again.'); if (f._batch) f._batch(false); });
+      if (r.type === 'opaqueredirect' || r.ok) { if (f._batch) f._batch(true); else { mark(true); done(''); location.replace(location.href); } }
+      else { stop('The upload did not finish (error ' + r.status + '). Please tap Upload again.'); if (f._batch) f._batch(false); else mark(false); }
+    }, function () { stop('The upload stopped. Check your internet, then tap Upload again.'); if (f._batch) f._batch(false); else mark(false); });
   }
   f.addEventListener('submit', function (e) {
     var file = inp.files[0]; if (!file || f.dataset.go) return;
     e.preventDefault();
+    if (!f.dataset.batch) try { sessionStorage.removeItem('fxRowMarks'); } catch (x) {}   // a new single upload / Replace: the ticks from before go
     /* over 5 MB (any type) is made smaller, to about 5 MB, in sharp 720p, so the site stays fast; any type other than MP4/WebM (iPhone .mov, .mkv, .avi…) is turned into MP4.
        Only a video under 10 MB in a type the site keeps (MP4, WebM, MOV) may go up as it is when that can't be done here */
     var plain = /^video\/(mp4|webm|x-m4v)$/i.test(file.type) || /\.(mp4|m4v|webm)$/i.test(file.name), mov = /quicktime/i.test(file.type) || /\.mov$/i.test(file.name);
@@ -310,10 +311,23 @@ window.fxPick = function (src, done) {
     bx.querySelector('span').textContent = bad ? t.slice(1) : t;
     var shut = function () { bx.remove(); }; bx.onclick = shut; setTimeout(shut, 10000); document.body.appendChild(bx);
   };
+  /* each replaced row gets a green ✓ Replaced, one that did not work a red ✕ Not replaced (AJAY 28/10/2026), straight away during Replace all
+     and still after the page reloads (kept for this browser tab until the next upload starts) */
+  var MK = 'fxRowMarks', marks = function () { try { return JSON.parse(sessionStorage.getItem(MK) || '{}') || {}; } catch (e) { return {}; } };
+  var tick = function (row, y) {
+    var t = row.querySelector('.vmark'); if (!t) { t = document.createElement('span'); t.className = 'vmark'; (row.querySelector('.vrep, .vagain') || row.lastChild).insertAdjacentElement('beforebegin', t); }
+    t.textContent = y ? '✓ Replaced' : '✕ Not replaced';
+    t.style.cssText = 'display:inline-block;margin:0 6px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.6;white-space:nowrap;color:#fff;background:' + (y ? '#3c9a45' : '#c0392b');
+  };
+  var mark = function (y, id) {
+    id = id || (f.elements.replace && f.elements.replace.value); if (!id) return;
+    var m = marks(); m[id] = y ? 1 : 0; try { sessionStorage.setItem(MK, JSON.stringify(m)); } catch (e) {}
+    var row = document.querySelector('.vrow[data-vid="' + id + '"]'); if (row) tick(row, y);
+  };
   var later = function (go) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); };   // this script comes before the list on the page
   var list, allRows = function () { return [].slice.call(document.querySelectorAll('.vrow[data-vid]')); };
   var run = function (q, ab, label) {   // q: [{row, file | get(), fp}]
-    var all = allRows(), i = 0, ok = 0, busy = false, it = null;
+    var all = allRows(), i = 0, ok = 0, busy = false, it = null; try { sessionStorage.removeItem(MK); } catch (e) {} [].forEach.call(document.querySelectorAll('.vmark'), function (t) { t.remove(); });
     var next = function () {
       if (i >= q.length) { ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; done((ok < q.length ? '!' : '') + ok + ' of ' + q.length + ' videos ' + label + (ok < q.length ? '. Try the others again with the button on their row.' : '.')); f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
       it = q[i++]; var n = all.indexOf(it.row) + 1; ab.textContent = (i) + ' of ' + q.length + ' (number ' + n + ')… keep this page open';
@@ -323,7 +337,7 @@ window.fxPick = function (src, done) {
         setTimeout(function () { if (it.fp) fpIn.value = it.fp; f.dataset.dupOk = 1; busy = true; if (f.requestSubmit) f.requestSubmit(); else btn.click(); }, 600);
       }, function () { next(); });   // the original could not be fetched: on to the next one
     };
-    f._batch = function (y) { if (!busy) return; busy = false; if (y) ok++; stop(''); next(); };
+    f._batch = function (y) { if (!busy) return; busy = false; if (y) ok++; mark(y, it.row.dataset.vid); stop(''); next(); };
     setInterval(function () { if (busy && !btn.disabled && !f.dataset.go) f._batch(false); }, 3000);   // it stopped without saving (could not be made smaller): on to the next one
     next();
   };
@@ -333,6 +347,7 @@ window.fxPick = function (src, done) {
     return b;
   };
   later(showDone);
+  later(function () { var m = marks(); Object.keys(m).forEach(function (id) { var r = document.querySelector('.vrow[data-vid="' + id + '"]'); if (r) tick(r, m[id]); }); });
   later(function () { list = document.querySelector('.vlist .bb');
   if (f.dataset.hq && list && window.DataTransfer && f.elements.replace) {
     var rw = document.createElement('div'); rw.style.cssText = 'margin:0 0 8px;text-align:right;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:6px';
