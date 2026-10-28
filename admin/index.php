@@ -192,8 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (str_starts_with($a, 'vid_')) {
     $vb = ['tab' => 'products', 'videos' => 1]; $vids = shop_videos();
     $at = array_search((string)($_POST['vid'] ?? ''), array_column($vids, 'id'), true);
-    $prod = (string)($_POST['product'] ?? ''); $none = $prod === '-'; if ($none) $prod = '';   // '-' = no product: the video gets a Shop Now button
-    $words = $prod === '' && !$none ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['product_text'] ?? ''))), 0, 60) : '';   // typed words, not a product from the list: shown under the video, with Shop Now
+    $prod = (string)($_POST['product'] ?? ''); $none = $prod === '-' || $prod === ''; if ($none) $prod = '';   // '-' or nothing picked = no product: the video gets a Shop Now button (no product needed, AJAY 28/10/2026)
+    $words = (string)($_POST['product'] ?? '') === '' ? mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($_POST['product_text'] ?? ''))), 0, 60) : '';   // typed words, not a product from the list: shown under the video, with Shop Now
     if ($words !== '') $none = true;
     if ($a === 'vid_ig_token') {   // connect Instagram: the token is checked with Instagram, then kept in fomaxo-private
       $tok = preg_replace('/\s+/', '', (string)($_POST['ig_token'] ?? ''));
@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!$none && !isset($CAT[$prod])) go($vb, '!Please pick the product shown in the video.');
       if (preg_match('/^[a-f0-9]{16}$/', (string)($_POST['parts'] ?? ''))) {   // a video sent in pieces: join them, and check nothing is missing
         $pd = "$PRIV/video-parts/" . $_POST['parts']; $pn = (int)($_POST['parts_n'] ?? 0); $total = (int)($_POST['parts_size'] ?? 0);
-        $ok = is_dir($pd) && $pn > 0 && $pn <= 1000 && $total > 0 && $total <= 500 * 1048576 && ($out = @fopen("$pd/all", 'wb'));
+        $ok = is_dir($pd) && $pn > 0 && $pn <= 5000 && $total > 0 && $total <= 4096 * 1048576 && ($out = @fopen("$pd/all", 'wb'));
         for ($k = 0; $ok && $k < $pn; $k++) { $in = @fopen("$pd/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
         if (!empty($out)) fclose($out);
         clearstatcache(); $ok = $ok && (int)@filesize("$pd/all") === $total;
@@ -303,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       array_unshift($vids, ['id' => bin2hex(random_bytes(5)), 'file' => $name, 'cover' => $cover, 'product' => $prod, 'on' => true] + (preg_match('/^[a-f0-9]{32}$/', (string)($_POST['fp'] ?? '')) ? ['fp' => (string)$_POST['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (($_POST['shape'] ?? '') === '169' ? ['wide' => true] : []));
       if (r2_conf() && preg_match('/^[a-f0-9]{16}$/', (string)($_POST['hq_parts'] ?? '')) && preg_match('/^(.+)\.\w+$/', $name, $bm)) {   // the sharp 1080p copy, made in the browser when Cloudflare is connected: straight to Cloudflare, then off Hostinger
         $hd = "$PRIV/video-parts/" . $_POST['hq_parts']; $hn = (int)($_POST['hq_parts_n'] ?? 0); $ht = (int)($_POST['hq_parts_size'] ?? 0); $hq = $bm[1] . '-h.mp4';
-        $ok = is_dir($hd) && $hn > 0 && $hn <= 1000 && $ht > 0 && $ht <= 100 * 1048576 && ($out = @fopen(video_dir() . "/$hq", 'wb'));
+        $ok = is_dir($hd) && $hn > 0 && $hn <= 1000 && $ht > 0 && $ht <= 500 * 1048576 && ($out = @fopen(video_dir() . "/$hq", 'wb'));
         for ($k = 0; $ok && $k < $hn; $k++) { $in = @fopen("$hd/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
         if (!empty($out)) fclose($out);
         clearstatcache(); $ok = $ok && (int)@filesize(video_dir() . "/$hq") === $ht && function_exists('finfo_open') && finfo_file(finfo_open(FILEINFO_MIME_TYPE), video_dir() . "/$hq") === 'video/mp4';
@@ -313,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
       if (r2_conf() && preg_match('/^[a-f0-9]{16}$/', (string)($_POST['orig_parts'] ?? '')) && preg_match('/^(.+)\.\w+$/', $name, $bm)) {   // the original from the phone, kept on Cloudflare only: Make All Videos Again remakes every copy from it later
         $od = "$PRIV/video-parts/" . $_POST['orig_parts']; $on = (int)($_POST['orig_parts_n'] ?? 0); $ot = (int)($_POST['orig_parts_size'] ?? 0); $tmp = video_dir() . '/' . $bm[1] . '-o.part';
-        $ok = is_dir($od) && $on > 0 && $on <= 1000 && $ot > 0 && $ot <= 500 * 1048576 && ($out = @fopen($tmp, 'wb'));
+        $ok = is_dir($od) && $on > 0 && $on <= 5000 && $ot > 0 && $ot <= 4096 * 1048576 && ($out = @fopen($tmp, 'wb'));
         for ($k = 0; $ok && $k < $on; $k++) { $in = @fopen("$od/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
         if (!empty($out)) fclose($out);
         clearstatcache(); $oe = $ok && (int)@filesize($tmp) === $ot && function_exists('finfo_open') ? (['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm', 'video/x-m4v' => 'mp4'][(string)finfo_file(finfo_open(FILEINFO_MIME_TYPE), $tmp)] ?? '') : '';
@@ -329,8 +329,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'hq' => 1, 'fp' => 1, 'wide' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : [])) + array_intersect_key($nv, ['hq' => 1, 'fp' => 1, 'wide' => 1, 'orig' => 1]);
         $vids[$rep]['file'] = $nv['file']; if (!$keepC) $vids[$rep]['cover'] = $nv['cover'];
         $toCom = ((!empty($ov['sent_com']) || ($ov['from'] ?? '') === 'fomaxo.com') && preg_match('/^[a-f0-9]{32}$/', (string)($ov['fp'] ?? ''))) && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], (string)$ov['fp']);   // fomaxo.com has this video too: it gets the sharper one as well
+        if (!$toCom && !empty($vids[$rep]['hq']) && empty($vids[$rep]['from']) && video_com_inbox() !== '' && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], '', ['match' => 1])) { $vids[$rep]['sent_com'] = true; $toCom = true; }   // not on fomaxo.com yet as such: it takes the place of the same video there (never adds one)
         shop_videos_save($vids); r2_sync_later();
-        go($vb, 'Video number ' . ($rep + 1) . ' replaced' . ($toCom ? ' here and on fomaxo.com' : '') . (!empty($vids[$rep]['hq']) ? ' with the sharp one: 1080p goes to Cloudflare now' : '') . '. Same product, words and place.');
+        go($vb, 'Video number ' . ($rep + 1) . ' replaced' . ($toCom ? ' here and on fomaxo.com' : '') . (!empty($vids[$rep]['hq']) ? ': 1080p for Cloudflare, small copy and preview made' : '') . '. Same product, words and place.');
       }
       shop_videos_save($vids); $toCom = !empty($_POST['to_com']) && video_to_com(video_dir() . "/$name", $vids[0]);   // the tick 'Also add to fomaxo.com'
       if ($toCom) { $vids[0]['sent_com'] = true; shop_videos_save($vids); }
