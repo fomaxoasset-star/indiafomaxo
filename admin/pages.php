@@ -628,6 +628,10 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
   /* Products → Videos: short upright videos on the home page. Tapping one on the website opens it full screen with its product's Add To Cart / Buy Now */
   /* Automatic Instagram reels are fetched by api/live.php after a shopper's page has its answer (at most once an hour), never while this page loads */
   try { video_inbox(); } catch (Throwable $e) {}   // videos sent from fomaxo.com show here straight away
+  if (shop_setting('shape_fix_2810') !== '1') {   // once: the two videos Make All Videos Again turned 16:9 on 28/10/2026 go back to 9:16, as they were
+    $vs = shop_videos(); foreach ($vs as &$x) foreach (['file', 'hq'] as $k) if (preg_match('/^(fomaxo-81d06340|dollar-944695cf)[.-]/', (string)($x[$k] ?? ''))) unset($x['wide']); unset($x);
+    shop_videos_save($vs); shop_set('shape_fix_2810', '1');
+  }
   $vids = shop_videos(); $n = count($vids); $max = upload_max(); $allOn = shop_setting('videos_off') !== '1';
   $comBox = video_com_inbox() !== ''; $sendOk = fn($v) => video_to_com_ok($v) && (($v['hq'] ?? '') === '' || !r2_conf());   // a video with a 1080p copy goes to fomaxo.com by itself (vshrink.js), no link
   $toComN = $comBox ? count(array_filter($vids, $sendOk)) : 0;   // videos not on fomaxo.com yet

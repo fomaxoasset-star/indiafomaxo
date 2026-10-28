@@ -65,7 +65,7 @@ function video_inbox(): void {
         @unlink($j); $at = false; foreach ($vids as $k => $x2) if (($x2['fp'] ?? '') === $old && empty($x2['embed'])) { $at = $k; break; }
         if ($at === false) { @unlink(video_dir() . "/$f"); if (!empty($more['hq'])) @unlink(video_dir() . '/' . $more['hq']); continue; }
         foreach (['file', 'prev', 'hq'] as $k) if ((string)($vids[$at][$k] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$vids[$at][$k])); video_pub_drop(basename((string)$vids[$at][$k])); }
-        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'hq' => 1, 'fp' => 1, 'wide' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + (!empty($m['wide']) ? ['wide' => true] : []);
+        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'hq' => 1, 'fp' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []);   // keeps its own shape
         $vids[$at]['file'] = $f; $added++; continue;
       }
       @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
