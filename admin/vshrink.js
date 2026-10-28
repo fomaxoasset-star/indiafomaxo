@@ -455,7 +455,8 @@ window.fxPick = function (src, done) {
         if (!confirm('Make all ' + agRows.length + ' videos again from their originals on Cloudflare (1080p, 720p and preview)? About 1 to 2 minutes each. Keep this page open.')) return;
         ag.disabled = true; f.dataset.again = 1;
         run(agRows.map(function (r) { return {row: r, get: function () {
-          return fetch(r.dataset.orig, {mode: 'cors'}).then(function (x) { return x.ok ? x.blob() : Promise.reject(); }).then(function (b) { var nm = r.dataset.orig.split('/').pop(); return new File([b], nm, {type: b.type || 'video/mp4'}); });
+          /* a fresh copy: one the browser kept from playing it has no permission for this page, and then every original "did not load" (fomaxo.com 28/10/2026) */
+          return fetch(r.dataset.orig + (r.dataset.orig.indexOf('?') < 0 ? '?' : '&') + 'fx=' + Date.now(), {mode: 'cors', cache: 'no-store'}).then(function (x) { if (!x.ok) vlog('original ' + x.status + ': ' + r.dataset.orig); return x.ok ? x.blob() : Promise.reject(); }, function (e) { vlog('original did not load: ' + r.dataset.orig + ' ' + e); return Promise.reject(e); }).then(function (b) { var nm = r.dataset.orig.split('/').pop(); return new File([b], nm, {type: b.type || 'video/mp4'}); });
         }}; }), ag, 'made again');
       };
     }
