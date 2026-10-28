@@ -271,15 +271,32 @@ window.fxPick = function (src, done) {
   var fpIn = document.createElement('input'); fpIn.type = 'hidden'; fpIn.name = 'fp'; f.appendChild(fpIn);
   var dupNote = document.createElement('p'); dupNote.className = 'vdup'; dupNote.hidden = true; dupNote.style.cssText = 'margin:6px 0 0;font-size:12.5px;line-height:1.4;color:#c0392b;font-weight:600'; inp.parentNode.appendChild(dupNote);
   var dupOf = null;
-  var meta = function (src) {   // {d: seconds, r: width / height} of a video (a picked file or one on the site), null if it can't be read
+  /* {d: seconds, r: width / height, px: a 16x16 picture from inside the video (at 1 s, or 40% in for a short one) or null} of a picked file
+     or a video on the site; null if it can't be read. At most 4 load at once */
+  var metaN = 0, metaQ = [];
+  var meta = function (src) {
     return new Promise(function (ok) {
-      var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), end = function (x) { clearTimeout(t); v.removeAttribute('src'); v.load(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); };
-      var t = setTimeout(function () { end(null); }, 20000);
-      v.preload = 'metadata'; v.muted = true;
-      v.onloadedmetadata = function () { end(v.duration && v.videoWidth ? {d: v.duration, r: v.videoWidth / v.videoHeight} : null); };
-      v.onerror = function () { end(null); }; v.src = u;
+      var go = function () {
+        metaN++;
+        var v = document.createElement('video'), u = typeof src === 'string' ? src : URL.createObjectURL(src), m = null, t, fin = false;
+        var end = function (x) { if (fin) return; fin = true; clearTimeout(t); v.removeAttribute('src'); v.load(); if (typeof src !== 'string') URL.revokeObjectURL(u); ok(x); metaN--; if (metaQ.length) metaQ.shift()(); };
+        t = setTimeout(function () { end(m); }, 20000);
+        v.preload = 'metadata'; v.muted = true; v.playsInline = true; if (/^https?:/.test(u)) v.crossOrigin = 'anonymous';
+        v.onloadedmetadata = function () {
+          if (!v.duration || !v.videoWidth) return end(null);
+          m = {d: v.duration, r: v.videoWidth / v.videoHeight, px: null};
+          var at = Math.min(1, v.duration * 0.4);
+          v.onseeked = function () { if (Math.abs(v.currentTime - at) > 0.1) return end(m);   /* a server that can't jump inside the file leaves it at 0 s: no picture then, the length decides */
+            try { m.px = shrink(shrink(v, 128), 16).getContext('2d').getImageData(0, 0, 16, 16).data; } catch (e) {} end(m); };
+          v.preload = 'auto'; v.currentTime = at;
+        };
+        v.onerror = function () { end(m); }; v.src = u;
+      };
+      if (metaN < 4) go(); else metaQ.push(go);
     });
   };
+  var shrink = function (img, n) { var c = document.createElement('canvas'); c.width = c.height = n; var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, n, n); return c; };   // in two steps, so a big and a small copy of one video give the same picture
+  var pxDiff = function (a, b) { var s = 0, n = 0; for (var i = 0; i < a.length; i += 4) { s += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); n += 3; } return s / n; };
   var fingerprint = function (file) {
     if (!window.crypto || !crypto.subtle || !file.arrayBuffer) return Promise.resolve('');
     var MB1 = 1048576, parts = [new Blob([String(file.size)]), file.slice(0, MB1), file.slice(Math.max(MB1, file.size - MB1))];
@@ -379,20 +396,26 @@ window.fxPick = function (src, done) {
             if (r) { used[r.dataset.vid] = 1; q.push({file: file, fp: fps[i], row: r}); } else left.push(i);
           });
           /* older videos have no fingerprint and their size changed when they were made smaller (only 1 of AJAY's matched, 28/10/2026):
-             then the length and the shape decide. Each video on the site is read (only its first bytes), each picked one too;
-             a match is within 0.6 seconds and the same shape, the nearest length wins, and two rows just as near = not matched */
+             then the length, the shape and a small picture from inside each video decide. Each video on the site is read (only its first part), each picked one too */
           var free = rows.filter(function (o) { return !used[o.dataset.vid] && o.dataset.pvsrc; });
           if (!left.length || !free.length) return [q, left.map(function (i) { return files[i].name; })];
-          ab.textContent = 'Matching by length…';
+          ab.textContent = 'Matching by length and picture…';
           return Promise.all(free.map(function (o) { return meta(o.dataset.pvsrc); }).concat(left.map(function (i) { return meta(files[i]); }))).then(function (ms) {
             var rm = ms.slice(0, free.length), miss = [];
             left.forEach(function (i, k) {
-              var m = ms[free.length + k], best = null, bd = 9, tie = false;
+              /* same shape and within 0.6 s; then the picture from inside decides (under 30 apart, the nearest wins, the next within 8 = not sure);
+                 with no picture to compare, the nearest length wins and two within 0.05 s = not sure */
+              var m = ms[free.length + k], c = [], best = null, tie = false;
               if (m) free.forEach(function (o, j) {
                 var x = rm[j]; if (!x || used[o.dataset.vid] || Math.abs(x.r - m.r) > 0.03 * Math.max(x.r, m.r)) return;
                 var d = Math.abs(x.d - m.d); if (d > 0.6) return;
-                if (d < bd - 0.05) { best = o; bd = d; tie = false; } else if (d <= bd + 0.05) tie = true;
+                var p = x.px && m.px ? pxDiff(x.px, m.px) : null; if (p !== null && p >= 30) return;
+                c.push({o: o, d: d, p: p});
               });
+              var withPx = c.filter(function (e) { return e.p !== null; }), by = withPx.length ? 'p' : 'd', gap = withPx.length ? 8 : 0.05;
+              if (withPx.length) c = withPx;
+              c.sort(function (e, f) { return e[by] - f[by]; });
+              if (c.length) { best = c[0].o; tie = c.length > 1 && c[1][by] - c[0][by] <= gap; }
               if (best && !tie) { used[best.dataset.vid] = 1; q.push({file: files[i], fp: fps[i], row: best}); } else miss.push(files[i].name);
             });
             return [q, miss];
