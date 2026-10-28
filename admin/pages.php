@@ -641,9 +641,13 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     $ps = video_products($v, $CAT); $p = $CAT[$ps[0] ?? ''] ?? null; $off = empty($v['on']);
     $fsz = empty($v['embed']) && preg_match('~^[a-z0-9-]+\.(mp4|mov|webm)$~', (string)($v['file'] ?? '')) && is_file(video_dir() . '/' . $v['file']) ? (int)filesize(video_dir() . '/' . $v['file']) : 0;   // 0 = the video file is not on the server
     $fnote = !empty($v['embed']) ? '' : ($fsz ? ' · ' . ($fsz >= 1048576 ? round($fsz / 1048576, 1) . ' MB' : max(1, round($fsz / 1024)) . ' KB') : ' · <b class="vbad">File missing, upload again</b>');
-    if (($v['hq'] ?? '') !== '') $fnote .= isset(($r2hv ??= r2_have())[$v['hq']]) ? ' · 1080p on Cloudflare' : ' · 1080p waiting to copy';   // the sharp copy (only on Cloudflare)
+    $mbs = function (string $f) use (&$r2hv): string {   // size of a copy on Cloudflare (or still here, waiting to copy), shown on its row (AJAY 28/10/2026)
+      $b = (int)(($r2hv ??= r2_have())[$f] ?? 0); if (!$b && is_file(video_dir() . '/' . basename($f))) $b = (int)filesize(video_dir() . '/' . basename($f));
+      return $b ? ' ' . ($b >= 1048576 ? round($b / 1048576, $b >= 10485760 ? 0 : 1) . ' MB' : max(1, round($b / 1024)) . ' KB') : '';
+    };
+    if (($v['hq'] ?? '') !== '') $fnote .= ' · 1080p' . $mbs((string)$v['hq']) . (isset(($r2hv ??= r2_have())[$v['hq']]) ? ' on Cloudflare' : ' waiting to copy');   // the sharp copy (only on Cloudflare)
     $orig = (string)($v['orig'] ?? ''); $origUp = $orig !== '' && isset(($r2hv ??= r2_have())[$orig]);   // the original from the phone, on Cloudflare: Make All Videos Again remakes from it
-    if ($origUp) $fnote .= ' · original kept';
+    if ($origUp) $fnote .= ' · original' . $mbs($orig) . ' kept';
     elseif ($orig === '' && $fsz && empty($v['embed']) && ($r2c ??= (bool)r2_conf())) $fnote .= ' · <button type="button" class="lnk vrep" data-rep="' . h($v['id']) . '" data-n="' . ($i + 1) . '">' . (($v['hq'] ?? '') === '' ? 'Replace with sharper video' : 'Replace video') . '</button>';   // the original from the phone again: 1080p on Cloudflare, same place and settings
     $gone = !$ps && ((string)($v['product'] ?? '') !== '' || !empty($v['also'])); $hid = $ps && !array_filter($ps, fn($id) => empty($CAT[$id]['hidden']));
     $poster = $v['cover'] !== '' ? img_url($v['cover']) : ($p && $p['img'] ? '/' . $p['img'] : '');
