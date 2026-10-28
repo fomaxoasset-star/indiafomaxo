@@ -447,6 +447,24 @@ window.fxPick = function (src, done) {
         });
       };
     }
+    /* Send sharp videos to fomaxo.com (AJAY 28/10/2026: "use same for fomaxo.com"): each video's 1080p copy takes the place of the same video there,
+       one after another; a video fomaxo.com doesn't have is left out there, never added twice */
+    var scRows = allRows().filter(function (r) { return r.dataset.hqc; });
+    if (scRows.length) {
+      var sc = pill('Send sharp videos to fomaxo.com'); sc.classList.add('vsendcom'); rw.appendChild(sc);
+      sc.onclick = function () {
+        if (!confirm('Send the sharp copy of ' + scRows.length + ' videos to fomaxo.com? Each one takes the place of the same video there. Keep this page open.')) return;
+        sc.disabled = true; var i = 0, ok = 0, csrf = (f.querySelector('[name=csrf]') || {}).value || '';
+        var next = function () {
+          if (i >= scRows.length) { vlog('send to com: ' + ok + '/' + scRows.length); done((ok < scRows.length ? '!' : '') + ok + ' of ' + scRows.length + ' sharp videos sent to fomaxo.com. They show there within a minute.'); location.replace(location.href); return; }
+          var r = scRows[i++]; sc.textContent = 'Sending ' + i + ' of ' + scRows.length + '… keep this page open';
+          var fd = new FormData(); fd.append('csrf', csrf); fd.append('action', 'vid_send_sharp'); fd.append('vid', r.dataset.vid);
+          fetch(f.getAttribute('action') || location.href, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (x) { return x.json(); })
+            .then(function (j) { if (j && j.ok) ok++; else vlog('send to com failed: ' + r.dataset.vid); }, function (e) { vlog('send to com error: ' + r.dataset.vid + ' ' + e); }).then(next);
+        };
+        next();
+      };
+    }
     var agRows = allRows().filter(function (r) { return r.dataset.orig; });
     if (agRows.length) {
       var ag = pill('Make All Videos Again'); ag.classList.add('vagainall'); more.appendChild(ag);
