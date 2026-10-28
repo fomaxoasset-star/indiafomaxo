@@ -122,6 +122,8 @@ html[data-mode="light"] .reel{background:#1b1712}
 @font-face{font-family:'Manrope';font-style:normal;font-weight:200 800;font-display:swap;src:url(/assets/fonts/manrope-latin.woff2?v=1) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}</style>
 <!-- stock and admin changes (api/live.php, read before the shop script runs) start downloading now, alongside the page, instead of after it -->
 <link rel="preload" as="script" href="api/live.php">
+<!-- the shop videos and previews come from Cloudflare: the connection to it is opened now, so the first one starts sooner -->
+<link rel="preconnect" href="https://v.fomaxo.com" crossorigin>
 
 <script>(function(){var r=document.documentElement,saved=null;try{saved=localStorage.getItem("fomaxo_mode")}catch(e){}
 var mq=window.matchMedia?matchMedia("(prefers-color-scheme: light)"):null;
@@ -5783,6 +5785,9 @@ function loopRow(sc){ if (!sc || sc.dataset.loop) return; const ks = [...sc.chil
 /* videos kept on Cloudflare (Admin → Products → Videos → Cloudflare) are asked for with CORS, so vidLit can still read their frames.
    One Cloudflare fails to send plays from our own copy in media/v instead (data-fbu: the small Hostinger copy of a sharp 1080p video) */
 function vidXO(u){ return /^https:/.test(u || '') ? ' crossorigin="anonymous"' : ''; }
+/* slow internet (or data saver): the player plays the small copy (vf) instead of the sharp 1080p one, so it doesn't stop and wait. iPhones don't tell, they keep the sharp one */
+function slowNet(){ const c = navigator.connection; return !!c && (!!c.saveData || /2g|3g/.test(c.effectiveType || '') || (c.downlink > 0 && c.downlink < 4)); }
+const vSrc = v => v.vf && slowNet() ? '/' + v.vf : v.v;
 document.addEventListener('error', e => { const v = e.target, u = v && v.tagName === 'VIDEO' && v.getAttribute('src') || ''; if (!/^https:\/\//.test(u) || v.dataset.fb) return;
   const f = v.dataset.fbu || '/media/v/' + u.split('/').pop(), go = v.autoplay || !v.paused; v.dataset.fb = 1; v.removeAttribute('crossorigin'); if (v.dataset.src === u) v.dataset.src = f; v.src = f; if (go) v.play().catch(() => {}); }, true);
 /* Safari can play a video and still show it black: the cover photo goes only once a real picture (not a black frame) is on the screen */
@@ -5856,7 +5861,7 @@ function reelCard(p){
 function reelSlide(v, k){
   const ps = vidProds(v).map(id => P[id]), name = ps.length ? ps[0].name : 'FOMAXO';
   return `<section class="rl-s${v.e ? ' emb' : ''}${v.wd ? ' wide' : ''}" data-k="${k}"><div class="rl-stage">
-    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" playsinline loop muted preload="none" data-poster="${vidPoster(v)}"${vidXO(v.v)}${v.vf ? ` data-fbu="/${esc(v.vf)}"` : ''} data-src="${esc(v.v)}"></video>`}${!v.e && vidPoster(v) ? `<img class="rl-pic" src="${vidPoster(v)}" alt="">` : ''}
+    ${v.e ? `<iframe data-src="https://www.instagram.com/reel/${esc(v.e)}/embed/" title="${esc(name)} on Instagram" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>` : `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" playsinline loop muted preload="none" data-poster="${vidPoster(v)}"${vidXO(vSrc(v))}${v.vf ? ` data-fbu="/${esc(v.vf)}"` : ''} data-src="${esc(vSrc(v))}"></video>`}${!v.e && vidPoster(v) ? `<img class="rl-pic" data-src="${vidPoster(v)}" alt="">` : ''}
     <span class="rl-pause" aria-hidden="true">${VI.play}</span>
     ${v.n && vidPage() ? `<span class="vt-by rl-by">${VI.by}<bdi>${esc(v.n)}</bdi></span>` : ''}
     ${!ps.length ? `<div class="rl-cards"><div class="rl-card rl-shop"><div class="rl-info"><span class="rl-n">${v.w ? esc(v.w) : 'FOMAXO'}</span><span class="rl-f">${v.w ? 'FOMAXO' : 'Luxury Care'}</span></div><a class="btn sm tc" href="#/fragrances">Shop Now</a></div></div>`
@@ -5882,7 +5887,8 @@ function openReel(i){
   const go = k => { k = Math.max(0, Math.min(slides.length - 1, k)); track.scrollTo({left: k * track.clientWidth, behavior: 'smooth'}); };
   const act = k => { if (k === cur) return; cur = k;
     const sb = $('.rl-snd', el); if (sb) sb.hidden = !$('video', slides[k]);   // Instagram's player has its own sound
-    slides.forEach((s, n) => { const v = $('video', s);
+    slides.forEach((s, n) => { const v = $('video', s), pic = $('.rl-pic', s);
+      if (pic && !pic.src && Math.abs(n - k) <= 1) pic.src = pic.dataset.src;   // cover photos too, only for this video and the ones either side: all of them at once (one per video) held up the tapped video's start
       if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
       if (n === k) { if (!v.src) v.src = v.dataset.src; v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
