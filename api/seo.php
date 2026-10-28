@@ -46,6 +46,7 @@ function seo_products(): array {
       $sizes[(string)$k] = ['price' => $v, 'out' => $left !== null ? $left <= 0 : !empty($c['soldOut'])];
     }
     $out[$id] = ['id' => (string)$id, 'name' => (string)$c['name'], 'family' => $family, 'kind' => $c['kind'], 'care' => $care,
+      'photo' => (string)(($care ? ($p['image'] ?? '') : (((array)($p['images'] ?? []))[0] ?? '')) ?: ''), 'mini' => (string)($p['miniImage'] ?? ''),
       'short' => (string)($p['short'] ?? ''), 'desc' => $desc, 'was' => (array)($c['was'] ?? []), 'images' => $imgs, 'sizes' => $sizes, 'vol' => $c['vol']];
   }
   return $out;
@@ -54,6 +55,19 @@ function seo_img(string $k): string {
   if ($k === '') return '';
   if (str_starts_with($k, 'up/')) return SITE . '/media/p/' . rawurlencode(substr($k, 3));
   return preg_match('/^[\w.-]+$/', $k) ? SITE . "/assets/img/$k.webp" : '';
+}
+/* the product page's big photo starts downloading with the first bytes of the page, instead of after the shop's code has run
+   (about 1 s later on a phone from an ad). Same address as the page's own photo (IMG / imgFor in index.html: its ?v=N is read from there),
+   so the browser uses this download and never fetches it twice. */
+function seo_photo_preload(array $p, string $html, string $size): string {
+  $k = $p['photo'] ?? '';
+  $keys = array_map('strval', array_keys($p['sizes']));
+  if ($size === '' || !in_array($size, $keys, true)) $size = in_array('50', $keys, true) ? '50' : (string)end($keys);   // defaultSize in index.html
+  if ($size === '10' && ($p['mini'] ?? '') !== '') $k = $p['mini'];   // the 10ml size shows its own photo
+  if ($k === '') return '';
+  $url = str_starts_with($k, 'up/') ? '/media/p/' . rawurlencode(substr($k, 3))
+    : (preg_match('/^[\w.-]+$/', $k) && preg_match('/assets\/img\/\$\{k\}\.webp\?v=(\d+)/', $html, $m) ? "/assets/img/$k.webp?v=$m[1]" : '');
+  return $url === '' ? '' : '<link rel="preload" as="image" href="' . h($url) . '" fetchpriority="high">';
 }
 /* the live star rating from api/reviews.php's store, or null when there are no reviews yet */
 function seo_rating(string $id): ?array {
@@ -257,6 +271,7 @@ if ($ld['@graph'][1]['category'] === null) unset($ld['@graph'][1]['category']);
 
 $title = h(seo_title($p)); $desc = h(seo_meta($p));
 $ogTitle = h(($p['care'] || $p['family'] === '' ? $p['name'] : $p['name'] . ' ' . $p['family']) . ' — FOMAXO');   // WhatsApp / Instagram previews keep the plain name
+$go .= seo_photo_preload($p, $html, (string)($q['size'] ?? ''));
 $go .= '<script>window.FX_TITLE=' . json_encode([$p['id'] => seo_title($p)], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) . '</script>'; $img = h($p['images'][0] ?? SITE . '/assets/img/oldmoney-1.jpg');
 $head = '<link rel="canonical" href="' . h($url) . '"><meta property="og:url" content="' . h($url) . '"><meta property="og:type" content="product"><meta property="og:site_name" content="FOMAXO India">'
   . '<script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . '</script>';
