@@ -307,7 +307,9 @@ window.fxPick = function (src, done) {
     var file = inp.files && inp.files[0]; fpIn.value = ''; dupOf = null; dupNote.hidden = true; if (!file) return;
     fingerprint(file).then(function (fp) {
       if (inp.files[0] !== file) return; fpIn.value = fp;
-      var rows = [].slice.call(document.querySelectorAll('.vrow[data-vid]')), hit = rows.filter(function (r) { return (fp && r.dataset.fp === fp) || +r.dataset.sz === file.size; })[0];
+      var rows = [].slice.call(document.querySelectorAll('.vrow[data-vid]')), hits = rows.filter(function (r) { return (fp && r.dataset.fp === fp) || +r.dataset.sz === file.size; }), hit = hits[0];
+      /* Replace with the original of that same video is what it is for: no "already in your list" question (AJAY tapped Cancel on it, 28/10/2026) */
+      var rep = f.elements.replace && f.elements.replace.value; if (rep && hits.some(function (r) { return r.dataset.vid === rep; })) return;
       if (!hit) return; dupOf = hit;
       var nm = [].map.call(hit.querySelectorAll('.vchip:not(.none)'), function (c) { return c.textContent.replace(/[✕\s]+$/, ''); }).filter(Boolean).slice(0, 2).join(', ');
       dupNote.textContent = '⚠ This video is already uploaded: number ' + (rows.indexOf(hit) + 1) + ' in your list' + (nm ? ' (' + nm + ')' : '') + '. Upload it again only if you mean to.'; dupNote.hidden = false;
