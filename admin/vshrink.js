@@ -317,6 +317,8 @@ window.fxPick = function (src, done) {
   });
   f.addEventListener('submit', function (e) { if (dupOf && !f.dataset.go && !f.dataset.dupOk) { if (confirm('This video is already in your list. Upload it again?')) f.dataset.dupOk = 1; else { e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
   inp.addEventListener('change', function () { delete f.dataset.dupOk; });
+  /* a row's Replace starts by itself once the video is picked (AJAY had to find Upload after picking, 28/10/2026); a moment first, so the shape is read */
+  inp.addEventListener('change', function () { if (!f.dataset.one || !inp.files[0] || !(f.elements.replace && f.elements.replace.value)) return; delete f.dataset.one; setTimeout(function () { if (!f.dataset.go) { if (f.requestSubmit) f.requestSubmit(); else btn.click(); } }, 1500); });
   inp.addEventListener('change', function () {
     var file = inp.files && inp.files[0], r = f.querySelectorAll('input[name=shape]'); auto = file && window.fxCover ? window.fxCover(file) : null; pk.hidden = !file; pk.textContent = 'Pick cover from the video'; if (!file || r.length < 2) return;
     var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.src = URL.createObjectURL(file);
