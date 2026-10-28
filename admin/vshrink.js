@@ -326,6 +326,7 @@ window.fxPick = function (src, done) {
      and still after the page reloads (kept for this browser tab until the next upload starts) */
   var MK = 'fxRowMarks', marks = function () { try { return JSON.parse(sessionStorage.getItem(MK) || '{}') || {}; } catch (e) { return {}; } };
   var tick = function (row, y) {
+    var st = row.querySelector('.vstep'); if (st) st.remove();   // the batch's own step gives way to the lasting mark
     var t = row.querySelector('.vmark'); if (!t) { t = document.createElement('span'); t.className = 'vmark'; (row.querySelector('.vrep, .vagain') || row.lastChild).insertAdjacentElement('beforebegin', t); }
     t.textContent = y ? '✓ Replaced' : '✕ Not replaced';
     t.style.cssText = 'display:inline-block;margin:0 6px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.6;white-space:nowrap;color:#fff;background:' + (y ? '#3c9a45' : '#c0392b');
@@ -337,16 +338,31 @@ window.fxPick = function (src, done) {
   };
   var later = function (go) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); };   // this script comes before the list on the page
   var list, allRows = function () { return [].slice.call(document.querySelectorAll('.vrow[data-vid]')); };
+  /* while a batch runs (AJAY 28/10/2026: "show 1 of 42 … like quick preview"): a black pill at the bottom left like the previews' one,
+     and each row says where it is (Waiting, Loading…, Making…, ✓ Done / ✕ Not done); the page stays where it is */
+  var bpill = null, bsay = function (t) {
+    if (!bpill) { bpill = document.createElement('div'); bpill.setAttribute('role', 'status'); bpill.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:61;background:#111;color:#d4af37;border:1px solid #d4af37;border-radius:999px;padding:6px 14px;font-size:13px;max-width:calc(100vw - 24px)'; document.body.appendChild(bpill); }
+    bpill.textContent = t; bpill.hidden = !t;
+    var o = [].filter.call(document.querySelectorAll('div[role=status]'), function (e) { return e !== bpill && !e.hidden && e.style.position === 'fixed'; })[0];   // the previews' pill is there too: sit just above it
+    bpill.style.bottom = o ? (o.offsetHeight + 20) + 'px' : '12px';
+  };
+  var step = function (row, t, c) {
+    var s = row.querySelector('.vstep'); if (!s) { s = document.createElement('span'); s.className = 'vstep'; var at = row.querySelector('.vinfo > .muted'); if (at) at.appendChild(s); else row.appendChild(s); }
+    s.textContent = t; s.style.cssText = 'display:inline-block;margin-left:6px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.6;white-space:nowrap;color:' + (c ? '#fff' : '#b8913a') + ';background:' + (c || 'transparent') + ';border:1px solid ' + (c || 'currentColor');
+  };
   var run = function (q, ab, label) {   // q: [{row, file | get(), fp}]
-    var all = allRows(), i = 0, ok = 0, busy = false, it = null; try { sessionStorage.removeItem(MK); } catch (e) {} [].forEach.call(document.querySelectorAll('.vmark'), function (t) { t.remove(); });
+    var all = allRows(), i = 0, ok = 0, busy = false, it = null; q.forEach(function (x) { step(x.row, 'Waiting'); }); try { sessionStorage.removeItem(MK); } catch (e) {} [].forEach.call(document.querySelectorAll('.vmark'), function (t) { t.remove(); });
     var next = function () {
-      if (i >= q.length) { vlog('batch done: ' + ok + '/' + q.length + ' ' + label); ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; done((ok < q.length ? '!' : '') + ok + ' of ' + q.length + ' videos ' + label + (ok < q.length ? '. Try the others again with the button on their row.' : '.')); f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
+      if (i >= q.length) { bsay(''); vlog('batch done: ' + ok + '/' + q.length + ' ' + label); ab.textContent = 'Done: ' + ok + ' of ' + q.length + ' ' + label; done((ok < q.length ? '!' : '') + ok + ' of ' + q.length + ' videos ' + label + (ok < q.length ? '. Try the others again with the button on their row.' : '.')); f._batch = null; delete f.dataset.batch; delete f.dataset.again; setTimeout(function () { location.replace(location.href); }, 1500); return; }
       it = q[i++]; var n = all.indexOf(it.row) + 1; ab.textContent = (i) + ' of ' + q.length + ' (number ' + n + ')… keep this page open';
+      bsay('Making all videos ' + label.replace('made ', '') + ': ' + i + ' of ' + q.length + '… keep this page open'); step(it.row, 'Loading…');
+      var y0 = window.scrollY;
       (it.file ? Promise.resolve(it.file) : it.get()).then(function (file) {
         f.dataset.batch = 1; it.row.querySelector('.vrep, .vagain').click();   // the upload box is set for that video (no file picker in a batch)
+        step(it.row, 'Making…'); if (window.scrollY !== y0) window.scrollTo(0, y0);
         var dt = new DataTransfer(); dt.items.add(file); inp.files = dt.files; inp.dispatchEvent(new Event('change'));
         setTimeout(function () { if (it.fp) fpIn.value = it.fp; f.dataset.dupOk = 1; busy = true; if (f.requestSubmit) f.requestSubmit(); else btn.click(); }, 600);
-      }, function () { next(); });   // the original could not be fetched: on to the next one
+      }, function () { step(it.row, '✕ Not done', '#c0392b'); next(); });   // no copy of it could be fetched: on to the next one
     };
     f._batch = function (y) { if (!busy) return; busy = false; if (y) ok++; mark(y, it.row.dataset.vid); stop(''); next(); };
     setInterval(function () { if (busy && !btn.disabled && !f.dataset.go) f._batch(false); }, 3000);   // it stopped without saving (could not be made smaller): on to the next one
