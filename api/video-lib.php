@@ -38,9 +38,10 @@ function video_to_com(string $path, array $v, string $rep = '', array $add = [])
   $in = video_com_inbox(); $name = basename($path); if ($in === '' || (!is_dir($in) && !@mkdir($in, 0755, true))) return false;
   $tmp = "$in/$name." . bin2hex(random_bytes(4)) . '.part';
   if (!@copy($path, $tmp) || !@rename($tmp, "$in/$name")) { @unlink($tmp); return false; }
-  $more = [];   // the sharp 1080p copy goes too while it is still here (fomaxo.com keeps it on its Cloudflare part); the original stays on this site only
+  $more = [];   // the sharp 1080p copy: when it is on Cloudflare, fomaxo.com plays that same file (one copy for both sites, AJAY 28/10/2026); else the file goes along; the original stays on this site only
   $f = basename((string)($v['hq'] ?? '')); $tmp = "$in/$f." . bin2hex(random_bytes(4)) . '.part';
-  if (preg_match(VIDEO_FILE, $f) && is_file(video_dir() . "/$f")) { if (@copy(video_dir() . "/$f", $tmp) && @rename($tmp, "$in/$f")) $more['hq'] = $f; else @unlink($tmp); }
+  if (preg_match(VIDEO_FILE, $f) && isset(r2_have()[$f])) $more['hq_key'] = $f;
+  elseif (preg_match(VIDEO_FILE, $f) && is_file(video_dir() . "/$f")) { if (@copy(video_dir() . "/$f", $tmp) && @rename($tmp, "$in/$f")) $more['hq'] = $f; else @unlink($tmp); }
   if (preg_match('/^[a-f0-9]{32}$/', $rep)) $more['replace'] = $rep;   // a sharper copy of a video fomaxo.com already has (its old fingerprint): it takes that video's place there
   if (!@file_put_contents("$in/$name.json", json_encode(['file' => $name] + $more + $add + array_intersect_key($v, array_flip(['product', 'words', 'wide', 'fp', 'person', 'where'])), JSON_UNESCAPED_SLASHES), LOCK_EX)) return false;
   @unlink(dirname($in, 2) . '/fomaxo-cache/products.json');   // fomaxo.com's one-minute copy of its shop answer: its next page load adds the video straight away
@@ -58,14 +59,14 @@ function video_inbox(): void {
       $m = json_decode((string)@file_get_contents($j), true); $f = basename((string)($m['file'] ?? ''));
       if (!is_array($m) || !preg_match(VIDEO_FILE, $f) || !is_file("$in/$f")) { if (@filemtime($j) < time() - 3600) @unlink($j); continue; }   // the file is still being copied: next time
       if (!@rename("$in/$f", video_dir() . "/$f")) continue;
-      $more = []; $x = basename((string)($m['hq'] ?? ''));   // the sharp copy: to our Cloudflare part at the next copy (dropped when Cloudflare isn't connected here)
-      if (preg_match(VIDEO_FILE, $x) && is_file("$in/$x")) { if (r2_conf() && @rename("$in/$x", video_dir() . "/$x")) $more['hq'] = $x; else @unlink("$in/$x"); }
+      $more = com_key((string)($m['hq_key'] ?? '')) !== '' ? ['hqk' => (string)$m['hq_key']] : []; $x = basename((string)($m['hq'] ?? ''));   // the sharp copy: to our Cloudflare part at the next copy (dropped when Cloudflare isn't connected here)
+      if (preg_match(VIDEO_FILE, $x) && is_file("$in/$x")) { if (!$more && r2_conf() && @rename("$in/$x", video_dir() . "/$x")) $more['hq'] = $x; else @unlink("$in/$x"); }
       $old = (string)($m['replace'] ?? '');
       if (preg_match('/^[a-f0-9]{32}$/', $old)) {   // a sharper copy of one of our videos: it takes that video's place, keeping product, words, cover and place; none matches = dropped
         @unlink($j); $at = false; foreach ($vids as $k => $x2) if (($x2['fp'] ?? '') === $old && empty($x2['embed'])) { $at = $k; break; }
         if ($at === false) { @unlink(video_dir() . "/$f"); if (!empty($more['hq'])) @unlink(video_dir() . '/' . $more['hq']); continue; }
         foreach (['file', 'prev', 'hq'] as $k) if ((string)($vids[$at][$k] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$vids[$at][$k])); video_pub_drop(basename((string)$vids[$at][$k])); }
-        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'hq' => 1, 'fp' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []);   // keeps its own shape
+        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'hq' => 1, 'hqk' => 1, 'fp' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []);   // keeps its own shape
         $vids[$at]['file'] = $f; $added++; continue;
       }
       @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
@@ -73,7 +74,7 @@ function video_inbox(): void {
         + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []) + ($words !== '' ? ['words' => $words] : []) + (!empty($m['wide']) ? ['wide' => true] : []) + (in_array($m['where'] ?? '', ['home', 'product'], true) ? ['where' => $m['where']] : []) + (($nm = mb_substr(trim((string)($m['person'] ?? '')), 0, 30)) !== '' ? ['person' => $nm] : []) + $more);
       $added++;
     }
-    if ($added) { shop_videos_save($vids); r2_sync_later(); }
+    if ($added) { shop_videos_save($vids); try { r2_share_save(); } catch (Throwable $e) {} r2_sync_later(); }   // fomaxo.com knows straight away which of its files we now play
   } catch (Throwable $e) {} finally { flock($lk, LOCK_UN); fclose($lk); }
 }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website; shown on the home page and as Review videos on their product pages (wh: h = home page only, p = product pages only, none = both) */
@@ -131,6 +132,29 @@ function r2_live(bool $fresh = false): bool {
 /* the videos already on Cloudflare: name => size */
 function r2_have(): array { global $PRIV; $h = json_decode((string)@file_get_contents("$PRIV/r2-have.json"), true); return is_array($h) ? $h : []; }
 function r2_have_save(array $h): void { global $PRIV; @file_put_contents("$PRIV/r2-have.json", json_encode($h), LOCK_EX); }
+/* one 1080p file on Cloudflare for both sites (AJAY 28/10/2026: "use same video for both sites"): the site that uploaded a video keeps its file
+   (fomaxo.in at the top, fomaxo.com under com/), the other site plays that same file (row field hqk = fomaxo.com's key here).
+   Each site lists the other's files it plays (r2-uses.json) and the 1080p files the other may use, by fingerprint (r2-shared.json);
+   neither ever deletes a file the other one plays */
+function com_key(string $k): string { return preg_match('~^com/[a-z0-9-]{1,48}-[a-f0-9]{8}-h\.mp4$~', $k) ? $k : ''; }
+function com_media(): string { return getenv('FOMAXO_COM_MEDIA') ?: dirname(__DIR__, 3) . '/fomaxo.com/fomaxo-media'; }
+function com_uses(): array { $j = json_decode((string)@file_get_contents(com_media() . '/r2-uses.json'), true); return is_array($j) ? array_fill_keys(array_filter($j, 'is_string'), 1) : []; }   // our files fomaxo.com plays
+function r2_share_save(): void {   // what fomaxo.com reads: the com/ files we play, and our 1080p files by fingerprint
+  global $PRIV; $uses = []; $sh = []; $have = r2_have();
+  foreach (shop_videos() as $v) { if (com_key((string)($v['hqk'] ?? '')) !== '') $uses[] = $v['hqk']; if (($v['fp'] ?? '') !== '' && isset($have[(string)($v['hq'] ?? '')])) $sh[$v['fp']] = $v['hq']; }
+  @file_put_contents("$PRIV/r2-uses.json", json_encode(array_values(array_unique($uses))), LOCK_EX); @file_put_contents("$PRIV/r2-shared.json", json_encode($sh), LOCK_EX);
+}
+/* videos that came from fomaxo.com and still have their own 1080p copy here: they play fomaxo.com's file instead, and ours goes (the next copy round deletes it) */
+function r2_share_dedupe(): int {
+  $sh = json_decode((string)@file_get_contents(com_media() . '/r2-shared.json'), true); if (!is_array($sh) || !$sh) return 0;
+  $vids = shop_videos(); $n = 0;
+  foreach ($vids as $k => $v) {
+    $ck = com_key((string)($sh[(string)($v['fp'] ?? '')] ?? '')); if ($ck === '' || ($v['from'] ?? '') !== 'fomaxo.com' || ($v['hqk'] ?? '') === $ck) continue;
+    $vids[$k]['hqk'] = $ck; if (($v['hq'] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v['hq'])); unset($vids[$k]['hq']); } $n++;
+  }
+  if ($n) shop_videos_save($vids);
+  return $n;
+}
 /* the AWS signature (version 4) R2 asks for; $hd: lower-case headers in order, with host, x-amz-content-sha256 and x-amz-date */
 function r2_sign(array $c, string $method, string $uri, string $query, array $hd, string $region = 'auto'): string {
   $amz = $hd['x-amz-date']; $day = substr($amz, 0, 8); $scope = "$day/$region/s3/aws4_request";
@@ -181,8 +205,10 @@ function r2_sync(float $secs = 8): array {
   $t = microtime(true); $n = 0; $err = '';
   try {
     $have = r2_have(); $want = r2_wanted();
+    $uses = com_uses();
     foreach (array_diff_key($have, $want) as $f => $sz) {   // deleted videos leave Cloudflare too, so the 10 GB bar stays true
       if (microtime(true) - $t > $secs) break;
+      if (isset($uses[$f])) continue;   // fomaxo.com still plays it: it stays until fomaxo.com lets go of it
       [$code] = r2_req($c, 'DELETE', $f); if ($code !== 204 && $code !== 200 && $code !== 404) break;
       unset($have[$f]); r2_have_save($have); @unlink("$PRIV/r2-total.json");
     }
@@ -217,6 +243,45 @@ function r2_total(): int {
   @file_put_contents($cf, json_encode(['t' => time(), 'b' => $b]), LOCK_EX);
   return $b;
 }
+/* no space spent on files no video uses (AJAY 28/10/2026: "dont waste space for old and bad and duplicate"): every video file here, in media/v
+   and at the top of Cloudflare (fomaxo.com's com/ folder is left alone) that no video in the list uses goes, once it is an hour old (an upload
+   in progress is never touched); half-sent upload parts go after a day. At most once an hour; what went is added to api/data/vlog.txt */
+function video_tidy(bool $now = false): array {
+  global $PRIV; $mark = "$PRIV/video-tidy.json"; $j = json_decode((string)@file_get_contents($mark), true); $j = is_array($j) ? $j : [];
+  if (!$now && ($j['t'] ?? 0) > time() - 3600) return [0, 0];
+  if (shop_setting('videos') === null || !shop_videos()) return [0, 0];   // the list could not be read (or is empty): nothing is touched
+  try { r2_share_dedupe(); } catch (Throwable $e) {}
+  $keep = com_uses(); foreach (shop_videos() as $v) foreach (['file', 'prev', 'hq', 'orig'] as $k) { $f = basename((string)($v[$k] ?? '')); if ($f !== '') $keep[$f] = 1; }   // plus every file of ours fomaxo.com plays
+  $old = time() - 3600; $n = 0; $b = 0; $gone = [];
+  foreach ([video_dir(), video_pub_dir()] as $d) foreach (glob("$d/*") ?: [] as $p) {
+    $f = basename($p);
+    if (!is_file($p) || isset($keep[$f]) || !(preg_match(VIDEO_FILE, $f) || preg_match('/^[a-z0-9-]+\.(mp4|mov|webm)\.[a-f0-9]{8}$/', $f)) || (int)@filemtime($p) > $old) continue;
+    $sz = (int)@filesize($p); if (@unlink($p)) { $n++; $b += $sz; $gone[] = $f; }
+  }
+  foreach (glob("$PRIV/video-parts/*", GLOB_ONLYDIR) ?: [] as $d) if ((int)@filemtime($d) < time() - 86400) { foreach (glob("$d/*") ?: [] as $x) { $b += (int)@filesize($x); @unlink($x); } @rmdir($d); }
+  $rn = 0; $rb = 0; $c = r2_conf();
+  if ($c) {
+    $have = r2_have(); $tok = '';
+    for ($i = 0; $i < 50; $i++) {
+      [$code, $out] = r2_req($c, 'GET', '', ($tok !== '' ? 'continuation-token=' . rawurlencode($tok) . '&' : '') . 'list-type=2'); if ($code !== 200) break;
+      preg_match_all('~<Contents>(.*?)</Contents>~s', $out, $m);
+      foreach ($m[1] as $x) {
+        if (!preg_match('~<Key>([^<]+)</Key>~', $x, $k)) continue; $f = html_entity_decode($k[1], ENT_XML1);
+        if (str_contains($f, '/') || !preg_match(VIDEO_FILE, $f) || isset($keep[$f])) continue;
+        if (preg_match('~<LastModified>([^<]+)~', $x, $lm) && strtotime($lm[1]) > $old) continue;
+        [$dc] = r2_req($c, 'DELETE', $f); if ($dc !== 204 && $dc !== 200 && $dc !== 404) continue;
+        $rn++; $rb += preg_match('~<Size>(\d+)~', $x, $sz) ? (int)$sz[1] : 0; $gone[] = "cloudflare $f"; unset($have[$f]);
+      }
+      if (!preg_match('~<IsTruncated>true</IsTruncated>~', $out) || !preg_match('~<NextContinuationToken>([^<]+)~', $out, $t)) break;
+      $tok = html_entity_decode($t[1], ENT_XML1);
+    }
+    r2_have_save($have); if ($rn) @unlink("$PRIV/r2-total.json");
+  }
+  r2_share_save();
+  @file_put_contents($mark, json_encode(['t' => time(), 'n' => ($j['n'] ?? 0) + $n + $rn, 'b' => ($j['b'] ?? 0) + $b + $rb]), LOCK_EX);
+  if ($n + $rn) @file_put_contents(dirname(__DIR__) . '/api/data/vlog.txt', date('Y-m-d H:i:s') . ' tidy: ' . $n . ' files ' . round($b / 1048576, 1) . ' MB on Hostinger, ' . $rn . ' files ' . round($rb / 1048576, 1) . ' MB on Cloudflare: ' . implode(', ', $gone) . "\n", FILE_APPEND | LOCK_EX);
+  return [$n + $rn, $b + $rb];
+}
 /* the same, after this page has gone to the browser: the admin never waits on Cloudflare while it loads */
 function r2_sync_later(float $secs = 60): void {
   static $once = false; if ($once || !r2_conf()) return; $once = true;
@@ -224,7 +289,9 @@ function r2_sync_later(float $secs = 60): void {
     if (session_status() === PHP_SESSION_ACTIVE) session_write_close();   // the next admin page doesn't wait for this one
     ignore_user_abort(true);
     if (function_exists('litespeed_finish_request')) litespeed_finish_request(); elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    try { r2_share_save(); } catch (Throwable $e) {}
     try { r2_sync($secs); } catch (Throwable $e) {}
+    try { video_tidy(); } catch (Throwable $e) {}
   });
 }
 /* checks the keys (a small test file), lets fomaxo.in play the videos (CORS, so Safari's black-frame check still works),
@@ -244,6 +311,7 @@ function r2_check(array $c): string {
 /* the full video for the player: the sharp 1080p copy when Cloudflare plays it (vf = the small Hostinger copy the page falls back to), else the usual one */
 function video_full(array $v): array {
   $u = r2_url((string)($v['hq'] ?? ''));
+  if ($u === '' && com_key((string)($v['hqk'] ?? '')) !== '' && r2_on()) $u = rtrim((string)r2_conf()['url'], '/') . '/' . $v['hqk'];   // fomaxo.com's file, the same video
   return $u !== '' ? ['v' => $u, 'vf' => video_url((string)$v['file'])] : ['v' => video_cdn((string)$v['file'])];
 }
 /* the address the website plays a video from: Cloudflare when on and copied, else media/v */
