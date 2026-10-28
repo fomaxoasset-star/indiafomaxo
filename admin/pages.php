@@ -811,7 +811,7 @@ if ($tab === 'analytics' && $cv) {
   $C = conversion_stats($from, $to, $CAT);
   $pc = fn($a, $b) => $b ? round($a / $b * 100, 1) . '%' : '–';
   $since = '<p class="muted small cvs">Counting since ' . h(dmy($C['since'])) . '.</p>';
-  $body .= $sw('#cvPanes', ['products' => 'Products', 'checkout' => 'Checkout', 'campaigns' => 'Campaigns', 'scroll' => 'Homepage scroll']) . '<div class="cv panes" id="cvPanes">';
+  $body .= $sw('#cvPanes', ['products' => 'Products', 'checkout' => 'Checkout', 'campaigns' => 'Campaigns', 'bagc' => 'Bag by country', 'scroll' => 'Homepage scroll']) . '<div class="cv panes" id="cvPanes">';
   /* 1. products */
   $body .= '<div class="box c-prod on" data-pane="products"><div class="bh"><h3>Products: viewed → bag → bought</h3></div><div class="bb np"><table class="grid ctab"><thead><tr><th>Product</th><th class="r">Viewed</th><th class="r">To bag</th><th class="r">Orders</th><th class="r">Units</th><th class="r">Buy rate</th></tr></thead><tbody>';
   if (!$C['products']) $body .= '<tr><td colspan="6" class="empty">No product views in these dates.</td></tr>';
@@ -835,7 +835,13 @@ if ($tab === 'analytics' && $cv) {
   if (!$C['campaigns']) $body .= '<tr><td colspan="5" class="empty">No visits in these dates.</td></tr>';
   foreach ($C['campaigns'] as $x) $body .= '<tr><td><b>' . h(SOURCES[$x['source']] ?? ucfirst($x['source'] ?: 'direct')) . '</b>' . ($x['campaign'] !== '' ? '<small class="cn">' . h($x['campaign']) . '</small>' : '') . '</td><td class="r">' . number_format($x['visits']) . '</td><td class="r">' . number_format($x['bought']) . '</td><td class="r">' . $pc($x['bought'], $x['visits']) . '</td><td class="r">' . ($x['revenue'] ? rupees($x['revenue']) : '–') . '</td></tr>';
   $body .= '</tbody></table><p class="muted small cvn">Tag a post or ad link: fomaxo.in/?utm_source=instagram&amp;utm_campaign=diwali-post</p>' . str_replace('cvs">Counting', 'cvs cvn">Campaign names: counting', $since) . '</div></div>';
-  /* 4. homepage scroll */
+  /* 4. people who added to bag, by country */
+  $bc = $C['bagc']; $bcT = array_sum($bc);
+  $body .= '<div class="box c-bagc" data-pane="bagc"><div class="bh"><h3>Added to bag by country</h3>' . ($bcT ? '<span class="bct">' . number_format($bcT) . ($bcT === 1 ? ' person' : ' people') . '</span>' : '') . '</div><div class="bb np"><table class="grid ctab"><thead><tr><th>Country</th><th class="r">People</th><th class="r">Share</th></tr></thead><tbody>';
+  if (!$bc) $body .= '<tr><td colspan="3" class="empty">Nobody added to the bag in these dates.</td></tr>';
+  foreach ($bc as $cc => $n) $body .= '<tr><td><b>' . ($cc !== '' ? '<span class="flag">' . fomaxo_flag((string)$cc) . '</span> ' . h(fomaxo_country_name((string)$cc)) : '<span class="muted">Not known</span>') . '</b></td><td class="r"><b>' . number_format($n) . '</b></td><td class="r muted">' . $pc($n, $bcT) . '</td></tr>';
+  $body .= '</tbody></table><p class="muted small cvn">People who added a perfume to the bag in these dates, by the country they visited from.</p></div></div>';
+  /* 5. homepage scroll */
   $hm = $C['home'];
   $body .= '<div class="box c-scroll" data-pane="scroll"><div class="bh"><h3>Homepage scroll</h3></div><div class="bb"><div class="fun cfun">';
   foreach ([0 => 'Opened the homepage', 25 => 'Scrolled 25%', 50 => 'Scrolled 50%', 75 => 'Scrolled 75%', 100 => 'Reached the bottom'] as $m => $l) {
