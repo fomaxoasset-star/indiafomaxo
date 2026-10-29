@@ -458,7 +458,8 @@ setTimeout(function () {   // after the page has loaded (the list comes after th
   }
   /* a way that hangs (some Mac Safari videos never finish in the fast way) is given up after a while, so the next way or the next video goes on */
   var limit = function (p, ms, stop) { var t; return Promise.race([p, new Promise(function (ok) { t = setTimeout(function () { try { stop && stop(); } catch (e) {} ok(null); }, ms); })]).then(function (r) { clearTimeout(t); return r; }); };
-  var tell = function (t) { if (f.querySelector('[name=act]')) try { navigator.sendBeacon && navigator.sendBeacon('../vlog.php', new Blob([JSON.stringify({v: ['preview ' + t]})], {type: 'application/json'})); } catch (e) {} };   // fomaxo.com: written to vid-report.txt
+  var tell = function (t) { try { if (f.querySelector('[name=act]')) navigator.sendBeacon && navigator.sendBeacon('../vlog.php', new Blob([JSON.stringify({v: ['preview ' + t]})], {type: 'application/json'}));   // fomaxo.com: written to vid-report.txt
+    else { var fd = new FormData(); fd.append('csrf', csrf || ''); fd.append('t', 'preview ' + t); fetch('/admin/?vlog=1', {method: 'POST', body: fd, credentials: 'same-origin', keepalive: true}).catch(function () {}); } } catch (e) {} };   // fomaxo.in: api/data/vlog.txt, so a video still playing its full file in the row can be looked into (29/10/2026: 21 of 41 had no preview)
   var say = function (t) {
     if (!pill) { pill = document.createElement('div'); pill.setAttribute('role', 'status'); pill.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:60;background:#111;color:#d4af37;border:1px solid #d4af37;border-radius:999px;padding:6px 14px;font-size:13px;max-width:calc(100vw - 24px)'; document.body.appendChild(pill); }
     pill.textContent = t; pill.hidden = !t;
@@ -549,6 +550,8 @@ setTimeout(function () {   // after the page has loaded (the list comes after th
         return fetch(location.href, {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) { if (j && j.ok) { made++; row.removeAttribute('data-mkprev'); row.setAttribute('data-pv', '1'); if (row._mk) { row._mk.disabled = false; row._mk.textContent = 'Preview ✓ · Make again'; } } else showBtn(row, true); });
       }).catch(function (e) { if (!gone) { tell('error ' + String(e && (e.message || e.name) || e).slice(0, 80)); showBtn(row, true); } }).then(next);
   }
+  var need = rows.filter(function (r) { return r.hasAttribute('data-mkprev'); }).length;
+  if (need > queue.length) tell((need - queue.length) + ' of ' + need + ' without a preview not started by itself: ' + (SAFARI ? 'Safari' : cant ? 'stopped for 7 days in this browser' : 'failed before in this browser') + ' | ' + navigator.userAgent.slice(0, 120));
   if (queue.length) next();
 }, 1500);
 
