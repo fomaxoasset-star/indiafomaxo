@@ -55,6 +55,8 @@ AddType font/woff2 .woff2
   # (WhatsApp and everyone else get the wide 1200x630 one at the same address), as on fomaxo.com.
   RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Instagram|meta-externalagent|Facebot) [NC]
   RewriteRule ^assets/img/link-preview\.jpg$ assets/img/link-preview-square.jpg [L]
+  # the home page: the same index.html, sent without its code notes (about 30 KB less, api/lean-lib.php)
+  RewriteRule ^(index\.html)?$ api/home.php [L,QSA]
   RewriteRule ^product/([a-z0-9-]{1,48})/?$ api/seo.php?p=product&id=$1 [L,QSA]
   # Pictures uploaded on the admin page (media/p) and review photos (media/r): the web server sends its own copy; a picture with no copy
   # yet goes to PHP once, which makes it (api/pub-lib.php). Before, every such picture held a PHP process while it downloaded.
