@@ -16,6 +16,7 @@ declare(strict_types=1);
    the admin page, as on the site. */
 ob_start();   // a stray blank line from a server config file must not land before <?xml (Google can't read the list then)
 require __DIR__ . '/store-lib.php';
+require __DIR__ . '/lean-lib.php';   // pages go out without index.html's code notes, with "not modified" on a reload (fx_send_page)
 header('X-Content-Type-Options: nosniff');
 
 const SITE = 'https://fomaxo.in';
@@ -195,7 +196,7 @@ if ($page === 'returns') {   // the Returns page at its own address; keep the wo
     $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
   $text = '<noscript><div style="max-width:720px;margin:40px auto;padding:0 16px"><h1>FOMAXO Returns &amp; refunds</h1>' . implode('', array_map(fn($i) => '<h2>' . h($i[0]) . '</h2><p>' . h($i[1]) . '</p>', $items)) . '</div></noscript>';
   $html = preg_replace('/<body([^>]*)>/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $text), $html, 1);
-  echo preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1);
+  fx_send_page(preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1));
   exit;
 }
 
@@ -216,7 +217,7 @@ if ($page === 'faq') {   // the FAQ page at its own address, with FAQPage data f
     $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
   $text = '<noscript><div style="max-width:720px;margin:40px auto;padding:0 16px"><h1>FOMAXO questions &amp; answers</h1>' . implode('', array_map(fn($i) => '<h2>' . h($i[0]) . '</h2><p>' . h($i[1]) . '</p>', $items)) . '</div></noscript>';
   $html = preg_replace('/<body([^>]*)>/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $text), $html, 1);
-  echo preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1);
+  fx_send_page(preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1));
   exit;
 }
 
@@ -243,7 +244,7 @@ $go = '<base href="/"><script>history.replaceState(null,"","/"+' . json_encode($
 if (!$p) {   // unknown or hidden product: the shop's own "not found" page, and Google is told it is gone
   http_response_code(404);
   $html = preg_replace('/<!--seo-->.*?<!--\/seo-->/s', '<meta name="robots" content="noindex">', $html, 1);
-  echo preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1);
+  fx_send_page(preg_replace('/<meta charset="utf-8">/', '$0' . $go, $html, 1));
   exit;
 }
 
@@ -287,4 +288,4 @@ $swap = [
 ];
 foreach ($swap as $re => $to) $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
 // the home banner's early download (top of index.html) skips itself here: $go below sets the #/product/… address first
-echo preg_replace('/<meta charset="utf-8">/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $go), $html, 1);
+fx_send_page(preg_replace('/<meta charset="utf-8">/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $go), $html, 1));
