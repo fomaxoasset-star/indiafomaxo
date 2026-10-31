@@ -221,18 +221,34 @@ function markSent(btn, day) {
     if (f && f.requestSubmit) f.requestSubmit(b); else if (f) { if (b.dataset.confirm && !confirm(b.dataset.confirm)) return; var i = document.createElement('input'); i.type = 'hidden'; i.name = b.name; i.value = b.value; f.appendChild(i); f.submit(); }
   });
 
-  /* Trash: Select all and the ticks light "Put back selected (N)", which asks before putting them back */
+  /* Trash: Select all and the ticks light "Put back selected (N)", which asks before putting them back.
+     The search box hides the orders that do not match as you type (order no, name, mobile, email, coupon, payment id, note); Select all and
+     Put back selected only ever take the orders that are shown, same as the Orders search (AJAY, 2026-10-31) */
   document.querySelectorAll('.trform').forEach(function (f) {
     var all = f.querySelector('[data-trall]'), b = f.querySelector('[data-trsel]'), bx = [].slice.call(f.querySelectorAll('input[name="nos[]"]'));
+    var q = f.querySelector('[data-trq]'), cnt = f.querySelector('[data-trcnt]');
     if (!all || !b) return;
+    var row = function (x) { return x.closest('tr'); }, shown = function (x) { return !row(x).hidden; };
     var up = function () {
-      var n = bx.filter(function (x) { return x.checked; }).length;
+      var v = bx.filter(shown), n = v.filter(function (x) { return x.checked; }).length;
       b.disabled = !n; b.textContent = 'Put back selected (' + n + ')'; b.dataset.confirm = 'Put back ' + n + ' order' + (n === 1 ? '' : 's') + '?';
-      all.checked = n > 0 && n === bx.length; all.indeterminate = n > 0 && n < bx.length;
+      all.checked = n > 0 && n === v.length; all.indeterminate = n > 0 && n < v.length;
     };
-    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked; }); up(); });
+    var find = function () {
+      var t = (q.value || '').trim().toLowerCase(), d = t.replace(/\D/g, '').slice(-10), k = 0;
+      bx.forEach(function (x) {
+        var r = row(x), ok = !t || (r.dataset.s || '').indexOf(t) > -1 || (d.length >= 4 && (r.dataset.p || '').indexOf(d) > -1);
+        r.hidden = !ok; if (!ok) x.checked = false; else k++;
+      });
+      if (cnt) { cnt.hidden = !t; cnt.textContent = k + ' of ' + bx.length + ' shown'; }
+      up();
+    };
+    all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked && shown(x); }); up(); });
     bx.forEach(function (x) { x.addEventListener('change', up); });
-    up();
+    if (q) { q.addEventListener('input', find); q.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); }); }
+    /* a hidden tick never goes with Put back selected */
+    f.addEventListener('submit', function () { bx.forEach(function (x) { if (!shown(x)) x.checked = false; }); });
+    if (q && q.value) find(); else up();
   });
 
   /* Review requests / Refill reminders: ✕ in front of a name asks first, then takes that order off the list without reloading */
