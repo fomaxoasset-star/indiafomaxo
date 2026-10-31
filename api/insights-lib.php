@@ -142,7 +142,7 @@ function insights_checkout(string $from, string $to): array {
     foreach ($q('SELECT name, phone, address, state FROM leads WHERE ordered = 0 AND updated >= ? AND updated <= ?', $a) as $l) { $e['people']++; foreach (['name', 'phone', 'address', 'state'] as $k) if (trim((string)$l[$k]) === '') $e[$k]++; }
     $L[] = "Typed but did not order | {$e['people']} (left empty: name {$e['name']}, mobile {$e['phone']}, address {$e['address']}, state {$e['state']})";
   } catch (Throwable $e) {}
-  try { $u = $q("SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders WHERE status = 'awaiting' AND test = 0 AND created >= ? AND created <= ?", $a)->fetch(); $L[] = "Unpaid online tries | {$u['n']} (Rs {$u['t']})"; } catch (Throwable $e) {}
+  try { $u = $q("SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM orders WHERE status = 'awaiting' AND test = 0 AND created >= ? AND created <= ?", $a)->fetch(); $L[] = "Unpaid online tries | {$u['n']} (" . rupees((int)$u['t']) . ")"; } catch (Throwable $e) {}
   return $L;
 }
 
