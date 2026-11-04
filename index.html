@@ -764,6 +764,8 @@ html[data-mode="light"] .dr-foot .bag-wa-ok{color:#1e7a47}
 .line-item .o{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-top:4px}
 .line-item .q{display:inline-flex;border:1px solid var(--line);margin-top:12px;height:34px}
 .line-item .q button{width:32px;color:var(--champagne)}
+.line-item .q .q-in{width:64px;min-width:0;height:auto;border:0;background:none;color:inherit;text-align:center;font:inherit;font-size:16px;font-weight:300;padding:0;-moz-appearance:textfield;appearance:textfield}
+.line-item .q .q-in::-webkit-inner-spin-button,.line-item .q .q-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .line-item .q span{min-width:28px;display:flex;align-items:center;justify-content:center;font-size:13px}
 .line-item .rm{text-transform:uppercase;color:var(--dim);margin-top:10px;display:block}
 .line-item .rm:hover{color:var(--gold-hi)}
@@ -3210,7 +3212,15 @@ const P = Object.fromEntries([...S.products, ...PC].map(p => [p.id, p]));
 const STOCK = LIVE.stock || {}, LOW = LIVE.lowStock ?? 5;
 const stockLeft = (p, s) => { const v = STOCK[p.id] && STOCK[p.id][s]; return v === undefined || v === null ? null : +v; };
 /* most of one item a customer can order online: its stock, never more than MAX_PER_ITEM (admin → Stocks "Max per item per order", shop_max_per_item() in api/shop-db.php); over that, "Contact FOMAXO for Massive Order" */
-const MAX_PER_ITEM = +LIVE.perItem >= 1 ? +LIVE.perItem : 30, MASS_TXT = 'Contact FOMAXO for Massive Order';
+/* the checkout Full name "fake name" (admin → Stocks "No limit name", only its fnv1a32 code comes in LIVE.own): no per item limit up to the stock,
+   and the bag gets a number box (AJAY 2026-11-04). Same as shop_owner_key() / shop_item_cap() in api/shop-db.php */
+const ownKey = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+const fnv32 = s => { let h = 0x811c9dc5; for (const b of new TextEncoder().encode(s)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+const isOwn = n => !!LIVE.own && ownKey(n) !== '' && fnv32(ownKey(n)) === LIVE.own;
+const BASE_PER_ITEM = +LIVE.perItem >= 1 ? +LIVE.perItem : 30;
+let OWN = (() => { try { return isOwn(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').name); } catch(e) { return false; } })();
+let MAX_PER_ITEM = OWN ? 999 : BASE_PER_ITEM;
+const MASS_TXT = 'Contact FOMAXO for Massive Order';
 const maxQ = (p, s) => Math.min(MAX_PER_ITEM, stockLeft(p, s) ?? MAX_PER_ITEM);
 const massLink = (id, opt) => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(`Hello FOMAXO, I would like to place a massive order of ${P[id].name} ${optLabel(P[id], opt)}.`)}`;
 function massPopup(id, opt){
@@ -3480,7 +3490,7 @@ function renderCart(){
     return `<div class="line-item">
       <a href="#/product/${p.id}" data-close><img ${PIC(lineImg(l), '80px')} alt="${esc(p.name)}"></a>
       <div><h4>${esc(p.name)}</h4><div class="o">${optLabel(p, l.opt)} · ${esc(p.family.split('·')[0])}</div>${l.picks ? `<div class="o" style="text-transform:none;letter-spacing:.02em;color:var(--champagne)">${l.picks.map(id => P[id] ? esc(P[id].name) : '').join(' · ')}</div>` : ''}
-        <div class="q"><button data-q="${i}" data-d="-1" aria-label="${l.qty === 1 ? 'Remove' : 'Decrease'}">${l.qty === 1 ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' : '−'}</button><span>${l.qty}</span><button data-q="${i}" data-d="1" aria-label="Increase">+</button></div>
+        <div class="q"><button data-q="${i}" data-d="-1" aria-label="${l.qty === 1 ? 'Remove' : 'Decrease'}">${l.qty === 1 ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' : '−'}</button>${OWN ? `<input class="q-in" type="number" inputmode="numeric" min="1" max="${maxQ(p, l.opt)}" value="${l.qty}" data-qi="${i}" aria-label="Quantity">` : `<span>${l.qty}</span>`}<button data-q="${i}" data-d="1" aria-label="Increase">+</button></div>
         <div style="margin-top:10px">${priceHTML(p, l.opt)}${stockTag(p, l.opt)}</div>
         <button class="rm" data-rm="${i}">Remove</button></div></div>`; }).join('') + bagLikeHTML();
   const r = $('.bl-row', body); if (r && rowX) r.scrollLeft = rowX;
@@ -3493,6 +3503,11 @@ function renderCart(){
   const gc = $('#goCheckout'); if (gc) gc.onclick = () => goCheckout('#/checkout');
   bagWaWire();
 }
+/* "fake name" only: type how many in the bag (up to the stock) */
+$('#cartBody').addEventListener('change', e => { const t = e.target.closest('[data-qi]'); if (!t) return; const l = cart[+t.dataset.qi]; if (!l) return;
+  const cap = Math.max(1, maxQ(P[l.id], l.opt) - (cartQty(l.id, l.opt) - l.qty)), n = parseInt(t.value) || 1;
+  if (n > cap) toast(`Only ${cap} left of ${P[l.id].name}`); l.qty = Math.max(1, Math.min(cap, n)); save(); });
+$('#cartBody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('[data-qi]')) e.target.blur(); });
 $('#cartBody').addEventListener('click', e => {
   const q = e.target.closest('[data-q]'), rm = e.target.closest('[data-rm]'), lk = e.target.closest('[data-like]');
   if (lk){ const o = lk.dataset.opt; addToCart(lk.dataset.like, P[lk.dataset.like].sizes.find(s => String(s) === o) ?? o); return; }
@@ -5409,6 +5424,10 @@ function bindCheckout(q){
   $$('input[name=pay]', f).forEach(r => r.onchange = upd);
   f.addEventListener('input', e => { if (e.isTrusted && e.target.name !== 'pay') typed = true; }, true);
   f.addEventListener('input', upd); f.addEventListener('change', upd);
+  /* "fake name" typed as Full name: no per item limit up to the stock, and a number box in the bag */
+  f.addEventListener('change', e => { if (e.target.name !== 'name') return; const o = isOwn(e.target.value); if (o === OWN) return; OWN = o; MAX_PER_ITEM = o ? 999 : BASE_PER_ITEM;
+    try { localStorage.setItem(CO_KEY, JSON.stringify({...coSaved(), name: e.target.value})); } catch(x) {}
+    if (!o) cart.forEach(l => { if (l.qty > MAX_PER_ITEM) l.qty = MAX_PER_ITEM; }); save(); });
   /* "Left at checkout" in the admin: the details and bag, sent a moment after they are typed */
   let leadT; const leadOf = () => ({name: val('name'), phone: phoneVal(), cc: E.cc.value, email: val('email'), house: val('house'), street: '', landmark: val('landmark'), city: val('city'), state: E.state.value, pin: val('pin')});
   f.addEventListener('input', e => { if (!['name', 'phone', 'email', 'house', 'street', 'landmark', 'city', 'state', 'pin'].includes(e.target.name)) return; clearTimeout(leadT);
