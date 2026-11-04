@@ -171,11 +171,11 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $body .= '<form method="post" class="box fill trform">' . $csrfField . '<input type="hidden" name="action" value="untrash">';
   if (!$rows) $body .= '<div class="bb"><p class="empty">Trash is empty.</p></div>';
   else {
-    $body .= '<div class="bh trbar"><label class="trall"><input type="checkbox" data-trall> Select all</label><button class="btn sm" data-trsel disabled>Put back selected (0)</button></div>'
+    $body .= '<div class="bh trbar"><label class="trall"><input type="checkbox" data-trall> Select all</label><input type="search" class="trq" data-trq placeholder="Search order no, name, mobile, coupon" aria-label="Search Trash"><span class="muted small trcnt" data-trcnt hidden></span><button class="btn sm" data-trsel disabled>Put back selected (0)</button></div>'
       . '<div class="bb np"><table class="grid trlist"><thead><tr><th class="tck"></th><th>Order</th><th>Customer</th><th class="r">Total</th><th>Status · closed</th><th class="r"></th></tr></thead><tbody>';
     foreach ($rows as $t) {
       $o = (json_decode((string)$t['row_json'], true) ?: []) + ['no' => $t['no'], 'created' => '', 'name' => '', 'phone' => '', 'total' => 0, 'method' => '', 'status' => '', 'paid_at' => null];
-      $body .= '<tr><td class="tck"><input type="checkbox" name="nos[]" value="' . h($t['no']) . '" aria-label="Select ' . h($t['no']) . '"></td>'
+      $body .= '<tr data-s="' . h(mb_strtolower(implode(' ', [$t['no'], $o['name'], $o['email'] ?? '', $o['payment_id'] ?? '', $o['admin_note'] ?? '', $o['coupon'] ?? '', $o['city'] ?? '']))) . '" data-p="' . h(preg_replace('/\D/', '', (string)$o['phone'])) . '"><td class="tck"><input type="checkbox" name="nos[]" value="' . h($t['no']) . '" aria-label="Select ' . h($t['no']) . '"></td>'
         . '<td class="nw"><b>' . h($t['no']) . '</b><small>' . h(date('d/m/Y, H:i', strtotime((string)$o['created']))) . '</small></td>'
         . '<td><b>' . h($o['name'] ?: 'No name') . '</b><small>' . h((string)$o['phone']) . '</small></td>'
         . '<td class="r nw"><b>' . rupees((int)$o['total']) . '</b><small>' . ($o['method'] === 'cod' ? 'Cash on delivery' : 'Online (Razorpay)') . '</small></td>'
