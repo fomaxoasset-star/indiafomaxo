@@ -173,6 +173,10 @@ setcookie('fx_owner', fomaxo_owner_token(), ['expires' => time() + 400 * 86400, 
 
 /* ---------------- the product list (database, falling back to index.html) ---------------- */
 $CAT = fomaxo_catalog()['products'];
+/* the order of the products (AJAY 2026-11-04 "I want change row myself", like Stocks): drag the dots on Admin → Products; saved as shop setting
+   'prod_order' (product ids in order). The admin list and the website (STORE_LIVE.order, api/live.php) follow it; products not in it keep their usual place after. */
+$PO = array_values(array_filter((array)json_decode((string)shop_setting('prod_order'), true), 'is_string'));
+if ($PO) { $rk = array_flip($PO); $ps = array_flip(array_map('strval', array_keys($CAT))); uksort($CAT, fn($x, $y) => ($rk[(string)$x] ?? PHP_INT_MAX) <=> ($rk[(string)$y] ?? PHP_INT_MAX) ?: $ps[(string)$x] <=> $ps[(string)$y]); }
 $LIVE = shop_products();
 
 /* ---------------- actions ---------------- */
@@ -515,6 +519,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $so = $on ? array_values(array_diff($so, $ids)) : array_values(array_unique(array_merge($so, $ids)));
     shop_set('sale_off', json_encode($so));
     go(['tab' => 'products'], ($id === 'all' ? 'All products' : $CAT[$id]['name']) . ($on ? ': discount On. Customers pay the Exclusive price, with the Original crossed out.' : ': discount Off. Customers pay the Original price. Both prices stay saved.'));
+  }
+  if ($a === 'prod_order') {   // Products: drag the dots in front of a product (admin.js, without reloading, like Stocks); the website shows the products in this order too
+    $all = array_map('strval', array_keys($CAT)); $keys = array_values(array_unique(array_filter(explode(',', (string)($_POST['keys'] ?? '')), fn($k) => in_array($k, $all, true))));
+    $ok = (bool)$keys; if ($ok) { foreach ($all as $k) if (!in_array($k, $keys, true)) $keys[] = $k; shop_set('prod_order', json_encode($keys)); }
+    header('Content-Type: application/json'); header('Cache-Control: no-store'); echo json_encode(['ok' => $ok, 'msg' => $ok ? 'Order saved' : 'Not saved, reload and try again']); exit;
   }
   if ($a === 'show') {
     $id = (string)($_POST['id'] ?? ''); $d = $LIVE[$id] ?? null;
