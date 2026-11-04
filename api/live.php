@@ -45,6 +45,7 @@ if ($js === '') try {
     if (!empty($d['prices'])) $live['prices'][$id] = $d['prices'];
     if (!empty($d['compareAt'])) $live['compareAt'][$id] = $d['compareAt'];
   }
+  if ($po = array_values(array_filter((array)json_decode((string)shop_setting('prod_order'), true), 'is_string'))) $live['order'] = $po;   // the product order dragged on Admin → Products
   if ($so = shop_sale_off()) $live['saleOff'] = $so;   // Discount Off on Admin → Products: those products show and sell at their Original price
   if (($loc = shop_store_location()) !== null)
     $live['stores'] = $loc['show'] ? array_map(fn($st) => $st + ['mapQuery' => shop_map_query_from_link((string)($st['link'] ?? ''))], $loc['stores']) : false;

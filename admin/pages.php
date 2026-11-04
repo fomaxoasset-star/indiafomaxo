@@ -761,13 +761,14 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     . '<div class="box fill"><div class="bh">' . (function () use ($CAT, $csrfField) { $any = false; $all = true;   // Discount for all products: On while every product with an Original price has its discount On
         foreach ($CAT as $p) { $sv = $p['sale'] ?? ['prices' => $p['prices'], 'was' => $p['was']]; foreach ($sv['prices'] as $k => $pr) if ((float)($sv['was'][$k] ?? 0) > $pr) { $any = true; if (!empty($p['saleOff'])) $all = false; break; } }
         return $any ? '<form method="post" class="tgo dall' . ($all ? ' on' : '') . '">' . $csrfField . '<input type="hidden" name="action" value="saleoff"><input type="hidden" name="id" value="all"><label class="tgs"><span>Discount for all products</span><input type="checkbox" class="tgl" name="on" value="1"' . ($all ? ' checked' : '') . ' aria-label="Discount on or off for all products" onchange="this.form.submit()"><b class="y">On</b><b class="n">Off</b></label></form>' : ''; })() . '<span class="muted small">Tap the ring dot to show or hide a product on the website: filled green = on the website, empty = hidden. Press Edit to change a product’s name, descriptions, notes, sizes, prices, your cost or photos.</span></div><div class="bb"><div class="prod phd" aria-hidden="true"><span class="pvis">Show</span><span></span><span>Product</span><span>Prices</span><span>Sold · ' . h(period_label($D)) . ' (' . number_format($soldAll) . ')</span><span></span></div>';
+  $body .= '<div class="plist">';
   foreach ($CAT as $id => $p) {
     if ($qq !== '' && stripos($p['name'] . ' ' . kind_label($p['kind']), $qq) === false) continue;
     $off = !empty($p['hidden']);   // the ring dot: one tap shows or hides the product on the website, without opening it
     $sv = $p['sale'] ?? ['prices' => $p['prices'], 'was' => $p['was']]; $dOn = empty($p['saleOff']);   // the saved prices (the catalog shows the Original price while the discount is Off)
     $hasWas = (bool)array_filter($sv['prices'], fn($pr, $k) => (float)($sv['was'][$k] ?? 0) > $pr, ARRAY_FILTER_USE_BOTH);
-    $body .= '<div class="prod' . ($off ? ' off' : '') . '"><form method="post" class="pvis">' . $csrfField . '<input type="hidden" name="action" value="show"><input type="hidden" name="id" value="' . h($id) . '">'
-      . '<button class="rdot' . ($off ? '' : ' on') . '" name="show" value="' . ($off ? '1' : '') . '" title="' . ($off ? 'Hidden. Tap to show on the website' : 'On the website. Tap to hide') . '" aria-label="' . h($p['name'] . ($off ? ': hidden, tap to show on the website' : ': on the website, tap to hide')) . '"></button></form>'
+    $body .= '<div class="prod' . ($off ? ' off' : '') . '" data-k="' . h((string)$id) . '"><div class="pvc">' . ($qq === '' ? '<span class="sdrag pdrag" title="Drag to change the order" aria-hidden="true"><svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="2" cy="2" r="1.6"/><circle cx="8" cy="2" r="1.6"/><circle cx="2" cy="8" r="1.6"/><circle cx="8" cy="8" r="1.6"/><circle cx="2" cy="14" r="1.6"/><circle cx="8" cy="14" r="1.6"/></svg></span>' : '') . '<form method="post" class="pvis">' . $csrfField . '<input type="hidden" name="action" value="show"><input type="hidden" name="id" value="' . h($id) . '">'
+      . '<button class="rdot' . ($off ? '' : ' on') . '" name="show" value="' . ($off ? '1' : '') . '" title="' . ($off ? 'Hidden. Tap to show on the website' : 'On the website. Tap to hide') . '" aria-label="' . h($p['name'] . ($off ? ': hidden, tap to show on the website' : ': on the website, tap to hide')) . '"></button></form>' . '</div>'
       . $thumbOf($id) . '<div class="pinfo"><b>' . h($p['name']) . '</b><small>' . h(kind_label($p['kind'])) . (!empty($p['added']) ? ' · added here' : '') . '</small>'
       . '<span class="ptag ' . ($off ? 'hid">Hidden' : 'on">On website') . '</span></div>'
       . '<div class="pprices">' . implode('', array_map(function ($opt, $pr) use ($p, $sv, $dOn) { $w = (float)($sv['was'][$opt] ?? 0); $has = $w > $pr;   // Original, then Exclusive; discount Off: only the Original, which customers pay
@@ -777,7 +778,7 @@ if ($tab === 'products' && ($adding || ($editId !== '' && isset($CAT[$editId])))
     if (!empty($p['added'])) $body .= '<form method="post" onsubmit="return confirm(\'Delete ' . h(addslashes($p['name'])) . ' for good?\')">' . $csrfField . '<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="' . h($id) . '"><button class="btn sm danger">Delete</button></form>';
     $body .= '</div></div>';
   }
-  $body .= '</div></div>';
+  $body .= '</div>' . ($qq === '' ? '<p class="muted small" style="margin:8px 4px 0"><b>Order:</b> drag the dots on the left to move a product. The website shows the products in this order too. <b class="tgok pok" aria-live="polite"></b></p>' : '') . '</div></div>';
 }
 
 /* ============ Expenses ============ */

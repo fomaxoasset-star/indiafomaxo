@@ -1288,3 +1288,38 @@ document.addEventListener('click', function (e) {
     post(d).then(function(j){if(!j.ok)throw j.msg;p.remove();g.fxMark&&g.fxMark();say("Removed. It is saved.")}).catch(function(e){b.disabled=false;say(typeof e==="string"?e:"Please check the internet and try again.",true)});
   });
 })();
+
+/* Products: drag the dots (mouse or finger) to change the order of the products, like Stocks; it saves at once, without reloading, and the website follows it */
+(function () {
+  var list = document.querySelector('.plist'); if (!list || !list.querySelector('.pdrag')) return;
+  var row = null, y0 = 0, ok = document.querySelector('.pok');
+  function rows() { return Array.prototype.slice.call(list.querySelectorAll('.prod[data-k]')); }
+  function save() {
+    var d = new FormData(); d.append('csrf', list.querySelector('[name=csrf]').value); d.append('action', 'prod_order'); d.append('keys', rows().map(function (x) { return x.dataset.k; }).join(','));
+    ok.className = 'tgok pok'; ok.textContent = 'Saving order…';
+    fetch(location.href, {method: 'POST', body: d, credentials: 'same-origin'}).then(function (r) { return r.json(); })
+      .then(function (j) { ok.className = 'tgok pok ' + (j.ok ? 'ok' : 'bad'); ok.textContent = j.ok ? j.msg + ' ✓' : j.msg; })
+      .catch(function () { ok.className = 'tgok pok bad'; ok.textContent = 'Order not saved, try again'; });
+  }
+  list.addEventListener('pointerdown', function (e) {
+    var h = e.target.closest('.pdrag'); if (!h || e.button > 0) return;
+    e.preventDefault(); rows().forEach(function (x, i) { x.dataset.at = i; });
+    row = h.closest('.prod'); y0 = e.clientY; row.classList.add('drag'); document.body.classList.add('vdragging');
+    h.setPointerCapture(e.pointerId);
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!row) return;
+    var prev = row.previousElementSibling, next = row.nextElementSibling, t0 = row.offsetTop;
+    if (next) { var b = next.getBoundingClientRect(); if (e.clientY > b.top + b.height / 2) list.insertBefore(next, row); }
+    if (prev) { var a = prev.getBoundingClientRect(); if (e.clientY < a.top + a.height / 2) list.insertBefore(row, prev); }
+    y0 += row.offsetTop - t0; row.style.transform = 'translateY(' + (e.clientY - y0) + 'px)';
+    if (e.clientY < 40) window.scrollBy(0, -12); else if (e.clientY > innerHeight - 40) window.scrollBy(0, 12);
+  });
+  function end() {
+    if (!row) return;
+    var moved = row.dataset.at !== String(rows().indexOf(row));
+    row.classList.remove('drag'); row.style.transform = ''; document.body.classList.remove('vdragging'); row = null;
+    if (moved) save();
+  }
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+})();
