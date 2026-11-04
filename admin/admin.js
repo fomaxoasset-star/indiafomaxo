@@ -226,7 +226,7 @@ function markSent(btn, day) {
      Put back selected only ever take the orders that are shown, same as the Orders search (AJAY, 2026-10-31) */
   document.querySelectorAll('.trform').forEach(function (f) {
     var all = f.querySelector('[data-trall]'), b = f.querySelector('[data-trsel]'), bx = [].slice.call(f.querySelectorAll('input[name="nos[]"]'));
-    var q = f.querySelector('[data-trq]'), cnt = f.querySelector('[data-trcnt]');
+    var q = f.querySelector('[data-trq]'), cnt = f.querySelector('[data-trcnt]'), not = f.querySelector('[data-trnot]');
     if (!all || !b) return;
     var row = function (x) { return x.closest('tr'); }, shown = function (x) { return !row(x).hidden; };
     var up = function () {
@@ -235,16 +235,19 @@ function markSent(btn, day) {
       all.checked = n > 0 && n === v.length; all.indeterminate = n > 0 && n < v.length;
     };
     var find = function () {
-      var t = (q.value || '').trim().toLowerCase(), d = t.replace(/\D/g, '').slice(-10), k = 0;
+      /* Without ticked (or the word typed as -fake): show the orders that do NOT have the word (AJAY, 2026-11-04) */
+      var t = (q.value || '').trim().toLowerCase(), neg = !!(not && not.checked); if (t[0] === '-') { neg = true; t = t.slice(1).trim(); }
+      var d = t.replace(/\D/g, '').slice(-10), k = 0;
       bx.forEach(function (x) {
-        var r = row(x), ok = !t || (r.dataset.s || '').indexOf(t) > -1 || (d.length >= 4 && (r.dataset.p || '').indexOf(d) > -1);
+        var r = row(x), hit = (r.dataset.s || '').indexOf(t) > -1 || (d.length >= 4 && (r.dataset.p || '').indexOf(d) > -1), ok = !t || hit !== neg;
         r.hidden = !ok; if (!ok) x.checked = false; else k++;
       });
-      if (cnt) { cnt.hidden = !t; cnt.textContent = k + ' of ' + bx.length + ' shown'; }
+      if (cnt) { cnt.hidden = !t; cnt.textContent = k + ' of ' + bx.length + ' shown' + (neg ? ' without "' + t + '"' : ''); }
       up();
     };
     all.addEventListener('change', function () { bx.forEach(function (x) { x.checked = all.checked && shown(x); }); up(); });
     bx.forEach(function (x) { x.addEventListener('change', up); });
+    if (not && q) not.addEventListener('change', find);
     if (q) { q.addEventListener('input', find); q.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); }); }
     /* a hidden tick never goes with Put back selected */
     f.addEventListener('submit', function () { bx.forEach(function (x) { if (!shown(x)) x.checked = false; }); });

@@ -171,7 +171,7 @@ if ($tab === 'orders' && isset($_GET['ask'])) {
   $body .= '<form method="post" class="box fill trform">' . $csrfField . '<input type="hidden" name="action" value="untrash">';
   if (!$rows) $body .= '<div class="bb"><p class="empty">Trash is empty.</p></div>';
   else {
-    $body .= '<div class="bh trbar"><label class="trall"><input type="checkbox" data-trall> Select all</label><input type="search" class="trq" data-trq placeholder="Search order no, name, mobile, coupon" aria-label="Search Trash"><span class="muted small trcnt" data-trcnt hidden></span><button class="btn sm" data-trsel disabled>Put back selected (0)</button></div>'
+    $body .= '<div class="bh trbar"><label class="trall"><input type="checkbox" data-trall> Select all</label><input type="search" class="trq" data-trq placeholder="Search order no, name, mobile, coupon" aria-label="Search Trash"><label class="trnot" title="Show the orders that do NOT have the word you typed"><input type="checkbox" data-trnot> Without</label><span class="muted small trcnt" data-trcnt hidden></span><button class="btn sm" data-trsel disabled>Put back selected (0)</button></div>'
       . '<div class="bb np"><table class="grid trlist"><thead><tr><th class="tck"></th><th>Order</th><th>Customer</th><th class="r">Total</th><th>Status · closed</th><th class="r"></th></tr></thead><tbody>';
     foreach ($rows as $t) {
       $o = (json_decode((string)$t['row_json'], true) ?: []) + ['no' => $t['no'], 'created' => '', 'name' => '', 'phone' => '', 'total' => 0, 'method' => '', 'status' => '', 'paid_at' => null];
