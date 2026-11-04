@@ -478,7 +478,8 @@
     }).join('') : '';
   }
   // Products are shown as one photo tile per fragrance; tapping it asks for the size.
-  function groupKey(p) { return p.from_site && /-\d+$/.test(p.sku) ? p.sku.replace(/-\d+$/, '') : 'p' + p.id; }
+  // One tile per product: its sizes (10ml, 50ml, 100ml) are picked after tapping it. Same name = same product.
+  function groupKey(p) { return p.category + '|' + shortName(p.name).trim().toLowerCase().replace(/\s+/g, ' '); }
   function shortName(n) { return String(n || '').replace(/^fomaxo\s+/i, ''); }
   function sizeNum(v) { var m = /(\d+)/.exec(v || ''); return m ? parseInt(m[1], 10) : 0; }
   function productGroups() {
@@ -490,11 +491,12 @@
       var k = groupKey(p);
       if (!map[k]) { map[k] = { key: k, name: shortName(p.name), family: p.family, image: '', sizes: [] }; order.push(k); }
       map[k].sizes.push(p);
-      if (!map[k].image && p.image) map[k].image = p.image;
     });
     return order.map(function (k) {
       var g = map[k];
       g.sizes.sort(function (a, b) { return sizeNum(a.variant) - sizeNum(b.variant); });
+      // The tile shows the main bottle (the dearest size with a photo); each size shows its own photo when picked.
+      g.sizes.forEach(function (p) { if (p.image) g.image = p.image; });
       return g;
     }).map(function (g) {
       g.from = Infinity; g.sold = 0; g.stock = 0;
@@ -579,7 +581,8 @@
       '<div class="sizes">' + g.sizes.map(function (p) {
         var st = stockState(p), inCart = 0;
         S.cart.forEach(function (c) { if (c.product_id === p.id) inCart = c.qty; });
-        return '<button class="size-btn' + (st === 'out' ? ' is-out' : '') + '" data-act="add-size" data-id="' + p.id + '">' +
+        return '<button class="size-btn' + (p.image ? ' has-img' : '') + (st === 'out' ? ' is-out' : '') + '" data-act="add-size" data-id="' + p.id + '">' +
+          (p.image ? '<img class="sz-img" src="' + esc(thumb(p.image, 120)) + '" alt="" onerror="this.remove()">' : '') +
           '<span class="sz">' + esc(p.variant) + '</span><span class="sp">' + wasHtml(p) + money(p.price) + '</span>' +
           '<span class="ss ' + st + '">' + (st === 'out' ? 'SOLD OUT' : st === 'low' ? 'Only ' + p.stock + ' left' : p.stock + ' in stock') + '</span>' +
           (inCart ? '<span class="in-cart">' + inCart + '</span>' : '') + '</button>';
