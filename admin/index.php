@@ -498,7 +498,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
   if ($a === 'top_reviewers') { shop_set('top_reviewers', (string)max(1, min(99, (int)($_POST['top_reviewers'] ?? 2)))); go(['tab' => 'reviews'] + array_intersect_key($back, array_flip(['q', 'v', 'page'])), 'Top reviewers now need ' . top_reviewers_min() . ' or more reviews.'); }
   if ($a === 'low_stock') { shop_set('low_stock', (string)max(0, min(99, (int)($_POST['low_stock'] ?? 5))));
-    if (isset($_POST['max_per_item'])) { $mx = trim((string)$_POST['max_per_item']); shop_set('max_per_item', ctype_digit($mx) && (int)$mx >= 1 ? (string)min(999, (int)$mx) : ''); } go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
+    if (isset($_POST['max_per_item'])) { $mx = trim((string)$_POST['max_per_item']); shop_set('max_per_item', ctype_digit($mx) && (int)$mx >= 1 ? (string)min(999, (int)$mx) : ''); }
+    if (isset($_POST['owner_name'])) shop_set('owner_name', mb_substr(trim((string)preg_replace('/\s+/u', ' ', (string)$_POST['owner_name'])), 0, 80));   // empty = "fake name"
+    go(['tab' => 'stock'], (int)$_POST['low_stock'] ? 'The shop shows “Only X left” from ' . (int)$_POST['low_stock'] . ' left.' : '“Only X left” is turned off.'); }
   if ($a === 'saleoff') {   // Discount On / Off (Products list): one product or 'all'. Off = customers pay the Original price, nothing crossed out; both prices stay saved
     $id = (string)($_POST['id'] ?? ''); $on = !empty($_POST['on']);
     if ($id !== 'all' && !isset($CAT[$id])) go(['tab' => 'products'], 'That product was not found.');

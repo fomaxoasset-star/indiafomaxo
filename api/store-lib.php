@@ -355,6 +355,7 @@ function fomaxo_price_order(array $in): array {
   if (!$CAT) return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.'];
   $lines = is_array($in['lines'] ?? null) ? $in['lines'] : [];
   if (!$lines || count($lines) > 30) return ['error' => 'Your bag is empty.'];
+  $capName = is_array($in['customer'] ?? null) && is_string($in['customer']['name'] ?? null) ? $in['customer']['name'] : '';   // the owner name lifts the per item limit
   $items = []; $total = 0;
   try { $STOCK = shop_stock(); $COST = shop_costs(); } catch (Throwable $e) { error_log('FOMAXO shop db: ' . $e->getMessage()); return ['error' => 'Checkout is unavailable right now. Please order on WhatsApp.']; }
   $want = []; $cheap = [];
@@ -368,7 +369,7 @@ function fomaxo_price_order(array $in): array {
     /* a stock number set on the admin page wins over soldOut in index.html; a product hidden on the admin page can't be bought */
     if (!$p || !isset($p['prices'][$opt]) || !empty($p['hidden']) || ($p['soldOut'] && !isset($STOCK[$id][$opt])) || $qty < 1)
       return ['error' => 'An item in your bag is no longer available. Please refresh and try again.'];
-    if ($qty > shop_max_per_item()) return ['error' => 'You can order up to ' . shop_max_per_item() . ' of one item online. Contact FOMAXO for Massive Order on WhatsApp.'];
+    if ($qty > shop_item_cap($capName)) return ['error' => 'You can order up to ' . shop_item_cap($capName) . ' of one item online. Contact FOMAXO for Massive Order on WhatsApp.'];
     $size = fomaxo_size_label($p, $opt);
     $desc = '';
     if ($p['kind'] === 'set') {
