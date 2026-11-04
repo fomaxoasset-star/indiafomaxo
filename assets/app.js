@@ -297,32 +297,42 @@
   function closeMenu() { var m = $('.menu'); if (m) m.remove(); }
 
   // ---------------------------------------------------------------- install on this device
-  // Chrome and Edge (Android, Windows, Mac) offer the install themselves; iPhone and iPad need Share → Add to Home Screen.
+  // Chrome and Edge (Android, Windows, Mac) offer the install themselves; other browsers get short steps.
   var installEvt = null;
   function isInstalled() { return window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
   function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  // How to install in this browser when it has no install button of its own.
+  function installSteps() {
+    var ua = navigator.userAgent;
+    if (isIOS()) return 'Tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b>.';
+    if (/Firefox/.test(ua)) return 'Firefox cannot install apps. Open this page in <b>Chrome</b>, <b>Edge</b> or <b>Safari</b> to install it.';
+    if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua)) return 'In the Safari menu bar choose <b>File</b> → <b>Add to Dock</b>.';
+    if (/Android/.test(ua)) return 'Open the browser menu <b>⋮</b> and choose <b>Install app</b> or <b>Add to Home screen</b>.';
+    return 'Click the <b>install icon</b> at the right end of the address bar, or open the menu <b>⋮</b> and choose <b>Install FOMAXO</b>.';
+  }
   function installHtml() {
     if (isInstalled()) return '';
     if (installEvt) return '<button class="btn block install-btn" data-act="install">⬇ Install app on this device</button>';
-    if (isIOS()) return '<p class="small muted install-tip">To install: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b>.</p>';
-    return '';
+    return '<p class="small muted install-tip">To install the app: ' + installSteps() + '</p>';
   }
   function refreshInstall() { $$('.install-slot').forEach(function (el) { el.innerHTML = installHtml(); }); updateInstallBar(); }
   // Inside the app, after login: a banner above the screen until the app is installed (✕ hides it on this device).
   function updateInstallBar() {
     var bar = $('#install-bar'); if (!bar) return;
-    var show = !isInstalled() && !LS.get('fx_install_hide', false) && (installEvt || isIOS());
+    var show = !isInstalled() && !LS.get('fx_install_hide2', false);
     bar.classList.toggle('hidden', !show);
-    bar.innerHTML = !show ? '' : '<span class="ib-text"><b>Install the FOMAXO app</b> on this device: it opens full screen from the home screen.</span>' +
-      (installEvt ? '<button class="btn gold" data-act="install">Install</button>' : '<span class="small">Tap <b>Share</b> then <b>Add to Home Screen</b></span>') +
+    bar.innerHTML = !show ? '' : '<span class="ib-text"><b>Install the FOMAXO app</b> on this ' + (/Mobi|Android/.test(navigator.userAgent) || isIOS() ? 'phone' : 'computer') +
+      ': it opens in its own window and works without internet.' + (installEvt ? '' : '<br><span class="small">' + installSteps() + '</span>') + '</span>' +
+      (installEvt ? '<button class="btn gold" data-act="install">Install</button>' : '') +
       '<button class="btn icon-btn ghost" data-act="install-hide" aria-label="Hide">' + ICON.close + '</button>';
   }
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; refreshInstall(); });
-  window.addEventListener('appinstalled', function () { installEvt = null; refreshInstall(); toast('✓ App installed. Open FOMAXO from your home screen or apps.'); });
+  window.addEventListener('appinstalled', function () { installEvt = null; refreshInstall(); toast('✓ App installed. Open FOMAXO from your home screen, Dock or apps.'); });
   function installApp() {
     closeMenu();
     if (!installEvt) {
-      toast(isIOS() ? 'Tap Share, then Add to Home Screen.' : 'Open the browser menu (⋮) and choose Install app.');
+      openModal('Install the FOMAXO app', '<p style="margin:0 0 14px">' + installSteps() + '</p><p class="small muted" style="margin:0 0 14px">Then open FOMAXO from the ' + (isIOS() ? 'home screen' : 'Dock, taskbar or apps list') + '. It works without internet, and sales upload by themselves when it is back.</p>' +
+        '<div class="modal-foot"><button class="btn gold" data-act="modal-close">OK</button></div>');
       return;
     }
     var ev = installEvt;
@@ -1574,7 +1584,7 @@
       '<div class="m-label">Appearance</div><div class="seg">' + [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(function (o) {
         return '<button data-act="theme-set" data-t="' + o[0] + '" class="' + (themeChoice() === o[0] ? 'active' : '') + '">' + o[1] + '</button>';
       }).join('') + '</div>' +
-      (isManager() ? '<button data-act="coupons">Coupons</button><button data-act="settings">Settings · payments &amp; GST</button>' : '') + (installEvt && !isInstalled() ? '<button data-act="install">Install app on this device</button>' : '') + '<button data-act="pw">Change password</button><button data-act="reload">Refresh app</button><button data-act="logout">Log out</button>';
+      (isManager() ? '<button data-act="coupons">Coupons</button><button data-act="settings">Settings · payments &amp; GST</button>' : '') + (!isInstalled() ? '<button data-act="install">Install app on this device</button>' : '') + '<button data-act="pw">Change password</button><button data-act="reload">Refresh app</button><button data-act="logout">Log out</button>';
     document.body.appendChild(m);
   }
   function settingsModal() {
@@ -1871,7 +1881,7 @@
       case 'cpn-new': couponEdit(null); break;
       case 'cpn-edit': couponEdit((S._coupons || []).filter(function (x) { return x.id === id; })[0]); break;
       case 'install': installApp(); break;
-      case 'install-hide': LS.set('fx_install_hide', true); updateInstallBar(); break;
+      case 'install-hide': LS.set('fx_install_hide2', true); updateInstallBar(); break;
       case 'reload': location.reload(); break;
       case 'logout': logout(false); break;
       case 'logout-force': logout(true); break;
