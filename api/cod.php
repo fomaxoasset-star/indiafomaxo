@@ -18,6 +18,7 @@ $order = fomaxo_price_order($in);
 if (isset($order['error'])) fail($order['error']);
 $cust = fomaxo_customer($in);
 if (isset($cust['error'])) fail($cust['error']);
+if (shop_is_owner($cust['name'])) { $cod['min'] = 0; $cod['max'] = 0; }   // "fake name" (admin → Stocks "No limit name"): no cash on delivery minimum or maximum (AJAY 2026-11-04)
 /* while onlyName is set, COD is unactivated for everyone except that exact full name (testing) */
 if ($cod['onlyName'] !== '') { if (strtolower($cust['name']) !== strtolower(trim(preg_replace('/\s+/', ' ', $cod['onlyName'])))) fail('Cash on delivery is not available right now. Please pay online.'); }
 elseif ($order['subtotal'] < $cod['min']) fail('Cash on delivery is for orders of ' . rupees($cod['min']) . ' and above. Please pay online.');
