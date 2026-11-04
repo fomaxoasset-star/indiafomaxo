@@ -1,6 +1,6 @@
 /* FOMAXO India Store System - offline support. Keeps the app itself on the device so it opens without internet.
    Data requests (api.php) always go to the server; the app handles offline sales itself. */
-var VERSION = 'fomaxo-pos-in-v40';
+var VERSION = 'fomaxo-pos-in-v41';
 var PHOTOS = 'fomaxo-pos-in-photos';  // kept across app updates
 var V = '?v=' + VERSION.replace('fomaxo-pos-in-v', 'in');  // the same version index.html asks for
 var SHELL = [
@@ -41,7 +41,8 @@ self.addEventListener('fetch', function (e) {
   if (/\.php$/.test(path) || path.indexOf('/data/') >= 0) return;
 
   if (req.mode === 'navigate') {
-    // Newest app when online; the saved copy if the network is offline or slower than 3 seconds.
+    // Always the newest app when online, however slow. The saved copy is only for when there is no internet
+    // (or the server gives no answer at all for 20 seconds).
     var saved = caches.match('index.html');
     var net = fetch(req, { cache: 'no-cache' }).then(function (res) {
       var copy = res.clone();
@@ -52,7 +53,7 @@ self.addEventListener('fetch', function (e) {
       var done = false;
       function use(r) { if (!done && r) { done = true; resolve(r); } }
       net.then(use, function () { saved.then(function (r) { use(r || Response.error()); }); });
-      setTimeout(function () { saved.then(use); }, 3000);
+      setTimeout(function () { saved.then(use); }, 20000);
     }));
     return;
   }

@@ -2115,8 +2115,11 @@
   // ---------------------------------------------------------------- start
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
-      // Check for a new version when the app is opened again or comes back to the screen.
-      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') reg.update().catch(function () {}); });
+      // Check for a new version when the app is opened again, comes back to the screen or back online, and every 10 minutes.
+      var check = function () { if (navigator.onLine) reg.update().catch(function () {}); };
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') check(); });
+      window.addEventListener('online', check);
+      setInterval(check, 10 * 60 * 1000);
     }).catch(function () { /* app still works online */ });
     // A new version took over: reload once, but never in the middle of a sale.
     var hadController = !!navigator.serviceWorker.controller, reloading = false;
