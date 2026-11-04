@@ -232,7 +232,7 @@ function markSent(btn, day) {
     var up = function () {
       var v = bx.filter(shown), n = v.filter(function (x) { return x.checked; }).length;
       b.disabled = !n; b.textContent = 'Put back selected (' + n + ')'; b.dataset.confirm = 'Put back ' + n + ' order' + (n === 1 ? '' : 's') + '?';
-      var dl = f.querySelector('[data-trdel]'); if (dl) { dl.disabled = !n; dl.textContent = 'Delete forever (' + n + ')'; dl.dataset.confirm = 'Delete ' + n + ' order' + (n === 1 ? '' : 's') + ' forever? They cannot be put back.'; }
+      var dl = f.querySelector('[data-trdel]'); if (dl) { dl.disabled = !n; dl.textContent = 'Delete forever (' + n + ')'; }
       all.checked = n > 0 && n === v.length; all.indeterminate = n > 0 && n < v.length;
     };
     var find = function () {
@@ -251,7 +251,15 @@ function markSent(btn, day) {
     if (not && q) not.addEventListener('change', find);
     if (q) { q.addEventListener('input', find); q.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); }); }
     /* a hidden tick never goes with Put back selected */
-    f.addEventListener('submit', function () { bx.forEach(function (x) { if (!shown(x)) x.checked = false; }); });
+    f.addEventListener('submit', function (e) {
+      bx.forEach(function (x) { if (!shown(x)) x.checked = false; });
+      /* Delete forever works only after typing DELETE (AJAY, 2026-11-04) */
+      if (!e.submitter || !e.submitter.hasAttribute('data-trdel')) return;
+      var n = bx.filter(function (x) { return x.checked; }).length;
+      var t = prompt('Type DELETE to delete ' + n + ' order' + (n === 1 ? '' : 's') + ' forever. They cannot be put back.', '');
+      if ((t || '').trim().toUpperCase() !== 'DELETE') { e.preventDefault(); if (t !== null) alert('Nothing was deleted. Please type DELETE to delete.'); return; }
+      var h = f.querySelector('input[name=sure]'); if (!h) { h = document.createElement('input'); h.type = 'hidden'; h.name = 'sure'; f.appendChild(h); } h.value = 'DELETE';
+    });
     if (q && q.value) find(); else up();
   });
 

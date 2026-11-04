@@ -448,6 +448,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       : '!None of the ticked orders could take this step, so nothing was changed.');
   }
   if ($a === 'untrash' && isset($_POST['purge']) && !isset($_POST['one'])) {   // Trash: Delete forever the ticked ones (cannot be undone)
+    if (strtoupper(trim((string)($_POST['sure'] ?? ''))) !== 'DELETE') go(['tab' => 'orders', 'trash' => 1], '!Nothing was deleted. Please type DELETE to delete.');
     $nos = array_values(array_filter(array_map('strval', (array)($_POST['nos'] ?? [])), 'strlen'));
     $ok = count(array_filter($nos, 'shop_order_purge'));
     go(['tab' => 'orders'] + (shop_trash_count() ? ['trash' => 1] : []), !$nos ? '!Please tick the orders to delete.'
