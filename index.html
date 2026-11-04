@@ -3207,6 +3207,9 @@ const PC = ((S.personalCare && S.personalCare.products) || []).map(c => ({
   images: [c.image, ...(c.extraImages || [])], description: c.description || [c.short]
 }));
 const P = Object.fromEntries([...S.products, ...PC].map(p => [p.id, p]));
+/* Home "Distinct blends" (AJAY 4 Nov): the top 4 best sellers, most bottles bought first, from real orders in the "purchased last month" window (STORE_LIVE.best, api/live.php, only the order).
+   Hidden products are left out; if fewer than 4 sold, S.featured fills the rest. */
+const BEST4 = () => { const out = []; for (const id of [...(LIVE.best || []), ...(S.featured || [])]) if (out.length < 4 && P[id] && (P[id].images || [])[0] && !out.includes(id)) out.push(id); return out; };
 /* stock per product and size, counted on the admin page. A size with a stock number follows it (0 = sold out);
    a size without one is never sold out unless the product has soldOut: true */
 const STOCK = LIVE.stock || {}, LOW = LIVE.lowStock ?? 5;
@@ -3703,8 +3706,8 @@ function home(){
 
 
   <section class="sec" style="padding-top:0" id="tiers"><div class="wrap">
-    ${secHead('The house favourites', 'Distinct <em class="metal">blends</em>', '<p class="lead">Four top products from across the house — fragrance, skin, hair and car.</p>')}
-    ${(S.featured || []).map(id => P[id]).filter(Boolean).map((p,i) => `<div class="ed ${i%2?'rev':''}">
+    ${secHead('Our best sellers', 'Distinct <em class="metal">blends</em>', '<p class="lead">The four products our customers buy the most right now.</p>')}
+    ${BEST4().map(id => P[id]).filter(Boolean).map((p,i) => `<div class="ed ${i%2?'rev':''}">
       <a class="ed-media rv-up" href="#/product/${p.id}"><img data-parallax="0.08" ${PIC(p.editorial || p.images[0], ED)} alt="FOMAXO ${esc(p.name)}" loading="lazy"></a>
       <div class="ed-copy rv-up d1">
         <span class="num">0${i+1}</span>

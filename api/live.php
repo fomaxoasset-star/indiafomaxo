@@ -56,7 +56,7 @@ if ($js === '') try {
   if ($cod = fomaxo_catalog()['cod']) $live['cod'] = ['min' => $cod['min'] / 100, 'max' => $cod['max'] / 100, 'fee' => $cod['fee'] / 100];   // Admin → Settings → Cash on delivery   // Meta, TikTok and Google ad tags (Admin → Settings → Ads)
   if ($tg = fomaxo_together_pct()) $live['together'] = $tg;   // Customers bought together: % off one of each of two products (Admin → Products)
   if ($tr = fomaxo_together_rs()) $live['togetherRs'] = $tr;   // … and / or ₹ off each pair
-  try { $sm = shop_sold_month(); if ($sm['sold']) $live['sold'] = $sm['sold']; } catch (Throwable $e) {}   // "X purchased last month" on the product page, real orders only
+  try { $sm = shop_sold_month(); if ($sm['sold']) $live['sold'] = $sm['sold']; if ($sm['best']) $live['best'] = $sm['best']; } catch (Throwable $e) {}   // "X purchased last month" on the product page, real orders only
   try { $live['also'] = shop_also(); } catch (Throwable $e) {}   // "You may also like" order on the product page, from real orders
   if (!shop_together()['on']) $live['fbtOff'] = 1;   // its On / Off switch: Off hides the box on every product page
   if ($wp = array_keys(array_filter(shop_wa_popups()))) $live['waPop'] = $wp;   // the WhatsApp coupon boxes switched On on Admin → Offers (never saved = Off)

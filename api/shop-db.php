@@ -755,8 +755,8 @@ function shop_also(): array {   // ['pairs' => [id => [id, …]], 'top' => [id, 
 
 /* "14 purchased last month" (product page, STORE_LIVE.sold): bottles of each product really bought from 6 October to 4 November 2026 (always that window, AJAY 4 Nov), from real orders only
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
-function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
-  $who = []; $year = '2026-10-06 00:00:00'; $end = '2026-11-05 00:00:00';   // always 6 October to 4 November 2026, both days in (AJAY 4 Nov 13:11 UTC: "count only from 6 October to 4 November always")
+function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …], 'best' => [id, …]]: each size counted on its own; best = every product, most bottles first (only the order is sent)
+  $who = []; $tot = []; $year = '2026-10-06 00:00:00'; $end = '2026-11-05 00:00:00';   // always 6 October to 4 November 2026, both days in (AJAY 4 Nov 13:11 UTC: "count only from 6 October to 4 November always")
   $win = " AND created >= " . shop_db()->quote($year) . " AND created < " . shop_db()->quote($end);
   $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')" . $win)->fetchAll();   // only that window is counted, so only it is read
   foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered')" . $win) as $t)   // orders in Trash still count, like Admin → Sold
@@ -766,11 +766,12 @@ function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], �
       $id = is_array($l) ? (string)($l['id'] ?? '') : '';
       if ($id === '' || !empty($l['free']) || !preg_match('/^[a-z0-9-]{1,48}$/', $id)) continue;
       $opt = preg_replace('/[^a-z0-9]/', '', strtolower((string)($l['opt'] ?? ''))); if ($opt === '') continue;
-      if ($r['created'] >= $year && $r['created'] < $end) $who[$id][$opt] = ($who[$id][$opt] ?? 0) + max(0, (int)($l['qty'] ?? 0));   // "14 purchased last month": bottles of that size (free gifts left out)
+      if ($r['created'] >= $year && $r['created'] < $end) { $q = max(0, (int)($l['qty'] ?? 0)); $who[$id][$opt] = ($who[$id][$opt] ?? 0) + $q; $tot[$id] = ($tot[$id] ?? 0) + $q; }   // "14 purchased last month": bottles of that size (free gifts left out)
     }
   }
   $out = [];
   foreach ($who as $id => $byOpt) foreach ($byOpt as $opt => $c) if ($c > 5) $out[$id][(string)$opt] = $c;   // the real number of bottles of that size, from 6 up ("14 purchased last month")
   foreach ($out as $id => $byOpt) $out[$id] = (object)$byOpt;
-  return ['sold' => $out];
+  $tot = array_filter($tot); arsort($tot);   // home "Distinct blends" (AJAY 4 Nov): best sellers in the same window, all sizes together, most bottles first
+  return ['sold' => $out, 'best' => array_map('strval', array_keys($tot))];
 }
