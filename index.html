@@ -1496,6 +1496,7 @@ html[data-mode="light"].cur-dark .cur-link .cur-ring{border-color:#f0d3a0;backgr
 .hg-grid.swap{opacity:0}
 a.pc-add{display:flex;align-items:center;justify-content:center}
 .pc-add.oos,.pc-add.oos:hover{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line-2);cursor:not-allowed}
+.ed-best{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;width:max-content;padding:6px 12px;border:1px solid var(--gold);border-radius:999px;color:var(--gold);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
 .ed-tag{font-family:var(--hfont);font-weight:500;font-size:clamp(18px,1.6vw,22px);color:var(--gold);margin-top:-8px}
 @media(max-width:600px){.hg-bar{margin:-6px 0 22px}.hg-pager{width:100%;justify-content:flex-end}}
 .ed-stars{color:var(--gold);font-weight:400;letter-spacing:.12em;margin-right:6px}
@@ -3706,11 +3707,12 @@ function home(){
 
 
   <section class="sec" style="padding-top:0" id="tiers"><div class="wrap">
-    ${secHead('Our best sellers', 'Distinct <em class="metal">blends</em>', '<p class="lead">The four products our customers buy the most right now.</p>')}
+    ${secHead('Top 4 best sellers', 'Distinct <em class="metal">blends</em>', '<p class="lead">The four products our customers buy the most right now.</p>')}
     ${BEST4().map(id => P[id]).filter(Boolean).map((p,i) => `<div class="ed ${i%2?'rev':''}">
       <a class="ed-media rv-up" href="#/product/${p.id}"><img data-parallax="0.08" ${PIC(p.editorial || p.images[0], ED)} alt="FOMAXO ${esc(p.name)}" loading="lazy"></a>
       <div class="ed-copy rv-up d1">
         <span class="num">0${i+1}</span>
+        ${i < (LIVE.best || []).filter(id => P[id]).length ? `<span class="ed-best">★ Top seller #${i+1}</span>` : ''}
         <span class="eyebrow">${esc(CAT_NAME[catOf(p)])} · ${tierOf(p) ? esc(tierOf(p).name) + ' · ' : ''}${esc(p.kind === 'care' ? p.type.split(' — ')[0] : p.family)}</span>
         <h2 class="tier-name">${esc(p.title || p.name)}</h2>
         ${p.kind === 'care' && p.tagline ? `<p class="ed-tag">${esc(p.tagline)}</p>` : ''}
