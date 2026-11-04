@@ -1051,7 +1051,7 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   $done = ['fix phone' => '2026-10-26',   // #512: phone Add To Cart closer, bag note above buy bar
     'fix landing page' => '2026-10-26',   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
     'fix product page' => '2026-10-26',   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
-    'fix home' => '2026-10-26',   // phone home: bar at the bottom after the banner, "Not sure which one? Try any scent in 10ml" → Mini Collection
+    'fix home' => '2026-11-04',   // 26/10 phone bar "Not sure which one? Try any scent in 10ml"; 04/11 the tip came back (6 of 7 left a third of the way down): a "Try 10ml" band after Featured FOMAXO, and the bar as a small card on a laptop too
     'fix checkout' => '2026-10-26',
     'check payment' => '2026-10-26',   // payment: closed Razorpay → "Payment not finished, no money was taken" box with Try again and a WhatsApp payment link; closes and failure reasons counted in Conversion   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
     'fix the error' => '2026-10-29',

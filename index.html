@@ -442,6 +442,18 @@ html[data-mode="light"] .sort-by select option{background:#fff;color:#1a140c}
 .mbuy .n small{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
 .mbuy .n small{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}.mbuy .n small .mp{white-space:nowrap;letter-spacing:0;color:var(--ivory,inherit);font-size:12px}.mbuy .n small .was{display:inline;margin:0 5px 0 0;font-size:.92em;line-height:1}   /* size, then the original price struck and the sale price; the prices drop to their own line when the buttons need the room, never under them (AJAY 2026-10-15) */
 @media(max-width:960px){.mbuy{display:flex}}
+/* home "Try 10ml" (AJAY 04/11/2026, Improve tip "Many people leave on Home": they leave about a third of the way down, after the Featured products):
+   a band right after Featured FOMAXO, and on a laptop the bottom bar becomes a small card at the bottom right */
+.hn{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:clamp(20px,3vw,44px);align-items:center;padding:clamp(18px,2.4vw,28px) clamp(18px,3vw,40px);border:1px solid var(--line-2);background:var(--deep)}
+.hn-pic{display:block;width:clamp(96px,10vw,150px);aspect-ratio:3/4;overflow:hidden}
+.hn-pic img{width:100%;height:100%;object-fit:cover;display:block}
+.hn-copy h2{margin:6px 0 8px;font-size:clamp(26px,2.6vw,38px);line-height:1.1}
+.hn-copy p{margin:0;color:var(--muted);line-height:1.6}
+.hn-copy p b{color:var(--ivory,inherit);font-weight:600}
+.hn .ctas{display:flex;flex-direction:column;gap:10px;min-width:220px}
+.hn .ctas .btn{justify-content:center;text-align:center}
+@media(max-width:760px){.hn{grid-template-columns:auto minmax(0,1fr);gap:14px 16px;padding:16px}.hn-pic{width:88px}.hn-copy h2{font-size:24px}.hn-copy p{font-size:14px}.hn .ctas{grid-column:1/-1;min-width:0}}
+@media(min-width:961px){.mbuy.mb-home{display:flex;left:auto;right:24px;bottom:24px;width:min(420px,calc(100vw - 48px));border:1px solid var(--line-2);box-shadow:0 18px 50px rgba(0,0,0,.25);padding:14px 16px;transform:translateY(calc(100% + 40px))}.mbuy.mb-home.show{transform:none}}
 /* reviews */
 .reviews{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(30px,5vw,80px);padding:80px 0;border-top:1px solid var(--line)}
 .rv-sum{display:flex;flex-direction:column;gap:16px}
@@ -3279,6 +3291,8 @@ function bagRank(ids){
 const HID = LIVE.hidden || [];
 const shown = id => !!(P[id] && !HID.includes(id));
 const hidImg = k => HID.some(id => ('-' + k + '-').includes('-' + id + '-'));   // a photo named after a hidden product (oldmoney-10-1, king-collection, car-drivenoir)
+/* the lowest 10ml price among minis still on sale (0 = none): the home "Try 10ml" band and bar */
+const miniFrom = () => { const ids = ((S.mini && S.mini.products) || []).filter(id => P[id] && !isOut(P[id]) && hasPrice(P[id].prices[10])); return ids.length ? Math.min(...ids.map(id => P[id].prices[10])) : 0; };
 const miniPic = () => { const id = ((S.mini && S.mini.products) || []).find(shown); return id ? imgFor(P[id], 10) : null; };   // the first mini still on the website
 const andList = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a.join('');
 const imgFor = (p, s) => (p.sizeImages && p.sizeImages[s]) || (s == 10 && p.miniImage ? p.miniImage : p.images[0]);
@@ -3709,6 +3723,11 @@ function home(){
       <div class="hg-pager" id="hgPager"><button type="button" data-hp="-1" aria-label="Previous products">←</button><span id="hgCount"></span><button type="button" data-hp="1" aria-label="Next products">→</button></div></div>
     <div class="pc-grid hg-grid" id="homeGrid"></div>
   </div></section>
+  ${miniFrom() && miniPic() ? `<section class="sec hn-sec" style="padding-top:0"><div class="wrap"><div class="hn rv-up">
+    <a class="hn-pic" href="#/collections/mini" aria-hidden="true" tabindex="-1"><img ${PIC(miniPic(), '(max-width:760px) 30vw, 180px')} alt="" loading="lazy"></a>
+    <div class="hn-copy"><span class="eyebrow">Not sure which one?</span><h2>Try any scent in <em class="metal">10ml</em></h2><p>Every FOMAXO perfume as a 10ml mini, from <b>${money(miniFrom())}</b>. Find the one you love first.</p></div>
+    <div class="ctas"><a class="btn two" href="#/collections/mini"><span>Try 10ml</span><span class="sub">from ${money(miniFrom())}</span></a><a class="btn line" href="#tiers" data-jump="tiers">See best sellers</a></div>
+  </div></div></section>` : ''}
 
 
   <section class="sec" style="padding-top:0" id="tiers"><div class="wrap">
@@ -5653,7 +5672,7 @@ function route(){
   const seg = path.split('/').filter(Boolean);
   if (PAGES_OFF.has(seg[0])) { location.replace('#/'); return; }   // turned off on the admin page
   const rvPopEl = $('#rvFormBox.pop'); if (rvPopEl) { rvPopEl.remove(); document.body.classList.remove('lock'); }   // leaving with the review window open
-  clearInterval(heroTimer); clearInterval(homeGridTimer); mobileBarCheck = null; $('#mbuy').classList.remove('show');
+  clearInterval(heroTimer); clearInterval(homeGridTimer); mobileBarCheck = null; $('#mbuy').classList.remove('show', 'mb-home');
   document.title = 'FOMAXO — The House of Luxury Care';
   let html, after;
   switch (seg[0]){
@@ -5989,12 +6008,13 @@ function bindHome(){
   $('#hcBuyNow').onclick = () => { const p = P[HERO_SLIDES[i].id]; buyNow([{id:p.id, opt:defaultSize(p), qty:1}]); };
   /* phone (AJAY 26/10/2026, Improve tip "Many people leave on Home": they stay about 2 minutes, then leave): once the banner's price box is scrolled past,
      a bar at the bottom gives one clear next step: try any scent in 10ml (or see every perfume when no mini is on the website). Gone again at the footer */
-  const mb = $('#mbuy'), mIds = ((S.mini && S.mini.products) || []).filter(id => P[id] && !isOut(P[id]) && hasPrice(P[id].prices[10]));   // hidden products are already left out of S.mini
-  const mFrom = mIds.length ? Math.min(...mIds.map(id => P[id].prices[10])) : 0;
+  const mb = $('#mbuy'), mFrom = miniFrom();   // hidden products are already left out of S.mini
+  mb.classList.add('mb-home');   // laptop too (AJAY 04/11/2026, the tip came back: 6 of 7 left after about 16 s, a third of the way down): a small card at the bottom right
   mb.innerHTML = mFrom ? `<div class="n"><b>Not sure which one?</b><small><span>Try any scent in 10ml</span><span class="mp">from ${money(mFrom)}</span></small></div><a class="btn sm" href="#/collections/mini">Try 10ml</a>`
     : `<div class="n"><b>Find your scent</b><small><span>Every FOMAXO perfume</span></small></div><a class="btn sm" href="#/fragrances">Shop all</a>`;
   const hb = $('#hcBuy'), foot = $('footer');
-  mobileBarCheck = () => { const r = hb.getBoundingClientRect(); mb.classList.toggle('show', r.bottom < 0 && (!foot || foot.getBoundingClientRect().top > innerHeight)); };
+  const hn = $('.hn');   // the "Try 10ml" band: the bar steps aside while the band itself is on screen, so the same offer is never shown twice
+  mobileBarCheck = () => { const r = hb.getBoundingClientRect(), n = hn && hn.getBoundingClientRect(); mb.classList.toggle('show', r.bottom < 0 && (!foot || foot.getBoundingClientRect().top > innerHeight) && !(n && n.bottom > 0 && n.top < innerHeight)); };
   const start = () => { clearInterval(heroTimer); heroTimer = setInterval(() => show((i+1) % figs.length, false), 6500); };
   btns.forEach(b => b.onclick = () => { show(+b.dataset.i); start(); });
   /* phones: swipe the banner left or right */
