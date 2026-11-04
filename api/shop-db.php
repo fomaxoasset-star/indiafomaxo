@@ -731,8 +731,8 @@ function shop_also(): array {   // ['pairs' => [id => [id, …]], 'top' => [id, 
 /* "14 purchased last month" (product page, STORE_LIVE.sold): bottles of each product really bought in the last 30 days, from real orders only
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
-  $who = []; $year = '2026-10-06 00:00:00'; $upto = '2026-11-04 23:59:59';   // always 6 October to 4 November 2026, fixed (AJAY 4 Nov: "count only from 6 October to 4 November always")
-  $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year) . " AND created <= " . shop_db()->quote($upto))->fetchAll();   // only 6 Oct to 4 Nov is counted, so only that is read
+  $who = []; $year = '2026-10-05 00:00:00'; $upto = '2026-11-03 23:59:59';   // always 5 October to 3 November 2026, fixed (AJAY 4 Nov: "count only from 5 October to 3 November")
+  $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year) . " AND created <= " . shop_db()->quote($upto))->fetchAll();   // only 5 Oct to 3 Nov is counted, so only that is read
   foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year) . " AND created <= " . shop_db()->quote($upto)) as $t)   // orders in Trash still count, like Admin → Sold
     if (is_array($o = json_decode((string)$t['row_json'], true)) && !(int)($o['test'] ?? 0)) $rows[] = ['items' => $o['items'] ?? '', 'created' => (string)($o['created'] ?? '')];
   foreach ($rows as $r) {
