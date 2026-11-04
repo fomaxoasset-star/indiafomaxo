@@ -3219,7 +3219,7 @@ const fnv32 = s => { let h = 0x811c9dc5; for (const b of new TextEncoder().encod
 const isOwn = n => !!LIVE.own && ownKey(n) !== '' && fnv32(ownKey(n)) === LIVE.own;
 const BASE_PER_ITEM = +LIVE.perItem >= 1 ? +LIVE.perItem : 30;
 let OWN = (() => { try { return isOwn(JSON.parse(localStorage.getItem('fomaxo_details') || '{}').name); } catch(e) { return false; } })();
-let MAX_PER_ITEM = OWN ? 999 : BASE_PER_ITEM;
+let MAX_PER_ITEM = OWN ? 100000 : BASE_PER_ITEM;
 const MASS_TXT = 'Contact FOMAXO for Massive Order';
 const maxQ = (p, s) => Math.min(MAX_PER_ITEM, stockLeft(p, s) ?? MAX_PER_ITEM);
 const massLink = (id, opt) => `https://wa.me/${S.checkout.whatsapp}?text=${encodeURIComponent(`Hello FOMAXO, I would like to place a massive order of ${P[id].name} ${optLabel(P[id], opt)}.`)}`;
@@ -5425,7 +5425,7 @@ function bindCheckout(q){
   f.addEventListener('input', e => { if (e.isTrusted && e.target.name !== 'pay') typed = true; }, true);
   f.addEventListener('input', upd); f.addEventListener('change', upd);
   /* "fake name" typed as Full name: no per item limit up to the stock, and a number box in the bag */
-  f.addEventListener('change', e => { if (e.target.name !== 'name') return; const o = isOwn(e.target.value); if (o === OWN) return; OWN = o; MAX_PER_ITEM = o ? 999 : BASE_PER_ITEM;
+  f.addEventListener('change', e => { if (e.target.name !== 'name') return; const o = isOwn(e.target.value); if (o === OWN) return; OWN = o; MAX_PER_ITEM = o ? 100000 : BASE_PER_ITEM;
     try { localStorage.setItem(CO_KEY, JSON.stringify({...coSaved(), name: e.target.value})); } catch(x) {}
     if (!o) cart.forEach(l => { if (l.qty > MAX_PER_ITEM) l.qty = MAX_PER_ITEM; }); save(); });
   /* "Left at checkout" in the admin: the details and bag, sent a moment after they are typed */

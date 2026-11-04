@@ -251,8 +251,8 @@ function shop_max_per_item(): int { $v = (int)(shop_setting('max_per_item') ?? 0
 function shop_owner_key(string $s): string { return mb_strtolower(trim((string)preg_replace('/\s+/u', ' ', $s))); }
 function shop_owner_name(): string { $v = trim((string)(shop_setting('owner_name') ?? '')); return $v === '' ? 'fake name' : $v; }
 function shop_is_owner(string $name): bool { return shop_owner_key($name) === shop_owner_key(shop_owner_name()); }
-/* the most of one item this customer can order: stock only (up to 999) for the owner name, otherwise shop_max_per_item() */
-function shop_item_cap(string $name): int { return shop_is_owner($name) ? 999 : shop_max_per_item(); }
+/* the most of one item this customer can order: stock only (no other limit) for the owner name, otherwise shop_max_per_item() */
+function shop_item_cap(string $name): int { return shop_is_owner($name) ? 100000 : shop_max_per_item(); }
 
 /* ---------------- order numbers ---------------- */
 /* Next number in the one sequence shared by cash and online orders. Call inside shop_tx(). */
