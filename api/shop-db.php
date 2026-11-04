@@ -728,19 +728,20 @@ function shop_also(): array {   // ['pairs' => [id => [id, …]], 'top' => [id, 
   return ['pairs' => (object)$out, 'top' => array_keys($top)];
 }
 
-/* "14 purchased last month" (product page, STORE_LIVE.sold): bottles of each product really bought in the last 30 days, from real orders only
+/* "14 purchased last month" (product page, STORE_LIVE.sold): bottles of each product really bought from 5 October to 3 November 2026 (always that window, AJAY 4 Nov), from real orders only
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
-  $who = []; $year = date('Y-m-d', strtotime('-29 day')) . ' 00:00:00';   // the last 30 days: today and the 29 days before (AJAY 4 Nov: "purchased last month")
-  $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year))->fetchAll();   // only the last 30 days are counted, so only they are read
-  foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered') AND created >= " . shop_db()->quote($year)) as $t)   // orders in Trash still count, like Admin → Sold
+  $who = []; $year = '2026-10-05 00:00:00'; $end = '2026-11-04 00:00:00';   // always 5 October to 3 November 2026, both days in (AJAY 4 Nov: "count only from 5 October to 3 November always")
+  $win = " AND created >= " . shop_db()->quote($year) . " AND created < " . shop_db()->quote($end);
+  $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')" . $win)->fetchAll();   // only that window is counted, so only it is read
+  foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered')" . $win) as $t)   // orders in Trash still count, like Admin → Sold
     if (is_array($o = json_decode((string)$t['row_json'], true)) && !(int)($o['test'] ?? 0)) $rows[] = ['items' => $o['items'] ?? '', 'created' => (string)($o['created'] ?? '')];
   foreach ($rows as $r) {
     foreach ((array)json_decode((string)$r['items'], true) as $l) {
       $id = is_array($l) ? (string)($l['id'] ?? '') : '';
       if ($id === '' || !empty($l['free']) || !preg_match('/^[a-z0-9-]{1,48}$/', $id)) continue;
       $opt = preg_replace('/[^a-z0-9]/', '', strtolower((string)($l['opt'] ?? ''))); if ($opt === '') continue;
-      if ($r['created'] >= $year) $who[$id][$opt] = ($who[$id][$opt] ?? 0) + max(0, (int)($l['qty'] ?? 0));   // "14 purchased last month": bottles of that size (free gifts left out)
+      if ($r['created'] >= $year && $r['created'] < $end) $who[$id][$opt] = ($who[$id][$opt] ?? 0) + max(0, (int)($l['qty'] ?? 0));   // "14 purchased last month": bottles of that size (free gifts left out)
     }
   }
   $out = [];
