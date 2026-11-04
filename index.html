@@ -5236,6 +5236,7 @@ const coCod = () => S.checkout.cod && typeof S.checkout.cod === 'object' ? S.che
    'na' = turned off for testing, 'min' = below the minimum, 'max' = at or over the maximum, 'ok' = open */
 const coCodState = (cod, t, net, name) => !cod ? 'na'
   : cod.onlyName && String(name || '').replace(/\s+/g, ' ').trim().toLowerCase() !== cod.onlyName.toLowerCase() ? 'na'
+  : isOwn(name) ? 'ok'   // "fake name": no COD minimum or maximum (api/cod.php does the same)
   : cod.max > 0 && net >= cod.max ? 'max' : !cod.onlyName && t < cod.min ? 'min' : 'ok';
 /* the two parts of the wording in the COD box: one line on a computer with a dot between, two lines on a phone */
 const coCodLine = (cod, st) => st === 'max' ? `<span>COD for orders under ${inr(cod.max)}</span><span>Please pay by card.</span>`
