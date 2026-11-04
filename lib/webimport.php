@@ -38,6 +38,7 @@ function import_web_products($products = null)
     $updated = 0;
     $names = [];
     $seen = [];
+    $siteImg = dirname(__DIR__, 3) . '/fomaxo.in/public_html/assets/img/'; // the website's photos, on the same hosting
     foreach ($products as $wp) {
         $id = preg_replace('/[^a-z0-9-]/', '', strtolower((string) ($wp['id'] ?? '')));
         $name = trim((string) ($wp['name'] ?? ''));
@@ -60,8 +61,10 @@ function import_web_products($products = null)
             $family = mb_substr(trim((string) ($wp['family'] ?? '')), 0, 80);
             $imgs = is_array($wp['images'] ?? null) ? $wp['images'] : [];
             $image = '';
-            foreach ([$id . '-' . $size . '-main', $id . '-' . $size . '-v2', $id . '-' . $size . '-v3'] as $try) {
-                if (in_array($try, $imgs, true)) { $image = $try; break; }
+            // The photo of this size: from the product's photo list, or a size photo in the website's image folder
+            // (e.g. matchacoco-10-1 for 10ml, matchacoco-100 for 100ml).
+            foreach ([$id . '-' . $size . '-main', $id . '-' . $size . '-1', $id . '-' . $size, $id . '-' . $size . '-v2', $id . '-' . $size . '-v3'] as $try) {
+                if (in_array($try, $imgs, true) || (is_numeric($size) && is_file($siteImg . $try . '.webp'))) { $image = $try; break; }
             }
             if ($image === '' && $imgs) {
                 $image = (string) $imgs[0];
