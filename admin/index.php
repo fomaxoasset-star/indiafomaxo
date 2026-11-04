@@ -447,6 +447,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     go($back, $ok ? $ok . ' order' . ($ok > 1 ? 's are' : ' is') . ' now ' . ['paid' => 'paid', 'deliver' => 'delivered', 'close' => 'closed and kept in Trash'][$act] . '.' . ($left ? ' ' . $left . ' could not take this step, so ' . ($left > 1 ? 'they were' : 'it was') . ' left as ' . ($left > 1 ? 'they were' : 'it was') . '.' : '')
       : '!None of the ticked orders could take this step, so nothing was changed.');
   }
+  if ($a === 'untrash' && isset($_POST['purge']) && !isset($_POST['one'])) {   // Trash: Delete forever the ticked ones (cannot be undone)
+    if (strtoupper(trim((string)($_POST['sure'] ?? ''))) !== 'DELETE') go(['tab' => 'orders', 'trash' => 1], '!Nothing was deleted. Please type DELETE to delete.');
+    $nos = array_values(array_filter(array_map('strval', (array)($_POST['nos'] ?? [])), 'strlen'));
+    $ok = count(array_filter($nos, 'shop_order_purge'));
+    go(['tab' => 'orders'] + (shop_trash_count() ? ['trash' => 1] : []), !$nos ? '!Please tick the orders to delete.'
+      : ($ok === count($nos) ? ($ok === 1 ? "$nos[0] is deleted forever." : "$ok orders are deleted forever.") : '!' . (count($nos) - $ok) . ' could not be deleted. Please try again.'));
+  }
   if ($a === 'untrash') {
     $nos = isset($_POST['one']) ? [(string)$_POST['one']] : array_values(array_filter(array_map('strval', (array)($_POST['nos'] ?? [])), 'strlen'));   // a row's own Put back, or the ticked ones
     $ok = count(array_filter($nos, 'shop_order_restore'));

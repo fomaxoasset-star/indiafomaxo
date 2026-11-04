@@ -419,6 +419,31 @@ function shop_order_restore(string $no): bool {
     });
   } catch (Throwable $e) { error_log('FOMAXO put back ' . $no . ': ' . $e->getMessage()); return false; }
 }
+/* Trash → Delete forever (AJAY 2026-11-04): the order leaves Trash for good, so it no longer counts in the number of orders or in Sold. Its stock went back
+   when it was closed, and its number is never given again. Its hidden visit (events, visits row, Left at checkout line) is deleted too, so Analytics stays as it
+   was; when the same visit placed another order, only this order's buy goes. Cannot be undone. */
+function shop_order_purge(string $no): bool {
+  try {
+    return shop_tx(function (PDO $db) use ($no) {
+      $s = $db->prepare('SELECT COUNT(*) FROM orders_trash WHERE no = ?'); $s->execute([$no]);
+      if (!(int)$s->fetchColumn()) return false;
+      $id = preg_replace('/[^a-z0-9-]/', '', strtolower($no));
+      $s = $db->prepare("SELECT sid FROM events WHERE type = 'buyx' AND product = ? LIMIT 1"); $s->execute([$id]); $sid = (string)$s->fetchColumn();
+      if ($id !== '' && $sid !== '') {
+        $s = $db->prepare("SELECT COUNT(*) FROM events WHERE sid = ? AND type IN ('buy', 'buyx') AND product <> ?"); $s->execute([$sid, $id]);
+        if ((int)$s->fetchColumn()) $db->prepare("DELETE FROM events WHERE sid = ? AND type = 'buyx' AND product = ?")->execute([$sid, $id]);
+        else {
+          $db->prepare("DELETE FROM events WHERE sid = ? AND type LIKE '%x'")->execute([$sid]);
+          $db->prepare('DELETE FROM visits WHERE sid = ? AND started < 0')->execute([$sid]);
+          $db->prepare('DELETE FROM leads WHERE sid = ? AND ordered = 2')->execute([$sid]);
+          try { $db->prepare('DELETE FROM trail WHERE sid = ?')->execute([$sid]); } catch (Throwable $e) {}   // its taps (no taps table yet: nothing to delete)
+        }
+      }
+      $db->prepare('DELETE FROM orders_trash WHERE no = ?')->execute([$no]);
+      return true;
+    });
+  } catch (Throwable $e) { error_log('FOMAXO delete forever ' . $no . ': ' . $e->getMessage()); return false; }
+}
 /* A trashed order leaves Analytics too. The shop's 'buy' event carries the order number (lower case) as its product; the visit that placed the order
    (its events, its visits row and its Left at checkout line) is hidden with it: event types get an 'x' (buy → buyx), visits.started turns negative and
    leads.ordered becomes 2, none of which any report counts. When the same visit placed another order that is still live, only this order's buy is hidden.
