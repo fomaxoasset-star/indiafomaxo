@@ -232,6 +232,7 @@ function markSent(btn, day) {
     var up = function () {
       var v = bx.filter(shown), n = v.filter(function (x) { return x.checked; }).length;
       b.disabled = !n; b.textContent = 'Put back selected (' + n + ')'; b.dataset.confirm = 'Put back ' + n + ' order' + (n === 1 ? '' : 's') + '?';
+      var dl = f.querySelector('[data-trdel]'); if (dl) { dl.disabled = !n; dl.textContent = 'Delete forever (' + n + ')'; dl.dataset.confirm = 'Delete ' + n + ' order' + (n === 1 ? '' : 's') + ' forever? They cannot be put back.'; }
       all.checked = n > 0 && n === v.length; all.indeterminate = n > 0 && n < v.length;
     };
     var find = function () {
