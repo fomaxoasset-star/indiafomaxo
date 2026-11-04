@@ -753,10 +753,10 @@ function shop_also(): array {   // ['pairs' => [id => [id, …]], 'top' => [id, 
   return ['pairs' => (object)$out, 'top' => array_keys($top)];
 }
 
-/* "14 purchased last month" (product page, STORE_LIVE.sold): bottles of each product really bought from 5 October to 3 November 2026 (always that window, AJAY 4 Nov), from real orders only
+/* "14 purchased last month" (product page, STORE_LIVE.sold): bottles of each product really bought from 6 October to 4 November 2026 (always that window, AJAY 4 Nov), from real orders only
    (test, awaiting-payment, cancelled and refunded orders don't count; orders in Trash do, as in Admin). Only products with more than 5 (6 or more), with the real number; 5 or fewer and nothing shows. Never a made-up number. */
 function shop_sold_month(): array {   // ['sold' => [id => ['50' => 14, …], …]]: each size counted on its own
-  $who = []; $year = '2026-10-05 00:00:00'; $end = '2026-11-04 00:00:00';   // always 5 October to 3 November 2026, both days in (AJAY 4 Nov: "count only from 5 October to 3 November always")
+  $who = []; $year = '2026-10-06 00:00:00'; $end = '2026-11-05 00:00:00';   // always 6 October to 4 November 2026, both days in (AJAY 4 Nov 13:11 UTC: "count only from 6 October to 4 November always")
   $win = " AND created >= " . shop_db()->quote($year) . " AND created < " . shop_db()->quote($end);
   $rows = shop_db()->query("SELECT items, created FROM orders WHERE test = 0 AND status IN ('new', 'paid', 'delivered')" . $win)->fetchAll();   // only that window is counted, so only it is read
   foreach (shop_db()->query("SELECT row_json FROM orders_trash WHERE status IN ('new', 'paid', 'delivered')" . $win) as $t)   // orders in Trash still count, like Admin → Sold
