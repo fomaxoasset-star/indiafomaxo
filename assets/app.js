@@ -161,12 +161,19 @@
     if (v) { syncQueue(); refreshProducts(); }
   }
 
+  var lastProducts = '';
+  // Runs a job when the screen is not busy, so taps and scrolling stay quick.
+  function whenIdle(fn) { if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: 4000 }); else setTimeout(fn, 1500); }
   function refreshProducts() {
     if (!S.token) return Promise.resolve();
     return api('products', { query: '&store=' + (curStoreId() || '') }).then(function (d) {
+      // Nothing changed since the last check (the usual case every 30 seconds): leave the screen alone.
+      var json = JSON.stringify(d.products);
+      if (json === lastProducts) { updateNavCounts(); return; }
+      lastProducts = json;
       S.products = d.products;
       LS.set('fx_products', S.products);
-      preloadPhotos();
+      whenIdle(preloadPhotos);
       if (S.view === 'sell' && $('#tiles')) { renderChips(); renderTiles(); renderCart(); }
       if (S.view === 'stock' && $('#stock-body')) renderStockBody();
       updateStoreBtn();
@@ -546,6 +553,18 @@
       });
     });
   }
+  // After a bag change only the counts on the tiles change: update those instead of redrawing every photo.
+  function updateTileCounts() {
+    var el = $('#tiles'); if (!el) return;
+    var n = {};
+    productGroups().forEach(function (g) { var c = 0; g.sizes.forEach(function (p) { S.cart.forEach(function (l) { if (l.product_id === p.id) c += l.qty; }); }); n[g.key] = c; });
+    $$('#tiles .ptile[data-g]').forEach(function (t) {
+      var c = n[t.getAttribute('data-g')] || 0, b = t.querySelector('.in-cart'), ph = t.querySelector('.ph');
+      if (!c) { if (b) ph.removeChild(b); return; }
+      if (!b) { b = document.createElement('span'); b.className = 'in-cart'; ph.appendChild(b); }
+      b.textContent = c;
+    });
+  }
   function renderTiles() {
     var el = $('#tiles'); if (!el) return;
     var groups = productGroups();
@@ -600,7 +619,7 @@
     }
     if (line) line.qty = want; else S.cart.push({ product_id: id, qty: 1 });
     lastAdd = { id: id, at: Date.now() };
-    renderTiles(); renderCart();
+    updateTileCounts(); renderCart();
     flashAdded(shortName(p.name) + ' ' + p.variant, before);
     return true;
   }
@@ -649,7 +668,7 @@
     if (price > 10000000) { modalErr('The price is too high (most ₹1,00,000).'); return; }
     var before = bagSnapshot();
     S.cart.push({ product_id: -(Date.now() % 1e9), name: name, variant: '', price: price, qty: 1 });
-    closeModal(); renderTiles(); renderCart();
+    closeModal(); renderCart();
     flashAdded(name, before);
   }
   function changeQty(id, d) {
@@ -662,7 +681,7 @@
       if (c.qty <= 0) gone = productById(id) || c;
     });
     S.cart = S.cart.filter(function (c) { return c.qty > 0; });
-    renderTiles(); renderCart();
+    updateTileCounts(); renderCart();
     if (gone) bagPop('Removed: ' + esc(shortName(gone.name) + ' ' + gone.variant), before);
   }
   function renderCart() {
@@ -967,7 +986,7 @@
   function afterSale(sale) {
     S.cart = []; S.discount = null; S.customer = null; S.coupon = null;
     setCartOpen(false);
-    if (S.view === 'sell') { renderTiles(); renderCart(); }
+    if (S.view === 'sell') { updateTileCounts(); renderCart(); }
     if (!sale.queued) refreshProducts();
     doneScreen(sale);
   }
