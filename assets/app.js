@@ -687,8 +687,8 @@
             '<button data-act="qty" data-id="' + l.product_id + '" data-d="1" aria-label="One more">+</button></div></div>';
         }).join('') + freeLineHtml()) + '</div>' +
       '<div class="cart-foot">' +
-      (empty ? '' : '<div class="foot-btns"><button class="fbtn' + (c ? ' on' : '') + '" data-act="customer"><span>👤</span>' + (c ? esc(c.name || c.phone || c.email) : 'Customer') + '</button>' +
-        '<button class="fbtn' + (S.coupon || d ? ' on' : '') + '" data-act="more2"><span>🎟</span>' + (S.coupon ? esc(S.coupon.code) : d ? 'Discount' : 'Coupon') + '</button></div>') +
+      (empty ? '' : '<div class="foot-btns"><button class="fbtn' + (c ? ' on' : '') + '" data-act="customer"><span>👤</span><b>' + (c ? esc(c.name || c.phone || c.email) : 'Customer / Member') + '</b></button>' +
+        '<button class="fbtn' + (S.coupon || d ? ' on' : '') + '" data-act="more2"><span>🎟</span><b>' + (S.coupon ? esc(S.coupon.code) : d ? 'Discount' : 'Coupon / Discount') + '</b></button></div>') +
       (t.discount ? '<div class="t-row"><span>Discount</span><span class="num">−' + money(t.discount) + '</span></div>' : '') +
       (S.coupon && !empty ? '<div class="t-row coupon-row"><span>🎟 ' + esc(S.coupon.code) + (S.coupon.kind === 'free' ? ' — free gift added' : '') + '</span><span class="num">' +
         (!t.couponOk ? 'needs ₹' + money(Math.round(S.coupon.min * 100)) : t.coupon ? '−' + money(t.coupon) : 'FREE') + '</span></div>' : '') +
