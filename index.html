@@ -442,6 +442,7 @@ html[data-mode="light"] .sort-by select option{background:#fff;color:#1a140c}
 .mbuy .n small{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
 .mbuy .n small{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}.mbuy .n small .mp{white-space:nowrap;letter-spacing:0;color:var(--ivory,inherit);font-size:12px}.mbuy .n small .was{display:inline;margin:0 5px 0 0;font-size:.92em;line-height:1}   /* size, then the original price struck and the sale price; the prices drop to their own line when the buttons need the room, never under them (AJAY 2026-10-15) */
 @media(max-width:960px){.mbuy{display:flex}}
+body:not(.home) .mbuy .n{cursor:pointer}
 /* reviews */
 .reviews{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(30px,5vw,80px);padding:80px 0;border-top:1px solid var(--line)}
 .rv-sum{display:flex;flex-direction:column;gap:16px}
@@ -2104,6 +2105,10 @@ html[data-mode="light"] .co-fe{color:#a8322a}
 .co-assure b{font-weight:400;font-size:14px;color:var(--ivory);line-height:1.3}
 .co-assure b a{border-bottom:1px solid var(--line-2)}
 .co-assure small{font-size:12px;color:var(--muted);line-height:1.3}
+.co-online{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 6px;padding:12px 14px;border:1px solid var(--line-2);background:var(--deep);font-size:14px;line-height:1.45;color:var(--muted);text-align:left}
+.co-online svg{flex:none;width:20px;height:20px;color:var(--gold)}
+.co-online b{color:var(--ivory);font-weight:600}
+@media(max-width:600px){.co-online{font-size:13px;padding:10px 12px}}
 @media(max-width:600px){.co-assure{gap:6px;padding:12px 0}.co-assure li{flex-direction:column;text-align:center;gap:6px}.co-assure b{font-size:12.5px}.co-assure small{font-size:11px}}
 .co-pin-tip{color:var(--gold)!important}
 .co-form .co-ap{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}
@@ -4040,6 +4045,8 @@ function bindProduct(p){
   const mb = $('#mbuy');
   function renderMbuy(){ mb.innerHTML = `<div class="n"><b>${esc(p.name)}</b><small><span>${optLabel(p, size)}</span><span class="mp">${money(p.prices[size], curOf(p)) ? wasHTML(p, size) + money(p.prices[size], curOf(p)) : 'Price on request'}</span></small></div>${isOut(p) ? OUT_BTN() : sizeOut(p, size) ? OUT_BTN('btn sm') : '<button class="btn line sm tc" id="mbAdd">Add To Cart</button><button class="btn sm tc" id="mbBuy">Buy Now</button>'}`; if (isOut(p) || sizeOut(p, size)) return; $('#mbAdd').onclick = () => { if (ready()) addToCart(p.id, size, getQ(), false, isSet ? [...picks] : undefined); }; $('#mbBuy').onclick = () => $('#buyBtn').click(); }
   renderMbuy();
+  /* the bar's name, size and price open the size and price box above (AJAY 09/11/2026: 9 people tapped them on Radiant Bloom and nothing happened) */
+  mb.onclick = e => { if (!e.target.closest('.n')) return; document.documentElement.classList.add('cv-off'); const bx = $('#pstock') && $('#pstock').closest('.buy') || $('.buy'); bx && bx.scrollIntoView({behavior: 'smooth', block: 'start'}); };
   const addBtn = $('#addBtn');
   /* the phone buy bar shows from the first screen, whenever the page's own Add To Cart is off screen (below the photos or scrolled past), until the reviews */
   mobileBarCheck = () => { const r = addBtn.getBoundingClientRect(); mb.classList.toggle('show', (r.bottom < 0 || r.top > innerHeight - 70) && $('#reviews').getBoundingClientRect().top > innerHeight*.6); };
@@ -5299,7 +5306,9 @@ function coAssure(cod, t){
   const st = coCodState(cod, t, t, ''), it = [[ICON.truck, 'Free delivery', 'in 1–3 days']];
   it.push(st === 'ok' || st === 'min' ? [CO_ICON.cash, 'Cash on delivery', cod.min > 0 ? 'on orders over ' + inr(cod.min) : 'available'] : [LOCK_SVG, 'Secure payment', 'UPI, cards, netbanking']);
   it.push([AS_ICON.shield, 'Original FOMAXO', '100% genuine']);
-  return `<ul class="co-assure">${it.map(x => `<li>${x[0]}<span><b>${x[1]}</b><small>${x[2]}</small></span></li>`).join('')}</ul>`;
+  /* no cash on delivery: say so plainly before they type (AJAY 09/11/2026, "no need of COD": 23 ad visitors opened checkout, typed nothing and searched the page bottom) */
+  const online = st !== 'ok' && st !== 'min' && S.checkout.razorpay ? `<p class="co-online">${LOCK_SVG}<span><b>Pay online only</b> · GPay, PhonePe, Paytm, any UPI or card. Takes a few seconds.</span></p>` : '';
+  return `<ul class="co-assure">${it.map(x => `<li>${x[0]}<span><b>${x[1]}</b><small>${x[2]}</small></span></li>`).join('')}</ul>${online}`;
 }
 function checkoutPage(q){
   document.title = 'Checkout — FOMAXO';
@@ -5664,7 +5673,7 @@ function route(){
   const seg = path.split('/').filter(Boolean);
   if (PAGES_OFF.has(seg[0])) { location.replace('#/'); return; }   // turned off on the admin page
   const rvPopEl = $('#rvFormBox.pop'); if (rvPopEl) { rvPopEl.remove(); document.body.classList.remove('lock'); }   // leaving with the review window open
-  clearInterval(heroTimer); clearInterval(homeGridTimer); mobileBarCheck = null; $('#mbuy').classList.remove('show');
+  clearInterval(heroTimer); clearInterval(homeGridTimer); mobileBarCheck = null; $('#mbuy').classList.remove('show'); $('#mbuy').onclick = null;
   document.title = 'FOMAXO — The House of Luxury Care';
   let html, after;
   switch (seg[0]){
