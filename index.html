@@ -3190,7 +3190,11 @@ const TRK = (() => {
   /* only errors from fomaxo.in's own code: "Script error." (a script from another site, e.g. ad or Clarity tags) and errors the Instagram / Facebook
      in-app browser throws from its own added code ("Java object is gone", window._M…) are not ours and cannot stop our buttons */
   const ownErr = e => { if (/^Script error|Java object is g|window\._M/i.test(e.message || '')) return false; try { return !e.filename || new URL(e.filename, location.href).origin === location.origin; } catch(x) { return true; } };
-  let errN = 0; addEventListener('error', e => { if (off || !(e instanceof ErrorEvent) || !ownErr(e) || errN++ >= 5) return; trail.push({k: 'e', p: pg(), l: String(e.message || 'Error').replace(/\d{6,}/g, '#').slice(0, 60)}); }, true);
+  /* the error as saved (60 letters): "Uncaught " and long words dropped, so the end (which box, e.g. (reading 'hidden')) and the line of the page as sent fit:
+     "TypeError: Cannot read null (reading 'hidden') L5473" */
+  const errLabel = e => { const m = String(e.message || 'Error').replace(/^Uncaught /, '').replace(/Cannot (read|set) properties of/, 'Cannot $1').replace(/\d{6,}/g, '#'), ln = e.lineno ? ' L' + e.lineno : '';
+    return m.slice(0, 60 - ln.length) + ln; };
+  let errN = 0; addEventListener('error', e => { if (off || !(e instanceof ErrorEvent) || !ownErr(e) || errN++ >= 5) return; trail.push({k: 'e', p: pg(), l: errLabel(e)}); }, true);
   const trailPage = () => { flush(); tPage = pg(); setTimeout(() => { if (tPage === pg()) tMax = Math.max(tMax, seenPc()); }, 1500); };   // a short page counts as seen to its end
   let lastView = '';
   return {
@@ -5382,6 +5386,9 @@ const loadRazorpay = () => window.Razorpay ? Promise.resolve() : (rzpLoad = rzpL
 function bindCheckout(q){
   const wa = $('#coWa'); if (wa) wa.onclick = () => checkout(coLines(q));
   const f = $('#coForm'); if (!f) return;
+  /* answers that come back late (PIN look-up, coupon check, the Razorpay window) after this form has left the page (another page opened, or the bag
+     emptied on checkout) do nothing: the boxes they would fill are gone, and touching them threw "Cannot read properties of null" (Improve, 2026-11-09) */
+  const live = () => f.isConnected;
   const lines = coLines(q), t = subtotal(lines), tog = togetherOff(lines), cod = coCod(), E = f.elements, btn = $('#coPay'), err = $('#coErr');
   const fd = $('#coFold'); if (fd) fd.onclick = () => { const on = $('#coSum').classList.toggle('fold'); fd.setAttribute('aria-expanded', !on); fd.textContent = on ? `Show items (${lines.reduce((a, l) => a + l.qty, 0)})` : 'Hide items'; };
   const ed = $('#coEdit'), openBag = () => { renderCart(); openPanel($('#cart')); }; if (ed) ed.onclick = openBag;
@@ -5410,6 +5417,7 @@ function bindCheckout(q){
   const missing = () => NEED.filter(([k, , ok]) => !ok(E[k].value.replace(/\s+/g, ' ').trim()));
   let wasLocked = null, typed = false;   // the "still needed" box waits until they start typing, so an empty checkout does not open with a list of jobs
   const upd = () => {
+    if (!live()) return;
     const miss = missing(), locked = miss.length > 0, fr = $('#coFeeRow');
     f.classList.toggle('co-locked', locked);
     const codSt = coCodState(cod, t, t - off(), E.name.value), codOn = codSt === 'ok', cr = f.querySelector('input[value=cod]');
@@ -5470,11 +5478,11 @@ function bindCheckout(q){
   /* a full PIN fills in City and State (api/pin.php, India Post's list) when they are still empty; typed ones are kept */
   let pinAsked = '';
   /* City and State stay out of sight until the PIN is in (they fill in from it), so the form starts with four boxes */
-  const csShow = () => { const cs = $('#coCs'); if (cs.hidden) { cs.hidden = false; upd(); } };
+  const csShow = () => { const cs = $('#coCs'); if (live() && cs && cs.hidden) { cs.hidden = false; upd(); } };
   E.pin.oninput = () => { const p = E.pin.value = E.pin.value.replace(/\D/g, '').slice(0, 6);
     if (!/^[1-9]\d{5}$/.test(p)) return; if (p === pinAsked || (val('city') && E.state.value)) { csShow(); return; } pinAsked = p;
     const late = setTimeout(csShow, 2500);   // no answer yet: show the boxes to type in
-    fetch('api/pin.php?pin=' + p).then(r => r.json()).then(j => { clearTimeout(late); csShow(); if (E.pin.value !== p) return;
+    fetch('api/pin.php?pin=' + p).then(r => r.json()).then(j => { clearTimeout(late); if (!live()) return; csShow(); if (E.pin.value !== p) return;
       if (j.city && !val('city')) { E.city.value = j.city; E.city.dispatchEvent(new Event('input', {bubbles: true})); }
       if (j.state && !E.state.value && IN_STATES.includes(j.state)) { E.state.value = j.state; ['input', 'change'].forEach(t => E.state.dispatchEvent(new Event(t, {bubbles: true}))); }
     }).catch(() => { clearTimeout(late); csShow(); }); };
@@ -5483,6 +5491,7 @@ function bindCheckout(q){
   upd();
 
   const showErr = (msg, el) => {
+    if (!live()) return;
     if (!el) { err.textContent = msg; err.hidden = false; err.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
     const lb = el.closest('label'); lb.classList.add('bad'); (lb.querySelector('.co-fe') || lb.appendChild(Object.assign(document.createElement('em'), {className: 'co-fe'}))).textContent = msg;
     jumpTo(el);
@@ -5526,6 +5535,7 @@ function bindCheckout(q){
   /* The coupon code box: the code is checked on the server against this bag, and kept for this visit if the page redraws */
   const CPN = 'fx_coupon', cIn = $('#coCpnIn');
   const cpnShow = (msg, info) => {   // info: a gold note, not an error
+    if (!live()) return;
     const m = $('#coCpnMsg'); m.hidden = !msg; m.textContent = msg || ''; m.classList.toggle('info', !!info);
     $('#coCpnOn').hidden = !cpn; $('#coCpnSaved').hidden = !(cpn && cpn.cp > 0);
     $('#coCpnForm').hidden = !!cpn;
@@ -5573,6 +5583,7 @@ function bindCheckout(q){
   /* the Razorpay window closed without paying: say plainly that nothing was taken, and give two ways on: open it again, or ask us for a payment link on WhatsApp */
   let failWhy = '';
   const retryShow = (rzp, c) => {
+    if (!live()) return;
     const box = $('#coRetry'); box.hidden = false;
     $('#coRetryWhy').textContent = failWhy ? `Last try: ${failWhy.replace(/\.?$/, '.')}` : '';
     $('#coRetryGo').onclick = () => { box.hidden = true; failWhy = ''; busy(true, 'Opening secure payment…'); TRK.send('card'); try { rzp.open(); } catch(x) { busy(false); f.requestSubmit(); } };
