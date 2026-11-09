@@ -1049,12 +1049,14 @@ if ($tab === 'improve') { $body0 = $body; try {   // a failure shows its reason 
   /* fixes already built and live on fomaxo.in (reply word => day it went live, e.g. 'fix product page' => '2026-11-01'): the tip leaves the list (nothing shown).
      It comes back only when a week has passed and the chosen dates start after the fix, so it is judged on new visits only */
   $done = ['fix phone' => '2026-10-26',   // #512: phone Add To Cart closer, bag note above buy bar
-    'fix landing page' => '2026-10-26',   // phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
+    'fix landing page' => '2026-11-09',   // 09/11 #610: checkout "Pay online only" line, product page bar name / price opens the price box; 26/10: phone home 01–07 one row (price and buttons in the first screen), no popup over the page Instagram and ad visitors land on
     'fix product page' => '2026-10-26',   // phone photo dots instead of the small photo row, smaller name, personal care "Good for" / "Made with" / How to use, a real review by the price
     'fix home' => '2026-10-26',   // phone home: bar at the bottom after the banner, "Not sure which one? Try any scent in 10ml" → Mini Collection
     'fix checkout' => '2026-10-26',
     'check payment' => '2026-10-26',   // payment: closed Razorpay → "Payment not finished, no money was taken" box with Try again and a WhatsApp payment link; closes and failure reasons counted in Conversion   // checkout: free delivery / COD / easy returns line on top, one Address box, City and State from the PIN, email optional, landmark and note folded away
     'fix the error' => '2026-11-09',   // checkout PIN look-up answered after the form was gone (Cannot read properties of null (reading 'hidden')); errors now saved with their line
+    'make it tappable' => '2026-11-09',   // checkout footer: two big buttons (back to the first empty box / WhatsApp help), a tap on its blank part goes back to the form
+    'check footer' => '2026-11-09',
     'make it faster' => '2026-10-29'];   // phone first open: no fade-in on the first page, the product photo downloads with the page (api/seo.php), lower parts of the product page and the bag / search / menu laid out later   // "Script error." and the Instagram / Facebook in-app browser's own errors are not our code: no longer saved or counted (index.html ownErr, insights_foreign_err)
   /* tips we built the site side of, where the steps left are done by you outside the site (e.g. in Meta Ads Manager): the tip stays, without "Reply …" */
   $yours = ['check ads' => '2026-10-26'];   // landing pages and ad names shown in the tip, Ads Manager steps

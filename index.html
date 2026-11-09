@@ -825,6 +825,14 @@ html[data-mode="light"] .bag-save{color:#1f7d45}
 .toast a{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold-hi);white-space:nowrap}
 /* ---------- footer ---------- */
 footer{border-top:1px solid var(--line);padding:80px 0 34px;margin-top:0}
+/* checkout (AJAY 09/11/2026, Improve tip "People tap footer on Checkout": 9 people, 36 taps, angry taps): the long shop footer gives way to two big buttons,
+   back to the first box still empty (or Pay) and WhatsApp help; a tap anywhere else on the footer does the same as the first button */
+.fco{display:none}
+body.on-co footer{padding:28px 0 22px}
+body.on-co .fco{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:760px;margin:0 auto 22px}
+body.on-co footer .fgrid,body.on-co footer .fstat{display:none}
+body.on-co footer .fbase{justify-content:center;gap:18px;border-top:0;padding-top:0;margin-top:0}
+@media(max-width:600px){body.on-co .fco{grid-template-columns:1fr}}
 .fgrid{display:grid;grid-template-columns:1.5fr repeat(3,minmax(0,1fr));gap:40px;margin-bottom:60px}
 .fgrid h5{font-size:10px;letter-spacing:.35em;text-transform:uppercase;color:var(--gold);font-weight:400;margin-bottom:22px}
 .fgrid a.brand{display:flex}
@@ -2606,6 +2614,7 @@ html[data-mode="light"] .wel-ok{color:#1e7a47}
 
 <footer>
   <div class="wrap">
+    <div class="fco" id="fco"><button class="btn block" type="button" id="fcoGo">↑ <span id="fcoTxt">Finish your order</span></button><a class="btn line block" id="fcoWa" href="#" target="_blank" rel="noopener">Need help ordering? WhatsApp us</a></div>
     <div class="fgrid">
       <div>
         <a class="brand" href="#/"><svg class="em" aria-hidden="true"><use href="#emblem"/></svg><svg class="wm" viewBox="0 0 3196 481" role="img" aria-label="FOMAXO"><use href="#wordmark"/></svg></a>
@@ -5701,6 +5710,7 @@ function route(){
   if (seg[0] === 'checkout' && coLines(q).length) { TRK.send('checkout'); ADS.checkout(coLines(q)); }
   if (seg[0] === 'checkout') $('#toast').classList.remove('show');
   document.body.classList.toggle('home', !seg[0]);
+  document.body.classList.toggle('on-co', seg[0] === 'checkout');
   document.documentElement.classList.toggle('scroll-back', !!backTo);
   const early = !shownFirst || $('.hc-early', app); shownFirst = true;   // the first page of a visit shows at once, with no fade-in (phones from an ad waited ~1 s more for it); later pages fade in
   app.innerHTML = `<div class="page-fade${early ? ' no-fade' : ''}"${/^(checkout|thank-you|review|owner|contact|partnership)$/.test(seg[0]) ? ' data-clarity-mask="true"' : ''}>${html}</div>`;   // typed and shown customer details stay hidden in Clarity recordings
@@ -6061,6 +6071,14 @@ addEventListener('scroll', () => { if (ticking) return; ticking = true; requestA
 if (!miniPic()) $$('footer a[href="#/collections/mini"]').forEach(a => a.remove());   // no mini on the website: no Mini Collection link
 $('#footShop').innerHTML = `<a href="#/fragrances">All products</a><a href="#/collections/fragrance">Fragrance</a><a href="#/fragrances?f=car">Car Fragrance</a><a href="#/personal-care">Personal Care</a>`;
 $('#footIg').href = `https://www.instagram.com/${S.contact.instagram}/`;
+$('#fcoWa').href = waLink('Hello FOMAXO, I need help placing my order.');
+/* checkout footer: the button (or any blank part of the footer) goes back to the first box still empty, or to Pay once all are filled */
+$('footer').addEventListener('click', e => { if (!document.body.classList.contains('on-co') || e.target.closest('a,input,button:not(#fcoGo)')) return;
+  const f = $('#coForm'); if (!f) return;
+  const empty = [...f.querySelectorAll('input[required],select[required],textarea[required]')].find(x => !x.disabled && x.offsetParent && !String(x.value).trim());
+  const to = empty || $('#coPay'); if (!to) return;
+  document.documentElement.classList.add('cv-off'); to.scrollIntoView({behavior: 'smooth', block: 'center'});
+  if (empty) setTimeout(() => empty.focus({preventScroll: true}), 450); });
 if (PAGES_OFF.size) { $$('#menu a, #mnav nav a, footer .fgrid a').forEach(a => { if (pageOff(a.getAttribute('href'))) a.style.display = 'none'; });
   $$('footer .fgrid > div').forEach(c => { if (c.querySelector('h5') && ![...c.querySelectorAll('a')].some(a => a.style.display !== 'none')) c.style.display = 'none'; }); }
 if (ADS.on) { const a = ADS.ids, n = [a.meta && 'Meta', a.ga4 || a.gads ? 'Google' : '', a.tiktok && 'TikTok'].filter(Boolean);   /* the footer stays true once ad tags are on */
