@@ -2957,7 +2957,7 @@ window.STORE = {
   }
 };
 </script>
-<script src="api/live.php"></script><!-- stock, and products added, hidden or re-priced on fomaxo.in/admin -->
+<script>/* the headings' font (Cormorant) starts downloading now, while the shop's code below is still arriving, instead of after the code has drawn the page: on a slow phone the product page from an ad finished opening ~0.3 s sooner (10/11/2026). Not a preload in the head: that made the first picture ~0.15 s later */document.fonts&&document.fonts.load&&document.fonts.load('400 1em "Cormorant Garamond"')</script><script src="api/live.php"></script><!-- stock, and products added, hidden or re-priced on fomaxo.in/admin -->
 <script>/* FOMAXO storefront — routing, rendering, cart, search */
 (function(){
 "use strict";
@@ -3200,7 +3200,9 @@ const TRK = (() => {
   let tWait = 0; addEventListener('scroll', () => { if (tWait) return; tWait = setTimeout(() => { tWait = 0; tMax = Math.max(tMax, seenPc()); }, 400); }, {passive: true});
   setInterval(() => { if (trail.length) flush(); }, 15e3);
   addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
-  addEventListener('load', () => setTimeout(() => { try { const n = performance.getEntriesByType('navigation')[0], ms = n && n.loadEventStart > 0 ? Math.round(n.loadEventStart) : 0; if (ms && !off) trail.push({k: 'l', p: pg(), ms: Math.min(ms, 60000)}); } catch(e) {} }, 0), {once: true});
+  addEventListener('load', () => setTimeout(() => { try { const n = performance.getEntriesByType('navigation')[0], ms = n && n.loadEventStart > 0 ? Math.round(n.loadEventStart) : 0;
+    const r = x => Math.max(0, Math.round(x)), w = r(n.responseStart), d = r(n.responseEnd - n.responseStart), lv = performance.getEntriesByName(new URL('api/live.php', location.href).href)[0];   // where the time went: waiting for the server, downloading the page, the phone drawing it (Improve tip "opens slowly")
+    if (ms && !off) trail.push({k: 'l', p: pg(), ms: Math.min(ms, 60000), l: `w${w} d${d} j${r(ms - n.responseEnd)}` + (lv ? ` s${r(lv.responseStart - lv.requestStart)}` : '')}); } catch(e) {} }, 0), {once: true});
   /* only errors from fomaxo.in's own code: "Script error." (a script from another site, e.g. ad or Clarity tags) and errors the Instagram / Facebook
      in-app browser throws from its own added code ("Java object is gone", window._M…) are not ours and cannot stop our buttons */
   const ownErr = e => { if (/^Script error|Java object is g|window\._M/i.test(e.message || '')) return false; try { return !e.filename || new URL(e.filename, location.href).origin === location.origin; } catch(x) { return true; } };
@@ -5850,12 +5852,13 @@ let vsPrev = false;   // one preview note per page visit (the row is drawn again
 function vsSend(how, steps, src){ try { const nc = navigator.connection, body = JSON.stringify({t: 'vtime', how, net: nc && nc.effectiveType || '', vf: String(src || '').split('/').pop().split('?')[0], vt: steps.map(([k, n]) => [k, Math.round(n)])});
   if (!navigator.sendBeacon || !navigator.sendBeacon('api/track.php', new Blob([body], {type: 'application/json'}))) fetch('api/track.php', {method: 'POST', body, keepalive: true}).catch(() => {}); } catch (e) {} }
 function vsWatch(v){ if (v._vs) return; v._vs = 1; const t0 = performance.now(); let st = v.paused || v.readyState < 3 ? -1 : 0, fr = 0, done = false;   // a full video in the player: start time and freezes in its first 15 s
-  const fin = () => { if (done) return; done = true; clearInterval(iv); const el = performance.now() - t0; if (st < 0 && el < 5000) return;   // closed or swiped on within 5 s before it started: not counted
+  const fin = () => { if (done) return; done = true; clearInterval(iv); v._vsEnd = null; const el = performance.now() - t0; if (st < 0 && (el < 5000 || document.hidden)) return;   // closed or swiped on within 5 s before it started, or the phone left the page: not counted
     vsSend('video', st < 0 ? [['none', el]] : [['start', st], ['freeze', fr]], v.currentSrc || v.dataset.src); };
+  v._vsEnd = fin;   // the player ends the note when the shopper swipes to another video (10/11/2026: videos swiped past in 1 s were all counted as "did not play" when the player closed later)
   v.addEventListener('playing', () => { if (st < 0) st = performance.now() - t0; });
   v.addEventListener('waiting', () => { if (st >= 0 && !v.seeking && v.currentTime > .3) fr++; });   // stopped to load more while playing = froze
   const iv = setInterval(() => { if (!document.contains(v) || (v.paused && st >= 0) || performance.now() - t0 > 15000) fin(); }, 500);
-  addEventListener('pagehide', fin, {once: true}); }
+  addEventListener('pagehide', fin, {once: true}); addEventListener('visibilitychange', () => { if (document.hidden) fin(); }); }
 function bindVids(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   loopRow($('#vrow'));
@@ -5952,10 +5955,11 @@ function openReel(i){
       if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
       if (n === k) { if (!v.src) v.src = v.dataset.src; vsWatch(v); v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
-      else v.pause(); });
+      else { v.pause(); v._vsEnd && v._vsEnd();
+        if (Math.abs(n - k) > 1 && v.getAttribute('src') && !lent.some(x => x[1] === v)) { v.removeAttribute('src'); v.load(); s.classList.remove('shown'); } } });   // a video two or more away stops downloading, so the one on screen gets the whole connection (Android Chrome 10/11/2026: after a few swipes 6-9 videos loaded at once and the new one never started); what came already stays in the browser's copy for a swipe back
     const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
     if (MAC_SAFARI) { if (cv && cv.readyState < 4) { cv.addEventListener('canplaythrough', near, {once: true}); setTimeout(near, 6000); } else near(); }   // Mac Safari downloads the whole next and previous videos at once, so the one on screen waited (fomaxo.com report 2026-10-27: 5.5 s, stuck): there they load once it has enough to play to the end
-    else if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); setTimeout(near, 2500); } else near();
+    else if (cv && cv.readyState < 3) { cv.addEventListener('playing', near, {once: true}); cv.addEventListener('canplay', near, {once: true}); } else near();   // not after a fixed 2.5 s any more: on a slow phone connection the next ones took the data before this one could start
     $$('.rl-nav button', el).forEach(b => b.disabled = (+b.dataset.rl < 0 && k === 0) || (+b.dataset.rl > 0 && k === slides.length - 1));
   };
   const sio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) act(+e.target.dataset.k); }), {root: track, threshold: .6});

@@ -57,13 +57,17 @@ function insights_data(string $from, string $to, int $paths = 60): array {
   $keep = []; if ($paths > 0) { $lastAt = array_map(fn($st) => end($st)['at'], $V); uasort($lastAt, fn($x, $y) => strcmp($y, $x)); $keep = array_slice($lastAt, 0, $paths, true); unset($lastAt); }
   $pos = []; foreach (array_keys($V) as $p => $sid) $pos[(string)$sid] = $p;
   $first = ['t' => [], 'e' => [], 's' => []]; $load = []; $hasT = false;
-  $visit = function (string $sid, array $rows) use (&$V, &$taps, &$errs, &$speed, &$scroll, &$first, &$load, $keep, $pos) {
+  $parts = [];
+  $visit = function (string $sid, array $rows) use (&$V, &$taps, &$errs, &$speed, &$parts, &$scroll, &$first, &$load, $keep, $pos) {
     if (!isset($pos[$sid])) return;   // a visit with no page in these dates is left out
     $steps = &$V[$sid]; $p = $pos[$sid];
     foreach ($rows as $n => $t) {   // each tap, scroll and error goes to the last step on that page that started before it
       if ($t['k'] === 'e' && insights_foreign_err((string)$t['label'])) continue;   // saved before the page skipped them (index.html ownErr)
       $pg = insights_pg((string)$t['path']);
-      if ($t['k'] === 'l') { $load[$sid] ??= (int)$t['ms']; $speed[$t['device']][] = (int)$t['ms']; $first['s'][$t['device']] = min($first['s'][$t['device']] ?? PHP_INT_MAX, $p * 100000 + $n); continue; }
+      if ($t['k'] === 'l') { $load[$sid] ??= (int)$t['ms']; $speed[$t['device']][] = (int)$t['ms'];
+        /* where the time went (w server wait, d page download, j phone drawing, s live.php server wait); saved since 11/11/2026 */
+        if (preg_match_all('/([wdjs])(\d+)/', (string)$t['label'], $pm, PREG_SET_ORDER)) foreach ($pm as $m) $parts[$t['device']][$m[1]][] = min(60000, (int)$m[2]);
+        $first['s'][$t['device']] = min($first['s'][$t['device']] ?? PHP_INT_MAX, $p * 100000 + $n); continue; }
       if ($t['k'] === 'e') { $ek = $pg . '|' . $t['label']; $first['e'][$ek] = min($first['e'][$ek] ?? PHP_INT_MAX, $p * 100000 + $n); $errs[$ek] ??= ['pg' => $pg, 'label' => $t['label'], 'people' => [], 'n' => 0]; $errs[$ek]['people'][$sid] = 1; $errs[$ek]['n']++; }
       if ($t['k'] === 's') $scroll[$pg][$sid] = max($scroll[$pg][$sid] ?? 0, (int)$t['pc']);
       if ($t['k'] === 't') { $tk = $pg . '|' . $t['label'] . '|' . $t['dead']; $first['t'][$tk] = min($first['t'][$tk] ?? PHP_INT_MAX, $p * 100000 + $n); $taps[$tk] ??= ['pg' => $pg, 'label' => $t['label'], 'name' => insights_tap_name((string)$t['label']), 'dead' => (int)$t['dead'], 'taps' => 0, 'people' => [], 'rage' => 0, 'rage_people' => []];
@@ -113,7 +117,8 @@ function insights_data(string $from, string $to, int $paths = 60): array {
   $out['leave'] = array_slice($L, 0, 40);
   foreach ($taps as &$r) { $r['people'] = count($r['people']); $r['rage_people'] = count($r['rage_people']); } unset($r);
   usort($taps, fn($x, $y) => $y['taps'] <=> $x['taps']); $out['taps'] = array_slice(array_values($taps), 0, 300);
-  foreach ($speed as $dv => $ms) $out['speed'][$dv] = ['n' => count($ms), 'avg_ms' => (int)round(array_sum($ms) / count($ms)), 'slow' => count(array_filter($ms, fn($v) => $v > 3000))];
+  foreach ($speed as $dv => $ms) $out['speed'][$dv] = ['n' => count($ms), 'avg_ms' => (int)round(array_sum($ms) / count($ms)), 'slow' => count(array_filter($ms, fn($v) => $v > 3000)),
+    'parts' => array_map(fn($a) => (int)round(array_sum($a) / count($a)), $parts[$dv] ?? [])];
   foreach ($errs as &$r) $r['people'] = count($r['people']); unset($r);
   usort($errs, fn($x, $y) => [$y['people'], $y['n']] <=> [$x['people'], $x['n']]); $out['errors'] = array_slice(array_values($errs), 0, 20);
   $pp = []; foreach ($scroll as $pg => $sc) if (str_starts_with($pg, '/product/')) foreach ($sc as $v) $pp[] = $v;

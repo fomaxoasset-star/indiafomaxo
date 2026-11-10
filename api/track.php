@@ -63,7 +63,7 @@ try {
     $rows = [];
     foreach (array_slice((array)($in['tr'] ?? []), 0, 25) as $x) {
       if (!is_array($x) || !in_array($x['k'] ?? '', ['t', 's', 'l', 'e'], true)) continue;
-      $rows[] = [shop_now(), $sid, $vid, $cl($x['p'] ?? '/', 120), $x['k'], in_array($x['k'], ['t', 'e'], true) ? $cl($x['l'] ?? '', 60) : '', $x['k'] === 's' ? $n($x['pc'] ?? 0) : 0,
+      $rows[] = [shop_now(), $sid, $vid, $cl($x['p'] ?? '/', 120), $x['k'], in_array($x['k'], ['t', 'e', 'l'], true) ? $cl($x['l'] ?? '', 60) : '', $x['k'] === 's' ? $n($x['pc'] ?? 0) : 0,
                  empty($x['d']) ? 0 : 1, empty($x['r']) ? 0 : 1, $device, $x['k'] === 'l' ? max(0, min(60000, (int)($x['ms'] ?? 0))) : 0];
     }
     if (!$rows) exit;
