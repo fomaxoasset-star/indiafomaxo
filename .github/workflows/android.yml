@@ -47,3 +47,45 @@ jobs:
           git config user.name "github-actions" && git config user.email "github-actions@users.noreply.github.com"
           git add -A && git commit -qm "Android build ${{ github.run_number }}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" android-builds
+
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fomaxo-pos-apk
+          path: apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Open the app on an Android 14 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r "$(find apk -name '*debug*.apk' | head -1)"
+            adb shell am start -n in.fomaxo.pos/.MainActivity
+            sleep 40
+            mkdir -p shots && adb exec-out screencap -p > shots/app-open.png
+            adb shell am start -n in.fomaxo.pos/.MainActivity --es go sales
+            sleep 5
+            adb shell pidof in.fomaxo.pos && echo APP_RUNNING
+            adb logcat -d | grep -E "AndroidRuntime|FATAL|in.fomaxo" | tail -50 > shots/log.txt || true
+            adb shell dumpsys appwidget | grep -i fomaxo | head -20 >> shots/log.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test
+          path: shots
+      - name: Keep the screenshot on the android-builds branch
+        if: always()
+        run: |
+          git clone -q --depth 1 -b android-builds "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" b
+          cp -r shots b/ || true
+          cd b && git config user.name "github-actions" && git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -qm "Smoke test ${{ github.run_number }}" && git push -q origin android-builds || true
