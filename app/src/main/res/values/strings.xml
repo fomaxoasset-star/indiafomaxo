@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">FOMAXO POS</string>
+    <string name="widget_big">Today\'s sales</string>
+    <string name="widget_today">Today\'s total</string>
+    <string name="widget_new_sale">New sale</string>
+    <string name="widget_big_desc">Today\'s total, sales count, cash, UPI and card, with New sale and Sales buttons</string>
+    <string name="widget_today_desc">Today\'s total and number of sales</string>
+    <string name="widget_new_sale_desc">Opens the till for a new sale</string>
+</resources>

@@ -1,0 +1,30 @@
+name: Build Android app
+
+on:
+  push:
+    branches: [android-app]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build APK
+        env:
+          FOMAXO_VERSION_CODE: ${{ github.run_number }}
+          FOMAXO_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fomaxo-pos-apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
