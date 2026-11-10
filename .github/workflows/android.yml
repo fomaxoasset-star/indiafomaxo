@@ -22,6 +22,14 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease assembleDebug
+      - name: Copy the signing tool (the release APK is signed outside GitHub)
+        run: |
+          mkdir -p tools
+          cp "$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)lib/apksigner.jar" tools/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apksigner
+          path: tools/apksigner.jar
       - uses: actions/upload-artifact@v4
         with:
           name: fomaxo-pos-apk
