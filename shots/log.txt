@@ -1,0 +1,22 @@
+runner -> pos.fomaxo.in: 200
+    versionName=113.0.5672.136
+    versionName=113.0.5672.136
+11-10 22:22:34.407   336   336 D nativeloader: InitDefaultPublicLibraries for_preload=0: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libclang_rt.hwasan-aarch64-android.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+11-10 22:22:53.523   960   960 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-10 22:23:00.160  1644  2283 W chromium: [1110/222300.160159:WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+11-10 22:23:01.065   522   548 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.android.chrome/org.chromium.chrome.browser.quickactionsearchwidget.QuickActionSearchWidgetProvider$QuickActionSearchWidgetProviderSearch} won't be persisted.
+11-10 22:23:01.076   522   548 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.android.chrome/org.chromium.chrome.browser.quickactionsearchwidget.QuickActionSearchWidgetProvider$QuickActionSearchWidgetProviderDino} won't be persisted.
+11-10 22:23:01.108   522   548 D AppWidgetServiceImpl: Provider info from ComponentInfo{com.android.chrome/org.chromium.chrome.browser.searchwidget.SearchWidgetProvider} won't be persisted.
+11-10 22:23:02.193   522   550 I ActivityManager: Start proc 2585:com.android.chrome/u0a150 for service {com.android.chrome/org.chromium.chrome.browser.customtabs.CustomTabsConnectionService}
+11-10 22:23:04.229   522   550 I ActivityManager: Start proc 2807:com.google.android.webview:webview_service/u0a133 for service {com.google.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+11-10 22:23:05.079  1640  2193 W earchbox:search: Verification of java.net.URLConnection org.chromium.net.impl.CronetUrlRequestContext.openConnection(java.net.URL) took 100.198ms (69.86 bytecodes/s) (1480B approximate peak alloc)
+11-10 22:23:06.125  1640  2288 W A       : 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@231818047@23.18.18 (190800-0):5)
+11-10 22:23:08.979   522   550 I ActivityManager: Start proc 3264:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0ai9000 for  {in.fomaxo.pos/org.chromium.content.app.SandboxedProcessService0:0}
+11-10 22:23:09.586  3264  3264 I cr_WebViewApkApp: Launched version=113.0.5672.136 minSdkVersion=29 isBundle=false processName=com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+11-10 22:23:10.025   522   550 I ActivityManager: Start proc 3400:com.google.android.webview:webview_apk/u0a133 for service {com.google.android.webview/org.chromium.android_webview.nonembedded.AwComponentUpdateService}
+11-10 22:23:12.028  3045  3045 I FomaxoPOS: page finished: https://pos.fomaxo.in/
+11-10 22:23:12.174  3400  3563 W cr_AWNetworkFetcherTask: 	at org.chromium.android_webview.nonembedded.NetworkFetcherTask.download(chromium-TrichromeWebViewGoogle6432.apk-stable-567263637:48)
+11-10 22:23:46.341  4407  4921 I cr_CronetUrlRequestContext: destroyNativeStreamLocked org.chromium.net.impl.CronetBidirectionalStream@1013db9
+  [27] provider ProviderId{user:0, app:10192, cmp:ComponentInfo{in.fomaxo.pos/in.fomaxo.pos.BigSalesWidget}}
+  [28] provider ProviderId{user:0, app:10192, cmp:ComponentInfo{in.fomaxo.pos/in.fomaxo.pos.TodayWidget}}
+  [29] provider ProviderId{user:0, app:10192, cmp:ComponentInfo{in.fomaxo.pos/in.fomaxo.pos.NewSaleWidget}}
