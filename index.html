@@ -5770,9 +5770,10 @@ function vsBind(){
     if (held || $('#reel')) return;
     if (!v.getAttribute('src')) { if (busy() >= 4) { wait.add(c); return; } v.src = v.dataset.src; ['canplay', 'error'].forEach(ev => v.addEventListener(ev, pump, {once: true})); }
     v.play().then(() => vidLit(v, () => (v.closest('.vs-c') || c).classList.add('playing'))).catch(e => { if (e.name !== 'NotAllowedError') return; if (v.readyState < 3 && !v._re) { v._re = 1; v.preload = 'auto'; v.addEventListener('canplay', () => v.play().then(() => vidLit(v, () => (v.closest('.vs-c') || c).classList.add('playing'))).catch(() => { held = true; wait.clear(); }), {once: true}); return; } held = true; wait.clear(); }); };   // Safari: one more try once loaded
+  const t0 = document.readyState === 'complete' ? performance.now() : 0;
+  cs.forEach(c => $('video', c).addEventListener('playing', e => { if (!vsPrev) { vsPrev = true; vsSend('preview', [['start', performance.now() - t0]], e.target.currentSrc); } }, {once: true}));   // Improve → Video speed: the strip is on screen from the start, so its time counts from the page opening (or from the product page being drawn, when the shopper came from another page)
   const go = () => { if (!document.contains(cs[0])) return; vsIO = new IntersectionObserver(es => es.forEach(e => run(e.target, e.isIntersecting))); cs.forEach(c => vsIO.observe(c)); };
-  const later = () => setTimeout(go, 3000);   // 3 seconds after the page has loaded: the photo, prices and Add to Cart get the connection first
-  document.readyState === 'complete' ? later() : addEventListener('load', later, {once: true});
+  document.readyState === 'complete' ? go() : addEventListener('load', go, {once: true});   // as soon as the page has loaded (the photo, prices and Add to Cart had the connection first); it waited 3 s more before, so on a phone the first preview played ~3 s after the page was ready (AJAY 11/11/2026: previews faster)
 }
 const VI = {
   by: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-3.8 4-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>',   // the person in a Review video (admin → Videos → name)
