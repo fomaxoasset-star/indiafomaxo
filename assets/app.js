@@ -208,7 +208,7 @@
         if (stop || item.error) return;
         return api('sale', { body: item.payload }).then(function () {
           S.queue = S.queue.filter(function (q) { return q.payload.uuid !== item.payload.uuid; });
-          saveQueue(); uploaded++;
+          saveQueue(); uploaded++; nativeRefresh();
         }, function (e) {
           if (e.offline || e.status === 401 || e.status >= 500) { stop = true; return; }
           item.error = e.message; saveQueue();
@@ -309,10 +309,21 @@
   }
   function closeMenu() { var m = $('.menu'); if (m) m.remove(); }
 
+  // ---------------------------------------------------------------- Android app (FOMAXO POS for Android)
+  // Inside the Android app, tell it to update the home-screen widget (after a sale, login or logout).
+  function nativeRefresh() { try { if (window.FomaxoAndroid) window.FomaxoAndroid.refresh(); } catch (e) { /* not in the app */ } }
+  // The widget buttons open a screen without reloading the page, so a bag in progress is kept.
+  window.fxGo = function (v) {
+    if (!S.token || !S.user || ['sell', 'sales', 'reports'].indexOf(v) < 0) return;
+    if (v === 'reports' && !isManager()) v = 'sales';
+    closeModal(); closeMenu(); S.view = v; S.cartOpen = false; renderView();
+    if (v === 'sell') refreshProducts();
+  };
+
   // ---------------------------------------------------------------- install on this device
   // Chrome and Edge (Android, Windows, Mac) offer the install themselves; other browsers get short steps.
   var installEvt = null;
-  function isInstalled() { return window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
+  function isInstalled() { return !!window.FomaxoAndroid || window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
   function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
   // How to install in this browser when it has no install button of its own.
   function installSteps() {
@@ -378,6 +389,7 @@
         }
         S.token = d.token; S.user = d.user;
         LS.set('fx_token', S.token); LS.set('fx_user', S.user);
+        nativeRefresh();
         return refreshMe().then(refreshProducts).then(function () { S.view = 'sell'; renderApp(); syncQueue(); });
       }).catch(function (e2) {
         btn.disabled = false;
@@ -991,6 +1003,7 @@
     afterSale(local);
   }
   function afterSale(sale) {
+    nativeRefresh();
     S.cart = []; S.discount = null; S.customer = null; S.coupon = null;
     setCartOpen(false);
     if (S.view === 'sell') { updateTileCounts(); renderCart(); }
@@ -1735,6 +1748,7 @@
     api('logout', { body: {} }).catch(function () { /* fine offline */ });
     S.token = null; LS.del('fx_token');
     S.cart = []; S.discount = null; S.customer = null;
+    nativeRefresh();
     renderLogin();
   }
 
@@ -2060,7 +2074,7 @@
       }
       // receipt
       case 'r-print': $('#print-area').innerHTML = paperHtml(currentReceipt); window.print(); break;
-      case 'r-pdf': { var rf = $('#rframe'); try { rf.contentWindow.focus(); rf.contentWindow.print(); } catch (e) { window.open(currentReceipt.receipt_url, '_blank', 'noopener'); } break; }
+      case 'r-pdf': { if (window.FomaxoAndroid) { window.FomaxoAndroid.openUrl(currentReceipt.receipt_url); break; } var rf = $('#rframe'); try { rf.contentWindow.focus(); rf.contentWindow.print(); } catch (e) { window.open(currentReceipt.receipt_url, '_blank', 'noopener'); } break; }
       case 'r-wa': {
         var s = currentReceipt, digits = (s.customer_phone || '').replace(/\D/g, '');
         window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(receiptText(s)), '_blank', 'noopener');
