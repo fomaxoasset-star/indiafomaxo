@@ -77,6 +77,12 @@
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener('change', applyTheme);
 
   // ---------------------------------------------------------------- state
+  // Shortcuts on the app icon (long-press / right-click) open a screen directly: ./?go=sell | sales | reports
+  function startView() {
+    var m = /[?&]go=(sell|sales|reports)\b/.exec(location.search);
+    if (m && history.replaceState) history.replaceState(null, '', location.pathname);
+    return m ? m[1] : 'sell';
+  }
   var S = {
     token: LS.get('fx_token', null),
     user: LS.get('fx_user', null),
@@ -89,7 +95,7 @@
     products: LS.get('fx_products', []),
     queue: LS.get('fx_queue', []),
     online: navigator.onLine,
-    view: 'sell',
+    view: startView(),
     cart: [], discount: null, customer: null, coupon: null,
     category: 'All', search: '',
     stockFilter: 'all', stockSearch: '',
@@ -448,6 +454,7 @@
     $$('[data-count="sales"]').forEach(function (c2) { c2.textContent = S.queue.length; c2.classList.toggle('hidden', !S.queue.length); });
   }
   function renderView() {
+    if (S.view === 'reports' && !isManager()) S.view = 'sell'; // staff have no Reports
     $$('#nav button, #bnav button').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-view') === S.view); });
     var v = $('#view'); v.scrollTop = 0;
     if (S.view === 'sell') renderSell();
