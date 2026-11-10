@@ -69,13 +69,16 @@ jobs:
           disable-animations: true
           script: |
             adb install -r "$(find apk -name '*debug*.apk' | head -1)"
+            curl -sS -o /dev/null -w 'runner -> pos.fomaxo.in: %{http_code}\n' https://pos.fomaxo.in/ > shots0.txt || true
             adb shell am start -n in.fomaxo.pos/.MainActivity
-            sleep 40
+            sleep 60
             mkdir -p shots && adb exec-out screencap -p > shots/app-open.png
             adb shell am start -n in.fomaxo.pos/.MainActivity --es go sales
             sleep 5
             adb shell pidof in.fomaxo.pos && echo APP_RUNNING
-            adb logcat -d | grep -E "AndroidRuntime|FATAL|in.fomaxo" | tail -50 > shots/log.txt || true
+            cat shots0.txt > shots/log.txt || true
+            adb shell dumpsys package com.google.android.webview | grep versionName | head -2 >> shots/log.txt || true
+            adb logcat -d | grep -E "AndroidRuntime|FATAL|FomaxoPOS|chromium" | tail -80 >> shots/log.txt || true
             adb shell dumpsys appwidget | grep -i fomaxo | head -20 >> shots/log.txt || true
       - uses: actions/upload-artifact@v4
         if: always()

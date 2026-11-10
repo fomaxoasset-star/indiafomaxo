@@ -15,6 +15,9 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
+import android.webkit.ConsoleMessage
+import android.webkit.WebResourceResponse
+import android.util.Log
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -55,7 +58,12 @@ class MainActivity : ComponentActivity() {
             userAgentString = "$userAgentString FomaxoPOS-Android/${BuildConfigCompat.versionName(this@MainActivity)}"
         }
         web.addJavascriptInterface(Bridge(), "FomaxoAndroid")
-        web.webChromeClient = WebChromeClient()
+        web.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(m: ConsoleMessage): Boolean {
+                Log.i("FomaxoPOS", "console: ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                return true
+            }
+        }
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
@@ -64,7 +72,12 @@ class MainActivity : ComponentActivity() {
                 return true
             }
 
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                Log.w("FomaxoPOS", "HTTP ${response.statusCode} ${request.url}")
+            }
+
             override fun onPageFinished(view: WebView, url: String) {
+                Log.i("FomaxoPOS", "page finished: $url")
                 if (!url.startsWith(BASE)) return
                 pageReady = true
                 // window.print and window.open do nothing inside a WebView: send them to Android.
@@ -81,6 +94,7 @@ class MainActivity : ComponentActivity() {
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                Log.w("FomaxoPOS", "load error ${error.errorCode} ${error.description} ${request.url}")
                 // Only when the till page itself cannot load (first open with no internet).
                 if (request.isForMainFrame) {
                     pageReady = false
