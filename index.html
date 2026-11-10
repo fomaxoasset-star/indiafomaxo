@@ -5751,8 +5751,8 @@ function vStrip(){
   el.innerHTML = `<div class="vs-h"><span>Review videos</span><button type="button" class="vs-all" aria-label="Play review videos">${l.length} ›</button></div>
     <div class="eg-w"><div class="vs-row">${l.map((v, i) => `<button type="button" class="vs-c" data-vi="${i}" aria-label="${v.n ? esc(v.n) + ' ' : ''}video">${vidPoster(v) ? `<img src="${vidPoster(v, 150)}" alt="" loading="lazy" decoding="async" fetchpriority="low">` : ''}${v.pv && !v.e ? `<video disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" muted playsinline loop preload="none"${vidXO(v.pv)} data-src="${esc(v.pv)}"></video>` : ''}<span class="vs-p" aria-hidden="true">${VI.play}</span>${v.n ? `<bdi class="vs-n">${esc(v.n)}</bdi>` : ''}</button>`).join('')}</div></div>`;
   loopRow($('.vs-row', el));
-  $$('.vs-c', el).forEach(b => b.onclick = () => openReel(+b.dataset.vi));
-  $('.vs-all', el).onclick = () => openReel(0);
+  $$('.vs-c', el).forEach(b => { b.onclick = () => openReel(+b.dataset.vi); b.onpointerdown = () => vWarm(+b.dataset.vi); });
+  $('.vs-all', el).onclick = () => openReel(0); $('.vs-all', el).onpointerdown = () => vWarm(0);
   edgeArrows($('.vs-row', el));
   vsBind();
 }
@@ -5860,11 +5860,22 @@ function vsWatch(v){ if (v._vs) return; v._vs = 1; const t0 = performance.now();
   v.addEventListener('waiting', () => { if (st >= 0 && !v.seeking && v.currentTime > .3) fr++; });   // stopped to load more while playing = froze
   const iv = setInterval(() => { if (!document.contains(v) || (v.paused && st >= 0) || performance.now() - t0 > 15000) fin(); }, 500);
   addEventListener('pagehide', fin, {once: true}); addEventListener('visibilitychange', () => { if (document.hidden) fin(); }); }
+/* a finger (or mouse button) going down on a video tile already starts its full video, so the download runs while the finger lifts and the player is built
+   (about 0.4 s on a phone, and a new connection to Cloudflare when the page has been open a while); the player then uses that same video (AJAY 11/11/2026: videos faster).
+   A scroll that started on a tile lets it go again (pointercancel), as does no tap within 3 s */
+let vWarmV = null, vWarmT = 0;
+function vUnwarm(){ clearTimeout(vWarmT); if (vWarmV) { vWarmV.removeAttribute('src'); vWarmV.load(); vWarmV = null; } }
+function vWarm(i){ const v = rowVids()[i]; if (!v || v.e || $('#reel')) return; const u = vSrc(v); if (vWarmV && vWarmV.dataset.src === u) return; vUnwarm();
+  const w = document.createElement('video'); w.muted = true; w.playsInline = true; w.preload = 'auto'; if (vidXO(u)) w.crossOrigin = 'anonymous'; w.dataset.src = u; w.src = u; vWarmV = w;
+  vWarmT = setTimeout(vUnwarm, 3000); addEventListener('pointercancel', vUnwarm, {once: true}); }
+function vWarmTake(slide){ const w = vWarmV, sv = slide && $('video', slide); clearTimeout(vWarmT); vWarmV = null; removeEventListener('pointercancel', vUnwarm);
+  if (!w) return; if (w.error || !sv || sv.getAttribute('src') || sv.dataset.src !== w.dataset.src) { w.removeAttribute('src'); w.load(); return; }
+  [...sv.attributes].forEach(a => { if (!/^(src|preload|crossorigin)$/.test(a.name)) w.setAttribute(a.name, a.value); }); sv.replaceWith(w); }
 function bindVids(){
   vrIO && vrIO.disconnect(); vrIO = null; vrNear && vrNear.disconnect(); vrNear = null;
   loopRow($('#vrow'));
   const tiles = $$('#vrow .vt'); if (!tiles.length) return;
-  tiles.forEach(t => t.onclick = () => openReel(+t.dataset.vi));
+  tiles.forEach(t => { t.onclick = () => openReel(+t.dataset.vi); t.onpointerdown = () => vWarm(+t.dataset.vi); });
   tiles.forEach(t => { const v = $('video', t); if (v) { const T = () => v.closest('.vt') || t; v.addEventListener('playing', () => T().classList.add('playing')); v.addEventListener('playing', () => vidLit(v, () => T().classList.add('shown'))); v.addEventListener('emptied', () => T().classList.remove('shown')); v.addEventListener('pause', () => T().classList.remove('playing')); } });
   const onScreen = t => { const r = t.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0; };
   const cover = v => { if (v.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; } };   // a tile's cover goes on its video only when that preview starts loading (the tile's own photo shows until then): all 41 at once held the previews back on phone internet   // the videos start by themselves as the page opens (autoplay, muted, looping)
@@ -5945,6 +5956,7 @@ function openReel(i){
   const track = $('.rl-track', el), slides = $$('.rl-s', el);
   const lent = [];   // the row's videos are already loaded: the player borrows them, so the tapped video plays at once (given back on close); a row tile playing its small preview (silent, first seconds) is not borrowed, the player loads the full video
   $$('#vrow .vt').forEach(t => { const rv = $('video', t), sv = slides[+t.dataset.vi] && $('video', slides[+t.dataset.vi]); if (!rv || !rv.src || rv.readyState < 2 || !sv || lent.some(x => x[1] === sv) || rv.dataset.src !== sv.dataset.src) return; const ph = document.createComment(''); rv.before(ph); sv.replaceWith(rv); lent.push([ph, rv]); });
+  vWarmTake(slides[i]);   // the full video the finger already started (vWarm)
   $$('#vrow video, #vStrip video').forEach(v => { if (!lent.some(x => x[1] === v) && v.getAttribute('src')) { v.removeAttribute('src'); v.load(); } });   // the row's small previews let go while the player is open (Safari showed the full video black with them all loaded); they come back from the browser's copy on close
   slides.forEach(s => { const v = $('video', s); if (v) v.addEventListener('playing', () => vidLit(v, () => s.classList.add('shown'))); });   // the cover photo goes once real pictures show
   let cur = -1;
@@ -5955,7 +5967,7 @@ function openReel(i){
       if (pic && !pic.src && Math.abs(n - k) <= 1) pic.src = pic.dataset.src;   // cover photos too, only for this video and the ones either side: all of them at once (one per video) held up the tapped video's start
       if (v && v.dataset.poster && Math.abs(n - k) <= 1) { v.poster = v.dataset.poster; delete v.dataset.poster; }   // a cover photo only for this video and the ones either side
       if (!v) { const f = $('iframe', s); if (f && !f.src && Math.abs(n - k) <= 1) f.src = f.dataset.src; return; }   // Instagram's player: loaded when near, played by a tap on it
-      if (n === k) { if (!v.src) v.src = v.dataset.src; vsWatch(v); v.muted = reelMuted; if (!reelMuted) quiet(v); v.currentTime = 0; s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
+      if (n === k) { if (!v.src) v.src = v.dataset.src; vsWatch(v); v.muted = reelMuted; if (!reelMuted) quiet(v); if (v.currentTime > 0) v.currentTime = 0; /* rewinds only a video that has played: a seek on a fresh one made Safari wait for it */ s.classList.remove('paused'); v.play().catch(() => { v.muted = reelMuted = true; const sb = $('.rl-snd', el); if (sb) { sb.innerHTML = VI.off; sb.setAttribute('aria-label', 'Sound on'); } v.play().catch(() => s.classList.add('paused')); }); }
       else { v.pause(); v._vsEnd && v._vsEnd();
         if (Math.abs(n - k) > 1 && v.getAttribute('src') && !lent.some(x => x[1] === v)) { v.removeAttribute('src'); v.load(); s.classList.remove('shown'); } } });   // a video two or more away stops downloading, so the one on screen gets the whole connection (Android Chrome 10/11/2026: after a few swipes 6-9 videos loaded at once and the new one never started); what came already stays in the browser's copy for a swipe back
     const cv = $('video', slides[k]), near = () => { if (cur !== k) return; [k + 1, k - 1].forEach(n => { const v = slides[n] && $('video', slides[n]); if (v && !v.src) { v.preload = 'auto'; v.src = v.dataset.src; } }); };   // the next video, then the previous one, load once this one is playing, so a swipe plays at once without slowing the start of this one
