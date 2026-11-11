@@ -2957,7 +2957,7 @@ window.STORE = {
   }
 };
 </script>
-<script>/* the headings' font (Cormorant) starts downloading now, while the shop's code below is still arriving, instead of after the code has drawn the page: on a slow phone the product page from an ad finished opening ~0.3 s sooner (10/11/2026). Not a preload in the head: that made the first picture ~0.15 s later */document.fonts&&document.fonts.load&&document.fonts.load('400 1em "Cormorant Garamond"')</script><script src="api/live.php"></script><!-- stock, and products added, hidden or re-priced on fomaxo.in/admin -->
+<script src="api/live.php"></script><!-- stock, and products added, hidden or re-priced on fomaxo.in/admin -->
 <script>/* FOMAXO storefront — routing, rendering, cart, search */
 (function(){
 "use strict";
@@ -3200,9 +3200,7 @@ const TRK = (() => {
   let tWait = 0; addEventListener('scroll', () => { if (tWait) return; tWait = setTimeout(() => { tWait = 0; tMax = Math.max(tMax, seenPc()); }, 400); }, {passive: true});
   setInterval(() => { if (trail.length) flush(); }, 15e3);
   addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
-  addEventListener('load', () => setTimeout(() => { try { const n = performance.getEntriesByType('navigation')[0], ms = n && n.loadEventStart > 0 ? Math.round(n.loadEventStart) : 0;
-    const r = x => Math.max(0, Math.round(x)), w = r(n.responseStart), d = r(n.responseEnd - n.responseStart), lv = performance.getEntriesByName(new URL('api/live.php', location.href).href)[0];   // where the time went: waiting for the server, downloading the page, the phone drawing it (Improve tip "opens slowly")
-    if (ms && !off) trail.push({k: 'l', p: pg(), ms: Math.min(ms, 60000), l: `w${w} d${d} j${r(ms - n.responseEnd)}` + (lv ? ` s${r(lv.responseStart - lv.requestStart)}` : '')}); } catch(e) {} }, 0), {once: true});
+  addEventListener('load', () => setTimeout(() => { try { const n = performance.getEntriesByType('navigation')[0], ms = n && n.loadEventStart > 0 ? Math.round(n.loadEventStart) : 0; if (ms && !off) trail.push({k: 'l', p: pg(), ms: Math.min(ms, 60000)}); } catch(e) {} }, 0), {once: true});
   /* only errors from fomaxo.in's own code: "Script error." (a script from another site, e.g. ad or Clarity tags) and errors the Instagram / Facebook
      in-app browser throws from its own added code ("Java object is gone", window._M…) are not ours and cannot stop our buttons */
   const ownErr = e => { if (/^Script error|Java object is g|window\._M/i.test(e.message || '')) return false; try { return !e.filename || new URL(e.filename, location.href).origin === location.origin; } catch(x) { return true; } };
