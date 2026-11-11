@@ -65,8 +65,8 @@ function insights_data(string $from, string $to, int $paths = 60): array {
       if ($t['k'] === 'e' && insights_foreign_err((string)$t['label'])) continue;   // saved before the page skipped them (index.html ownErr)
       $pg = insights_pg((string)$t['path']);
       if ($t['k'] === 'l') { $load[$sid] ??= (int)$t['ms']; $speed[$t['device']][] = (int)$t['ms'];
-        /* where the time went (w server wait, d page download, j phone drawing, s live.php server wait); saved since 11/11/2026 */
-        if (preg_match_all('/([wdjs])(\d+)/', (string)$t['label'], $pm, PREG_SET_ORDER)) foreach ($pm as $m) $parts[$t['device']][$m[1]][] = min(60000, (int)$m[2]);
+        /* where the time went (w server wait, d page download, j phone drawing, s live.php server wait, all ms; z the page's size as sent, KB); saved since 11/11/2026 */
+        if (preg_match_all('/([wdjsz])(\d+)/', (string)$t['label'], $pm, PREG_SET_ORDER)) foreach ($pm as $m) $parts[$t['device']][$m[1]][] = min(60000, (int)$m[2]);
         $first['s'][$t['device']] = min($first['s'][$t['device']] ?? PHP_INT_MAX, $p * 100000 + $n); continue; }
       if ($t['k'] === 'e') { $ek = $pg . '|' . $t['label']; $first['e'][$ek] = min($first['e'][$ek] ?? PHP_INT_MAX, $p * 100000 + $n); $errs[$ek] ??= ['pg' => $pg, 'label' => $t['label'], 'people' => [], 'n' => 0]; $errs[$ek]['people'][$sid] = 1; $errs[$ek]['n']++; }
       if ($t['k'] === 's') $scroll[$pg][$sid] = max($scroll[$pg][$sid] ?? 0, (int)$t['pc']);
@@ -117,8 +117,9 @@ function insights_data(string $from, string $to, int $paths = 60): array {
   $out['leave'] = array_slice($L, 0, 40);
   foreach ($taps as &$r) { $r['people'] = count($r['people']); $r['rage_people'] = count($r['rage_people']); } unset($r);
   usort($taps, fn($x, $y) => $y['taps'] <=> $x['taps']); $out['taps'] = array_slice(array_values($taps), 0, 300);
-  foreach ($speed as $dv => $ms) $out['speed'][$dv] = ['n' => count($ms), 'avg_ms' => (int)round(array_sum($ms) / count($ms)), 'slow' => count(array_filter($ms, fn($v) => $v > 3000)),
-    'parts' => array_map(fn($a) => (int)round(array_sum($a) / count($a)), $parts[$dv] ?? [])];
+  foreach ($speed as $dv => $ms) { sort($ms); $out['speed'][$dv] = ['n' => count($ms), 'avg_ms' => (int)round(array_sum($ms) / count($ms)), 'slow' => count(array_filter($ms, fn($v) => $v > 3000)),
+    'mid_ms' => $ms[intdiv(count($ms), 2)],   // the middle visit: half opened faster, half slower (a few visits on a very bad connection, 12 to 20 s, pull the average up)
+    'parts' => array_map(fn($a) => (int)round(array_sum($a) / count($a)), $parts[$dv] ?? [])]; }
   foreach ($errs as &$r) $r['people'] = count($r['people']); unset($r);
   usort($errs, fn($x, $y) => [$y['people'], $y['n']] <=> [$x['people'], $x['n']]); $out['errors'] = array_slice(array_values($errs), 0, 20);
   $pp = []; foreach ($scroll as $pg => $sc) if (str_starts_with($pg, '/product/')) foreach ($sc as $v) $pp[] = $v;
@@ -165,8 +166,12 @@ function insights_write(): void {
       array_push($L, ...insights_checkout(date('Y-m-d', strtotime("-$back day")), date('Y-m-d'))); $L[] = '';
       $L[] = 'WHERE PEOPLE LEAVE (page | visits that saw it | left from it | % left | avg time | avg seen down the page | % reached the bottom)';
       foreach ($D['leave'] as $r) $L[] = sprintf('%s | %d | %d | %d%% | %s | %s | %s', insights_pg_name($r['pg'], $names), $r['seen'], $r['left_n'], $r['seen'] ? round(100 * $r['left_n'] / $r['seen']) : 0, insights_secs($r['secs']), $r['pc'] !== null ? $r['pc'] . '%' : '–', $r['bottom'] !== null ? $r['bottom'] . '%' : '–');
-      $L[] = ''; $L[] = 'HOW FAST THE SITE OPENED (device | page loads | average | slower than 3 s)';
-      foreach ($D['speed'] as $dv => $r) $L[] = sprintf('%s | %d | %.1fs | %d%%', $dv, $r['n'], $r['avg_ms'] / 1000, round(100 * $r['slow'] / max(1, $r['n'])));
+      $L[] = ''; $L[] = 'HOW FAST THE SITE OPENED (device | page loads | average | middle visit | slower than 3 s | where the time went, on average: server wait, page download, phone drawing, live.php server wait | page size as sent)';
+      $sec = fn($ms) => sprintf('%.1fs', $ms / 1000);
+      foreach ($D['speed'] as $dv => $r) { $pt = $r['parts'];
+        $L[] = sprintf('%s | %d | %.1fs | %.1fs | %d%%', $dv, $r['n'], $r['avg_ms'] / 1000, ($r['mid_ms'] ?? 0) / 1000, round(100 * $r['slow'] / max(1, $r['n'])))
+          . (isset($pt['w'], $pt['d'], $pt['j']) ? ' | server ' . $sec($pt['w']) . ', download ' . $sec($pt['d']) . ', phone ' . $sec($pt['j']) . (isset($pt['s']) ? ', live.php ' . $sec($pt['s']) : '') : '')
+          . (isset($pt['z']) ? " | {$pt['z']} KB" : ''); }
       if (!$D['speed']) $L[] = '(none)';
       $L[] = ''; $L[] = 'ERRORS ON THE PAGE (page | error | people | times)';
       foreach ($D['errors'] as $r) $L[] = sprintf('%s | %s | %d | %d', insights_pg_name($r['pg'], $names), $r['label'], $r['people'], $r['n']);
