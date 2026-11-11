@@ -78,7 +78,7 @@ function video_inbox(): void {
   } catch (Throwable $e) {} finally { flock($lk, LOCK_UN); fclose($lk); }
 }
 /* for STORE_LIVE.videos: only the ones switched on, of products on the website; shown on the home page and as Review videos on their product pages (wh: h = home page only, p = product pages only, none = both) */
-/* the small previews (pv) come from our own server (media/v), as on 10 Nov morning: Make All Videos Again on 11/11/2026 put them on Cloudflare and Safari stopped playing them by itself (AJAY) */
+/* the small previews (pv) play from Cloudflare first, our own media/v copy if Cloudflare has any problem (index.html cfBack, AJAY 11/11/2026) */
 function shop_videos_live(): array {
   try { video_inbox(); } catch (Throwable $e) {}
   if (shop_setting('videos_off') === '1') return [];   // the main switch on Admin → Products → Videos: the whole row is off
@@ -86,7 +86,7 @@ function shop_videos_live(): array {
   foreach (shop_videos() as $v) { if (empty($v['on']) || !empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
     $all = video_products($v); $ps = array_values(array_filter($all, fn($id) => isset($cat[$id]) && empty($cat[$id]['hidden'])));   // one product, several, or none (a Shop Now button)
     if (($all || (string)($v['product'] ?? '') !== '') && !$ps) continue;   // every product in it is hidden or deleted
-    $out[] = video_full($v) + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_url((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) ? ['pv' => video_url((string)$v['file'])] : [])) + (($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []) + ($ps && !empty($v['shop']) ? ['sn' => 1] : []); }
+    $out[] = video_full($v) + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_cdn((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) ? ['pv' => video_cdn((string)$v['file'])] : [])) + (($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []) + ($ps && !empty($v['shop']) ? ['sn' => 1] : []); }
   return $out;
 }
 /* the products a video sells, first one first ('product' plus 'also'); only those in $cat when it is given */
