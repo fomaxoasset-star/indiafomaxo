@@ -68,7 +68,20 @@ function seo_photo_preload(array $p, string $html, string $size): string {
   if ($k === '') return '';
   $url = str_starts_with($k, 'up/') ? '/media/p/' . rawurlencode(substr($k, 3))
     : (preg_match('/^[\w.-]+$/', $k) && preg_match('/assets\/img\/\$\{k\}\.webp\?v=(\d+)/', $html, $m) ? "/assets/img/$k.webp?v=$m[1]" : '');
+  $GLOBALS['SEO_PHOTO'] = $url;   // seo_early() shows the same photo before the shop's code arrives
   return $url === '' ? '' : '<link rel="preload" as="image" href="' . h($url) . '" fetchpriority="high">';
+}
+/* the product's photo and name drawn straight away, inside <main id="app">, while the rest of the page (the shop's code, about two thirds
+   of it) is still downloading: on a slow phone from an ad the page showed only the top bar until the whole page had arrived (7.6 s on 3G).
+   Same classes and photo address as product() in index.html, so the full page replaces it in place; route() swaps it with no fade.
+   No price here: the shop works the price out itself (offers, sale off), so it shows with the full page a moment later. */
+function seo_early(array $p): string {
+  $img = (string)($GLOBALS['SEO_PHOTO'] ?? '');
+  if ($img === '') return '';
+  return '<div class="wrap pdp-early" aria-hidden="true" style="min-height:100vh"><div class="crumbs pdp-crumbs" style="padding-top:34px">&nbsp;</div><div class="pdp">'
+    . '<div class="gallery"><div class="stage"><img src="' . h($img) . '" alt="" fetchpriority="high"></div></div>'
+    . '<div class="buy"><div style="display:flex;flex-direction:column;gap:14px"><span class="sub">&nbsp;</span><div class="ptitle"><h1>' . h($p['name']) . '</h1>'
+    . ($p['care'] || $p['family'] === '' ? '' : '<span class="ptype">' . h($p['family']) . '</span>') . '</div></div></div></div></div>';
 }
 /* the live star rating from api/reviews.php's store, or null when there are no reviews yet */
 function seo_rating(string $id): ?array {
@@ -287,5 +300,6 @@ $swap = [
   '/<meta property="og:image:width" content="[^"]*">\s*<meta property="og:image:height" content="[^"]*">\s*/' => '',   // sizes of the home link picture, not this product photo
 ];
 foreach ($swap as $re => $to) $html = preg_replace($re, str_replace(['\\', '$'], ['\\\\', '\\$'], $to), $html, 1);
+$html = preg_replace('/<main id="app" tabindex="-1">/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], seo_early($p)), $html, 1);
 // the home banner's early download (top of index.html) skips itself here: $go below sets the #/product/… address first
 fx_send_page(preg_replace('/<meta charset="utf-8">/', '$0' . str_replace(['\\', '$'], ['\\\\', '\\$'], $go), $html, 1));
