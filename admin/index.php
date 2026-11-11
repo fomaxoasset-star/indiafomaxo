@@ -316,6 +316,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($ok) $vids[0]['hq'] = $hq; else @unlink(video_dir() . "/$hq");
         unset($out);
       }
+      if (r2_conf() && preg_match('/^[a-f0-9]{16}$/', (string)($_POST['mob_parts'] ?? '')) && preg_match('/^(.+)\.\w+$/', $name, $bm)) {   // the lighter phone copy (540 px wide, about 2 MB; AJAY 11/11/2026), made in Chrome: phones play it, kept on Cloudflare and here
+        $md = "$PRIV/video-parts/" . $_POST['mob_parts']; $mn = (int)($_POST['mob_parts_n'] ?? 0); $mt = (int)($_POST['mob_parts_size'] ?? 0); $mob = $bm[1] . '-m.mp4';
+        $ok = is_dir($md) && $mn > 0 && $mn <= 1000 && $mt > 0 && $mt <= 100 * 1048576 && ($out = @fopen(video_dir() . "/$mob", 'wb'));
+        for ($k = 0; $ok && $k < $mn; $k++) { $in = @fopen("$md/$k", 'rb'); if (!$in) { $ok = false; break; } stream_copy_to_stream($in, $out); fclose($in); }
+        if (!empty($out)) fclose($out);
+        clearstatcache(); $ok = $ok && (int)@filesize(video_dir() . "/$mob") === $mt && function_exists('finfo_open') && finfo_file(finfo_open(FILEINFO_MIME_TYPE), video_dir() . "/$mob") === 'video/mp4';
+        foreach (glob("$md/*") ?: [] as $x) @unlink($x); @rmdir($md);
+        if ($ok) $vids[0]['mob'] = $mob; else @unlink(video_dir() . "/$mob");
+        unset($out);
+      }
       if (r2_conf() && preg_match('/^[a-f0-9]{16}$/', (string)($_POST['orig_parts'] ?? '')) && preg_match('/^(.+)\.\w+$/', $name, $bm)) {   // the original from the phone, kept on Cloudflare only: Make All Videos Again remakes every copy from it later
         $od = "$PRIV/video-parts/" . $_POST['orig_parts']; $on = (int)($_POST['orig_parts_n'] ?? 0); $ot = (int)($_POST['orig_parts_size'] ?? 0); $tmp = video_dir() . '/' . $bm[1] . '-o.part';
         $ok = is_dir($od) && $on > 0 && $on <= 5000 && $ot > 0 && $ot <= 4096 * 1048576 && ($out = @fopen($tmp, 'wb'));
@@ -328,10 +338,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
       if ($rep !== false) {   // the old video's entry keeps everything but its files; its old files go (on Cloudflare at the next copy). Make All Videos Again sends no new original: the old one stays
         $nv = array_shift($vids); $ov = $vids[$rep];
-        foreach (['file', 'prev', 'hq', 'orig'] as $k) if ((string)($ov[$k] ?? '') !== '' && ($k !== 'orig' || !empty($nv['orig']))) { @unlink(video_dir() . '/' . basename((string)$ov[$k])); video_pub_drop(basename((string)$ov[$k])); }
+        foreach (['file', 'prev', 'mob', 'hq', 'orig'] as $k) if ((string)($ov[$k] ?? '') !== '' && ($k !== 'orig' || !empty($nv['orig']))) { @unlink(video_dir() . '/' . basename((string)$ov[$k])); video_pub_drop(basename((string)$ov[$k])); }
         $keepC = (string)($ov['cover'] ?? '') !== '';   // the cover already chosen stays (the page sends a frame of the new video as a cover by itself)
         if ($keepC && preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)$nv['cover'], $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
-        $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'hq' => 1, 'fp' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : []) + (!empty($nv['hq']) ? ['hqk' => 1] : [])) + array_intersect_key($nv, ['hq' => 1, 'fp' => 1, 'orig' => 1]);   // the shape picked before stays (AJAY 28/10/2026: Make All flipped 9:16 to 16:9); change it on the row
+        $vids[$rep] = array_diff_key($ov, ['prev' => 1, 'mob' => 1, 'hq' => 1, 'fp' => 1] + (!empty($nv['orig']) ? ['orig' => 1] : []) + (!empty($nv['hq']) ? ['hqk' => 1] : [])) + array_intersect_key($nv, ['mob' => 1, 'hq' => 1, 'fp' => 1, 'orig' => 1]);   // the shape picked before stays (AJAY 28/10/2026: Make All flipped 9:16 to 16:9); change it on the row
         $vids[$rep]['file'] = $nv['file']; if (!$keepC) $vids[$rep]['cover'] = $nv['cover'];
         $toCom = ((!empty($ov['sent_com']) || ($ov['from'] ?? '') === 'fomaxo.com') && preg_match('/^[a-f0-9]{32}$/', (string)($ov['fp'] ?? ''))) && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], (string)$ov['fp']);   // fomaxo.com has this video too: it gets the sharper one as well
         if (!$toCom && !empty($vids[$rep]['hq']) && empty($vids[$rep]['from']) && video_com_inbox() !== '' && video_to_com(video_dir() . '/' . $nv['file'], $vids[$rep], '', ['match' => 1])) { $vids[$rep]['sent_com'] = true; $toCom = true; }   // not on fomaxo.com yet as such: it takes the place of the same video there (never adds one)
@@ -397,7 +407,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $v = $vids[$at]; array_splice($vids, $at, 1);
       if (!empty($v['ig'])) { $seen = json_decode((string)shop_setting('ig_seen'), true) ?: []; $seen[] = $v['ig']; shop_set('ig_seen', json_encode(array_slice($seen, -300))); }   // Automatic never brings it back
       if ((string)$v['file'] !== '') { @unlink(video_dir() . '/' . basename((string)$v['file'])); video_pub_drop(basename((string)$v['file'])); }
-      if ((string)($v['prev'] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v['prev'])); video_pub_drop(basename((string)$v['prev'])); }
+      foreach (['prev', 'mob'] as $k) if ((string)($v[$k] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$v[$k])); video_pub_drop(basename((string)$v[$k])); }
       foreach (['hq', 'orig'] as $k) if ((string)($v[$k] ?? '') !== '') @unlink(video_dir() . '/' . basename((string)$v[$k]));   // on Cloudflare, it goes at the next copy (r2_sync)
       if (preg_match('~^up/([a-z0-9-]+\.(webp|jpg))$~', (string)($v['cover'] ?? ''), $m)) { @unlink("$PRIV/product-images/$m[1]"); fomaxo_pub_drop('media/p', $m[1]); }
       $msg = 'Video deleted.';

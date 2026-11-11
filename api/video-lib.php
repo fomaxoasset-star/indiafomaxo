@@ -8,7 +8,7 @@ declare(strict_types=1);
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
 
 const IG_CODE = '/^[A-Za-z0-9_-]{5,40}$/';   // an Instagram reel shown with Instagram's own player (pasted link, no token)
-const VIDEO_FILE = '/^[a-z0-9-]{1,48}-[a-f0-9]{8}(-p|-h|-o)?\.(mp4|mov|webm)$/';   // -p = the small preview the home page row plays (made on the admin page, vshrink.js); -h = the sharp 1080p copy, kept on Cloudflare only; -o = the original from the phone, Cloudflare only (Make All Videos Again remakes from it)
+const VIDEO_FILE = '/^[a-z0-9-]{1,48}-[a-f0-9]{8}(-p|-m|-h|-o)?\.(mp4|mov|webm)$/';   // -p = the small preview the home page row plays (made on the admin page, vshrink.js); -h = the sharp 1080p copy, kept on Cloudflare only; -o = the original from the phone, Cloudflare only (Make All Videos Again remakes from it)
 function shop_videos(): array { return array_values(array_filter(json_decode((string)shop_setting('videos'), true) ?: [], fn($v) => is_array($v) && !empty($v['id']) && (preg_match(VIDEO_FILE, (string)($v['file'] ?? '')) || preg_match(IG_CODE, (string)($v['embed'] ?? ''))))); }
 function shop_videos_save(array $v): void { shop_set('videos', json_encode(array_values($v), JSON_UNESCAPED_SLASHES)); }
 function video_dir(): string { global $PRIV; $d = "$PRIV/videos"; if (!is_dir($d)) @mkdir($d, 0750, true); return $d; }
@@ -65,8 +65,8 @@ function video_inbox(): void {
       if (preg_match('/^[a-f0-9]{32}$/', $old)) {   // a sharper copy of one of our videos: it takes that video's place, keeping product, words, cover and place; none matches = dropped
         @unlink($j); $at = false; foreach ($vids as $k => $x2) if (($x2['fp'] ?? '') === $old && empty($x2['embed'])) { $at = $k; break; }
         if ($at === false) { @unlink(video_dir() . "/$f"); if (!empty($more['hq'])) @unlink(video_dir() . '/' . $more['hq']); continue; }
-        foreach (['file', 'prev', 'hq'] as $k) if ((string)($vids[$at][$k] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$vids[$at][$k])); video_pub_drop(basename((string)$vids[$at][$k])); }
-        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'hq' => 1, 'hqk' => 1, 'fp' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []);   // keeps its own shape
+        foreach (['file', 'prev', 'mob', 'hq'] as $k) if ((string)($vids[$at][$k] ?? '') !== '') { @unlink(video_dir() . '/' . basename((string)$vids[$at][$k])); video_pub_drop(basename((string)$vids[$at][$k])); }
+        $vids[$at] = array_diff_key($vids[$at], ['prev' => 1, 'mob' => 1, 'hq' => 1, 'hqk' => 1, 'fp' => 1]) + ['file' => $f] + $more + (preg_match('/^[a-f0-9]{32}$/', (string)($m['fp'] ?? '')) ? ['fp' => (string)$m['fp']] : []);   // keeps its own shape
         $vids[$at]['file'] = $f; $added++; continue;
       }
       @unlink($j); $prod = (string)($m['product'] ?? ''); $words = substr(trim((string)($m['words'] ?? '')), 0, 60);
@@ -85,7 +85,7 @@ function shop_videos_live(): array {
   foreach (shop_videos() as $v) { if (empty($v['on']) || !empty($v['embed'])) continue;   // only videos on our server: an Instagram-player entry sends shoppers off to Instagram
     $all = video_products($v); $ps = array_values(array_filter($all, fn($id) => isset($cat[$id]) && empty($cat[$id]['hidden'])));   // one product, several, or none (a Shop Now button)
     if (($all || (string)($v['product'] ?? '') !== '') && !$ps) continue;   // every product in it is hidden or deleted
-    $out[] = video_full($v) + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_cdn((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) ? ['pv' => video_cdn((string)$v['file'])] : [])) + (($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []) + ($ps && !empty($v['shop']) ? ['sn' => 1] : []); }
+    $out[] = video_full($v) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-m\.mp4$/', (string)($v['mob'] ?? '')) && is_file(video_dir() . '/' . $v['mob']) ? ['vm' => video_cdn((string)$v['mob'])] : []) + ['p' => $ps[0] ?? ''] + (count($ps) > 1 ? ['a' => array_slice($ps, 1)] : []) + (($v['cover'] ?? '') !== '' ? ['c' => (string)$v['cover']] : []) + (preg_match('/^[a-z0-9-]+-[a-f0-9]{8}-p\.mp4$/', (string)($v['prev'] ?? '')) ? ['pv' => video_cdn((string)$v['prev'])] : (preg_match('/\.mp4$/', (string)$v['file']) && is_file(video_dir() . '/' . $v['file']) ? ['pv' => video_cdn((string)$v['file'])] : [])) + (($v['words'] ?? '') !== '' ? ['w' => (string)$v['words']] : []) + (!empty($v['wide']) ? ['wd' => 1] : []) + (in_array($v['where'] ?? '', ['home', 'product'], true) ? ['wh' => $v['where'][0]] : []) + (($v['person'] ?? '') !== '' ? ['n' => (string)$v['person']] : []) + ($ps && !empty($v['shop']) ? ['sn' => 1] : []); }
   return $out;
 }
 /* the products a video sells, first one first ('product' plus 'also'); only those in $cat when it is given */
@@ -190,7 +190,7 @@ function r2_put(array $c, string $f): string {
 /* every video file the list uses (the video and its small preview) */
 function r2_wanted(): array {
   $w = []; $have = null;
-  foreach (shop_videos() as $v) foreach ([(string)($v['file'] ?? ''), (string)($v['prev'] ?? ''), (string)($v['hq'] ?? ''), (string)($v['orig'] ?? '')] as $f) {
+  foreach (shop_videos() as $v) foreach ([(string)($v['file'] ?? ''), (string)($v['prev'] ?? ''), (string)($v['mob'] ?? ''), (string)($v['hq'] ?? ''), (string)($v['orig'] ?? '')] as $f) {
     if (!preg_match(VIDEO_FILE, $f)) continue;
     if (is_file(video_dir() . "/$f")) $w[$f] = (int)filesize(video_dir() . "/$f");
     elseif (in_array($f, [(string)($v['hq'] ?? ''), (string)($v['orig'] ?? '')], true) && isset(($have ??= r2_have())[$f])) $w[$f] = $have[$f];   // the sharp copy and the original leave Hostinger once they are on Cloudflare
@@ -251,7 +251,7 @@ function video_tidy(bool $now = false): array {
   if (!$now && ($j['t'] ?? 0) > time() - 3600) return [0, 0];
   if (shop_setting('videos') === null || !shop_videos()) return [0, 0];   // the list could not be read (or is empty): nothing is touched
   try { r2_share_dedupe(); } catch (Throwable $e) {}
-  $keep = com_uses(); foreach (shop_videos() as $v) foreach (['file', 'prev', 'hq', 'orig'] as $k) { $f = basename((string)($v[$k] ?? '')); if ($f !== '') $keep[$f] = 1; }   // plus every file of ours fomaxo.com plays
+  $keep = com_uses(); foreach (shop_videos() as $v) foreach (['file', 'prev', 'mob', 'hq', 'orig'] as $k) { $f = basename((string)($v[$k] ?? '')); if ($f !== '') $keep[$f] = 1; }   // plus every file of ours fomaxo.com plays
   $old = time() - 3600; $n = 0; $b = 0; $gone = [];
   foreach ([video_dir(), video_pub_dir()] as $d) foreach (glob("$d/*") ?: [] as $p) {
     $f = basename($p);
