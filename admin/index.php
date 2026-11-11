@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (!hash_equals($CSRF, (string)($_POST['csrf'] ?? ''))) go([], '!Your session expired. Please try again.');
   fomaxo_live_drop();   // a save here shows on the website at its next page load, not up to a minute later (api/live.php)
   $a = (string)($_POST['action'] ?? ''); $back = json_decode((string)($_POST['back'] ?? '[]'), true) ?: [];
-  $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
+  $back = array_intersect_key($back, array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'coupon', 'page']));
 
   if ($a === 'stock_order') {   // Stocks: drag the dots in front of a row (admin.js, without reloading); only this list, the website keeps its own order
     $keys = array_values(array_unique(array_filter(explode(',', (string)($_POST['keys'] ?? '')), fn($k) => preg_match('/^[a-z0-9-]+\|[a-z0-9]+$/i', $k)))); $ok = (bool)$keys;
