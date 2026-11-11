@@ -6336,11 +6336,14 @@ addEventListener('pointermove', e => { mouse.tx = e.clientX / innerWidth * 2 - 1
   addEventListener('blur', () => root.classList.remove('cur-on'));
   addEventListener('hashchange', () => root.classList.remove('cur-view', 'cur-link'));
   addEventListener('scroll', () => { moved = true; wake(); }, {passive: true});
-  addEventListener('pointermove', () => wake(), {passive: true});
+  addEventListener('pointermove', () => { dot.style.transform = `translate3d(${x}px,${y}px,0)`; wake(); }, {passive: true});   // the dot moves on every pointer move, not one frame later (AJAY 11/11/2026 "improve the mouse movement")
   /* runs while the ring is still catching up with the dot; when it has, it sleeps (light mode still re-checks the colour under it every 600ms) */
   let raf = 0, nap = 0; const wake = () => { clearTimeout(nap); if (!raf) raf = requestAnimationFrame(loop); };
-  function loop(now){ raf = 0; rx += (x - rx) * .18; ry += (y - ry) * .18;
-    if (root.dataset.mode === 'light' && (moved ? now - tone > 90 : now - tone > 600)){ tone = now; moved = false; root.classList.toggle('cur-dark', onDark(x, y)); }
+  let last = 0;
+  function loop(now){ raf = 0;
+    const dt = last && now - last < 100 ? now - last : 16.7; last = now;   // the ring follows about twice as fast and by elapsed time, so it keeps up while the page is busy instead of jumping
+    const k = 1 - Math.pow(.65, dt / 16.7); rx += (x - rx) * k; ry += (y - ry) * k;
+    if (root.dataset.mode === 'light' && (moved ? now - tone > 150 : now - tone > 600)){ tone = now; moved = false; root.classList.toggle('cur-dark', onDark(x, y)); }
     dot.style.transform = `translate3d(${x}px,${y}px,0)`; ring.style.transform = `translate3d(${rx}px,${ry}px,0)`;
     if (Math.abs(x - rx) > .3 || Math.abs(y - ry) > .3 || (moved && root.dataset.mode === 'light')) raf = requestAnimationFrame(loop);
     else { rx = x; ry = y; ring.style.transform = `translate3d(${rx}px,${ry}px,0)`; if (root.dataset.mode === 'light') nap = setTimeout(wake, 600); } }
