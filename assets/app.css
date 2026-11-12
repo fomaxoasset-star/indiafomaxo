@@ -401,6 +401,8 @@ input[readonly].input { opacity: .6; }
 .pt-price small { font-weight: 500; font-size: 12px; color: var(--muted); }
 .pick-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .pick-head img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; }
+.modal:has(.pick-head) .modal-head h2 { flex: 1; text-align: center; padding-left: 46px; }
+.pick-head { flex-direction: column; text-align: center; gap: 8px; }
 .pick-q { font-size: 18px; color: var(--text); }
 .sizes { display: grid; gap: 10px; }
 .size-btn { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; text-align: center; padding: 16px 18px; border-radius: 14px; border: 2px solid var(--line-2); background: var(--panel-2); min-height: 72px; }
