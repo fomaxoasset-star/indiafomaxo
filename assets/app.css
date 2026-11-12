@@ -402,7 +402,7 @@ input[readonly].input { opacity: .6; }
 .pick-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .pick-head img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; }
 .pick-q { font-size: 18px; color: var(--text); }
-.sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; }
+.sizes { display: grid; gap: 10px; }
 .size-btn { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; text-align: center; padding: 16px 18px; border-radius: 14px; border: 2px solid var(--line-2); background: var(--panel-2); min-height: 72px; }
 .size-btn:hover { border-color: var(--gold); }
 .size-btn .sz { font-size: 22px; font-weight: 800; }
