@@ -621,7 +621,7 @@
         S.cart.forEach(function (c) { if (c.product_id === p.id) inCart = c.qty; });
         return '<button class="size-btn' + (st === 'out' ? ' is-out' : '') + '" data-act="add-size" data-id="' + p.id + '">' +
           '<span class="sz">' + esc(p.variant) + '</span><span class="sp">' + wasHtml(p) + money(p.price) + '</span>' +
-          (st === 'out' ? '<span class="ss out">SOLD OUT</span>' : '') +
+          '<span class="ss ' + st + '">' + (st === 'out' ? 'SOLD OUT' : st === 'low' ? 'Only ' + p.stock + ' left' : p.stock + ' in stock') + '</span>' +
           (inCart ? '<span class="in-cart">' + inCart + '</span>' : '') + '</button>';
       }).join('') + '</div>');
   }
