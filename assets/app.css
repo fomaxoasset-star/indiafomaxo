@@ -410,9 +410,6 @@ input[readonly].input { opacity: .6; }
 .size-btn .ss { grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--ok); }
 .size-btn .ss.low { color: var(--low); } .size-btn .ss.out { color: var(--out); }
 .size-btn.is-out { opacity: .5; }
-.size-btn.has-img { grid-template-columns: 56px 1fr auto; }
-.size-btn .sz-img { grid-row: 1 / span 2; width: 56px; height: 56px; border-radius: 10px; object-fit: cover; }
-.size-btn.has-img .ss { grid-column: 2 / -1; }
 .size-btn .in-cart { position: absolute; top: -8px; right: -8px; min-width: 26px; height: 26px; border-radius: 13px; background: var(--gold); color: #111; font-weight: 800; display: grid; place-items: center; padding: 0 7px; }
 .cline { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .cline img, .cline .cl-ph { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; background: #1a1712; display: grid; place-items: center; color: var(--gold); font-family: var(--head); font-size: 22px; }

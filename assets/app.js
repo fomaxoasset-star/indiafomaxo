@@ -619,10 +619,9 @@
       '<div class="sizes">' + g.sizes.map(function (p) {
         var st = stockState(p), inCart = 0;
         S.cart.forEach(function (c) { if (c.product_id === p.id) inCart = c.qty; });
-        return '<button class="size-btn' + (p.image ? ' has-img' : '') + (st === 'out' ? ' is-out' : '') + '" data-act="add-size" data-id="' + p.id + '">' +
-          (p.image ? '<img class="sz-img" src="' + esc(thumb(p.image, 120)) + '" alt="" onerror="this.remove()">' : '') +
+        return '<button class="size-btn' + (st === 'out' ? ' is-out' : '') + '" data-act="add-size" data-id="' + p.id + '">' +
           '<span class="sz">' + esc(p.variant) + '</span><span class="sp">' + wasHtml(p) + money(p.price) + '</span>' +
-          '<span class="ss ' + st + '">' + (st === 'out' ? 'SOLD OUT' : st === 'low' ? 'Only ' + p.stock + ' left' : p.stock + ' in stock') + '</span>' +
+          (st === 'out' ? '<span class="ss out">SOLD OUT</span>' : '') +
           (inCart ? '<span class="in-cart">' + inCart + '</span>' : '') + '</button>';
       }).join('') + '</div>');
   }
