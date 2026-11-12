@@ -403,11 +403,11 @@ input[readonly].input { opacity: .6; }
 .pick-head img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; }
 .pick-q { font-size: 18px; color: var(--text); }
 .sizes { display: grid; gap: 10px; }
-.size-btn { position: relative; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; gap: 2px 12px; text-align: left; padding: 16px 18px; border-radius: 14px; border: 2px solid var(--line-2); background: var(--panel-2); min-height: 72px; }
+.size-btn { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; align-content: center; gap: 2px 16px; text-align: center; padding: 16px 18px; border-radius: 14px; border: 2px solid var(--line-2); background: var(--panel-2); min-height: 72px; }
 .size-btn:hover { border-color: var(--gold); }
 .size-btn .sz { font-size: 22px; font-weight: 800; }
-.size-btn .sp { font-size: 20px; font-weight: 800; color: var(--gold-2); text-align: right; font-variant-numeric: tabular-nums; }
-.size-btn .ss { grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--ok); }
+.size-btn .sp { font-size: 20px; font-weight: 800; color: var(--gold-2); font-variant-numeric: tabular-nums; }
+.size-btn .ss { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--ok); }
 .size-btn .ss.low { color: var(--low); } .size-btn .ss.out { color: var(--out); }
 .size-btn.is-out { opacity: .5; }
 .size-btn .in-cart { position: absolute; top: -8px; right: -8px; min-width: 26px; height: 26px; border-radius: 13px; background: var(--gold); color: #111; font-weight: 800; display: grid; place-items: center; padding: 0 7px; }
