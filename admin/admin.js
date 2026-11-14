@@ -744,10 +744,9 @@ function waBox(id, sel, o) {
   function withW(t) { var w = btn.dataset.wt; return !w ? t : t.replace(/https:\/\/(?:www\.)?fomaxo\.in(\/[^\s?#*]*)?(\?[^\s#*]*)?(#[^\s*]*)?/g, function (u, p, q, h) { return 'https://fomaxo.in' + (p || '/') + (q ? q + '&' : '?') + 'w=' + w + (h || ''); }); }
   function to() { var p = btn.dataset.phone || ''; return !p ? '' : p[0] === '+' ? p.slice(1) : '91' + p; }   // country code first: 919876543210, or 971501234567 for +971501234567
   function wa(t) { return 'https://wa.me/' + to() + '?text=' + encodeURIComponent(t); }   // no mobile (a coupon for anyone): WhatsApp asks who
-  /* On a phone the WhatsApp app opens straight away (whatsapp://, on Android an intent that falls back to wa.me when there's no app), in this tab;
-     a new tab opened from a script after the server answers only loads the wa.me website. If the app doesn't open, the box shows both links to tap. */
-  var PHONE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform)),
-    ANDROID = /Android/i.test(navigator.userAgent), go = q('.ltwa-go');
+  /* On phone AND laptop the WhatsApp app opens straight away (whatsapp://, on Android an intent that falls back to wa.me when there's no app), in this tab,
+     so there is no WhatsApp website page in between. If the app doesn't open, the box shows both links to tap. */
+  var ANDROID = /Android/i.test(navigator.userAgent), go = q('.ltwa-go');
   function app(t) {
     var a = 'send?' + (to() ? 'phone=' + to() + '&' : '') + 'text=' + encodeURIComponent(t);
     return ANDROID ? 'intent://' + a + '#Intent;scheme=whatsapp;S.browser_fallback_url=' + encodeURIComponent(wa(t)) + ';end' : 'whatsapp://' + a;
@@ -755,7 +754,8 @@ function waBox(id, sel, o) {
   function openApp(t) {
     q('.ltwa-app').href = app(t); q('.ltwa-web').href = wa(t); send.disabled = true;   // one code per tap
     var shown = setTimeout(function () { go.hidden = false; }, 1500);
-    document.addEventListener('visibilitychange', function gone() { if (document.hidden) { clearTimeout(shown); dlg.close(); document.removeEventListener('visibilitychange', gone); } });
+    function gone() { if (document.hidden || !document.hasFocus()) { clearTimeout(shown); dlg.close(); document.removeEventListener('visibilitychange', gone); window.removeEventListener('blur', gone); } }
+    document.addEventListener('visibilitychange', gone); window.addEventListener('blur', gone);   // laptop: the WhatsApp app takes the focus
     location.href = app(t);
   }
   document.addEventListener('click', function (e) {
@@ -769,8 +769,7 @@ function waBox(id, sel, o) {
   q('[data-ltwa-close]').addEventListener('click', function () { dlg.close(); });
   send.addEventListener('click', function () {
     var k = kind.value; err.hidden = true;
-    if (!k && !o.always) { if (PHONE) openApp(withW(text.value)); else { window.open(wa(withW(text.value)), '_blank'); dlg.close(); } return; }
-    var w = PHONE ? null : window.open('', '_blank');   // laptop: opened now, while the tap counts, so the browser lets it through; WhatsApp loads in it once the server answers
+    if (!k && !o.always) { openApp(withW(text.value)); return; }
     var f = o.fields(btn.dataset);
     f.action = o.action; f.gkind = k; f.pct = val.value || (k === 'pct' ? PCT : '200'); f.gfree = freeV.value; f.gmin = min.value; f.gend = end.value.trim();
     send.disabled = true;
@@ -779,10 +778,8 @@ function waBox(id, sel, o) {
       if (d.error || (k && !d.code)) throw new Error(d.error || 'The code could not be made.');
       if (d.code) text.value = text.value.split('[CODE]').join(d.code);
       if (o.done) o.done(d, btn);
-      if (PHONE) { openApp(withW(text.value)); return; }   // the box closes once WhatsApp has opened
-      if (w) w.location = wa(withW(text.value)); else location.href = wa(withW(text.value));
-      dlg.close();
-    }).catch(function (x) { send.disabled = false; if (w) w.close(); err.textContent = x.message; err.hidden = false; });
+      openApp(withW(text.value));   // the box closes once WhatsApp has opened
+    }).catch(function (x) { send.disabled = false; err.textContent = x.message; err.hidden = false; });
   });
 }
 

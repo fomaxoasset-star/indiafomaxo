@@ -4391,11 +4391,43 @@ function invAsk(href){
       if (t.hasAttribute('data-inv-x')) return d.close();
       if (t.hasAttribute('data-inv-go')) { const ph = $('#invPh').value.replace(/\D/g, '').slice(-10); if (!/^[6-9]\d{9}$/.test(ph)) { $('.invd-err', d).hidden = false; $('#invPh').focus(); return; }
         try { localStorage.setItem('fomaxo_inviter', JSON.stringify({ph})); } catch(x) {} TRK.send('invite', {ph}); }
-      if (t.hasAttribute('data-inv-go') || t.hasAttribute('data-inv-skip')) { d.close(); window.open(d.dataset.href, '_blank', 'noopener'); }
+      if (t.hasAttribute('data-inv-go') || t.hasAttribute('data-inv-skip')) { d.close(); openWA(d.dataset.href); }
     });
   }
   d.dataset.href = href; $('.invd-err', d).hidden = true; d.showModal();
 }
+/* Every WhatsApp button opens the WhatsApp app itself (phone and laptop), not the WhatsApp website with its "Continue to chat" step.
+   If the app does not open (not installed), the usual WhatsApp page opens instead, so nobody is left stuck.
+   iPhone Safari/Chrome keep the normal link: it already opens the app by itself there. */
+const fxWA = (() => {
+  const UA = navigator.userAgent, AND = /Android/i.test(UA),
+    IOS = /iPhone|iPad|iPod/i.test(UA) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform)),
+    INAPP = /FBAN|FBAV|FB_IAB|FBIOS|Instagram/i.test(UA);
+  const parse = h => { try { const u = new URL(h, location.href); if (!/^(wa\.me|api\.whatsapp\.com)$/.test(u.hostname)) return null;
+    return {ph: (u.hostname === 'wa.me' ? u.pathname : u.searchParams.get('phone') || '').replace(/\D/g, ''), text: u.searchParams.get('text') || ''}; } catch(e) { return null; } };
+  const mem = v => { try { return v ? localStorage.setItem('fomaxo_wa_app', '1') : localStorage.getItem('fomaxo_wa_app') === '1'; } catch(e) { return false; } };
+  // the app took over when this page loses focus or is hidden; if not within ms, fb() opens the WhatsApp page
+  const watch = (ms, fb) => { let gone = false; const off = () => { gone = true; }, vis = () => { if (document.hidden) gone = true; };
+    addEventListener('blur', off); addEventListener('pagehide', off); document.addEventListener('visibilitychange', vis);
+    setTimeout(() => { removeEventListener('blur', off); removeEventListener('pagehide', off); document.removeEventListener('visibilitychange', vis);
+      if (gone) mem(1); else if (!document.hidden) fb(); }, ms); };
+  return href => {
+    const w = parse(href); if (!w || (IOS && !INAPP)) return false;
+    const q = (w.ph ? 'phone=' + w.ph + '&' : '') + 'text=' + encodeURIComponent(w.text);
+    if (AND) { location.href = 'intent://send?' + q + '#Intent;scheme=whatsapp;S.browser_fallback_url=' + encodeURIComponent(href) + ';end';
+      if (INAPP) watch(2500, () => { location.href = href; }); return true; }
+    location.href = 'whatsapp://send?' + q;
+    if (IOS) watch(3000, () => { location.href = href; });
+    else if (!mem()) watch(3000, () => { const t = window.open(href, '_blank'); if (t) t.opener = null; else location.href = href; });
+    return true;
+  };
+})();
+document.addEventListener('click', e => {
+  if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target.closest && e.target.closest('a[href*="wa.me/"],a[href*="api.whatsapp.com/"]');
+  if (a && fxWA(a.href)) e.preventDefault();
+});
+const openWA = href => { if (!fxWA(href)) { const t = window.open(href, '_blank'); if (t) t.opener = null; } };
 const WA_SVG = () => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${SOC_ICON.whatsapp.replace(/^<g transform="[^"]*">/, '<g>')}</svg>`;
 /* one gift set or combo card: pictures, words, product dropdowns and the WhatsApp button (combos: Add to bag and Buy now) */
 /* combo cards: short scent words under each parfum, and the "Change" row that stands in for the dropdown */
