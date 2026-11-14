@@ -679,6 +679,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     shop_set('alert_sound', ($_POST['on'] ?? '') === '1' ? '1' : '0');
     header('Content-Type: application/json'); echo json_encode(['ok' => true, 'on' => shop_setting('alert_sound') === '1']); exit;
   }
+  if ($a === 'mail_test') {   // Settings → Email: send a test email the same way orders go
+    $err = null; $ok = fomaxo_mail(fomaxo_store_email(), 'FOMAXO test email', "This is a test from fomaxo.in/admin.", "From: FOMAXO <" . FX_MAIL_FROM . ">\r\nContent-Type: text/plain; charset=UTF-8", $err);
+    go(['tab' => 'settings', 'pane' => 'mail'], $ok && $err === null && fomaxo_mail_config() ? 'A test email was sent to ' . fomaxo_store_email() . '. A copy is in Sent in Hostinger Mail.' : '!' . ($err !== null ? 'Hostinger did not accept it: ' . $err . '.' : 'The email could not be sent.'));
+  }
+  if ($a === 'mail_pass') {   // mail@fomaxo.in password: kept in fomaxo-private, never shown again
+    $mp = (string)($_POST['mail_pass'] ?? '');
+    if ($mp === '') go(['tab' => 'settings', 'pane' => 'mail'], '!Please type the ' . FX_MAIL_FROM . ' password.');
+    if (!fomaxo_mail_save_password($mp)) go(['tab' => 'settings', 'pane' => 'mail'], '!The password could not be saved. Please try again.');
+    $err = fomaxo_smtp_send(fomaxo_mail_config(), fomaxo_store_email(), 'FOMAXO test email', "This is a test from fomaxo.in/admin.\n\nStore emails are now sent from " . FX_MAIL_FROM . ".", "From: FOMAXO <" . FX_MAIL_FROM . ">\r\nContent-Type: text/plain; charset=UTF-8");
+    go(['tab' => 'settings', 'pane' => 'mail'], $err !== null ? '!Saved, but Hostinger did not accept it: ' . $err . '. Check the password of ' . FX_MAIL_FROM . ' in Hostinger → Emails.' : 'Saved. A test email was sent to ' . fomaxo_store_email() . '. A copy is in Sent in Hostinger Mail.');
+  }
   if ($a === 'settings') {
     $email = trim((string)($_POST['notify_email'] ?? ''));
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) go(['tab' => 'settings'], '!Please write a valid email address.');

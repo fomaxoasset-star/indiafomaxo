@@ -1380,11 +1380,11 @@ if ($tab === 'stores') {
 if ($tab === 'settings') {
   $email = (string)shop_setting('notify_email');
   $pane = (string)($_GET['pane'] ?? '');   // back on the pane just saved (phones show one pane at a time)
-  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $first = $adsFirst || $codFirst || $pgFirst;
+  $adsFirst = $pane === 'ads'; $codFirst = $pane === 'cod'; $pgFirst = $pane === 'pages'; $mailFirst = $pane === 'mail'; $first = $adsFirst || $codFirst || $pgFirst || $mailFirst;
   $COD = fomaxo_catalog()['cod'] ?? null;
   $AD = shop_ads() + ['meta' => '', 'tiktok' => '', 'ga4' => '', 'gads' => '', 'gadsLabel' => '', 'clarity' => ''];
   $adIn = fn(string $k, string $label, string $ph, string $help) => '<label>' . $label . '<input name="' . $k . '" value="' . h($AD[$k]) . '" placeholder="' . $ph . '" autocomplete="off" spellcheck="false"></label><p class="muted small" style="margin:-4px 0 0">' . $help . '</p>';
-  $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
+  $setPanes = ['notify' => 'New orders', 'pages' => 'Site pages', 'mail' => 'Email', 'cod' => 'Cash on delivery', 'ads' => 'Ads', 'pw' => 'Password', 'db' => 'Database'];
   $OFF = shop_pages_off();
   $pgAddr = ['dubai' => 'fomaxo.com'];
   if ($first) $setPanes = [$pane => $setPanes[$pane]] + $setPanes;
@@ -1402,6 +1402,14 @@ if ($tab === 'settings') {
     . '<p class="muted small" style="margin:0">Turn a page off to hide it. It leaves the menu and the footer, and its link opens the home page. Home, products, checkout and policies always show.</p>'
     . '<div class="pgs">' . implode('', array_map(fn($k, $n) => '<label class="pg"><span><b>' . h($n) . '</b><small>' . h($pgAddr[$k] ?? 'fomaxo.in/#/' . $k) . '</small></span><input type="checkbox" class="tgl" name="on[]" value="' . h($k) . '"' . (in_array($k, $OFF, true) ? '' : ' checked') . ' aria-label="Show ' . h($n) . '"></label>', array_keys(SHOP_PAGES), SHOP_PAGES)) . '</div>'
     . '<button class="btn">Save</button></div></form>'
+    . '<form method="post" class="box' . ($mailFirst ? ' on' : '') . '" data-pane="mail" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="mail_pass"><div class="bh"><h3>Email sending</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
+    . (fomaxo_mail_config()
+        ? '<p class="small" style="margin:0">✓ Emails are sent from ' . FX_MAIL_FROM . ' through Hostinger, and a copy goes in its Sent folder.</p>'
+        : '<p class="small" style="margin:0">Not set up yet: emails may land in spam and do not show in Sent. Type the password of the ' . FX_MAIL_FROM . ' mailbox (Hostinger → Emails).</p>')
+    . '<label>' . FX_MAIL_FROM . ' password<input type="password" name="mail_pass" autocomplete="new-password" placeholder="' . (fomaxo_mail_config() ? 'Saved, type again only to change it' : '') . '"></label>'
+    . '<p class="muted small" style="margin:-4px 0 0">Kept on your Hostinger server only, never shown again.</p>'
+    . '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn">Save and send a test</button>'
+    . (fomaxo_mail_config() ? '<button class="btn line" name="action" value="mail_test" formnovalidate>Send a test email</button>' : '') . '</div></div></form>'
     . '<form method="post" class="box' . ($codFirst ? ' on' : '') . '" data-pane="cod" autocomplete="off">' . $csrfField . '<input type="hidden" name="action" value="cod"><div class="bh"><h3>Cash on delivery</h3></div><div class="bb" style="padding-top:12px;display:flex;flex-direction:column;gap:9px">'
     . ($COD ? '' : '<p class="small" style="margin:0;color:var(--red,#e5484d)">Cash on delivery is turned off in index.html, so these numbers are not used yet.</p>')
     . '<label>Minimum order (₹)<input type="number" name="cod_min" min="0" step="1" required value="' . h($rs((int)($COD['min'] ?? 100000))) . '"></label><p class="muted small" style="margin:-4px 0 0">Cash on delivery only from this amount.</p>'
