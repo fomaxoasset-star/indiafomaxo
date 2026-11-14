@@ -371,6 +371,15 @@ html[data-mode="light"] .stk.low{color:#8a5a12;box-shadow:inset 0 0 0 1px rgba(1
 .phead::before{content:"";position:absolute;right:-10%;top:-60%;width:60%;aspect-ratio:1;background:radial-gradient(circle,rgba(215,170,105,.12),transparent 65%)}
 .phead .wrap{position:relative;display:flex;flex-direction:column;gap:18px}
 .phead h1{font-size:clamp(34px,5vw,76px)}
+/* page header: no FOMAXO / page line, less empty space above and below, and the line under the title in Capital Letters Each Word (AJAY 14 Nov 2026); Arabic has no capitals, so no change there */
+.phead{padding:clamp(26px,2.6vw,40px) 0 clamp(22px,2.2vw,32px)}
+.phead .wrap{gap:12px}
+.phead .lead{text-transform:capitalize}
+html[lang=ar] .phead .lead{text-transform:none}
+@media(min-width:900px){.phead .lead{max-width:none}}   /* laptop: the line under the title runs on one straight line across the page (AJAY 14 Nov) */
+.phead+section.sec{padding-top:clamp(32px,3.4vw,52px)}
+.el-in>.crumbs,.gf-copy>.crumbs,.co>.crumbs{display:none}
+@media(max-width:600px){.phead{padding:22px 0 18px!important}.phead .wrap{gap:10px}.phead+section.sec{padding-top:28px}}
 .crumbs{font-size:10px;text-transform:uppercase;color:var(--dim)}
 .crumbs a:hover{color:var(--gold-hi)}
 .filters{display:flex;gap:8px;flex-wrap:wrap;padding:30px 0 40px}
@@ -3663,7 +3672,7 @@ function faqPage(){
   return pageHead('FAQ', 'Questions &amp; <em class="metal">answers</em>', 'Straight answers about FOMAXO perfumes, delivery and returns in India.') + `
   <section class="sec" style="padding-top:40px"><div class="wrap"><div class="acc faq rv-up" style="max-width:900px">${FAQ_LIST.map(([q, a], i) => `<details ${!i?'open':''}><summary>${esc(q)}</summary><div class="body"><p>${esc(a)}</p></div></details>`).join('')}</div></div></section>`;
 }
-const pageHead = (crumb, title, lead='') => `<div class="phead"><div class="wrap"><div class="crumbs"><a href="#/">FOMAXO</a> &nbsp;/&nbsp; ${crumb}</div><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
+const pageHead = (crumb, title, lead='') => `<div class="phead"><div class="wrap"><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
 const finalCTA = () => `<section class="final"><div class="wrap">${emblem('fin-em rv-up')}<span class="eyebrow rv-up">Inspire greatness</span><h2 class="rv-up d1">Define your<br><span class="metal">signature luxury</span></h2><div class="ctas rv-up d2"><a class="btn" href="#/fragrances">Shop FOMAXO</a><a class="btn line" href="#/collections">Explore the collections</a></div></div></section>`;
 const pyramid = n => n.key ? `<div class="pyramid one"><div>Key notes<span>${esc(n.key)}</span></div></div>` : `<div class="pyramid"><div>Top<span>${esc(n.top)}</span></div><div>Heart<span>${esc(n.heart)}</span></div><div>Base<span>${esc(n.base)}</span></div></div>`;
 
