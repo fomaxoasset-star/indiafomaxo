@@ -642,7 +642,7 @@ function receipt_card(array $o, string $csrfField, string $back): string {
 function rc_ship(string $courier, string $tracking): string {
   $c = trim($courier); $t = trim($tracking);
   if ($c === '' && $t === '') return '';
-  return "\n\nYour order is on its way" . ($c !== '' ? ' with *' . $c . '*' : '') . '.' . ($t !== '' ? "\nTracking no: *" . $t . '*' : '');
+  return "\n\nYour order is on its way" . ($c !== '' ? ' with "' . $c . '"' : '') . '.' . ($t !== '' ? "\nTracking no: \"" . $t . '"' : '');
 }
 /* the usual opening: Hi First, This is FOMAXO (about your order NO) */
 function wa_hello(string $name, string $no = ''): string {
