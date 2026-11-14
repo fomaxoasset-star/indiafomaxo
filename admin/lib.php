@@ -627,15 +627,22 @@ function receipt_card(array $o, string $csrfField, string $back): string {
   if ($no === '' || $o['status'] === 'awaiting') return '';
   $url = receipt_url($no); $em = trim((string)$o['email']);
   $sd = wa_sent_day('rc:' . $no); $ed = wa_sent_day('rm:' . $no);
-  $head = wa_hello((string)$o['name'], $no) . "\n\nHere is your receipt:\n" . $url;
+  $head0 = wa_hello((string)$o['name'], $no) . "\n\nHere is your receipt:\n" . $url;
+  $head = $head0 . rc_ship((string)($o['courier'] ?? ''), (string)($o['tracking'] ?? ''));   // + courier and tracking number when filled in
   return '<div class="rcpt"><h4>Receipt</h4><form method="post" class="stform">' . $csrfField . '<input type="hidden" name="action" value="receipt"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . $back . '">'
     . '<label>Courier<input name="courier" value="' . h($o['courier'] ?? '') . '" maxlength="60" list="couriers" placeholder="Delhivery, Blue Dart…" autocomplete="off"></label>'
     . '<label>Tracking no<input name="tracking" value="' . h($o['tracking'] ?? '') . '" maxlength="80" placeholder="If you have it" autocomplete="off"></label>'
     . '<p class="muted small">Shown on the receipt only when filled in.</p>'
     . '<div class="qbtns"><button class="btn line sm">Save</button><a class="btn line sm" href="' . h($url) . '" target="_blank" rel="noopener">View receipt</a><a class="btn line sm" href="' . h($url . '&print=1') . '" target="_blank" rel="noopener">Download PDF</a>'
-    . wa_btn((string)$o['phone'], (string)$o['name'], $head, "\n\nThank you,\nFOMAXO", 'rc:' . $no, $sd !== '' ? 'Sent ' . $sd : 'Send on WhatsApp', 'btn sm wag' . ($sd !== '' ? ' line' : ''), true)
+    . str_replace('<button type="button"', '<button type="button" data-head0="' . h($head0) . '"', wa_btn((string)$o['phone'], (string)$o['name'], $head, "\n\nThank you,\nFOMAXO", 'rc:' . $no, $sd !== '' ? 'Sent ' . $sd : 'Send on WhatsApp', 'btn sm wag' . ($sd !== '' ? ' line' : ''), true))
     . ($em !== '' ? '<button class="btn line sm" name="email" value="view">' . ($ed !== '' ? 'Emailed ' . $ed : 'Email') . '</button>' : '<button class="btn line sm" type="button" disabled title="No email on this order">Email</button>')
     . '</div><p class="muted small">Send only when the customer asks.</p></form></div>';
+}
+/* the shipping lines of the receipt WhatsApp message, only when a courier or tracking number is filled in (same words in admin.js) */
+function rc_ship(string $courier, string $tracking): string {
+  $c = trim($courier); $t = trim($tracking);
+  if ($c === '' && $t === '') return '';
+  return "\n\nYour order is on its way" . ($c !== '' ? ' with *' . $c . '*' : '') . '.' . ($t !== '' ? "\nTracking no: *" . $t . '*' : '');
 }
 /* the usual opening: Hi First, This is FOMAXO (about your order NO) */
 function wa_hello(string $name, string $no = ''): string {
