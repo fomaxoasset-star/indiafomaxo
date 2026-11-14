@@ -1320,3 +1320,11 @@ document.addEventListener('click', function (e) {
   }
   document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
 })();
+
+/* an order's Receipt box: typing a courier or tracking number puts it in the WhatsApp message straight away (same words as rc_ship in lib.php) */
+document.addEventListener('input', function (e) {
+  var f = e.target.form; if (!f || !/^(courier|tracking)$/.test(e.target.name)) return;
+  var b = f.querySelector('[data-head0]'); if (!b) return;
+  var c = f.elements.courier.value.trim(), t = f.elements.tracking.value.trim();
+  b.dataset.head = b.dataset.head0 + (c || t ? '\n\nYour order is on its way' + (c ? ' with "' + c + '"' : '') + '.' + (t ? '\nTracking no: "' + t + '"' : '') : '');
+});
