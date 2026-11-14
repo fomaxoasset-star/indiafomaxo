@@ -864,13 +864,13 @@ if (isset($_GET['mailview'])) {   // the receipt email exactly as the customer g
     $from = function_exists('fomaxo_mail_config') && fomaxo_mail_config() ? FX_MAIL_FROM : "orders@$host";
     page('Email ' . $o['no'], '<div class="mprev"><p style="margin:0"><a class="small" href="' . $cancel . '">← Back</a></p><h2 style="margin:0">Check the email</h2>'
       . '<dl><dt>To</dt><dd>' . h($to) . '</dd><dt>From</dt><dd>FOMAXO &lt;' . h($from) . '&gt;</dd><dt>Subject</dt><dd>Your FOMAXO receipt ' . h($o['no']) . '</dd></dl>'
-      . '<iframe class="mframe" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="Email preview" onload="var f=this;function z(){try{f.style.height=f.contentDocument.documentElement.scrollHeight+\'px\'}catch(e){}}z();setTimeout(z,700);addEventListener(\'resize\',z)" srcdoc="' . h(str_replace(['<a href=', 'https://fomaxo.in/assets/'], ['<a target="_blank" href=', '/assets/'], receipt_email($o))) . '"></iframe>'
+      . '<iframe class="mframe" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="Email preview" srcdoc="' . h(str_replace(['<a href=', 'https://fomaxo.in/assets/'], ['<a target="_blank" href=', '/assets/'], receipt_email($o))) . '"></iframe>'
       . '<form class="mbtn" method="post">' . $csrfField . '<input type="hidden" name="action" value="receipt"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . h($mb) . '">'
       . '<input type="hidden" name="courier" value="' . h($o['courier'] ?? '') . '"><input type="hidden" name="tracking" value="' . h($o['tracking'] ?? '') . '">'
       . '<a class="btn line" href="' . $cancel . '">Cancel</a><button class="btn" name="email" value="send">Send email</button></form>'
       . ($ed !== '' ? '<p class="muted small" style="margin:0;text-align:center">Already emailed on ' . h($ed) . '.</p>' : '') . '</div>'
-      . '<style>.mprev{max-width:860px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:10px}.mprev dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}.mprev dt{color:var(--muted)}.mprev dd{margin:0;overflow-wrap:anywhere}'
-      . '.mframe{width:100%;height:80vh;min-height:360px;border:1px solid var(--line);border-radius:10px;background:#f4f1ea}.mbtn{display:flex;gap:10px;justify-content:center;margin:0}.mbtn .btn{flex:1 1 0;max-width:220px;text-align:center;justify-content:center}</style>', true, 'orders', $tabs);
+      . '<style>.mprev{max-width:720px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:10px}.mprev dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}.mprev dt{color:var(--muted)}.mprev dd{margin:0;overflow-wrap:anywhere}'
+      . '.mframe{width:100%;height:60vh;min-height:360px;border:1px solid var(--line);border-radius:10px;background:#f4f1ea}.mbtn{display:flex;gap:10px;justify-content:center;margin:0}.mbtn .btn{flex:1 1 0;max-width:220px;text-align:center;justify-content:center}</style>', true, 'orders', $tabs);
   }
 }
 require __DIR__ . '/pages.php';
