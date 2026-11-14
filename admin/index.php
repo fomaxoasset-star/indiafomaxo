@@ -864,7 +864,7 @@ if (isset($_GET['mailview'])) {   // the receipt email exactly as the customer g
     $from = function_exists('fomaxo_mail_config') && fomaxo_mail_config() ? FX_MAIL_FROM : "orders@$host";
     page('Email ' . $o['no'], '<div class="mprev"><p style="margin:0"><a class="small" href="' . $cancel . '">← Back</a></p><h2 style="margin:0">Check the email</h2>'
       . '<dl><dt>To</dt><dd>' . h($to) . '</dd><dt>From</dt><dd>FOMAXO &lt;' . h($from) . '&gt;</dd><dt>Subject</dt><dd>Your FOMAXO receipt ' . h($o['no']) . '</dd></dl>'
-      . '<iframe class="mframe" sandbox="allow-popups allow-popups-to-escape-sandbox" title="Email preview" srcdoc="' . h(str_replace('<a href=', '<a target="_blank" href=', receipt_email($o))) . '"></iframe>'
+      . '<iframe class="mframe" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="Email preview" srcdoc="' . h(str_replace(['<a href=', 'https://fomaxo.in/assets/'], ['<a target="_blank" href=', '/assets/'], receipt_email($o))) . '"></iframe>'
       . '<form class="mbtn" method="post">' . $csrfField . '<input type="hidden" name="action" value="receipt"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . h($mb) . '">'
       . '<input type="hidden" name="courier" value="' . h($o['courier'] ?? '') . '"><input type="hidden" name="tracking" value="' . h($o['tracking'] ?? '') . '">'
       . '<a class="btn line" href="' . $cancel . '">Cancel</a><button class="btn" name="email" value="send">Send email</button></form>'
