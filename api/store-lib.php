@@ -563,12 +563,101 @@ function fomaxo_store_email(): string {
   try { $e = (string)shop_setting('notify_email'); } catch (Throwable $x) { $e = ''; }
   return $e !== '' ? $e : (fomaxo_catalog()['email'] ?: 'fomaxoasset@gmail.com');
 }
-/* mail(), or for local testing (FOMAXO_MAIL_LOG set) a line in that file instead */
-function fomaxo_mail(string $to, string $subject, string $body, string $headers): bool {
+/* Store emails go out through the mail@fomaxo.in mailbox (Hostinger SMTP) once its password is saved in Admin → Settings → Email,
+   and a copy is put in that mailbox's Sent folder. The password sits in ../fomaxo-private/mail-config.php (never on GitHub, never shown again).
+   Without it, or if Hostinger cannot be reached, PHP mail() is used as before. For local testing (FOMAXO_MAIL_LOG set) a line in that file instead. */
+const FX_MAIL_FROM = 'mail@fomaxo.in';
+function fomaxo_mail_config_file(): string { global $PRIV; return "$PRIV/mail-config.php"; }
+function fomaxo_mail_config(): ?array {
+  $f = fomaxo_mail_config_file();
+  $c = is_file($f) ? require $f : null;
+  return is_array($c) && ($c['pass'] ?? '') !== '' ? $c + ['server' => 'ssl://smtp.hostinger.com:465'] : null;
+}
+function fomaxo_mail_save_password(string $pass): bool {
+  $f = fomaxo_mail_config_file();
+  if ($pass === '') return @unlink($f) || !is_file($f);
+  $ok = @file_put_contents($f, "<?php\n// mail@fomaxo.in password for store emails (written by fomaxo.in/admin → Settings)\nreturn " . var_export(['pass' => $pass], true) . ";\n", LOCK_EX) !== false;
+  if ($ok) @chmod($f, 0600);
+  return $ok;
+}
+function fomaxo_mail(string $to, string $subject, string $body, string $headers, &$err = null): bool {
   if ($log = getenv('FOMAXO_MAIL_LOG')) return (bool)@file_put_contents($log, json_encode(['to' => $to, 'subject' => $subject, 'body' => $body]) . "\n", FILE_APPEND);
+  $err = null;
+  if ($c = fomaxo_mail_config()) {
+    $err = fomaxo_smtp_send($c, $to, $subject, $body, $headers);
+    if ($err === null) return true;
+    error_log("FOMAXO email by SMTP failed ($err), trying PHP mail()");
+  }
   return @mail($to, $subject, $body, $headers);
 }
+/* Returns null when sent, else a short reason (never the password). The From line is sent as FOMAXO <mail@fomaxo.in>, the mailbox that signs in. */
+function fomaxo_smtp_send(array $c, string $to, string $subject, string $body, string $headers): ?string {
+  $to = str_replace(["\r", "\n", '<', '>'], '', $to);
+  if (!preg_match('/^=\?UTF-8\?B\?/i', $subject) && preg_match('/[^\x20-\x7e]/', $subject)) $subject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+  $s = @stream_socket_client($c['server'], $no, $msg, 15);
+  if (!$s) return "could not reach the mail server ($msg)";
+  stream_set_timeout($s, 15);
+  $read = function () use ($s) { $all = ''; while (($l = fgets($s, 1024)) !== false) { $all .= $l; if (strlen($l) < 4 || $l[3] !== '-') break; } return $all; };
+  $cmd = function ($line, $want) use ($s, $read) { if ($line !== null) fwrite($s, $line . "\r\n"); $r = $read(); return (int)substr($r, 0, 3) === $want ? null : (trim(preg_replace('/\s+/', ' ', $r)) ?: 'no answer'); };
+  $hdr = preg_replace('/^From:.*$/mi', 'From: FOMAXO <' . FX_MAIL_FROM . '>', preg_replace("/\r?\n/", "\r\n", trim($headers)));
+  if (!preg_match('/^From:/mi', $hdr)) $hdr = 'From: FOMAXO <' . FX_MAIL_FROM . ">\r\n" . $hdr;
+  $data = "Date: " . date('r') . "\r\nTo: <$to>\r\nSubject: $subject\r\nMessage-ID: <" . bin2hex(random_bytes(12)) . '@fomaxo.in>' . "\r\n"
+        . (preg_match('/^MIME-Version:/mi', $hdr) ? '' : "MIME-Version: 1.0\r\n")
+        . $hdr . "\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode(preg_replace("/\r?\n/", "\r\n", $body)), 76, "\r\n");
+  $steps = [[null, 220], ['EHLO fomaxo.in', 250], ['AUTH LOGIN', 334], [base64_encode(FX_MAIL_FROM), 334], [base64_encode($c['pass']), 235],
+            ['MAIL FROM:<' . FX_MAIL_FROM . '>', 250], ["RCPT TO:<$to>", 250], ['DATA', 354], [$data . '.', 250]];
+  foreach ($steps as $i => [$line, $want]) {
+    if (($e = $cmd($line, $want)) !== null) { fclose($s); return ($i === 4 ? 'the mailbox password was not accepted: ' : '') . substr($e, 0, 160); }
+  }
+  $cmd('QUIT', 221); fclose($s);
+  fomaxo_imap_save_sent($c, $data);
+  return null;
+}
+/* After an email is sent, put a copy in the mail@fomaxo.in "Sent" folder (Hostinger IMAP), so it shows in Hostinger Mail → Sent.
+   Never stops or breaks sending: any problem is only written to the error log. Uses the same mailbox password. */
+function fomaxo_imap_save_sent($c, $msg) {
+  $s = @stream_socket_client($c['imap'] ?? 'ssl://imap.hostinger.com:993', $no, $why, 8);
+  if (!$s) { error_log("FOMAXO Sent copy: could not reach IMAP ($why)"); return false; }
+  stream_set_timeout($s, 8);
+  $n = 0;
+  $cmd = function ($line) use ($s, &$n) {   // returns [ok, all lines]
+    $t = 'A' . (++$n); fwrite($s, "$t $line\r\n"); $all = [];
+    while (($l = fgets($s, 8192)) !== false) { $all[] = $l; if (strncmp($l, "$t ", strlen($t) + 1) === 0) return [stripos($l, "$t OK") === 0, $all]; }
+    return [false, $all];
+  };
+  $q = function ($v) { return '"' . addcslashes($v, "\\\"") . '"'; };
+  $done = function ($why) use ($s) { if ($why !== '') error_log("FOMAXO Sent copy: $why"); @fwrite($s, "Z LOGOUT\r\n"); fclose($s); return $why === ''; };
+  if (fgets($s, 8192) === false) return $done('no greeting');
+  if (!$cmd('LOGIN ' . $q(FX_MAIL_FROM) . ' ' . $q($c['pass']))[0]) return $done('login refused');
+  // the folder marked \Sent, else one called Sent / INBOX.Sent, else make "Sent"
+  [$ok, $lines] = $cmd('LIST "" "*"'); $box = null; $named = null;
+  foreach ($lines as $l) {
+    if (!preg_match('/^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (?:"((?:[^"\\\\]|\\\\.)*)"|(\S+))/i', trim($l), $m)) continue;
+    $name = isset($m[3]) && $m[3] !== '' ? $m[3] : stripcslashes($m[2]);
+    if (stripos($m[1], '\\Sent') !== false) { $box = $name; break; }
+    if ($named === null && preg_match('/^(INBOX[.\/])?Sent$/i', $name)) $named = $name;
+  }
+  $box = $box ?? $named;
+  if ($box === null) { $box = 'Sent'; $cmd('CREATE "Sent"'); $cmd('SUBSCRIBE "Sent"'); }
+  $msg = rtrim($msg, "\r\n") . "\r\n";
+  fwrite($s, 'A' . (++$n) . ' APPEND ' . $q($box) . ' (\\Seen) {' . strlen($msg) . "}\r\n");
+  $l = fgets($s, 8192);
+  if ($l === false || $l[0] !== '+') return $done('folder ' . $box . ' refused the copy');
+  fwrite($s, $msg . "\r\n"); $t = "A$n ";
+  while (($l = fgets($s, 8192)) !== false) if (strncmp($l, $t, strlen($t)) === 0) return $done(stripos($l, "$t" . 'OK') === 0 ? '' : 'copy not saved');
+  return $done('no answer to the copy');
+}
+/* the order emails go out after the shopper's page has its answer, so sending (and the Sent copy) never slows checkout */
 function fomaxo_send_emails(array $rec, string $how): void {
+  if (getenv('FOMAXO_MAIL_LOG')) { fomaxo_send_emails_now($rec, $how); return; }
+  register_shutdown_function(function () use ($rec, $how) {
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    ignore_user_abort(true);
+    if (function_exists('litespeed_finish_request')) litespeed_finish_request(); elseif (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    try { fomaxo_send_emails_now($rec, $how); } catch (Throwable $e) { error_log('FOMAXO order email: ' . $e->getMessage()); }
+  });
+}
+function fomaxo_send_emails_now(array $rec, string $how): void {
   $store = fomaxo_store_email();
   $c = $rec['cust']; $total = rupees((int)$rec['total']);
   $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
