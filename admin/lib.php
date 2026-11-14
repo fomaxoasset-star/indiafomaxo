@@ -634,7 +634,7 @@ function receipt_card(array $o, string $csrfField, string $back): string {
     . '<p class="muted small">Shown on the receipt only when filled in.</p>'
     . '<div class="qbtns"><button class="btn line sm">Save</button><a class="btn line sm" href="' . h($url) . '" target="_blank" rel="noopener">View receipt</a><a class="btn line sm" href="' . h($url . '&print=1') . '" target="_blank" rel="noopener">Download PDF</a>'
     . wa_btn((string)$o['phone'], (string)$o['name'], $head, "\n\nThank you,\nFOMAXO", 'rc:' . $no, $sd !== '' ? 'Sent ' . $sd : 'Send on WhatsApp', 'btn sm wag' . ($sd !== '' ? ' line' : ''), true)
-    . ($em !== '' ? '<button class="btn line sm" name="email" value="1" data-confirm="Email the receipt to ' . h($em) . '?">' . ($ed !== '' ? 'Emailed ' . $ed : 'Email') . '</button>' : '<button class="btn line sm" type="button" disabled title="No email on this order">Email</button>')
+    . ($em !== '' ? '<button class="btn line sm" name="email" value="view">' . ($ed !== '' ? 'Emailed ' . $ed : 'Email') . '</button>' : '<button class="btn line sm" type="button" disabled title="No email on this order">Email</button>')
     . '</div><p class="muted small">Send only when the customer asks.</p></form></div>';
 }
 /* the usual opening: Hi First, This is FOMAXO (about your order NO) */

@@ -425,6 +425,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($_POST['email'])) go($back, 'Receipt details saved for ' . $o['no'] . '.');
     $to = trim((string)$o['email']);
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) go($back, '!' . $o['no'] . ' has no email address. Send the receipt on WhatsApp instead.');
+    if ($_POST['email'] !== 'send') go(['mailview' => (int)$o['id'], 'back' => json_encode($back)]);   // Email: first the preview, then Send email there sends it (AJAY 14 Nov 2026)
     $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
     $ok = fomaxo_mail($to, '=?UTF-8?B?' . base64_encode('Your FOMAXO receipt ' . $o['no']) . '?=', receipt_email($o),
       "From: FOMAXO <orders@$host>\r\nReply-To: " . fomaxo_store_email() . "\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8");
@@ -852,6 +853,26 @@ $body = $flash !== '' ? '<p class="flash' . ($flash[0] === '!' ? ' bad' : '') . 
 $sw = fn(string $for, array $panes) => '<div class="sw" data-for="' . $for . '"><div class="seg">' . implode('', array_map(fn($k, $v, $i) => '<button type="button" data-show="' . $k . '"' . ($i ? '' : ' class="on"') . ">$v</button>", array_keys($panes), $panes, array_keys(array_keys($panes)))) . '</div></div>';
 $thumbOf = fn(string $id, string $cls = 'th') => thumb($CAT[$id] ?? null, $cls);
 $orderThumb = function (array $o) use ($thumbOf) { $it = (json_decode((string)$o['items'], true) ?: [])[0] ?? []; return $thumbOf((string)($it['id'] ?? ''), 'th sm'); };
+if (isset($_GET['mailview'])) {   // the receipt email exactly as the customer gets it, with Send email (AJAY 14 Nov 2026)
+  require_once dirname(__DIR__) . '/api/receipt-lib.php'; receipt_cols();
+  $s = shop_db()->prepare('SELECT * FROM orders WHERE id = ?'); $s->execute([(int)$_GET['mailview']]); $o = $s->fetch();
+  $mb = (string)($_GET['back'] ?? '[]'); $mbq = array_intersect_key(json_decode($mb, true) ?: [], array_flip(['tab', 'status', 'method', 'q', 'from', 'to', 'state', 'page']));
+  $to = $o ? trim((string)$o['email']) : '';
+  if ($o && $o['no'] && filter_var($to, FILTER_VALIDATE_EMAIL)) {
+    $ed = wa_sent_day('rm:' . $o['no']); $cancel = h(self_url($mbq ?: ['tab' => 'orders']));
+    $host = preg_replace('/^www\./', '', preg_replace('/[^A-Za-z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'fomaxo.in'));
+    $from = function_exists('fomaxo_mail_config') && fomaxo_mail_config() ? FX_MAIL_FROM : "orders@$host";
+    page('Email ' . $o['no'], '<div class="mprev"><p style="margin:0"><a class="small" href="' . $cancel . '">← Back</a></p><h2 style="margin:0">Check the email</h2>'
+      . '<dl><dt>To</dt><dd>' . h($to) . '</dd><dt>From</dt><dd>FOMAXO &lt;' . h($from) . '&gt;</dd><dt>Subject</dt><dd>Your FOMAXO receipt ' . h($o['no']) . '</dd></dl>'
+      . '<iframe class="mframe" sandbox="allow-popups allow-popups-to-escape-sandbox" title="Email preview" srcdoc="' . h(str_replace('<a href=', '<a target="_blank" href=', receipt_email($o))) . '"></iframe>'
+      . '<form class="mbtn" method="post">' . $csrfField . '<input type="hidden" name="action" value="receipt"><input type="hidden" name="id" value="' . (int)$o['id'] . '"><input type="hidden" name="back" value="' . h($mb) . '">'
+      . '<input type="hidden" name="courier" value="' . h($o['courier'] ?? '') . '"><input type="hidden" name="tracking" value="' . h($o['tracking'] ?? '') . '">'
+      . '<a class="btn line" href="' . $cancel . '">Cancel</a><button class="btn" name="email" value="send">Send email</button></form>'
+      . ($ed !== '' ? '<p class="muted small" style="margin:0;text-align:center">Already emailed on ' . h($ed) . '.</p>' : '') . '</div>'
+      . '<style>.mprev{max-width:720px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:10px}.mprev dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}.mprev dt{color:var(--muted)}.mprev dd{margin:0;overflow-wrap:anywhere}'
+      . '.mframe{width:100%;height:60vh;min-height:360px;border:1px solid var(--line);border-radius:10px;background:#f4f1ea}.mbtn{display:flex;gap:10px;justify-content:center;margin:0}.mbtn .btn{flex:1 1 0;max-width:220px;text-align:center;justify-content:center}</style>', true, 'orders', $tabs);
+  }
+}
 require __DIR__ . '/pages.php';
 if (str_contains($body, 'data-wabox')) $body .= '<div data-csrf="' . h($CSRF) . '">' . wa_box('gWa', 'gwfree', '', 10, 0, 'A new THANKS- code just for this customer: one use, only with their mobile number. It is made when you tap Open WhatsApp.') . '</div>';   // the shared WhatsApp box
 /* opening Orders, Reviews or Analytics clears its rounds on the menu */
